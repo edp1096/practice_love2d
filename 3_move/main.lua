@@ -6,42 +6,34 @@ print("Running with LOVE " .. love_version .. " and Lua " .. _VERSION)
 local virtual_resolution = require "lib.virtual_resolution"
 local pcm = require "lib.sound"
 
-local vres, logo, player
+local cwd = love.filesystem.getWorkingDirectory()
+
+local player = require "player"
+
+local vres, logo
+local background
 
 
 function love.load()
-    vres = virtual_resolution.new(1280, 720)
+    vres = virtual_resolution.new(GameConfig.width, GameConfig.height)
+    love.graphics.setDefaultFilter("nearest", "nearest")
     love.window.setFullscreen(false)
 
-    logo = love.graphics.newImage("assets/images/logo.png")
+    local sprite_sheet = "assets/images/player-sheet.png"
+    player:New(sprite_sheet)
 
-    player = {}
-    player.x = 400
-    player.y = 200
-    player.speed = 5
+    background = love.graphics.newImage("assets/images/background.png")
 end
 
 function love.update(dt)
-    if love.keyboard.isDown("right") then
-        player.x = player.x + player.speed
-    end
-    if love.keyboard.isDown("left") then
-        player.x = player.x - player.speed
-    end
-    if love.keyboard.isDown("down") then
-        player.y = player.y + player.speed
-    end
-    if love.keyboard.isDown("up") then
-        player.y = player.y - player.speed
-    end
+    player:Update(dt)
 end
 
 function love.draw()
     vres:Attatch()
-    love.graphics.draw(logo, 0, 0)
+    love.graphics.draw(background, 0, 0)
+    player.anim:draw(player.spriteSheet, player.x, player.y, nil, 10, 10)
     vres:Detatch()
-
-    love.graphics.circle("fill", player.x, player.y, 100)
 
     if is_debug then
         vres:ShowDebugInfo()

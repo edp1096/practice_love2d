@@ -19,16 +19,21 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-]]--
+]] --
 
 --[[--
 A port of the sfxr sound effect synthesizer to pure Lua, designed to be used
 together with the *awesome* [LÖVE](https://love2d.org) game framework.
-]]--
+]] --
 -- @module sfxr
 local sfxr = {}
 -- local bit = bit32 or require("bit")
-local bit = require("bit")
+local bit
+if _VERSION == "Lua 5.1" or _VERSION == "Lua 5.2" then
+    bit = require("bit")
+else
+    bit = require "vendor.bit_op"
+end
 local bits, freq
 
 -- Constants
@@ -44,14 +49,14 @@ sfxr.VERSION = "0.0.2"
 -- @field SINE [sine wave](https://en.wikipedia.org/wiki/Sine_wave) (`= 2`)
 -- @field NOISE [white noise](https://en.wikipedia.org/wiki/White_noise) (`= 3`)
 sfxr.WAVEFORM = {
-  SQUARE = 0,
-  [0] = 0,
-  SAWTOOTH = 1,
-  [1] = 1,
-  SINE = 2,
-  [2] = 2,
-  NOISE = 3,
-  [3] = 3
+    SQUARE = 0,
+    [0] = 0,
+    SAWTOOTH = 1,
+    [1] = 1,
+    SINE = 2,
+    [2] = 2,
+    NOISE = 3,
+    [3] = 3
 }
 
 --- [Sampling rate](https://en.wikipedia.org/wiki/Sampling_(signal_processing)#Sampling_rate) constants
@@ -60,8 +65,8 @@ sfxr.WAVEFORM = {
 -- @field 22050 22.05 kHz (`= 22050`)
 -- @field 44100 44.1 kHz (`= 44100`)
 sfxr.SAMPLERATE = {
-  [22050] = 22050, --- 22.05 kHz
-  [44100] = 44100 --- 44.1 kHz
+    [22050] = 22050, --- 22.05 kHz
+    [44100] = 44100  --- 44.1 kHz
 }
 
 --- [Bit depth](https://en.wikipedia.org/wiki/Audio_bit_depth) constants
@@ -71,9 +76,9 @@ sfxr.SAMPLERATE = {
 -- @field 8 unsigned 8 bit, 0x00 to 0xFF (`= 8`)
 -- @field 16 unsigned 16 bit, 0x0000 to 0xFFFF (`= 16`)
 sfxr.BITDEPTH = {
-  [0] = 0,
-  [16] = 16,
-  [8] = 8
+    [0] = 0,
+    [16] = 16,
+    [8] = 8
 }
 
 --- [Endianness](https://en.wikipedia.org/wiki/Endianness) constants
@@ -81,10 +86,10 @@ sfxr.BITDEPTH = {
 -- @field LITTLE little endian (`= 0`)
 -- @field BIG big endian (`= 1`)
 sfxr.ENDIANNESS = {
-  LITTLE = 0,
-  [0] = 0,
-  BIG = 1,
-  [1] = 1
+    LITTLE = 0,
+    [0] = 0,
+    BIG = 1,
+    [1] = 1
 }
 
 -- Utilities
@@ -104,7 +109,7 @@ end
 -- @tparam number seed the random seed
 local function setseed(seed)
     math.randomseed(seed)
-    for i=0, 5 do
+    for i = 0, 5 do
         math.random()
     end
 end
@@ -142,7 +147,7 @@ end
 local function shallowcopy(t)
     if type(t) == "table" then
         local t2 = {}
-        for k,v in pairs(t) do
+        for k, v in pairs(t) do
             t2[k] = v
         end
         return t2
@@ -175,38 +180,38 @@ end
 -- @tparam number number a number
 -- @treturn string a binary string
 local function packIEEE754(number)
-	if number == 0 then
-		return string.char(0x00, 0x00, 0x00, 0x00)
-	elseif number ~= number then
-		return string.char(0xFF, 0xFF, 0xFF, 0xFF)
-	else
-		local sign = 0x00
-		if number < 0 then
-			sign = 0x80
-			number = -number
-		end
-		local mantissa, exponent = math.frexp(number)
-		exponent = exponent + 0x7F
-		if exponent <= 0 then
-			mantissa = math.ldexp(mantissa, exponent - 1)
-			exponent = 0
-		elseif exponent > 0 then
-			if exponent >= 0xFF then
-				return string.char(sign + 0x7F, 0x80, 0x00, 0x00)
-			elseif exponent == 1 then
-				exponent = 0
-			else
-				mantissa = mantissa * 2 - 1
-				exponent = exponent - 1
-			end
-		end
-		mantissa = math.floor(math.ldexp(mantissa, 23) + 0.5)
-		return string.char(
-			sign + math.floor(exponent / 2),
-			(exponent % 2) * 0x80 + math.floor(mantissa / 0x10000),
-			math.floor(mantissa / 0x100) % 0x100,
-			mantissa % 0x100)
-	end
+    if number == 0 then
+        return string.char(0x00, 0x00, 0x00, 0x00)
+    elseif number ~= number then
+        return string.char(0xFF, 0xFF, 0xFF, 0xFF)
+    else
+        local sign = 0x00
+        if number < 0 then
+            sign = 0x80
+            number = -number
+        end
+        local mantissa, exponent = math.frexp(number)
+        exponent = exponent + 0x7F
+        if exponent <= 0 then
+            mantissa = math.ldexp(mantissa, exponent - 1)
+            exponent = 0
+        elseif exponent > 0 then
+            if exponent >= 0xFF then
+                return string.char(sign + 0x7F, 0x80, 0x00, 0x00)
+            elseif exponent == 1 then
+                exponent = 0
+            else
+                mantissa = mantissa * 2 - 1
+                exponent = exponent - 1
+            end
+        end
+        mantissa = math.floor(math.ldexp(mantissa, 23) + 0.5)
+        return string.char(
+            sign + math.floor(exponent / 2),
+            (exponent % 2) * 0x80 + math.floor(mantissa / 0x10000),
+            math.floor(mantissa / 0x100) % 0x100,
+            mantissa % 0x100)
+    end
 end
 
 --- Unpack a IEEE754 32-bit big-endian floating point string to a number.
@@ -214,25 +219,25 @@ end
 -- @tparam string packed a binary string
 -- @treturn number a number
 local function unpackIEEE754(packed)
-	local b1, b2, b3, b4 = string.byte(packed, 1, 4)
-	local exponent = (b1 % 0x80) * 0x02 + math.floor(b2 / 0x80)
-	local mantissa = math.ldexp(((b2 % 0x80) * 0x100 + b3) * 0x100 + b4, -23)
-	if exponent == 0xFF then
-		if mantissa > 0 then
-			return 0 / 0
-		else
-			mantissa = math.huge
-			exponent = 0x7F
-		end
-	elseif exponent > 0 then
-		mantissa = mantissa + 1
-	else
-		exponent = exponent + 1
-	end
-	if b1 >= 0x80 then
-		mantissa = -mantissa
-	end
-	return math.ldexp(mantissa, exponent - 0x7F)
+    local b1, b2, b3, b4 = string.byte(packed, 1, 4)
+    local exponent = (b1 % 0x80) * 0x02 + math.floor(b2 / 0x80)
+    local mantissa = math.ldexp(((b2 % 0x80) * 0x100 + b3) * 0x100 + b4, -23)
+    if exponent == 0xFF then
+        if mantissa > 0 then
+            return 0 / 0
+        else
+            mantissa = math.huge
+            exponent = 0x7F
+        end
+    elseif exponent > 0 then
+        mantissa = mantissa + 1
+    else
+        exponent = exponent + 1
+    end
+    if b1 >= 0x80 then
+        mantissa = -mantissa
+    end
+    return math.ldexp(mantissa, exponent - 0x7F)
 end
 
 --- Construct and return a new @{Sound} instance.
@@ -502,37 +507,37 @@ function sfxr.Sound:generate(rate, depth)
     local noisebuffer = {}
 
     -- Initialize the sample buffers
-    for i=1, 1024 do
+    for i = 1, 1024 do
         phaserbuffer[i] = 0
     end
 
-    for i=1, 32 do
+    for i = 1, 32 do
         noisebuffer[i] = random(-1, 1)
     end
 
     --- Reset the sound period
     local function reset()
-        fperiod = 100 / (self.frequency.start^2 + 0.001)
-        maxperiod = 100 / (self.frequency.min^2 + 0.001)
+        fperiod = 100 / (self.frequency.start ^ 2 + 0.001)
+        maxperiod = 100 / (self.frequency.min ^ 2 + 0.001)
         period = trunc(fperiod)
 
-        slide = 1.0 - self.frequency.slide^3 * 0.01
-        dslide = -self.frequency.dslide^3 * 0.000001
+        slide = 1.0 - self.frequency.slide ^ 3 * 0.01
+        dslide = -self.frequency.dslide ^ 3 * 0.000001
 
         square_duty = 0.5 - self.duty.ratio * 0.5
         square_slide = -self.duty.sweep * 0.00005
 
         if self.change.amount >= 0 then
-            chg_mod = 1.0 - self.change.amount^2 * 0.9
+            chg_mod = 1.0 - self.change.amount ^ 2 * 0.9
         else
-            chg_mod = 1.0 + self.change.amount^2 * 10
+            chg_mod = 1.0 + self.change.amount ^ 2 * 10
         end
 
         chg_time = 0
         if self.change.speed == 1 then
             chg_limit = 0
         else
-            chg_limit = trunc((1 - self.change.speed)^2 * 20000 + 32)
+            chg_limit = trunc((1 - self.change.speed) ^ 2 * 20000 + 32)
         end
     end
 
@@ -544,13 +549,13 @@ function sfxr.Sound:generate(rate, depth)
     local env_vol = 0
     local env_stage = 1
     local env_time = 0
-    local env_length = {self.envelope.attack^2 * 100000,
-        self.envelope.sustain^2 * 100000,
-        self.envelope.decay^2 * 100000}
+    local env_length = { self.envelope.attack ^ 2 * 100000,
+        self.envelope.sustain ^ 2 * 100000,
+        self.envelope.decay ^ 2 * 100000 }
 
-    local fphase = self.phaser.offset^2 * 1020
+    local fphase = self.phaser.offset ^ 2 * 1020
     if self.phaser.offset < 0 then fphase = -fphase end
-    local dphase = self.phaser.sweep^2
+    local dphase = self.phaser.sweep ^ 2
     if self.phaser.sweep < 0 then dphase = -dphase end
     local ipp = 0
 
@@ -558,20 +563,20 @@ function sfxr.Sound:generate(rate, depth)
 
     local fltp = 0
     local fltdp = 0
-    local fltw = self.lowpass.cutoff^3 * 0.1
+    local fltw = self.lowpass.cutoff ^ 3 * 0.1
     local fltw_d = 1 + self.lowpass.sweep * 0.0001
-    local fltdmp = 5 / (1 + self.lowpass.resonance^2 * 20) * (0.01 + fltw)
+    local fltdmp = 5 / (1 + self.lowpass.resonance ^ 2 * 20) * (0.01 + fltw)
     fltdmp = clamp(fltdmp, nil, 0.8)
     local fltphp = 0
-    local flthp = self.highpass.cutoff^2 * 0.1
+    local flthp = self.highpass.cutoff ^ 2 * 0.1
     local flthp_d = 1 + self.highpass.sweep * 0.0003
 
     local vib_phase = 0
-    local vib_speed = self.vibrato.speed^2 * 0.01
+    local vib_speed = self.vibrato.speed ^ 2 * 0.01
     local vib_amp = self.vibrato.depth * 0.5
 
     local rep_time = 0
-    local rep_limit = trunc((1 - self.repeatspeed)^2 * 20000 + 32)
+    local rep_limit = trunc((1 - self.repeatspeed) ^ 2 * 20000 + 32)
     if self.repeatspeed == 0 then
         rep_limit = 0
     end
@@ -637,7 +642,7 @@ function sfxr.Sound:generate(rate, depth)
         if env_stage == 1 then
             env_vol = env_time / env_length[1]
         elseif env_stage == 2 then
-            env_vol = 1 + (1 - env_time / env_length[2])^1 * 2 * self.envelope.punch
+            env_vol = 1 + (1 - env_time / env_length[2]) ^ 1 * 2 * self.envelope.punch
         elseif env_stage == 3 then
             env_vol = 1 - env_time / env_length[3]
         end
@@ -656,7 +661,7 @@ function sfxr.Sound:generate(rate, depth)
         -- And finally the actual tone generation and supersampling
 
         local ssample = 0
-        for si = 0, self.supersampling-1 do
+        for si = 0, self.supersampling - 1 do
             local sample = 0
 
             phase = phase + 1
@@ -684,15 +689,15 @@ function sfxr.Sound:generate(rate, depth)
                     sample = -0.5
                 end
 
-            -- Sawtooth
+                -- Sawtooth
             elseif self.waveform == sfxr.WAVEFORM.SAWTOOTH then
                 sample = 1 - fp * 2
 
-            -- Sine
+                -- Sine
             elseif self.waveform == sfxr.WAVEFORM.SINE then
                 sample = math.sin(fp * 2 * math.pi)
 
-            -- Pitched white noise
+                -- Pitched white noise
             elseif self.waveform == sfxr.WAVEFORM.NOISE then
                 sample = noisebuffer[trunc(phase * 32 / period) % 32 + 1]
             end
@@ -768,9 +773,9 @@ function sfxr.Sound:getEnvelopeLimit(rate)
     assert(sfxr.SAMPLERATE[rate], "invalid sampling rate: " .. tostring(rate))
 
     local env_length = {
-        self.envelope.attack^2 * 100000, --- attack
-        self.envelope.sustain^2 * 100000, --- sustain
-        self.envelope.decay^2 * 100000 --- decay
+        self.envelope.attack ^ 2 * 100000,  --- attack
+        self.envelope.sustain ^ 2 * 100000, --- sustain
+        self.envelope.decay ^ 2 * 100000    --- decay
     }
     local limit = trunc(env_length[1] + env_length[2] + env_length[3] + 2)
 
@@ -894,29 +899,29 @@ function sfxr.Sound:randomize(seed)
     end
 
     if maybe() then
-        self.frequency.start = random(-1, 1)^3 + 0.5
+        self.frequency.start = random(-1, 1) ^ 3 + 0.5
     else
-        self.frequency.start = random(-1, 1)^2
+        self.frequency.start = random(-1, 1) ^ 2
     end
     self.frequency.limit = 0
-    self.frequency.slide = random(-1, 1)^5
+    self.frequency.slide = random(-1, 1) ^ 5
     if self.frequency.start > 0.7 and self.frequency.slide > 0.2 then
         self.frequency.slide = -self.frequency.slide
-    elseif self.frequency.start < 0.2 and self.frequency.slide <-0.05 then
+    elseif self.frequency.start < 0.2 and self.frequency.slide < -0.05 then
         self.frequency.slide = -self.frequency.slide
     end
-    self.frequency.dslide = random(-1, 1)^3
+    self.frequency.dslide = random(-1, 1) ^ 3
 
     self.duty.ratio = random(-1, 1)
-    self.duty.sweep = random(-1, 1)^3
+    self.duty.sweep = random(-1, 1) ^ 3
 
-    self.vibrato.depth = random(-1, 1)^3
+    self.vibrato.depth = random(-1, 1) ^ 3
     self.vibrato.speed = random(-1, 1)
     self.vibrato.delay = random(-1, 1)
 
-    self.envelope.attack = random(-1, 1)^3
-    self.envelope.sustain = random(-1, 1)^2
-    self.envelope.punch = random(-1, 1)^2
+    self.envelope.attack = random(-1, 1) ^ 3
+    self.envelope.sustain = random(-1, 1) ^ 2
+    self.envelope.punch = random(-1, 1) ^ 2
     self.envelope.decay = random(-1, 1)
 
     if self.envelope.attack + self.envelope.sustain + self.envelope.decay < 0.2 then
@@ -925,16 +930,16 @@ function sfxr.Sound:randomize(seed)
     end
 
     self.lowpass.resonance = random(-1, 1)
-    self.lowpass.cutoff = 1 - random(0, 1)^3
-    self.lowpass.sweep = random(-1, 1)^3
+    self.lowpass.cutoff = 1 - random(0, 1) ^ 3
+    self.lowpass.sweep = random(-1, 1) ^ 3
     if self.lowpass.cutoff < 0.1 and self.lowpass.sweep < -0.05 then
         self.lowpass.sweep = -self.lowpass.sweep
     end
-    self.highpass.cutoff = random(0, 1)^3
-    self.highpass.sweep = random(-1, 1)^5
+    self.highpass.cutoff = random(0, 1) ^ 3
+    self.highpass.sweep = random(-1, 1) ^ 5
 
-    self.phaser.offset = random(-1, 1)^3
-    self.phaser.sweep = random(-1, 1)^3
+    self.phaser.offset = random(-1, 1) ^ 3
+    self.phaser.sweep = random(-1, 1) ^ 3
 
     self.change.speed = random(-1, 1)
     self.change.amount = random(-1, 1)
@@ -1069,7 +1074,7 @@ function sfxr.Sound:randomExplosion(seed)
         self.frequency.start = random(0.2, 0.9)
         self.frequency.slide = random(-0.2, -0.4)
     end
-    self.frequency.start = self.frequency.start^2
+    self.frequency.start = self.frequency.start ^ 2
 
     if maybe(4) then
         self.frequency.slide = 0
@@ -1258,18 +1263,18 @@ function sfxr.Sound:exportWAV(f, rate, depth)
     -- Start the file by writing the RIFF header
     ws("RIFF")
     pos_fsize = tell()
-    w32(0) -- remaining file size, will be replaced later
+    w32(0)     -- remaining file size, will be replaced later
     ws("WAVE") -- type
 
     -- Write the format chunk
     ws("fmt ")
-    w32(16) -- chunk size
-    w16(1) -- compression code (1 = PCM)
-    w16(1) -- channel number
-    w32(freq) -- sampling rate
+    w32(16)              -- chunk size
+    w16(1)               -- compression code (1 = PCM)
+    w16(1)               -- channel number
+    w32(freq)            -- sampling rate
     w32(freq * bits / 8) -- bytes per second
-    w16(bits / 8) -- block alignment
-    w16(bits) -- bits per sample
+    w16(bits / 8)        -- block alignment
+    w16(bits)            -- bits per sample
 
     -- Write the header of the data chunk
     ws("data")
@@ -1284,8 +1289,8 @@ function sfxr.Sound:exportWAV(f, rate, depth)
 
         if depth == 16 then
             -- wrap around a bit
-            if v >= 256^2 then v = 0 end
-            if v < 0 then v = 256^2 + v end
+            if v >= 256 ^ 2 then v = 0 end
+            if v < 0 then v = 256 ^ 2 + v end
             w16(v)
         else
             f:write(string.char(v))
@@ -1296,7 +1301,7 @@ function sfxr.Sound:exportWAV(f, rate, depth)
     seek(pos_fsize)
     w32(pos_csize - 4 + samples * bits / 8) -- remaining file size
     seek(pos_csize)
-    w32(samples * bits / 8) -- chunk size
+    w32(samples * bits / 8)                 -- chunk size
 
     if close then
         f:close()
@@ -1327,7 +1332,7 @@ function sfxr.Sound:save(f, minify)
         if type(obj) == "number" then
             -- fetch the default value
             local def = defaults
-            for i=2, #keys do
+            for i = 2, #keys do
                 def = def[keys[i]]
             end
 
@@ -1338,7 +1343,6 @@ function sfxr.Sound:save(f, minify)
                 end
                 code = code .. string.format("%s=%s;", name, obj)
             end
-
         elseif type(obj) == "table" then
             local spacing = minify and "" or "\n" .. string.rep(" ", #keys - 1)
             code = code .. spacing .. string.format("%s={", name)
@@ -1353,7 +1357,7 @@ function sfxr.Sound:save(f, minify)
         end
     end
 
-    store({"s"}, self)
+    store({ "s" }, self)
     code = code .. "\nreturn s, \"" .. sfxr.VERSION .. "\""
     f:write(code)
 
@@ -1481,7 +1485,7 @@ function sfxr.Sound:loadBinary(f)
     local off = 1
 
     local function readFloat()
-        local f = unpackIEEE754(s:sub(off, off+3):reverse())
+        local f = unpackIEEE754(s:sub(off, off + 3):reverse())
         off = off + 4
         return f
     end
@@ -1496,12 +1500,12 @@ function sfxr.Sound:loadBinary(f)
 
     self.waveform = s:byte(off)
     off = off + 4
-    self.volume.sound = version==102 and readFloat() or 0.5
+    self.volume.sound = version == 102 and readFloat() or 0.5
 
     self.frequency.start = readFloat()
     self.frequency.min = readFloat()
     self.frequency.slide = readFloat()
-    self.frequency.dslide = version>=101 and readFloat() or 0
+    self.frequency.dslide = version >= 101 and readFloat() or 0
 
     self.duty.ratio = readFloat()
     self.duty.sweep = readFloat()
@@ -1532,7 +1536,7 @@ function sfxr.Sound:loadBinary(f)
         self.change.amount = readFloat()
     end
 
-    assert(off-1 == s:len(), "unexpected file length")
+    assert(off - 1 == s:len(), "unexpected file length")
 end
 
 return sfxr

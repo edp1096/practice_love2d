@@ -2,5 +2,6 @@
     "Lua.diagnostics.globals": [
         "love",
     ],
-    "Lua.runtime.version": "LuaJIT",
+    // "Lua.runtime.version": "LuaJIT",
+    "Lua.runtime.version": "Lua 5.4",
 }

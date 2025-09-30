@@ -2,5 +2,11 @@
     "Lua.diagnostics.globals": [
         "love",
     ],
+    "Lua.workspace.ignoreDir": [
+        ".vscode",
+        "dist",
+        "vendor/bit_op",
+    ],
     "Lua.runtime.version": "LuaJIT",
+    // "Lua.runtime.version": "Lua 5.4",
 }
