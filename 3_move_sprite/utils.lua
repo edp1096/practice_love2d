@@ -32,4 +32,23 @@ function utils:DeepCopy(obj, seen)
     return res
 end
 
+
+function utils:SaveConfig(GameConfig)
+    local file = io.open("config.ini", "w")
+    if file then
+        file:write("Title = " .. GameConfig.title .. "\n")
+        file:write("Author = " .. GameConfig.author .. "\n")
+        file:write("\n")
+        file:write("[Window]\n")
+        file:write("Width = " .. GameConfig.width .. "\n")
+        file:write("Height = " .. GameConfig.height .. "\n")
+        file:write("Resizable = " .. tostring(GameConfig.resizable) .. "\n")
+        file:write("FullScreen = " .. tostring(GameConfig.fullscreen) .. "\n")
+        file:write("Monitor = " .. GameConfig.monitor .. "\n")
+        file:write("ScaleMode = " .. GameConfig.scale_mode .. "\n")
+        file:close()
+    end
+end
+
+
 return utils

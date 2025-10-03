@@ -39,6 +39,8 @@ if not err then
     GameConfig.height = config and config.Window.Height
     GameConfig.resizable = config and config.Window.Resizable
     GameConfig.fullscreen = config and config.Window.FullScreen
+    GameConfig.monitor = config and config.Window.Monitor
+    GameConfig.scale_mode = config and config.Window.ScaleMode
     GameConfig.vsync = config and config.Window.Vsync
 end
 
@@ -50,7 +52,7 @@ function love.conf(t)
     t.window.width = GameConfig.width
     t.window.height = GameConfig.height
     t.window.resizable = GameConfig.resizable
-    t.window.fullscreen = GameConfig.fullscreen
+    -- t.window.fullscreen = GameConfig.fullscreen
     t.window.vsync = GameConfig.vsync
     t.window.minwidth = GameConfig.min_width
     t.window.minheight = GameConfig.min_height

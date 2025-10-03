@@ -4,12 +4,12 @@ local virtual_resolution = {}
 virtual_resolution.__index = virtual_resolution
 
 -- Constructor
-function virtual_resolution.new(virtualWidth, virtualHeight)
-    local self = setmetatable({}, virtual_resolution)
+function virtual_resolution:Set(virtualWidth, virtualHeight)
+    -- self = setmetatable({}, virtual_resolution)
 
     -- Virtual resolution (base resolution for game logic)
-    self.virtualWidth = virtualWidth or 1280
-    self.virtualHeight = virtualHeight or 1080
+    self.virtualWidth = tonumber(virtualWidth) or 1280
+    self.virtualHeight = tonumber(virtualHeight) or 1080
 
     -- Actual screen dimensions
     self.screenWidth = love.graphics.getWidth()
@@ -33,7 +33,7 @@ function virtual_resolution.new(virtualWidth, virtualHeight)
 
     self:calculateScale()
 
-    return self
+    -- return self
 end
 
 -- Calculate scaling and offset based on current screen size
@@ -197,7 +197,7 @@ function virtual_resolution:getOffset()
     return self.offsetX, self.offsetY
 end
 
--- Update screen dimensions (call this in love.resize)
+-- Update screen dimensions
 function virtual_resolution:resize(w, h)
     self:calculateScale()
 end

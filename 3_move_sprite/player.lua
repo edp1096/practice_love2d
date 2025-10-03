@@ -21,22 +21,22 @@ end
 function player:Update(dt)
     local is_moving = false
 
-    if love.keyboard.isDown("right") then
+    if love.keyboard.isDown("right") or love.keyboard.isDown("d") then
         self.x = self.x + self.speed
         self.anim = self.animations.right
         is_moving = true
     end
-    if love.keyboard.isDown("left") then
+    if love.keyboard.isDown("left") or love.keyboard.isDown("a") then
         self.x = self.x - self.speed
         self.anim = self.animations.left
         is_moving = true
     end
-    if love.keyboard.isDown("down") then
+    if love.keyboard.isDown("down") or love.keyboard.isDown("s") then
         self.y = self.y + self.speed
         self.anim = self.animations.down
         is_moving = true
     end
-    if love.keyboard.isDown("up") then
+    if love.keyboard.isDown("up") or love.keyboard.isDown("w") then
         self.y = self.y - self.speed
         self.anim = self.animations.up
         is_moving = true

@@ -1,4 +1,4 @@
---[[ 
+--[[
 Example:
     [section]
     key1 = value1
@@ -40,6 +40,15 @@ function ini:Read(filename)
                 if key and value then
                     key = key:match("^%s*(.-)%s*$")
                     value = value:match("^%s*(.-)%s*$")
+
+                    if tonumber(value) then
+                        value = tonumber(value)
+                    elseif value == "true" then
+                        value = true
+                    elseif value == "false" then
+                        value = false
+                    end
+
                     if current_section then
                         config[current_section][key] = value
                     else
