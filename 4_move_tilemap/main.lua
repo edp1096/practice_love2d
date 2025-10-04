@@ -5,77 +5,78 @@ print("Running with LOVE " .. love_version .. " and " .. _VERSION)
 
 
 local locker
-if _VERSION == "Lua 5.1" then
-    locker = require "locker"
-end
+if _VERSION == "Lua 5.1" then locker = require "locker" end
 
 local screen = require "lib.screen"
 local sti = require "vendor.sti"
-local camera = require("vendor.hump.camera")
-local cam = camera()
+local camera = require "vendor.hump.camera"
 local player = require "player"
 local utils = require "utils"
 
 local cwd = love.filesystem.getWorkingDirectory()
-local game_map
+local cam, game_map
 
 
 function love.load()
     if locker then locker:ProcInit() end
+    love.graphics.setDefaultFilter("nearest", "nearest")
 
     screen:Initialize(GameConfig)
 
-    game_map = sti("maps/level1/test_map.lua")
+    love.mouse.setVisible(false)
+    screen:DisableVirtualMouse()
 
-    local sprite_sheet = "assets/images/player-sheet.png"
-    player:New(sprite_sheet)
+    cam = camera(0, 0, love.graphics.getWidth() / 960, 0, 0)
+
+    game_map = sti "levels/level1/test_map.lua"
+    player:New("assets/images/player-sheet.png")
 end
 
 function love.update(dt)
     player:Update(dt)
-    print(player.x, player.y)
     cam:lookAt(player.x, player.y)
+    cam:lockBounds(game_map.width * game_map.tilewidth, game_map.height * game_map.tileheight)
 end
 
 function love.draw()
-    -- screen:Attatch()
     cam:attach()
-    game_map:draw()
-    player.anim:draw(player.spriteSheet, player.x, player.y, nil, 10, 10)
-    cam:detach()
-    -- screen:Detatch()
 
+    game_map:drawLayer(game_map.layers["Ground"])
+    player.anim:draw(player.spriteSheet, player.x, player.y, nil, 6, nil, 6, 9)
+    game_map:drawLayer(game_map.layers["Trees"])
+
+    cam:detach()
+
+    screen:ShowVirtualMouse()
     if is_debug then screen:ShowDebugInfo() end
 end
 
 function love.resize(w, h)
-    screen:Resize()
-
     GameConfig.width = w
     GameConfig.height = h
-
+    cam:zoomTo(w / 960)
     utils:SaveConfig(GameConfig)
 end
 
 function love.keypressed(key)
     if key == "escape" then
         love.event.quit()
-    elseif key == "f10" then
-        GameConfig.scale_mode = screen:GetScaleMode()
-        if GameConfig.scale_mode ~= "fit" then
-            GameConfig.scale_mode = "fit"
-        else
-            GameConfig.scale_mode = "fill"
-        end
-        screen:SetScaleMode(GameConfig.scale_mode)
-        utils:SaveConfig(GameConfig)
     elseif key == "f11" then
         screen:ToggleFullScreen()
+        cam:zoomTo(love.graphics.getWidth() / 960)
+        utils:SaveConfig(GameConfig)
     elseif key == "f12" then
         is_debug = not is_debug
+        screen:ToggleDebugInfo()
     end
 end
 
 function love.quit()
+    local current_w, current_h, current_flags = love.window.getMode()
+    GameConfig.width = current_w
+    GameConfig.height = current_h
+    GameConfig.monitor = current_flags.display
+    utils:SaveConfig(GameConfig)
+
     if locker then locker:ProcQuit() end
 end

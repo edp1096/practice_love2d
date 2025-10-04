@@ -31,9 +31,9 @@ local screen = {
 }
 
 function screen:Initialize(config)
-    self.window.display = config.Monitor
+    self.window.display = config.monitor
 
-    local dx, dy = love.window.getDesktopDimensions(config.Monitor)
+    local dx, dy = love.window.getDesktopDimensions(config.monitor)
     self.window.x, self.window.y = dx / 2 - self.render_wh.w / 2, dy / 2 - self.render_wh.h / 2
 
     virtual_resolution:Set(self.render_wh.w, self.render_wh.h)
@@ -56,7 +56,7 @@ function screen:ToggleFullScreen()
         self.screen_wh.w, self.screen_wh.h = love.window.getDesktopDimensions(self.window.display)
         self.window.x, self.window.y = 0, 0
         self.window.resizable = false
-        self.window.borderless = true
+        self.window.borderless = false
     else
         self.window.x, self.window.y = self.previous_xy.x, self.previous_xy.y
         self.previous_xy.x, self.previous_xy.y = love.window.getPosition()
