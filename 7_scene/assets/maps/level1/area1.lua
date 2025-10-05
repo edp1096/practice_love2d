@@ -10,7 +10,7 @@ return {
   tilewidth = 64,
   tileheight = 64,
   nextlayerid = 5,
-  nextobjectid = 36,
+  nextobjectid = 40,
   properties = {},
   tilesets = {
     {
@@ -120,7 +120,7 @@ return {
         43, 43, 44, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         43, 43, 44, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         43, 43, 44, 0, 0, 0, 7, 8, 8, 8, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        43, 43, 44, 0, 0, 0, 25, 26, 26, 26, 27, 0, 0, 0, 0, 42, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34,
+        43, 43, 44, 0, 0, 0, 25, 26, 26, 26, 27, 0, 0, 0, 0, 33, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34,
         43, 43, 44, 0, 0, 0, 37, 38, 38, 38, 39, 0, 0, 0, 0, 42, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43,
         43, 43, 44, 0, 0, 0, 46, 47, 47, 47, 48, 0, 0, 0, 0, 42, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43,
         43, 43, 44, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43,
@@ -151,7 +151,7 @@ return {
       id = 3,
       name = "Walls",
       class = "",
-      visible = true,
+      visible = false,
       opacity = 1,
       offsetx = 0,
       offsety = 0,
@@ -333,60 +333,6 @@ return {
           rotation = 0,
           visible = true,
           properties = {}
-        },
-        {
-          id = 31,
-          name = "",
-          type = "",
-          shape = "rectangle",
-          x = 192,
-          y = 0,
-          width = 192,
-          height = 64,
-          rotation = 0,
-          visible = true,
-          properties = {
-            ["spawn_x"] = 400,
-            ["spawn_y"] = 400,
-            ["target_map"] = "assets/maps/level1/area2.lua",
-            ["type"] = "portal"
-          }
-        },
-        {
-          id = 33,
-          name = "",
-          type = "",
-          shape = "rectangle",
-          x = 1920,
-          y = 128,
-          width = 320,
-          height = 64,
-          rotation = 90,
-          visible = true,
-          properties = {
-            ["spawn_x"] = 400,
-            ["spawn_y"] = 400,
-            ["target_map"] = "assets/maps/level1/area2.lua",
-            ["type"] = "portal"
-          }
-        },
-        {
-          id = 34,
-          name = "",
-          type = "",
-          shape = "rectangle",
-          x = 1920,
-          y = 960,
-          width = 256,
-          height = 64,
-          rotation = 90,
-          visible = true,
-          properties = {
-            ["spawn_x"] = 400,
-            ["spawn_y"] = 400,
-            ["target_map"] = "assets/maps/level1/area2.lua",
-            ["type"] = "portal"
-          }
         }
       }
     },
@@ -413,6 +359,60 @@ return {
           y = 1856,
           width = 128,
           height = 64,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["spawn_x"] = 400,
+            ["spawn_y"] = 400,
+            ["target_map"] = "assets/maps/level1/area2.lua",
+            ["type"] = "portal"
+          }
+        },
+        {
+          id = 36,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 192,
+          y = 0,
+          width = 128,
+          height = 64,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["spawn_x"] = 400,
+            ["spawn_y"] = 400,
+            ["target_map"] = "assets/maps/level1/area2.lua",
+            ["type"] = "portal"
+          }
+        },
+        {
+          id = 38,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 1920,
+          y = 1024,
+          width = 128,
+          height = 64,
+          rotation = 90,
+          visible = true,
+          properties = {
+            ["spawn_x"] = 400,
+            ["spawn_y"] = 400,
+            ["target_map"] = "assets/maps/level1/area2.lua",
+            ["type"] = "portal"
+          }
+        },
+        {
+          id = 39,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 1856,
+          y = 192,
+          width = 64,
+          height = 192,
           rotation = 0,
           visible = true,
           properties = {
