@@ -28,11 +28,19 @@ function settings:enter(previous, ...)
         { w = 960,  h = 540,  name = "960x540" },
         { w = 1280, h = 720,  name = "1280x720" },
         { w = 1600, h = 900,  name = "1600x900" },
-        { w = 1920, h = 1080, name = "1920x1080" }
+        { w = 1920, h = 1080, name = "1920x1080" },
+        { w = 2560, h = 1440, name = "2560x1440" },
+        { w = 3840, h = 2160, name = "3840x2160" }
     }
 
-    -- Scale modes
-    self.scale_modes = { "fit", "fill", "stretch" }
+    -- if item of resolution is larger than monitor size, remove it
+    for i = #self.resolutions, 1, -1 do
+        local res = self.resolutions[i]
+        local w, h = love.window.getDesktopDimensions()
+        if res.w > w or res.h > h then
+            table.remove(self.resolutions, i)
+        end
+    end
 
     -- Get monitor information
     self.monitor_count = love.window.getDisplayCount()
@@ -49,8 +57,6 @@ function settings:enter(previous, ...)
     self.options = {
         { name = "Resolution", type = "list" },
         { name = "Fullscreen", type = "toggle" },
-        { name = "Scale Mode", type = "cycle" },
-        { name = "Vsync",      type = "toggle" }
     }
 
     -- Only show Monitor option if multiple monitors exist
@@ -65,7 +71,6 @@ function settings:enter(previous, ...)
 
     -- Current values indices
     self.current_resolution_index = self:findCurrentResolution()
-    self.current_scale_mode_index = self:findCurrentScaleMode()
     self.current_monitor_index = GameConfig.monitor or 1
 
     -- Layout
@@ -92,23 +97,9 @@ function settings:findCurrentResolution()
     return 3 -- Default to 960x540
 end
 
-function settings:findCurrentScaleMode()
-    local current_mode = screen.scale_mode or "fit"
-
-    for i, mode in ipairs(self.scale_modes) do
-        if mode == current_mode then
-            return i
-        end
-    end
-
-    return 1 -- Default to fit
-end
-
 function settings:update(dt)
-    -- Get virtual mouse position
     local vmx, vmy = screen:GetVirtualMousePosition()
 
-    -- Check if mouse is over any option
     self.mouse_over = 0
     love.graphics.setFont(self.labelFont)
 
@@ -117,7 +108,6 @@ function settings:update(dt)
         local text_height = self.labelFont:getHeight()
         local padding = 15
 
-        -- Full width hitbox
         if vmy >= y - padding and vmy <= y + text_height + padding then
             self.mouse_over = i
             break
@@ -126,16 +116,11 @@ function settings:update(dt)
 end
 
 function settings:draw()
-    -- Clear background
     love.graphics.clear(0.1, 0.1, 0.15, 1)
-
-    -- Attach virtual coordinate system
-    screen:Attach()
-
-    -- Reset color state
     love.graphics.setColor(1, 1, 1, 1)
 
-    -- Draw title
+    screen:Attach()
+
     love.graphics.setFont(self.titleFont)
     love.graphics.printf("Settings", 0, self.layout.title_y, self.virtual_width, "center")
 
@@ -163,8 +148,7 @@ function settings:draw()
 
         local value_text = self:getOptionValue(i)
         if option.type ~= "action" then
-            love.graphics.printf(value_text, self.layout.value_x, y,
-                self.virtual_width - self.layout.value_x - 100, "left")
+            love.graphics.printf(value_text, self.layout.value_x, y, self.virtual_width - self.layout.value_x - 100, "left")
         end
 
         -- Draw arrows for adjustable options
@@ -184,10 +168,8 @@ function settings:draw()
     love.graphics.printf("Mouse: Hover and Click (Left: Next, Right: Previous)",
         0, self.layout.hint_y, self.virtual_width, "center")
 
-    -- Detach virtual coordinate system
     screen:Detach()
 
-    -- Draw debug info if enabled
     screen:ShowDebugInfo()
     screen:ShowVirtualMouse()
 end
@@ -199,10 +181,6 @@ function settings:getOptionValue(index)
         return self.resolutions[self.current_resolution_index].name
     elseif option.name == "Fullscreen" then
         return GameConfig.fullscreen and "On" or "Off"
-    elseif option.name == "Scale Mode" then
-        return self.scale_modes[self.current_scale_mode_index]
-    elseif option.name == "Vsync" then
-        return GameConfig.vsync and "On" or "Off"
     elseif option.name == "Monitor" then
         return self.monitors[self.current_monitor_index].name
     elseif option.name == "Back" then
@@ -230,7 +208,7 @@ function settings:changeOption(direction)
             GameConfig.height = res.h
             love.window.setMode(res.w, res.h, {
                 resizable = GameConfig.resizable,
-                vsync = GameConfig.vsync
+                display = self.current_monitor_index
             })
             screen:CalculateScale()
             utils:SaveConfig(GameConfig)
@@ -238,25 +216,6 @@ function settings:changeOption(direction)
     elseif option.name == "Fullscreen" then
         screen:ToggleFullScreen()
         GameConfig.fullscreen = screen.is_fullscreen
-        utils:SaveConfig(GameConfig)
-    elseif option.name == "Scale Mode" then
-        self.current_scale_mode_index = self.current_scale_mode_index + direction
-        if self.current_scale_mode_index < 1 then
-            self.current_scale_mode_index = #self.scale_modes
-        elseif self.current_scale_mode_index > #self.scale_modes then
-            self.current_scale_mode_index = 1
-        end
-
-        -- Apply scale mode
-        screen:SetScaleMode(self.scale_modes[self.current_scale_mode_index])
-        GameConfig.scale_mode = self.scale_modes[self.current_scale_mode_index]
-        utils:SaveConfig(GameConfig)
-    elseif option.name == "Vsync" then
-        GameConfig.vsync = not GameConfig.vsync
-        love.window.setMode(GameConfig.width, GameConfig.height, {
-            resizable = GameConfig.resizable,
-            vsync = GameConfig.vsync
-        })
         utils:SaveConfig(GameConfig)
     elseif option.name == "Monitor" then
         self.current_monitor_index = self.current_monitor_index + direction
@@ -284,7 +243,6 @@ function settings:changeOption(direction)
         -- Apply window mode with new display
         love.window.setMode(GameConfig.width, GameConfig.height, {
             resizable = GameConfig.resizable,
-            vsync = GameConfig.vsync,
             display = self.current_monitor_index
         })
 

@@ -1,4 +1,5 @@
 local ini = require "lib.ini"
+local util = require "utils.util"
 
 GameConfig = {
     title = "Hello Love2D",
@@ -10,26 +11,13 @@ GameConfig = {
     resizable = true,
     fullscreen = false,
     vsync = true,
-    scale_mode = "fit",
+    scale_mode = "fill",
 
     min_width = 640,
     min_height = 360
 }
 
-local file = io.open("config.ini", "r")
-if file then
-    file:close()
-else
-    local data = love.filesystem.read("config.ini")
-    if data then
-        local f = io.open("config.ini", "w")
-        if f then
-            f:write(data)
-            f:close()
-        end
-    end
-end
-
+util:ReadOrCreateConfig()
 
 local config, err = ini:Read("config.ini")
 if not err then
@@ -38,8 +26,6 @@ if not err then
     GameConfig.resizable = config and config.Window.Resizable
     GameConfig.fullscreen = config and config.Window.FullScreen
     GameConfig.monitor = config and config.Window.Monitor
-    GameConfig.scale_mode = config and config.Window.ScaleMode
-    GameConfig.vsync = config and config.Window.Vsync
 end
 
 function love.conf(t)

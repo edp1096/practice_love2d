@@ -32,7 +32,6 @@ function utils:DeepCopy(obj, seen)
     return res
 end
 
-
 function utils:SaveConfig(GameConfig)
     local file = io.open("config.ini", "w")
     if file then
@@ -45,11 +44,24 @@ function utils:SaveConfig(GameConfig)
         file:write("Resizable = " .. tostring(GameConfig.resizable) .. "\n")
         file:write("FullScreen = " .. tostring(GameConfig.fullscreen) .. "\n")
         file:write("Monitor = " .. tostring(GameConfig.monitor) .. "\n")
-        file:write("ScaleMode = " .. tostring(GameConfig.scale_mode) .. "\n")
-        file:write("Vsync = " .. tostring(GameConfig.vsync) .. "\n")
         file:close()
     end
 end
 
+function utils:ReadOrCreateConfig()
+    local file = io.open("config.ini", "r")
+    if file then
+        file:close()
+    else
+        local data = love.filesystem.read("config.ini")
+        if data then
+            local f = io.open("config.ini", "w")
+            if f then
+                f:write(data)
+                f:close()
+            end
+        end
+    end
+end
 
 return utils
