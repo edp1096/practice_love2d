@@ -46,6 +46,7 @@ function utils:SaveConfig(GameConfig)
         file:write("FullScreen = " .. tostring(GameConfig.fullscreen) .. "\n")
         file:write("Monitor = " .. tostring(GameConfig.monitor) .. "\n")
         file:write("ScaleMode = " .. tostring(GameConfig.scale_mode) .. "\n")
+        file:write("Vsync = " .. tostring(GameConfig.vsync) .. "\n")
         file:close()
     end
 end

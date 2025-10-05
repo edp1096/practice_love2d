@@ -10,6 +10,8 @@ GameConfig = {
     resizable = true,
     fullscreen = false,
     vsync = true,
+    -- scale_mode = "fit",
+    scale_mode = "fill",
 
     min_width = 640,
     min_height = 360

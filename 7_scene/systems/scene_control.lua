@@ -8,21 +8,24 @@ scene_control.previous = nil
 
 -- Switch to a new scene
 function scene_control.switch(scene, ...)
-    if scene_control.current and scene_control.current.exit then -- Call exit callback on current scene
+    -- Call exit callback on current scene
+    if scene_control.current and scene_control.current.exit then
         scene_control.current:exit()
     end
 
-    scene_control.previous = scene_control.current                -- Store previous scene
-    scene_control.current = scene                                 -- Switch to new scene
+    scene_control.previous = scene_control.current -- Store previous scene
+    scene_control.current = scene                  -- Switch to new scene
 
-    if scene_control.current and scene_control.current.enter then -- Call enter callback on new scene
+    -- Call enter callback on new scene
+    if scene_control.current and scene_control.current.enter then
         scene_control.current:enter(scene_control.previous, ...)
     end
 end
 
 -- Push a scene (keeps current scene in background, like pause menu)
 function scene_control.push(scene, ...)
-    if scene_control.current and scene_control.current.pause then -- Don't exit current scene, just call pause
+    -- Don't exit current scene, just call pause
+    if scene_control.current and scene_control.current.pause then
         scene_control.current:pause()
     end
 
@@ -36,11 +39,10 @@ end
 
 -- Pop back to previous scene (return from pause menu)
 function scene_control.pop()
-    if not scene_control.previous then
-        return
-    end
+    if not scene_control.previous then return end
 
-    if scene_control.current and scene_control.current.exit then -- Call exit on current scene
+    -- Call exit on current scene
+    if scene_control.current and scene_control.current.exit then
         scene_control.current:exit()
     end
 

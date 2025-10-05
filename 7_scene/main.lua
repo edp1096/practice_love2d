@@ -60,6 +60,10 @@ function love.keypressed(key)
     scene_control.keypressed(key) -- Pass to current scene
 end
 
+function love.mousepressed(x, y, button)
+    scene_control.mousepressed(x, y, button)
+end
+
 function love.quit()
     local current_w, current_h, current_flags = love.window.getMode()
     if not screen.is_fullscreen then
