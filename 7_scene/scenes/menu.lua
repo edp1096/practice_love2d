@@ -124,7 +124,9 @@ function menu:keypressed(key)
     end
 end
 
-function menu:mousepressed(x, y, button)
+function menu:mousepressed(x, y, button) end
+
+function menu:mousereleased(x, y, button)
     if button == 1 then -- Left mouse button
         -- Check if any option was clicked
         if self.mouse_over > 0 then

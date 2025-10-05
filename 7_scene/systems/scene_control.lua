@@ -87,6 +87,12 @@ function scene_control.mousepressed(x, y, button)
     end
 end
 
+function scene_control.mousereleased(x, y, button)
+    if scene_control.current and scene_control.current.mousepressed then
+        scene_control.current:mousereleased(x, y, button)
+    end
+end
+
 function scene_control.resize(w, h)
     if scene_control.current and scene_control.current.resize then
         scene_control.current:resize(w, h)

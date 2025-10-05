@@ -58,7 +58,8 @@ function screen:Initialize(config)
     self.previous_xy.x, self.previous_xy.y = love.window.getPosition()
 
     if self.window.display ~= 1 then
-        love.window.setMode(self.screen_wh.w, self.screen_wh.h, self.window)
+        -- love.window.setMode(self.screen_wh.w, self.screen_wh.h, self.window)
+        love.window.updateMode(self.screen_wh.w, self.screen_wh.h, self.window)
     end
 
     if config.scale_mode then self:SetScaleMode(config.scale_mode) end
@@ -81,7 +82,8 @@ function screen:EnableFullScreen()
     self.window.resizable = false
     self.window.borderless = false
 
-    love.window.setMode(self.screen_wh.w, self.screen_wh.h, self.window)
+    -- love.window.setMode(self.screen_wh.w, self.screen_wh.h, self.window)
+    love.window.updateMode(self.screen_wh.w, self.screen_wh.h, self.window)
     self.is_fullscreen = true
 
     -- Recalculate scale and offset after fullscreen enable
@@ -106,7 +108,8 @@ function screen:DisableFullScreen()
         self.window.borderless = false
     end
 
-    love.window.setMode(self.screen_wh.w, self.screen_wh.h, self.window)
+    -- love.window.setMode(self.screen_wh.w, self.screen_wh.h, self.window)
+    love.window.updateMode(self.screen_wh.w, self.screen_wh.h, self.window)
     self.is_fullscreen = false
 
     -- Recalculate scale and offset after fullscreen disable

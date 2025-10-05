@@ -7,6 +7,8 @@ local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
 local utils = require "utils.util"
 
+local is_ready = false
+
 function settings:enter(previous, ...)
     self.previous = previous
 
@@ -82,6 +84,8 @@ function settings:enter(previous, ...)
         label_x = vw * 0.25,
         value_x = vw * 0.65
     }
+
+    is_ready = true
 end
 
 function settings:findCurrentResolution()
@@ -203,19 +207,25 @@ function settings:changeOption(direction)
 
         -- Apply resolution
         local res = self.resolutions[self.current_resolution_index]
+        GameConfig.width, GameConfig.height = res.w, res.h
         if not GameConfig.fullscreen then
-            GameConfig.width = res.w
-            GameConfig.height = res.h
-            love.window.setMode(res.w, res.h, {
+            love.window.updateMode(res.w, res.h, {
                 resizable = GameConfig.resizable,
                 display = self.current_monitor_index
             })
             screen:CalculateScale()
-            utils:SaveConfig(GameConfig)
         end
+        utils:SaveConfig(GameConfig)
     elseif option.name == "Fullscreen" then
         screen:ToggleFullScreen()
         GameConfig.fullscreen = screen.is_fullscreen
+        if not GameConfig.fullscreen then
+            love.window.updateMode(GameConfig.width, GameConfig.height, {
+                resizable = GameConfig.resizable,
+                display = self.current_monitor_index
+            })
+            screen:CalculateScale()
+        end
         utils:SaveConfig(GameConfig)
     elseif option.name == "Monitor" then
         self.current_monitor_index = self.current_monitor_index + direction
@@ -242,7 +252,7 @@ function settings:changeOption(direction)
             screen.window.x = x
             screen.window.y = y
 
-            love.window.setMode(GameConfig.width, GameConfig.height, {
+            love.window.updateMode(GameConfig.width, GameConfig.height, {
                 resizable = GameConfig.resizable,
                 display = self.current_monitor_index
             })
@@ -282,7 +292,9 @@ function settings:keypressed(key)
     end
 end
 
-function settings:mousepressed(x, y, button)
+function settings:mousepressed(x, y, button) end
+
+function settings:mousereleased(x, y, button)
     if button == 1 then
         -- Left mouse button
         if self.mouse_over > 0 then

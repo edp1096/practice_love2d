@@ -148,8 +148,10 @@ function pause:keypressed(key)
     end
 end
 
-function pause:mousepressed(x, y, button)
-    if button == 1 then -- Left mouse button
+function pause:mousepressed(x, y, button) end
+
+function pause:mousereleased(x, y, button)
+    if button == 1 then     -- Left mouse button
         -- Check if any option was clicked
         if self.mouse_over > 0 then
             self.selected = self.mouse_over
