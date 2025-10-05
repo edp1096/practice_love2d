@@ -30,7 +30,7 @@ function settings:enter(previous, ...)
         { w = 1600, h = 900,  name = "1600x900" },
         { w = 1920, h = 1080, name = "1920x1080" },
         { w = 2560, h = 1440, name = "2560x1440" },
-        { w = 3840, h = 2160, name = "3840x2160" }
+        { w = 3840, h = 2160, name = "3840x2160" },
     }
 
     -- if item of resolution is larger than monitor size, remove it
@@ -225,26 +225,28 @@ function settings:changeOption(direction)
             self.current_monitor_index = 1
         end
 
-        -- Apply monitor change
+        -- Update monitor in config and screen
         GameConfig.monitor = self.current_monitor_index
-
-        -- Get desktop dimensions of target monitor
-        local dx, dy = love.window.getDesktopDimensions(self.current_monitor_index)
-
-        -- Calculate centered position on the target monitor
-        local x = dx / 2 - GameConfig.width / 2
-        local y = dy / 2 - GameConfig.height / 2
-
-        -- Update screen window settings
         screen.window.display = self.current_monitor_index
-        screen.window.x = x
-        screen.window.y = y
 
-        -- Apply window mode with new display
-        love.window.setMode(GameConfig.width, GameConfig.height, {
-            resizable = GameConfig.resizable,
-            display = self.current_monitor_index
-        })
+        if GameConfig.fullscreen then
+            -- For fullscreen, disable then re-enable on new monitor
+            screen:DisableFullScreen()
+            screen:EnableFullScreen()
+        else
+            -- For windowed mode, calculate centered position on target monitor
+            local dx, dy = love.window.getDesktopDimensions(self.current_monitor_index)
+            local x = dx / 2 - GameConfig.width / 2
+            local y = dy / 2 - GameConfig.height / 2
+
+            screen.window.x = x
+            screen.window.y = y
+
+            love.window.setMode(GameConfig.width, GameConfig.height, {
+                resizable = GameConfig.resizable,
+                display = self.current_monitor_index
+            })
+        end
 
         -- Recalculate screen after monitor change
         screen:CalculateScale()
@@ -281,7 +283,8 @@ function settings:keypressed(key)
 end
 
 function settings:mousepressed(x, y, button)
-    if button == 1 then -- Left mouse button
+    if button == 1 then
+        -- Left mouse button
         if self.mouse_over > 0 then
             self.selected = self.mouse_over
 
@@ -292,7 +295,8 @@ function settings:mousepressed(x, y, button)
                 self:changeOption(1)
             end
         end
-    elseif button == 2 then -- Right mouse button
+    elseif button == 2 then
+        -- Right mouse button
         if self.mouse_over > 0 and self.options[self.mouse_over].type ~= "action" then
             self.selected = self.mouse_over
             self:changeOption(-1)

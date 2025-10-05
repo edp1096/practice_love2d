@@ -102,16 +102,14 @@ function menu:resize(w, h)
 end
 
 function menu:keypressed(key)
-    if key == "up" or key == "w" then
+    if key == "escape" then
+        love.event.quit()
+    elseif key == "up" or key == "w" then
         self.selected = self.selected - 1
-        if self.selected < 1 then
-            self.selected = #self.options
-        end
+        if self.selected < 1 then self.selected = #self.options end
     elseif key == "down" or key == "s" then
         self.selected = self.selected + 1
-        if self.selected > #self.options then
-            self.selected = 1
-        end
+        if self.selected > #self.options then self.selected = 1 end
     elseif key == "return" or key == "space" then
         if self.selected == 1 then
             -- Start game

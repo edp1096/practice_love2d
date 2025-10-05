@@ -62,42 +62,63 @@ function screen:Initialize(config)
     end
 
     if config.scale_mode then self:SetScaleMode(config.scale_mode) end
-    if config.fullscreen then self:ToggleFullScreen() end
+    if config.fullscreen then self:EnableFullScreen() end
 
     -- Calculate initial scale and offset
     self:CalculateScale()
 end
 
-function screen:ToggleFullScreen()
-    if not self.is_fullscreen then
-        self.previous_xy.x, self.previous_xy.y = love.window.getPosition()
+function screen:EnableFullScreen()
+    if self.is_fullscreen then return end
 
-        self.screen_wh.w, self.screen_wh.h = love.window.getDesktopDimensions(self.window.display)
-        self.window.x, self.window.y = 0, 0
-        self.window.resizable = false
+    -- Save current window position and size
+    self.previous_xy.x, self.previous_xy.y = love.window.getPosition()
+    self.previous_screen_wh.w, self.previous_screen_wh.h = self.screen_wh.w, self.screen_wh.h
+
+    -- Set to desktop dimensions
+    self.screen_wh.w, self.screen_wh.h = love.window.getDesktopDimensions(self.window.display)
+    self.window.x, self.window.y = 0, 0
+    self.window.resizable = false
+    self.window.borderless = false
+
+    love.window.setMode(self.screen_wh.w, self.screen_wh.h, self.window)
+    self.is_fullscreen = true
+
+    -- Recalculate scale and offset after fullscreen enable
+    self:CalculateScale()
+end
+
+function screen:DisableFullScreen()
+    if not self.is_fullscreen then return end
+
+    -- Restore window size and position
+    -- If window position is 0,0 and screen size is the same as fullscreen, use 960 x 540 and make centered
+    if self.previous_screen_wh.w == self.screen_wh.w and self.previous_screen_wh.h == self.screen_wh.h then
+        self.window.x, self.window.y = self.screen_wh.w / 2 - self.render_wh.w / 2, self.screen_wh.h / 2 - self.render_wh.h / 2
+        self.screen_wh.w, self.screen_wh.h = self.render_wh.w, self.render_wh.h
+        self.window.resizable = true
         self.window.borderless = false
+        self.window.centered = true
     else
-        -- if window position is 0,0 and screen size is the same as fullscreen, use 960 x 540 and make centered
-        if self.previous_screen_wh.w == self.screen_wh.w and self.previous_screen_wh.h == self.screen_wh.h then
-            self.window.x, self.window.y = self.screen_wh.w / 2 - self.render_wh.w / 2, self.screen_wh.h / 2 - self.render_wh.h / 2
-            self.screen_wh.w, self.screen_wh.h = self.render_wh.w, self.render_wh.h
-            self.window.resizable = true
-            self.window.borderless = false
-            self.window.centered = true
-        else
-            self.window.x, self.window.y = self.previous_xy.x, self.previous_xy.y
-            self.previous_xy.x, self.previous_xy.y = love.window.getPosition()
-            self.screen_wh.w, self.screen_wh.h = self.previous_screen_wh.w, self.previous_screen_wh.h
-            self.window.resizable = true
-            self.window.borderless = false
-        end
+        self.window.x, self.window.y = self.previous_xy.x, self.previous_xy.y
+        self.screen_wh.w, self.screen_wh.h = self.previous_screen_wh.w, self.previous_screen_wh.h
+        self.window.resizable = true
+        self.window.borderless = false
     end
 
     love.window.setMode(self.screen_wh.w, self.screen_wh.h, self.window)
-    self.is_fullscreen = not self.is_fullscreen
+    self.is_fullscreen = false
 
-    -- Recalculate scale and offset after fullscreen toggle
+    -- Recalculate scale and offset after fullscreen disable
     self:CalculateScale()
+end
+
+function screen:ToggleFullScreen()
+    if self.is_fullscreen then
+        self:DisableFullScreen()
+    else
+        self:EnableFullScreen()
+    end
 end
 
 function screen:SetScaleMode(mode)

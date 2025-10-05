@@ -39,9 +39,10 @@ end
 
 function love.keypressed(key)
     -- Global keys that work in all scenes
-    if key == "escape" then
-        love.event.quit()
-    elseif key == "f11" then
+    -- if key == "escape" then
+    --     love.event.quit()
+    -- elseif key == "f11" then
+    if key == "f11" then
         screen:ToggleFullScreen()
         GameConfig.fullscreen = screen.is_fullscreen
         utils:SaveConfig(GameConfig)
