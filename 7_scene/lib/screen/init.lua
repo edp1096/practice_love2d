@@ -60,6 +60,8 @@ function screen:Initialize(config)
     if self.window.display ~= 1 then
         love.window.setMode(self.screen_wh.w, self.screen_wh.h, self.window)
     end
+
+    if config.scale_mode then self:SetScaleMode(config.scale_mode) end
     if config.fullscreen then self:ToggleFullScreen() end
 
     -- Calculate initial scale and offset

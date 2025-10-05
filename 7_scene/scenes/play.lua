@@ -20,7 +20,6 @@ function play:enter(previous, ...)
 end
 
 function play:exit()
-    -- Cleanup when leaving scene
     if self.world then
         self.world:destroy()
     end
