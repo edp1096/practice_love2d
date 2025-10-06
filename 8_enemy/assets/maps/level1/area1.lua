@@ -9,8 +9,8 @@ return {
   height = 30,
   tilewidth = 64,
   tileheight = 64,
-  nextlayerid = 5,
-  nextobjectid = 40,
+  nextlayerid = 6,
+  nextobjectid = 41,
   properties = {},
   tilesets = {
     {
@@ -339,6 +339,39 @@ return {
     {
       type = "objectgroup",
       draworder = "topdown",
+      id = 5,
+      name = "Enemies",
+      class = "",
+      visible = true,
+      opacity = 1,
+      offsetx = 0,
+      offsety = 0,
+      parallaxx = 1,
+      parallaxy = 1,
+      properties = {},
+      objects = {
+        {
+          id = 40,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 1344,
+          y = 256,
+          width = 64,
+          height = 64,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["patrol_points"] = "100,200;150,250",
+            ["type"] = "basic",
+            ["types"] = "basic_ragned_boss"
+          }
+        }
+      }
+    },
+    {
+      type = "objectgroup",
+      draworder = "topdown",
       id = 4,
       name = "Portals",
       class = "",
@@ -392,8 +425,8 @@ return {
           type = "",
           shape = "rectangle",
           x = 1920,
-          y = 1024,
-          width = 128,
+          y = 960,
+          width = 256,
           height = 64,
           rotation = 90,
           visible = true,

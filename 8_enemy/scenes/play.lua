@@ -20,6 +20,11 @@ function play:enter(previous, mapPath, spawn_x, spawn_y)
 
     self.world:addEntity(self.player)
 
+    -- -- Add enemies to world after world is created
+    -- for _, enemy in ipairs(self.world.enemies) do
+    --     self.world:addEnemy(enemy)
+    -- end
+
     self.transition_cooldown = 0
 
     -- Fade effect
@@ -52,6 +57,7 @@ function play:update(dt)
     local vx, vy = self.player:update(dt)
 
     self.world:moveEntity(self.player, vx, vy, dt)
+    self.world:updateEnemies(dt, self.player.x, self.player.y) -- Update enemies
     self.world:update(dt)
 
     self.player.x = self.player.collider:getX()
@@ -91,6 +97,7 @@ function play:draw()
     self.cam:attach()
 
     self.world:drawLayer("Ground")
+    self.world:drawEnemies() -- Draw enemies
     self.player:draw()
     self.world:drawLayer("Trees")
 

@@ -42,6 +42,9 @@ function world:new(map_path)
     -- Load portal/transition areas
     instance:loadTransitions() -- Changed from self to instance
 
+    instance.enemies = {}
+    instance:loadEnemies()
+
     return instance
 end
 
@@ -121,6 +124,112 @@ end
 function world:moveEntity(entity, vx, vy, dt)
     -- Apply velocity to entity's collider
     if entity.collider then entity.collider:setLinearVelocity(vx, vy) end
+end
+
+function world:loadEnemies()
+    if self.map.layers["Enemies"] then
+        local enemy_module = require "entities.enemy"
+
+        for _, obj in ipairs(self.map.layers["Enemies"].objects) do
+            local new_enemy = enemy_module:new(obj.x, obj.y, obj.properties.type or "basic")
+
+            -- Give enemy reference to world for line of sight checks
+            new_enemy.world = self
+
+            -- Set patrol points from Tiled properties
+            if obj.properties.patrol_points then
+                local points = {}
+                for point_str in string.gmatch(obj.properties.patrol_points, "([^;]+)") do
+                    local x, y = point_str:match("([^,]+),([^,]+)")
+                    -- Add enemy spawn position to make it relative
+                    table.insert(points, {
+                        x = obj.x + tonumber(x),
+                        y = obj.y + tonumber(y)
+                    })
+                end
+                new_enemy:setPatrolPoints(points)
+            else
+                -- Default patrol: small square around spawn position
+                new_enemy:setPatrolPoints({
+                    { x = obj.x - 50, y = obj.y - 50 },
+                    { x = obj.x + 50, y = obj.y - 50 },
+                    { x = obj.x + 50, y = obj.y + 50 },
+                    { x = obj.x - 50, y = obj.y + 50 }
+                })
+            end
+
+            -- Create collider
+            new_enemy.collider = self.physicsWorld:newBSGRectangleCollider(
+                new_enemy.x, new_enemy.y,
+                new_enemy.width, new_enemy.height,
+                8
+            )
+            new_enemy.collider:setFixedRotation(true)
+            new_enemy.collider:setCollisionClass("Enemy")
+            new_enemy.collider:setObject(new_enemy)
+
+            table.insert(self.enemies, new_enemy)
+        end
+    end
+end
+
+function world:checkLineOfSight(x1, y1, x2, y2)
+    -- Raycast from enemy to player
+    local items = self.physicsWorld:queryLine(x1, y1, x2, y2)
+
+    -- Check if any wall collider is blocking
+    for _, item in ipairs(items) do
+        if item.collision_class == "Wall" then
+            return false -- Blocked by wall
+        end
+    end
+
+    return true -- Clear line of sight
+end
+
+function world:addEnemy(enemy)
+    -- Create collider for enemy
+    enemy.collider = self.physicsWorld:newBSGRectangleCollider(
+        enemy.x, enemy.y,
+        enemy.width, enemy.height,
+        8
+    )
+    enemy.collider:setFixedRotation(true)
+    enemy.collider:setCollisionClass("Enemy")
+    enemy.collider:setObject(enemy) -- Store reference
+
+    table.insert(self.enemies, enemy)
+end
+
+function world:updateEnemies(dt, player_x, player_y)
+    for i = #self.enemies, 1, -1 do
+        local enemy = self.enemies[i]
+
+        if enemy.state == "dead" then
+            -- Remove dead enemies after delay
+            enemy.death_timer = (enemy.death_timer or 0) + dt
+            if enemy.death_timer > 2 then
+                if enemy.collider then
+                    enemy.collider:destroy()
+                end
+                table.remove(self.enemies, i)
+            end
+        else
+            local vx, vy = enemy:update(dt, player_x, player_y)
+
+            if enemy.collider then
+                enemy.collider:setLinearVelocity(vx, vy)
+                enemy.x = enemy.collider:getX()
+                enemy.y = enemy.collider:getY()
+            end
+        end
+    end
+end
+
+function world:drawEnemies()
+    for _, enemy in ipairs(self.enemies) do
+        enemy:draw()
+    end
 end
 
 function world:drawLayer(layer_name)
