@@ -102,8 +102,13 @@ function play:draw()
 
     self.world:drawLayer("Ground")
     self.world:drawEnemies()
-    self.player:draw()
-    self.player:drawWeapon() -- Draw weapon after player
+    self.player:drawAll() -- Draw player and weapon with correct layering
+
+    -- Draw debug overlays (hand positions, etc)
+    if debug.debug_mode then
+        self.player:drawDebug()
+    end
+
     self.world:drawLayer("Trees")
 
     if debug.debug_mode then
@@ -113,21 +118,35 @@ function play:draw()
     self.cam:detach()
 
     if debug.show_fps then
+        local marking_info = self.player:getHandMarkingInfo()
+        local panel_height = marking_info and 220 or 170
+
         love.graphics.setColor(0, 0, 0, 0.5)
-        love.graphics.rectangle("fill", 0, 0, 250, 150)
+        love.graphics.rectangle("fill", 0, 0, 250, panel_height)
 
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.print("FPS: " .. love.timer.getFPS(), 10, 10)
         love.graphics.print(string.format("Player: %.1f, %.1f", self.player.x, self.player.y), 10, 30)
         love.graphics.print("Press ESC to pause", 10, 50)
         love.graphics.print("Left Click to Attack", 10, 70)
+        love.graphics.print("H = Hand Marking Mode", 10, 90)
 
         -- Show attack state
         local state_text = "State: " .. self.player.state
         if self.player.attack_cooldown > 0 then
             state_text = state_text .. string.format(" (CD: %.1f)", self.player.attack_cooldown)
         end
-        love.graphics.print(state_text, 10, 90)
+        love.graphics.print(state_text, 10, 110)
+
+        -- Show hand marking mode info
+        if marking_info then
+            love.graphics.setColor(1, 1, 0, 1)
+            love.graphics.print("--- HAND MARKING MODE ---", 10, 140)
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.print("Animation: " .. marking_info.animation, 10, 160)
+            love.graphics.print(string.format("Frame: %d / %d", marking_info.frame, marking_info.frame_count), 10, 180)
+            love.graphics.print("PgUp/PgDown: Change frame", 10, 200)
+        end
     end
 
     -- Draw fade overlay
@@ -145,14 +164,36 @@ function play:keypressed(key)
     if key == "escape" then
         local pause = require "scenes.pause"
         scene_control.push(pause)
+    elseif key == "h" and debug.debug_mode then
+        -- Toggle hand marking mode (only in debug mode)
+        self.player:toggleHandMarking()
+    elseif key == "pageup" and debug.debug_mode then
+        -- Previous frame in hand marking mode
+        self.player:prevFrame()
+    elseif key == "pagedown" and debug.debug_mode then
+        -- Next frame in hand marking mode
+        self.player:nextFrame()
     end
 end
 
 function play:mousepressed(x, y, button)
-    if button == 1 then -- Left mouse button
-        -- Trigger player attack
-        if self.player:attack() then
-            print("Attack initiated!")
+    if button == 1 then -- Left click: Attack
+        self.player:attack()
+        -- if self.player:attack() then
+        --     print("Attack initiated!")
+        -- end
+    elseif button == 2 then -- Right click: Mark hand or weapon position (debug only)
+        if debug.debug_mode then
+            local world_x, world_y = self.cam:worldCoords(x, y)
+
+            -- Check if Ctrl is held
+            if love.keyboard.isDown('lctrl') or love.keyboard.isDown('rctrl') then
+                -- Ctrl+Right Click: Mark weapon anchor
+                self.player:markWeaponAnchor(world_x, world_y)
+            else
+                -- Right Click: Mark hand position
+                self.player:markHandPosition(world_x, world_y)
+            end
         end
     end
 end
