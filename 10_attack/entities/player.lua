@@ -82,10 +82,12 @@ function player:update(dt, cam)
     if raw_angle > -math.pi / 4 and raw_angle <= math.pi / 4 then
         -- Right (east: -45° to 45°)
         self.direction = "right"
-        self.facing_angle = 0
+        -- self.facing_angle = 0
+        self.facing_angle = 1.7
     elseif raw_angle > math.pi / 4 and raw_angle <= 3 * math.pi / 4 then
         -- Down (south: 45° to 135°)
         self.direction = "down"
+        -- self.facing_angle = math.pi / 2
         self.facing_angle = math.pi / 2
     elseif raw_angle > 3 * math.pi / 4 or raw_angle <= -3 * math.pi / 4 then
         -- Left (west: 135° to -135°)
