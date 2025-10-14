@@ -59,6 +59,11 @@ function player:new(sprite_sheet, x, y)
     instance.attack_cooldown = 0
     instance.attack_cooldown_max = 0.5
 
+    -- Weapon sheathing system
+    instance.weapon_drawn = false      -- Start with weapon sheathed
+    instance.last_action_time = 0
+    instance.weapon_sheath_delay = 5.0 -- Sheath weapon after 5 seconds of inactivity
+
     -- Facing angle (for weapon direction)
     instance.facing_angle = 0
 
@@ -69,6 +74,16 @@ function player:update(dt, cam)
     -- Update attack cooldown
     if self.attack_cooldown > 0 then
         self.attack_cooldown = self.attack_cooldown - dt
+    end
+
+    -- Auto-sheath weapon after inactivity
+    if self.weapon_drawn and self.state ~= "attacking" then
+        self.last_action_time = self.last_action_time + dt
+        if self.last_action_time >= self.weapon_sheath_delay then
+            self.weapon_drawn = false
+            self.weapon:emitSheathParticles() -- Position auto-updated every frame
+            -- print("Weapon sheathed") -- Debug
+        end
     end
 
     -- Direction control based on mode
@@ -88,8 +103,8 @@ function player:update(dt, cam)
             self.facing_angle = 0
         end
         -- If no key pressed, keep current direction
-    else
-        -- Normal mode: use mouse for direction
+    elseif self.weapon_drawn then
+        -- Weapon drawn: use mouse for direction
         -- Calculate facing angle from mouse position
         -- Convert screen coordinates to world coordinates using camera
         local mouse_x, mouse_y
@@ -120,6 +135,9 @@ function player:update(dt, cam)
             self.direction = "up"
             self.facing_angle = -math.pi / 2
         end
+    else
+        -- Weapon sheathed: direction follows movement keys (traditional controls)
+        -- Direction will be updated by movement input below
     end
 
     -- Determine current animation name and frame
@@ -145,35 +163,56 @@ function player:update(dt, cam)
 
     -- Only allow actual movement if not attacking AND not in hand marking mode
     if self.state ~= "attacking" and not DEBUG_HAND_MARKING then
-        -- Input handling (direction is now controlled by mouse, not WASD)
+        -- Input handling
+        local move_direction = nil
+
         if love.keyboard.isDown("right", "d") then
             vx = self.speed
             is_moving = true
+            move_direction = "right"
         end
 
         if love.keyboard.isDown("left", "a") then
             vx = -self.speed
             is_moving = true
+            move_direction = "left"
         end
 
         if love.keyboard.isDown("down", "s") then
             vy = self.speed
             is_moving = true
+            move_direction = "down"
         end
 
         if love.keyboard.isDown("up", "w") then
             vy = -self.speed
             is_moving = true
+            move_direction = "up"
+        end
+
+        -- If weapon is sheathed, direction follows movement
+        if not self.weapon_drawn and move_direction then
+            self.direction = move_direction
+            -- Set facing angle based on direction
+            if self.direction == "right" then
+                self.facing_angle = 0
+            elseif self.direction == "left" then
+                self.facing_angle = math.pi
+            elseif self.direction == "down" then
+                self.facing_angle = math.pi / 2
+            elseif self.direction == "up" then
+                self.facing_angle = -math.pi / 2
+            end
         end
 
         if is_moving then
-            -- Use walk animation for current direction (set by mouse)
+            -- Use walk animation for current direction
             current_anim_name = "walk_" .. self.direction
             self.anim = self.animations[current_anim_name]
             self.anim:update(dt)
             self.state = "walking"
         else
-            -- Use idle animation for current direction (set by mouse)
+            -- Use idle animation for current direction
             current_anim_name = "idle_" .. self.direction
             self.anim = self.animations[current_anim_name]
             self.anim:update(dt)
@@ -241,6 +280,15 @@ function player:attack()
         return false
     end
 
+    -- Draw weapon if sheathed
+    if not self.weapon_drawn then
+        self.weapon_drawn = true
+        -- print("Weapon drawn") -- Debug
+    end
+
+    -- Reset inactivity timer
+    self.last_action_time = 0
+
     -- Start attack
     if self.weapon:startAttack() then
         self.state = "attacking"
@@ -278,18 +326,24 @@ function player:drawWeapon()
 end
 
 function player:drawAll()
-    -- Draw player and weapon with correct layering based on direction
-    -- Left-facing: weapon behind player (draw weapon first)
-    -- Other directions: weapon in front of player (draw weapon last)
+    if not self.weapon_drawn then
+        -- Weapon sheathed: player first, then sheath particles on top
+        self:draw()
+        self.weapon:drawSheathParticles() -- Draw sheath particles in front of player
+        return
+    end
 
-    if self.direction == "left" then
-        -- Left: weapon behind player
+    -- Weapon drawn: draw with proper layering
+    if self.direction == "left" or self.direction == "up" then
+        -- Left/Up: weapon behind player
         self:drawWeapon()
         self:draw()
+        self.weapon:drawSheathParticles() -- Always on top
     else
-        -- Right/Up/Down: weapon in front of player
+        -- Right/Down: weapon in front of player
         self:draw()
         self:drawWeapon()
+        self.weapon:drawSheathParticles() -- Always on top
     end
 end
 

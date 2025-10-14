@@ -21,16 +21,16 @@ local HAND_ANCHORS = {
         { x = 0, y = 8, angle = 2.3062 },
     },
     idle_down = {
-        { x = 8, y = 20, angle = math.pi / 2 }, -- 90 degrees
-        { x = 8, y = 21, angle = math.pi / 2 + 0.05 },
-        { x = 8, y = 20, angle = math.pi / 2 },
-        { x = 8, y = 19, angle = math.pi / 2 - 0.05 }
+        { x = -6, y = 6, angle = math.pi / 2 }, -- 90 degrees
+        { x = -6, y = 6, angle = 1.6208 },
+        { x = -5, y = 6, angle = math.pi / 2 },
+        { x = -6, y = 8, angle = 1.5208 },
     },
     idle_up = {
-        { x = 8, y = 16, angle = -math.pi / 2 }, -- -90 degrees
-        { x = 8, y = 17, angle = -math.pi / 2 + 0.05 },
-        { x = 8, y = 16, angle = -math.pi / 2 },
-        { x = 8, y = 15, angle = -math.pi / 2 - 0.05 }
+        { x = 4, y = 7, angle = -math.pi / 2 },
+        { x = 4, y = 6, angle = -1.5208 },
+        { x = 4, y = 7, angle = -math.pi / 2 },
+        { x = 3, y = 8, angle = -1.6208 },
     },
 
     -- Walk animations
@@ -42,33 +42,25 @@ local HAND_ANCHORS = {
         { x = -4, y = 7, angle = math.pi / 4 },      -- Frame 5: Mid (45 degrees)
         { x = 3,  y = 7, angle = math.pi / 6 },      -- Frame 6: Forward (30 degrees)
     },
-    -- walk_left = {
-    --     { x = -8,  y = 20, angle = math.pi },          -- Frame 1: Back (180°)
-    --     { x = -12, y = 18, angle = math.pi * 5 / 6 },  -- Frame 2: Mid-back (150°)
-    --     { x = -10, y = 16, angle = math.pi * 2 / 3 },  -- Frame 3: Forward (120°)
-    --     { x = -8,  y = 18, angle = math.pi * 7 / 12 }, -- Frame 4: Most forward (105°)
-    --     { x = -12, y = 20, angle = math.pi * 3 / 4 },  -- Frame 5: Mid (135°)
-    --     { x = -10, y = 19, angle = math.pi * 5 / 6 }   -- Frame 6: Back (150°)
-    -- },
     walk_left = {
-        { x = 7,  y = 6, angle = math.pi },
-        { x = 4,  y = 6, angle = math.pi * 5 / 6 },
-        { x = -5, y = 6, angle = math.pi * 2 / 3 },
-        { x = -8, y = 5, angle = math.pi * 7 / 12 },
-        { x = -4, y = 7, angle = math.pi * 3 / 4 },
-        { x = 5,  y = 6, angle = math.pi * 5 / 6 },
+        { x = 7,  y = 6, angle = math.pi },          -- Frame 1: Back (180°)
+        { x = 4,  y = 6, angle = math.pi * 5 / 6 },  -- Frame 2: Mid-back (150°)
+        { x = -5, y = 6, angle = math.pi * 2 / 3 },  -- Frame 3: Forward (120°)
+        { x = -8, y = 5, angle = math.pi * 7 / 12 }, -- Frame 4: Most forward (105°)
+        { x = -4, y = 7, angle = math.pi * 3 / 4 },  -- Frame 5: Mid (135°)
+        { x = 5,  y = 6, angle = math.pi * 5 / 6 },  -- Frame 6: Back (150°)
     },
     walk_down = {
-        { x = 6,  y = 22, angle = math.pi / 2 },       -- Frame 1: Center (90°)
-        { x = 10, y = 20, angle = math.pi / 2 + 0.2 }, -- Frame 2: Tilt right
-        { x = 8,  y = 18, angle = math.pi / 2 - 0.2 }, -- Frame 3: Tilt left
-        { x = 6,  y = 20, angle = math.pi / 2 }        -- Frame 4: Center
+        { x = -5, y = 4, angle = math.pi / 2 }, -- Frame 1: Center (90°)
+        { x = -5, y = 5, angle = 1.7708 },      -- Frame 2: Tilt right
+        { x = -6, y = 7, angle = 1.3708 },      -- Frame 3: Tilt left
+        { x = -4, y = 8, angle = math.pi / 2 }, -- Frame 4: Center
     },
     walk_up = {
-        { x = 6,  y = 14, angle = -math.pi / 2 },       -- Frame 1: Center (-90°)
-        { x = 10, y = 16, angle = -math.pi / 2 + 0.2 }, -- Frame 2: Tilt right
-        { x = 8,  y = 18, angle = -math.pi / 2 - 0.2 }, -- Frame 3: Tilt left
-        { x = 6,  y = 16, angle = -math.pi / 2 }        -- Frame 4: Center
+        { x = 3, y = 6,  angle = -math.pi / 2 }, -- Frame 1: Center (-90°)
+        { x = 1, y = 10, angle = -1.3708 },      -- Frame 2: Tilt right
+        { x = 4, y = 6,  angle = -1.7708 },      -- Frame 3: Tilt left
+        { x = 5, y = 6,  angle = -math.pi / 2 }, -- Frame 4: Center
     },
 
     -- Attack animations (4 frames each)
@@ -78,29 +70,23 @@ local HAND_ANCHORS = {
         { x = 5,  y = 8,  angle = math.pi / 2 },  -- Frame 3: Maximum reach (down, 90°)
         { x = -2, y = 7,  angle = math.pi / 3 }   -- Frame 4: Recovery (60°)
     },
-    -- attack_left = {
-    --     { x = -6,  y = 12, angle = -math.pi / 2 },     -- Frame 1: Preparing (up, -90°)
-    --     { x = -14, y = 8,  angle = -math.pi * 5 / 6 }, -- Frame 2: Swinging down (-150°)
-    --     { x = -18, y = 4,  angle = math.pi / 2 },      -- Frame 3: Maximum reach (down, 90°)
-    --     { x = -12, y = 10, angle = math.pi * 2 / 3 }   -- Frame 4: Recovery (120°)
-    -- },
     attack_left = {
-        { x = -7, y = -2, angle = -math.pi / 2 },
-        { x = -5, y = -8, angle = -2.6180 },
-        { x = -6, y = 8,  angle = math.pi / 2 },
-        { x = 2,  y = 8,  angle = math.pi * 2 / 3 },
+        { x = -7, y = -2, angle = -math.pi / 2 },    -- Frame 1: Preparing (up, -90°)
+        { x = -5, y = -8, angle = -2.6180 },         -- Frame 2: Swinging down (-150°)
+        { x = -6, y = 8,  angle = math.pi / 2 },     -- Frame 3: Maximum reach (down, 90°)
+        { x = 2,  y = 8,  angle = math.pi * 2 / 3 }, -- Frame 4: Recovery (120°)
     },
     attack_down = {
-        { x = -8, y = 14, angle = math.pi },     -- Frame 1: Starting from left (180°)
-        { x = 0,  y = 18, angle = math.pi / 2 }, -- Frame 2: Middle (90°)
-        { x = 8,  y = 20, angle = 0 },           -- Frame 3: Right (0°)
-        { x = 4,  y = 16, angle = math.pi / 6 }  -- Frame 4: Recovery (30°)
+        { x = -6, y = -7,  angle = math.pi * 3 / 2 }, -- Frame 1: Starting from left (270°)
+        { x = -7, y = -12, angle = math.pi * 3 / 2 }, -- Frame 2: Middle (270°)
+        { x = 2,  y = 10,  angle = math.pi / 2 },     -- Frame 3: Right (90°)
+        { x = 2,  y = 6,   angle = math.pi / 6 },     -- Frame 4: Recovery (30°)
     },
     attack_up = {
-        { x = 8,  y = 10, angle = 0 },              -- Frame 1: Starting from right (0°)
-        { x = 0,  y = 8,  angle = math.pi / 2 },    -- Frame 2: Middle (90°)
-        { x = -8, y = 6,  angle = math.pi },        -- Frame 3: Left (180°)
-        { x = -4, y = 8,  angle = math.pi * 5 / 6 } -- Frame 4: Recovery (150°)
+        { x = 4,  y = -7,  angle = 0 },              -- Frame 1: Starting from right (0°)
+        { x = 6,  y = -13, angle = math.pi / 2 },    -- Frame 2: Middle (90°)
+        { x = -8, y = 6,   angle = math.pi },        -- Frame 3: Left (180°)
+        { x = -4, y = 8,   angle = math.pi * 5 / 6 } -- Frame 4: Recovery (150°)
     }
 }
 
@@ -167,31 +153,75 @@ local WEAPON_TYPES = {
     }
 }
 
-function weapon:createParticleSystem()
-    -- Create particle image (4x4 white pixel)
-    local particle_data = love.image.newImageData(4, 4)
+function weapon:createTrailParticleSystem()
+    -- Create elongated particle for slash arc (20x6 white rectangle)
+    local particle_data = love.image.newImageData(20, 6)
     particle_data:mapPixel(function(x, y, r, g, b, a)
-        return 1, 1, 1, 1
+        -- Create smooth gradient for glowing effect
+        local center_y = 3
+        local alpha = 1 - (math.abs(y - center_y) / center_y)
+        alpha = math.pow(alpha, 0.5) -- Softer falloff for glow
+        return 1, 1, 1, alpha
     end)
     local particle_img = love.graphics.newImage(particle_data)
 
-    -- Create particle system for sword trail
-    local ps = love.graphics.newParticleSystem(particle_img, 200)
-    ps:setParticleLifetime(0.1, 0.25)
+    -- Create particle system for crescent slash trail
+    local ps = love.graphics.newParticleSystem(particle_img, 600)
+    ps:setParticleLifetime(0.2, 0.35) -- Visible long enough to see arc
     ps:setEmissionRate(0)
-    ps:setSizes(3, 2.5, 2, 1, 0)
+    ps:setSizes(3.5, 4, 3.5, 2.5, 0)  -- Large sizes for visible arc
+
+    -- Bright blue-white slash colors
     ps:setColors(
-        0.6, 0.9, 1, 1,
-        0.5, 0.85, 1, 0.8,
-        0.4, 0.75, 0.95, 0.5,
-        0.3, 0.65, 0.9, 0.2,
-        0.2, 0.55, 0.85, 0
+        1, 1, 1, 1,          -- Pure white core
+        0.8, 0.95, 1, 1,     -- Very bright cyan
+        0.6, 0.85, 1, 0.9,   -- Bright blue
+        0.4, 0.7, 0.95, 0.6, -- Medium blue
+        0.2, 0.5, 0.8, 0     -- Transparent
     )
-    ps:setLinearDamping(3, 6)
-    ps:setSpeed(20, 60)
-    ps:setSpread(math.pi / 10)
-    ps:setRotation(0, 2 * math.pi)
+
+    ps:setLinearDamping(25, 35) -- Very high damping - particles stay in place
+    ps:setSpeed(5, 10)          -- Minimal movement
+    ps:setSpread(0)             -- No spread - precise positioning
+    ps:setRotation(0, 0)
     ps:setRelativeRotation(true)
+
+    return ps
+end
+
+function weapon:createSheathParticleSystem()
+    -- Create larger particle image for sheath effect (12x12 instead of 6x6)
+    local particle_data = love.image.newImageData(12, 12)
+    particle_data:mapPixel(function(x, y, r, g, b, a)
+        -- Create soft circular particle
+        local dx = x - 6
+        local dy = y - 6
+        local dist = math.sqrt(dx * dx + dy * dy)
+        local alpha = math.max(0, 1 - dist / 6)
+        return 1, 1, 1, alpha
+    end)
+    local particle_img = love.graphics.newImage(particle_data)
+
+    -- Create particle system for weapon sheathing (light fading effect)
+    local ps = love.graphics.newParticleSystem(particle_img, 150) -- More particles
+    ps:setParticleLifetime(0.4, 0.8)                              -- Longer lifetime
+    ps:setEmissionRate(0)
+    ps:setSizes(3, 3.5, 4, 3, 0)                                  -- Much larger sizes
+
+    -- Warm gold/yellow fading to transparent
+    ps:setColors(
+        1, 1, 0.7, 1,     -- Bright gold
+        1, 0.9, 0.5, 0.8, -- Warm yellow
+        1, 0.8, 0.3, 0.5, -- Orange tint
+        0.9, 0.7, 0.2, 0.2,
+        0.8, 0.6, 0.1, 0  -- Fade to transparent
+    )
+
+    ps:setLinearDamping(1, 3) -- Slower damping for wider spread
+    ps:setSpeed(30, 80)       -- Faster initial speed
+    ps:setSpread(math.pi * 2) -- Radial emission
+    ps:setRotation(0, 2 * math.pi)
+    ps:setRelativeRotation(false)
 
     return ps
 end
@@ -224,6 +254,8 @@ function weapon:new(weapon_type)
     instance.x = 0
     instance.y = 0
     instance.angle = 0
+    instance.owner_x = 0 -- Player position for particle tracking
+    instance.owner_y = 0
 
     -- Attack state
     instance.is_attacking = false
@@ -235,8 +267,9 @@ function weapon:new(weapon_type)
     instance.has_hit = false
     instance.hit_enemies = {}
 
-    -- Particle system for slash effect
-    instance.particle_system = instance:createParticleSystem()
+    -- Particle systems
+    instance.trail_particles = instance:createTrailParticleSystem()   -- Sword slash trail
+    instance.sheath_particles = instance:createSheathParticleSystem() -- Weapon sheathing effect
     instance.last_particle_x = 0
     instance.last_particle_y = 0
 
@@ -272,8 +305,10 @@ function weapon:getHandPosition(owner_x, owner_y, anim_name, frame_index)
 end
 
 function weapon:update(dt, owner_x, owner_y, owner_angle, direction, anim_name, frame_index, hand_marking_mode)
-    -- Store current direction
+    -- Store current direction and player position
     self.current_direction = direction or "right"
+    self.owner_x = owner_x
+    self.owner_y = owner_y
 
     -- Get current hand position and angle based on animation frame
     local hand_x, hand_y, hand_angle = self:getHandPosition(owner_x, owner_y, anim_name, frame_index)
@@ -384,29 +419,33 @@ function weapon:update(dt, owner_x, owner_y, owner_angle, direction, anim_name, 
         self.current_swing_angle = 0
     end
 
-    -- Update particle system
-    self.particle_system:update(dt)
+    -- Update particle systems
+    self.trail_particles:update(dt)
+    self.sheath_particles:update(dt)
 end
 
 function weapon:emitTrailParticles(dt)
-    if self.attack_progress < 0.1 or self.attack_progress > 0.9 then
+    -- Only emit during middle portion of attack
+    if self.attack_progress < 0.2 or self.attack_progress > 0.8 then
         return
     end
 
-    local emission_rate = 800
+    -- Simple test: emit particles at weapon position
+    local emission_rate = 1000
     local particles_this_frame = emission_rate * dt
 
-    -- Emit from weapon tip
-    local tip_offset = 25
-    local tip_x = self.x + math.cos(self.angle) * tip_offset
-    local tip_y = self.y + math.sin(self.angle) * tip_offset
+    self.trail_particles:setPosition(self.x, self.y)
+    self.trail_particles:setDirection(0)
+    self.trail_particles:setSpread(math.pi * 2) -- All directions
+    self.trail_particles:emit(particles_this_frame)
 
-    self.particle_system:setDirection(self.angle + math.pi / 2)
-    self.particle_system:setPosition(tip_x, tip_y)
-    self.particle_system:emit(particles_this_frame)
+    print(string.format("  EMITTED %.1f particles at (%.1f, %.1f)", particles_this_frame, self.x, self.y))
+end
 
-    self.last_particle_x = tip_x
-    self.last_particle_y = tip_y
+function weapon:emitSheathParticles()
+    -- Emit particles at origin (offset applied during drawing)
+    self.sheath_particles:setPosition(0, 0)
+    self.sheath_particles:emit(80) -- Burst of particles
 end
 
 function weapon:startAttack()
@@ -418,7 +457,7 @@ function weapon:startAttack()
     self.attack_progress = 0
     self.has_hit = false
     self.hit_enemies = {}
-    self.particle_system:reset()
+    self.trail_particles:reset()
 
     return true
 end
@@ -489,14 +528,21 @@ function weapon:getKnockback()
     return self.config.knockback
 end
 
+function weapon:drawSheathParticles()
+    -- Draw sheath particles at player position (follows player movement)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(self.sheath_particles, self.owner_x, self.owner_y)
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
 function weapon:draw(debug_mode)
     if not self.sprite_sheet then
         return
     end
 
-    -- Draw particle trail
+    -- Draw trail particle effects
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(self.particle_system, 0, 0)
+    love.graphics.draw(self.trail_particles, 0, 0)
 
     -- Determine sprite flip based on direction
     local swing_config = SWING_CONFIGS[self.current_direction]
