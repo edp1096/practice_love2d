@@ -231,6 +231,12 @@ function enemy:new(x, y, enemy_type)
 
     instance.attack_timer = 0
 
+    -- Hit effect state
+    instance.hit_flash_timer = 0     -- Timer for white flash effect
+    instance.hit_shake_x = 0         -- Shake offset X
+    instance.hit_shake_y = 0         -- Shake offset Y
+    instance.hit_shake_intensity = 4 -- Shake distance in pixels
+
     -- Load type-specific sprite sheet
     instance.spriteSheet = love.graphics.newImage(config.sprite_sheet)
     instance.grid = anim8.newGrid(
@@ -282,6 +288,22 @@ function enemy:update(dt, player_x, player_y)
 
     if self.state_timer > 0 then
         self.state_timer = self.state_timer - dt
+    end
+
+    -- Update hit flash timer
+    if self.hit_flash_timer > 0 then
+        self.hit_flash_timer = self.hit_flash_timer - dt
+    end
+
+    -- Update hit shake effect (random jitter during hit state)
+    if self.state == "hit" then
+        -- Generate random shake offset
+        self.hit_shake_x = (math.random() - 0.5) * 2 * self.hit_shake_intensity
+        self.hit_shake_y = (math.random() - 0.5) * 2 * self.hit_shake_intensity
+    else
+        -- No shake when not in hit state
+        self.hit_shake_x = 0
+        self.hit_shake_y = 0
     end
 
     if self.state == "idle" then
@@ -437,6 +459,7 @@ function enemy:setState(new_state)
         self.state_timer = 0.5
     elseif new_state == "hit" then
         self.state_timer = 0.3
+        self.hit_flash_timer = 0.15 -- Flash for 0.15 seconds (half of hit state)
     end
 end
 
@@ -484,9 +507,14 @@ function enemy:draw()
         love.graphics.circle("line", collider_center_x, collider_center_y, self.attack_range)
     end
 
-    -- Calculate sprite drawing position (offset from collider center for visual alignment)
-    local sprite_draw_x = collider_center_x + self.sprite_draw_offset_x
-    local sprite_draw_y = collider_center_y + self.sprite_draw_offset_y
+    -- Calculate sprite drawing position with shake offset
+    local sprite_draw_x = collider_center_x + self.sprite_draw_offset_x + self.hit_shake_x
+    local sprite_draw_y = collider_center_y + self.sprite_draw_offset_y + self.hit_shake_y
+
+    -- Draw shadow (ellipse under enemy's feet)
+    love.graphics.setColor(0, 0, 0, 0.4)                                            -- Semi-transparent black
+    love.graphics.ellipse("fill", collider_center_x, collider_center_y + 30, 18, 8) -- Oval shadow
+    love.graphics.setColor(1, 1, 1, 1)                                              -- Reset color
 
     -- Apply shader if color swap is needed
     if self.target_color then
@@ -496,15 +524,21 @@ function enemy:draw()
         end
     end
 
+    -- Calculate color based on state
+    local draw_color = { 1, 1, 1, 1 }
+
     if self.state == "hit" then
-        love.graphics.setColor(1, 1, 1, 1)
+        -- White flash effect that fades out
+        local flash_intensity = self.hit_flash_timer / 0.15
+        -- Blend towards white based on flash intensity
+        draw_color = { 1, 1, 1, 1 } -- Will be modified after drawing sprite
     elseif self.state == "dead" then
-        love.graphics.setColor(0.5, 0.5, 0.5, 0.5)
-    else
-        love.graphics.setColor(1, 1, 1, 1)
+        draw_color = { 0.5, 0.5, 0.5, 0.5 }
     end
 
-    -- Draw sprite aligned with collider center
+    love.graphics.setColor(draw_color)
+
+    -- Draw sprite aligned with collider center (with shake offset applied)
     self.anim:draw(
         self.spriteSheet,
         sprite_draw_x,
@@ -515,6 +549,24 @@ function enemy:draw()
         self.sprite_origin_x,
         self.sprite_origin_y
     )
+
+    -- Apply white flash overlay if in hit state
+    if self.state == "hit" and self.hit_flash_timer > 0 then
+        local flash_intensity = self.hit_flash_timer / 0.15
+        love.graphics.setBlendMode("add")
+        love.graphics.setColor(1, 1, 1, flash_intensity * 0.7) -- White overlay
+        self.anim:draw(
+            self.spriteSheet,
+            sprite_draw_x,
+            sprite_draw_y,
+            nil,
+            self.sprite_scale,
+            self.sprite_scale,
+            self.sprite_origin_x,
+            self.sprite_origin_y
+        )
+        love.graphics.setBlendMode("alpha")
+    end
 
     -- Reset shader
     love.graphics.setShader()

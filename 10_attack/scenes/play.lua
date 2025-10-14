@@ -27,6 +27,12 @@ function play:enter(previous, mapPath, spawn_x, spawn_y)
     self.fade_alpha = 1.0
     self.fade_speed = 2.0
     self.is_fading = true
+
+    -- Camera shake
+    self.camera_shake_x = 0
+    self.camera_shake_y = 0
+    self.camera_shake_timer = 0
+    self.camera_shake_intensity = 0
 end
 
 function play:exit()
@@ -41,6 +47,11 @@ function play:pause() end
 -- Called when returning from pause
 function play:resume() end
 
+function play:shakeCamera(intensity, duration)
+    self.camera_shake_intensity = intensity or 10
+    self.camera_shake_timer = duration or 0.3
+end
+
 function play:update(dt)
     -- Fade in effect
     if self.is_fading and self.fade_alpha > 0 then
@@ -48,12 +59,46 @@ function play:update(dt)
         if self.fade_alpha == 0 then
             self.is_fading = false
         end
+
+        -- Update camera shake
+        if self.camera_shake_timer > 0 then
+            self.camera_shake_timer = math.max(0, self.camera_shake_timer - dt)
+
+            if self.camera_shake_timer > 0 then
+                -- Generate random shake offset
+                self.camera_shake_x = (math.random() - 0.5) * 2 * self.camera_shake_intensity
+                self.camera_shake_y = (math.random() - 0.5) * 2 * self.camera_shake_intensity
+            else
+                self.camera_shake_x = 0
+                self.camera_shake_y = 0
+            end
+        end
     end
 
     local vx, vy = self.player:update(dt, self.cam) -- Pass camera for mouse coordinate conversion
 
     self.world:moveEntity(self.player, vx, vy, dt)
     self.world:updateEnemies(dt, self.player.x, self.player.y)
+
+    -- Check if enemies attack player
+    local shake_callback = function(intensity, duration)
+        self:shakeCamera(intensity, duration)
+    end
+
+    for _, enemy in ipairs(self.world.enemies) do
+        if enemy.state == "attack" and not self.player:isInvincible() then
+            -- Check distance to player
+            local dx = enemy.x - self.player.x
+            local dy = enemy.y - self.player.y
+            local distance = math.sqrt(dx * dx + dy * dy)
+
+            -- If within attack range, damage player
+            if distance < (enemy.attack_range or 60) then
+                self.player:takeDamage(enemy.damage or 10, shake_callback)
+            end
+        end
+    end
+
     self.world:update(dt)
 
     self.player.x = self.player.collider:getX()
@@ -67,7 +112,11 @@ function play:update(dt)
         end
     end
 
-    self.cam:lookAt(self.player.x, self.player.y)
+    -- Apply camera shake to lookAt
+    self.cam:lookAt(
+        self.player.x + self.camera_shake_x,
+        self.player.y + self.camera_shake_y
+    )
 
     local mapWidth = self.world.map.width * self.world.map.tilewidth
     local mapHeight = self.world.map.height * self.world.map.tileheight
@@ -87,6 +136,14 @@ function play:update(dt)
             player_w,
             player_h
         )
+
+        -- Check if player is dead
+        if not self.player:isAlive() then
+            local gameover = require "scenes.gameover"
+            scene_control.switch(gameover)
+            return -- Stop processing this frame
+        end
+
 
         if transition then
             self:switchMap(transition.target_map, transition.spawn_x, transition.spawn_y)
@@ -116,6 +173,40 @@ function play:draw()
     end
 
     self.cam:detach()
+
+    -- Draw health bar UI (always visible)
+    love.graphics.setColor(0, 0, 0, 0.7)
+    love.graphics.rectangle("fill", 10, 10, 214, 44)
+
+    -- Health bar background
+    love.graphics.setColor(0.3, 0, 0, 1)
+    love.graphics.rectangle("fill", 12, 12, 210, 20)
+
+    -- Health bar foreground
+    local health_ratio = self.player.health / self.player.max_health
+    love.graphics.setColor(0, 1, 0, 1)
+    if health_ratio < 0.3 then
+        love.graphics.setColor(1, 0, 0, 1) -- Red when low
+    elseif health_ratio < 0.6 then
+        love.graphics.setColor(1, 1, 0, 1) -- Yellow when medium
+    end
+    love.graphics.rectangle("fill", 12, 12, 210 * health_ratio, 20)
+
+    -- Health text
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.print(
+        string.format("HP: %d / %d", self.player.health, self.player.max_health),
+        17, 15
+    )
+
+    -- Invincibility indicator
+    if self.player:isInvincible() then
+        love.graphics.setColor(1, 1, 0, 1)
+        love.graphics.print("INVINCIBLE", 17, 35)
+    end
+
+    love.graphics.setColor(1, 1, 1, 1)
+
 
     if debug.show_fps then
         local marking_info = self.player:getHandMarkingInfo()

@@ -1,6 +1,8 @@
 -- entities/weapon.lua
 -- Weapon entity: handles weapon rendering, animation, and hit detection
 
+local anim8 = require "vendor.anim8"
+
 local weapon = {}
 weapon.__index = weapon
 
@@ -153,42 +155,6 @@ local WEAPON_TYPES = {
     }
 }
 
-function weapon:createTrailParticleSystem()
-    -- Create elongated particle for slash arc (20x6 white rectangle)
-    local particle_data = love.image.newImageData(20, 6)
-    particle_data:mapPixel(function(x, y, r, g, b, a)
-        -- Create smooth gradient for glowing effect
-        local center_y = 3
-        local alpha = 1 - (math.abs(y - center_y) / center_y)
-        alpha = math.pow(alpha, 0.5) -- Softer falloff for glow
-        return 1, 1, 1, alpha
-    end)
-    local particle_img = love.graphics.newImage(particle_data)
-
-    -- Create particle system for crescent slash trail
-    local ps = love.graphics.newParticleSystem(particle_img, 600)
-    ps:setParticleLifetime(0.2, 0.35) -- Visible long enough to see arc
-    ps:setEmissionRate(0)
-    ps:setSizes(3.5, 4, 3.5, 2.5, 0)  -- Large sizes for visible arc
-
-    -- Bright blue-white slash colors
-    ps:setColors(
-        1, 1, 1, 1,          -- Pure white core
-        0.8, 0.95, 1, 1,     -- Very bright cyan
-        0.6, 0.85, 1, 0.9,   -- Bright blue
-        0.4, 0.7, 0.95, 0.6, -- Medium blue
-        0.2, 0.5, 0.8, 0     -- Transparent
-    )
-
-    ps:setLinearDamping(25, 35) -- Very high damping - particles stay in place
-    ps:setSpeed(5, 10)          -- Minimal movement
-    ps:setSpread(0)             -- No spread - precise positioning
-    ps:setRotation(0, 0)
-    ps:setRelativeRotation(true)
-
-    return ps
-end
-
 function weapon:createSheathParticleSystem()
     -- Create larger particle image for sheath effect (12x12 instead of 6x6)
     local particle_data = love.image.newImageData(12, 12)
@@ -239,7 +205,7 @@ function weapon:new(weapon_type)
     instance.type = weapon_type
     instance.config = config
 
-    -- Load sprite
+    -- Load weapon sprite
     instance.sprite_sheet = love.graphics.newImage(config.sprite_file)
     instance.sprite_quad = love.graphics.newQuad(
         config.sprite_x,
@@ -250,11 +216,24 @@ function weapon:new(weapon_type)
         instance.sprite_sheet:getHeight()
     )
 
+    -- Load slash effect sprite (2-frame animation: 46x39 total, each frame 23x39)
+    instance.slash_sprite = love.graphics.newImage("assets/images/effect-slash.png")
+    instance.slash_grid = anim8.newGrid(23, 39, 46, 39)
+    instance.slash_scale = 3 -- Match weapon scale
+
+    -- Slash effect state
+    instance.slash_active = false
+    instance.slash_anim = nil
+    instance.slash_x = 0
+    instance.slash_y = 0
+    instance.slash_rotation = 0
+    instance.slash_flip_y = 1 -- 1 or -1 for vertical flip
+
     -- Position and rotation
     instance.x = 0
     instance.y = 0
     instance.angle = 0
-    instance.owner_x = 0 -- Player position for particle tracking
+    instance.owner_x = 0 -- Player position
     instance.owner_y = 0
 
     -- Attack state
@@ -267,11 +246,8 @@ function weapon:new(weapon_type)
     instance.has_hit = false
     instance.hit_enemies = {}
 
-    -- Particle systems
-    instance.trail_particles = instance:createTrailParticleSystem()   -- Sword slash trail
-    instance.sheath_particles = instance:createSheathParticleSystem() -- Weapon sheathing effect
-    instance.last_particle_x = 0
-    instance.last_particle_y = 0
+    -- Weapon sheath particles only (no trail particles)
+    instance.sheath_particles = instance:createSheathParticleSystem()
 
     -- Debug visualization
     instance.debug_hand_x = 0
@@ -370,11 +346,6 @@ function weapon:update(dt, owner_x, owner_y, owner_angle, direction, anim_name, 
             -- Position weapon center so that rotated handle aligns with hand
             self.x = hand_x - (rotated_offset_x * self.config.scale)
             self.y = hand_y - (rotated_offset_y * self.config.scale)
-
-            -- Emit trail particles (but not in hand marking mode)
-            if not hand_marking_mode then
-                self:emitTrailParticles(dt)
-            end
         end
     else
         -- Idle/walking: weapon stays at hand position
@@ -419,27 +390,15 @@ function weapon:update(dt, owner_x, owner_y, owner_angle, direction, anim_name, 
         self.current_swing_angle = 0
     end
 
-    -- Update particle systems
-    self.trail_particles:update(dt)
-    self.sheath_particles:update(dt)
-end
-
-function weapon:emitTrailParticles(dt)
-    -- Only emit during middle portion of attack
-    if self.attack_progress < 0.2 or self.attack_progress > 0.8 then
-        return
+    -- Update slash effect animation
+    if self.slash_active and self.slash_anim then
+        if not hand_marking_mode then
+            self.slash_anim:update(dt)
+        end
     end
 
-    -- Simple test: emit particles at weapon position
-    local emission_rate = 1000
-    local particles_this_frame = emission_rate * dt
-
-    self.trail_particles:setPosition(self.x, self.y)
-    self.trail_particles:setDirection(0)
-    self.trail_particles:setSpread(math.pi * 2) -- All directions
-    self.trail_particles:emit(particles_this_frame)
-
-    print(string.format("  EMITTED %.1f particles at (%.1f, %.1f)", particles_this_frame, self.x, self.y))
+    -- Update sheath particle system
+    self.sheath_particles:update(dt)
 end
 
 function weapon:emitSheathParticles()
@@ -457,7 +416,31 @@ function weapon:startAttack()
     self.attack_progress = 0
     self.has_hit = false
     self.hit_enemies = {}
-    self.trail_particles:reset()
+
+    -- Create slash effect sprite animation (2 frames, 0.06 seconds each)
+    self.slash_active = true
+    self.slash_anim = anim8.newAnimation(
+        self.slash_grid('1-2', 1),
+        0.06,
+        function() self.slash_active = false end -- Animation finishes → remove
+    )
+
+    -- Position slash effect at player position, offset in attack direction
+    -- Reference code: effect.x = player.x + dirX*11, effect.y = player.y + dirY*11 + 1
+    local dir_x = math.cos(self.angle)
+    local dir_y = math.sin(self.angle)
+
+    self.slash_x = self.owner_x + dir_x * 33     -- 11 * 3 (scaled)
+    self.slash_y = self.owner_y + dir_y * 33 + 3 -- +1 * 3 (scaled)
+    self.slash_rotation = math.atan2(dir_y, dir_x)
+
+    -- Flip Y based on combo count (reference code does this)
+    -- For now, alternate based on direction
+    if self.current_direction == "left" or self.current_direction == "up" then
+        self.slash_flip_y = -1
+    else
+        self.slash_flip_y = 1
+    end
 
     return true
 end
@@ -468,6 +451,8 @@ function weapon:endAttack()
     self.current_swing_angle = 0
     self.has_hit = false
     self.hit_enemies = {}
+    self.slash_active = false
+    self.slash_anim = nil
 end
 
 function weapon:canDealDamage()
@@ -540,9 +525,20 @@ function weapon:draw(debug_mode)
         return
     end
 
-    -- Draw trail particle effects
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(self.trail_particles, 0, 0)
+    -- Draw slash effect sprite if active (FIRST, behind weapon)
+    if self.slash_active and self.slash_anim then
+        love.graphics.setColor(1, 1, 1, 1)
+        self.slash_anim:draw(
+            self.slash_sprite,
+            self.slash_x,
+            self.slash_y,
+            self.slash_rotation,
+            self.slash_scale,
+            self.slash_scale * self.slash_flip_y,
+            11.5, -- Center X of 23-pixel sprite
+            19.5  -- Center Y of 39-pixel sprite
+        )
+    end
 
     -- Determine sprite flip based on direction
     local swing_config = SWING_CONFIGS[self.current_direction]
@@ -565,35 +561,30 @@ function weapon:draw(debug_mode)
         self.config.sprite_h / 2
     )
 
-    -- Debug visualization - ALWAYS SHOW ALL MARKERS
+    -- Debug visualization
     if debug_mode then
-        -- Hand position (YELLOW) - where hand should be according to HAND_ANCHORS
+        -- Hand position (YELLOW)
         if self.debug_hand_x and self.debug_hand_y then
             love.graphics.setColor(1, 1, 0, 1)
             love.graphics.circle("fill", self.debug_hand_x, self.debug_hand_y, 8)
             love.graphics.setColor(1, 1, 0, 0.3)
             love.graphics.circle("line", self.debug_hand_x, self.debug_hand_y, 15)
-
-            -- Label
             love.graphics.setColor(1, 1, 0, 1)
             love.graphics.print("HAND", self.debug_hand_x - 15, self.debug_hand_y - 25)
         end
 
-        -- Weapon center (GREEN) - where weapon center actually is
+        -- Weapon center (GREEN)
         love.graphics.setColor(0, 1, 0, 1)
         love.graphics.circle("fill", self.x, self.y, 6)
         love.graphics.setColor(0, 1, 0, 0.3)
         love.graphics.circle("line", self.x, self.y, 12)
-
-        -- Label
         love.graphics.setColor(0, 1, 0, 1)
         love.graphics.print("CENTER", self.x - 20, self.y + 20)
 
-        -- Weapon handle (CYAN) - where handle actually is after rotation (direction-specific)
+        -- Weapon handle (CYAN)
         local handle_anchor = WEAPON_HANDLE_ANCHORS[self.current_direction] or WEAPON_HANDLE_ANCHORS.right
         local swing_config = SWING_CONFIGS[self.current_direction]
 
-        -- Apply flip to handle anchor if sprite is flipped
         local handle_x = handle_anchor.x
         if swing_config and swing_config.flip_x then
             handle_x = self.config.sprite_w - handle_anchor.x
@@ -609,24 +600,32 @@ function weapon:draw(debug_mode)
         local handle_world_x = self.x + (rotated_offset_x * self.config.scale)
         local handle_world_y = self.y + (rotated_offset_y * self.config.scale)
 
-        love.graphics.setColor(0, 1, 1, 1) -- Bright cyan
+        love.graphics.setColor(0, 1, 1, 1)
         love.graphics.circle("fill", handle_world_x, handle_world_y, 10)
         love.graphics.setColor(0, 1, 1, 0.5)
         love.graphics.circle("line", handle_world_x, handle_world_y, 18)
-
-        -- Label
         love.graphics.setColor(0, 1, 1, 1)
         love.graphics.print("HANDLE", handle_world_x - 22, handle_world_y - 30)
 
-        -- Draw line connecting hand to weapon handle
+        -- Line connecting hand to handle
         if self.debug_hand_x and self.debug_hand_y then
-            love.graphics.setColor(1, 0, 1, 0.9) -- Bright magenta
+            love.graphics.setColor(1, 0, 1, 0.9)
             love.graphics.setLineWidth(3)
             love.graphics.line(self.debug_hand_x, self.debug_hand_y, handle_world_x, handle_world_y)
             love.graphics.setLineWidth(1)
         end
 
-        -- Attack hitbox (only during attack)
+        -- Slash effect debug (ORANGE)
+        if self.slash_active then
+            love.graphics.setColor(1, 0.5, 0, 1)
+            love.graphics.circle("fill", self.slash_x, self.slash_y, 8)
+            love.graphics.setColor(1, 0.5, 0, 0.5)
+            love.graphics.circle("line", self.slash_x, self.slash_y, 35)
+            love.graphics.setColor(1, 0.5, 0, 1)
+            love.graphics.print("SLASH", self.slash_x - 20, self.slash_y - 45)
+        end
+
+        -- Attack hitbox
         if self.is_attacking then
             local hitbox = self:getHitbox()
             if hitbox and self:canDealDamage() then

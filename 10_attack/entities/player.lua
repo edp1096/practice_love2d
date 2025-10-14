@@ -64,6 +64,19 @@ function player:new(sprite_sheet, x, y)
     instance.last_action_time = 0
     instance.weapon_sheath_delay = 5.0 -- Sheath weapon after 5 seconds of inactivity
 
+    -- Health system
+    instance.max_health = 100
+    instance.health = instance.max_health
+
+    -- Hit effects
+    instance.hit_flash_timer = 0       -- White flash duration
+    instance.hit_shake_x = 0           -- Shake offset X
+    instance.hit_shake_y = 0           -- Shake offset Y
+    instance.hit_shake_intensity = 6   -- Shake distance (6 pixels)
+    instance.invincible_timer = 0      -- Invincibility after hit
+    instance.invincible_duration = 1.0 -- 1 second invincibility
+
+
     -- Facing angle (for weapon direction)
     instance.facing_angle = 0
 
@@ -75,6 +88,26 @@ function player:update(dt, cam)
     if self.attack_cooldown > 0 then
         self.attack_cooldown = self.attack_cooldown - dt
     end
+
+    -- Update hit effects
+    if self.hit_flash_timer > 0 then
+        self.hit_flash_timer = math.max(0, self.hit_flash_timer - dt)
+    end
+
+    if self.invincible_timer > 0 then
+        self.invincible_timer = math.max(0, self.invincible_timer - dt)
+    end
+
+    -- Update shake during hit state
+    if self.hit_flash_timer > 0 then
+        -- Generate random jitter every frame
+        self.hit_shake_x = (math.random() - 0.5) * 2 * self.hit_shake_intensity
+        self.hit_shake_y = (math.random() - 0.5) * 2 * self.hit_shake_intensity
+    else
+        self.hit_shake_x = 0
+        self.hit_shake_y = 0
+    end
+
 
     -- Auto-sheath weapon after inactivity
     if self.weapon_drawn and self.state ~= "attacking" then
@@ -310,7 +343,38 @@ function player:draw()
     end
 
     -- Draw player sprite at current position
-    self.anim:draw(self.spriteSheet, self.x, self.y, nil, 3, nil, 24, 24)
+    -- Apply shake to sprite position
+    local draw_x = self.x + self.hit_shake_x
+    local draw_y = self.y + self.hit_shake_y
+
+    -- Draw shadow FIRST (under player)
+    -- love.graphics.setColor(0, 0, 0, 0.4)
+    -- love.graphics.ellipse("fill", self.x, self.y + 25, 18, 8)
+    love.graphics.setColor(0, 0, 0, 0.4)
+    love.graphics.ellipse("fill", draw_x, draw_y + 50, 28, 8)
+    love.graphics.setColor(1, 1, 1, 1)
+
+    -- Draw player sprite with blink effect during invincibility
+    local should_draw = true
+    if self.invincible_timer > 0 then
+        -- Blink every 0.1 seconds
+        local blink_cycle = math.floor(self.invincible_timer / 0.1)
+        should_draw = (blink_cycle % 2 == 0)
+    end
+
+    if should_draw then
+        self.anim:draw(self.spriteSheet, draw_x, draw_y, nil, 3, nil, 24, 24)
+
+        -- Draw white flash overlay (additive blending)
+        if self.hit_flash_timer > 0 then
+            local flash_intensity = self.hit_flash_timer / 0.2
+            love.graphics.setBlendMode("add")
+            love.graphics.setColor(1, 1, 1, flash_intensity * 0.7)
+            self.anim:draw(self.spriteSheet, draw_x, draw_y, nil, 3, nil, 24, 24)
+            love.graphics.setBlendMode("alpha")
+            love.graphics.setColor(1, 1, 1, 1)
+        end
+    end
 
     -- Debug hitbox
     if debug.show_colliders and self.collider then
@@ -565,6 +629,41 @@ function player:getHandMarkingInfo()
         frame = DEBUG_MANUAL_FRAME,
         frame_count = self:getFrameCount(self.current_anim_name)
     }
+end
+
+function player:takeDamage(damage, shake_callback)
+    -- Check invincibility
+    if self.invincible_timer > 0 then
+        return false
+    end
+
+    -- Apply damage
+    self.health = math.max(0, self.health - damage)
+
+    -- Trigger hit effects
+    self.hit_flash_timer = 0.2 -- White flash for 0.2 seconds
+    self.invincible_timer = self.invincible_duration
+
+    -- Camera shake callback (if provided by play.lua)
+    if shake_callback then
+        shake_callback(12, 0.3) -- Intensity 12, duration 0.3 seconds
+    end
+
+    -- Death check
+    if self.health <= 0 then
+        print("Player died!")
+        -- TODO: Handle player death
+    end
+
+    return true
+end
+
+function player:isAlive()
+    return self.health > 0
+end
+
+function player:isInvincible()
+    return self.invincible_timer > 0
 end
 
 return player
