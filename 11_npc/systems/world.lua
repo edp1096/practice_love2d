@@ -185,7 +185,7 @@ function world:loadNPCs()
 
             local bounds = new_npc:getColliderBounds()
             new_npc.collider = self.physicsWorld:newBSGRectangleCollider(
-                bounds.x, bounds.y,
+                bounds.x - (bounds.width / 2), bounds.y - (bounds.height / 2),
                 bounds.width, bounds.height,
                 8
             )

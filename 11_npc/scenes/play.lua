@@ -222,7 +222,7 @@ function play:draw()
     love.graphics.setColor(1, 1, 1, 1)
 
     if debug.show_fps then
-        hud:draw_debug_panel(self.player, debug.debug_mode, 0, 0, real_w)
+        hud:draw_debug_panel(self.player, debug.debug_mode)
         if debug.debug_mode then
             love.graphics.setFont(hud.tiny_font)
             love.graphics.setColor(1, 1, 0, 1)

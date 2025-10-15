@@ -21,7 +21,7 @@ function npc:new(x, y, npc_type, npc_id)
     instance.x = x or 100
     instance.y = y or 100
     instance.type = npc_type
-    instance.id = npc_id or "npc_" .. math.random(10000)
+    instance.id = npc_id or ("npc_" .. math.random(10000))
 
     print("Creating NPC: " .. npc_type .. " at (" .. x .. ", " .. y .. ") id=" .. instance.id)
 
@@ -171,7 +171,7 @@ function npc:drawDebug()
     -- Draw collider bounds
     local bounds = self:getColliderBounds()
     love.graphics.setColor(0, 1, 1, 1)
-    love.graphics.rectangle("line", bounds.x, bounds.y, bounds.width, bounds.height)
+    love.graphics.rectangle("line", bounds.x - (bounds.width / 2), bounds.y - (bounds.height / 2), bounds.width, bounds.height)
 
     -- Draw name
     love.graphics.setColor(0, 1, 1, 1)
