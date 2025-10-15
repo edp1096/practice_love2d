@@ -29,9 +29,13 @@ function animation.initialize(player, sprite_sheet)
     player.anim = player.animations.idle_right
     player.direction = "right"
     player.facing_angle = 0
+    player.current_anim_name = "idle_right"
 end
 
 function animation.update(player, dt, cam)
+    local current_anim_name = nil
+    local current_frame_index = 1
+
     -- Direction control
     if debug:is_hand_marking_active() then
         -- Hand marking mode: WASD controls direction
@@ -74,17 +78,23 @@ function animation.update(player, dt, cam)
         end
     end
 
-    -- Determine animation
-    local current_anim_name = nil
-    local current_frame_index = 1
-
+    -- Check if attack animation finished
     if player.state == "attacking" and not player.weapon.is_attacking then
         player.state = "idle"
     end
 
     local vx, vy = 0, 0
     local is_moving = false
+    local movement_input = false
 
+    if love.keyboard.isDown("right", "d") or
+        love.keyboard.isDown("left", "a") or
+        love.keyboard.isDown("down", "s") or
+        love.keyboard.isDown("up", "w") then
+        movement_input = true
+    end
+
+    -- Determine animation
     if player.state ~= "attacking" and not player.parry_active and not player.dodge_active and not debug:is_hand_marking_active() then
         local move_direction = nil
 
@@ -151,9 +161,30 @@ function animation.update(player, dt, cam)
         current_anim_name = "idle_" .. player.direction
         player.anim = player.animations[current_anim_name]
         player.anim:update(dt)
+    elseif debug:is_hand_marking_active() then
+        -- Hand marking mode
+        if movement_input then
+            player.state = "walking"
+            current_anim_name = "walk_" .. player.direction
+        elseif player.state == "attacking" then
+            current_anim_name = "attack_" .. player.direction
+        else
+            if player.state ~= "attacking" and not player.parry_active then
+                player.state = "idle"
+            end
+            current_anim_name = "idle_" .. player.direction
+        end
+
+        if not player.anim or player.anim ~= player.animations[current_anim_name] then
+            player.anim = player.animations[current_anim_name]
+        end
+    else
+        -- Fallback: always ensure current_anim_name is set
+        current_anim_name = "idle_" .. player.direction
     end
 
-    player.current_anim_name = current_anim_name
+    -- Always set current_anim_name (never nil)
+    player.current_anim_name = current_anim_name or ("idle_" .. player.direction)
 
     if debug:is_hand_marking_active() then
         current_frame_index = debug.manual_frame
@@ -162,8 +193,10 @@ function animation.update(player, dt, cam)
     end
 
     -- Update weapon
-    player.weapon:update(dt, player.x, player.y, player.facing_angle,
-        player.direction, current_anim_name, current_frame_index, debug:is_hand_marking_active())
+    if player.weapon then
+        player.weapon:update(dt, player.x, player.y, player.facing_angle,
+            player.direction, player.current_anim_name, current_frame_index, debug:is_hand_marking_active())
+    end
 
     return vx, vy
 end

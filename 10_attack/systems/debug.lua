@@ -27,7 +27,8 @@ function debug:toggle_hand_marking(player)
         print("PgUp/PgDown: Previous/Next frame")
         print("P: Mark hand position")
         print("Ctrl+P: Mark weapon anchor")
-        print("Current animation: " .. (player.current_anim_name or "unknown"))
+        local anim_name = player.current_anim_name or "idle_right"
+        print("Current animation: " .. anim_name)
         print("Current frame: " .. self.manual_frame)
     else
         print("=== HAND MARKING MODE DISABLED ===")
@@ -37,23 +38,25 @@ end
 function debug:next_frame(player)
     if not self.hand_marking_active then return end
 
-    local frame_count = self:get_frame_count(player.current_anim_name)
+    local anim_name = player.current_anim_name or "idle_right"
+    local frame_count = self:get_frame_count(anim_name)
     self.manual_frame = self.manual_frame + 1
     if self.manual_frame > frame_count then
         self.manual_frame = 1
     end
-    print(player.current_anim_name .. " Frame: " .. self.manual_frame .. " / " .. frame_count)
+    print(anim_name .. " Frame: " .. self.manual_frame .. " / " .. frame_count)
 end
 
 function debug:prev_frame(player)
     if not self.hand_marking_active then return end
 
-    local frame_count = self:get_frame_count(player.current_anim_name)
+    local anim_name = player.current_anim_name or "idle_right"
+    local frame_count = self:get_frame_count(anim_name)
     self.manual_frame = self.manual_frame - 1
     if self.manual_frame < 1 then
         self.manual_frame = frame_count
     end
-    print(player.current_anim_name .. " Frame: " .. self.manual_frame .. " / " .. frame_count)
+    print(anim_name .. " Frame: " .. self.manual_frame .. " / " .. frame_count)
 end
 
 function debug:mark_hand_position(player, world_x, world_y)
@@ -67,7 +70,7 @@ function debug:mark_hand_position(player, world_x, world_y)
 
     local anim_name = player.current_anim_name or "idle_right"
     local frame_index = self.manual_frame
-    local weapon_angle = player.weapon.angle
+    local weapon_angle = player.weapon and player.weapon.angle or 0
 
     if not self.actual_hand_positions[anim_name] then
         self.actual_hand_positions[anim_name] = {}
