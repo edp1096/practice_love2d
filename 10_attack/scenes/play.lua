@@ -167,6 +167,9 @@ function play:draw()
     -- HUD
     hud:draw_health_bar(12, 12, 210, 20, self.player.health, self.player.max_health)
 
+    -- Use small font for status text
+    love.graphics.setFont(hud.small_font)
+
     if self.player:isInvincible() then
         love.graphics.setColor(1, 1, 0, 1)
         love.graphics.print("INVINCIBLE", 17, 35)
@@ -177,7 +180,7 @@ function play:draw()
     if self.player.dodge_active then
         hud:draw_cooldown(12, screen_h - 52, 210, 0, 1, "Dodge", "")
         love.graphics.setColor(0.3, 1, 0.3, 1)
-        love.graphics.print("DODGING!", 17, screen_h - 29)
+        love.graphics.print("DODGING !", 17, screen_h - 29)
     else
         hud:draw_cooldown(12, screen_h - 52, 210, self.player.dodge_cooldown, self.player.dodge_cooldown_duration, "Dodge", "SPACE")
     end
@@ -211,12 +214,13 @@ function play:draw()
     if debug.show_fps then
         hud:draw_debug_panel(self.player, debug.debug_mode)
 
-        -- Show effects count
+        -- Show effects count with small font
         if debug.debug_mode then
+            love.graphics.setFont(hud.tiny_font)
             love.graphics.setColor(1, 1, 0, 1)
-            love.graphics.print("Active Effects: " .. effects:getCount(), 10, 190)
-            love.graphics.print("F1: Test Effects at Mouse", 10, 210)
-            love.graphics.print("F2: Toggle Effects Debug", 10, 230)
+            love.graphics.print("Active Effects: " .. effects:getCount(), 8, 140)
+            love.graphics.print("F1: Test Effects at Mouse", 8, 154)
+            love.graphics.print("F2: Toggle Effects Debug", 8, 168)
             love.graphics.setColor(1, 1, 1, 1)
         end
     end

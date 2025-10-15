@@ -1,7 +1,11 @@
 -- systems/hud.lua
--- HUD and UI elements
+-- HUD and UI elements with smaller fonts
 
 local hud = {}
+
+-- Create small fonts for HUD (initialized once)
+hud.small_font = love.graphics.newFont(11)
+hud.tiny_font = love.graphics.newFont(10)
 
 function hud:draw_health_bar(x, y, w, h, hp, max_hp)
     love.graphics.setColor(0, 0, 0, 0.7)
@@ -12,14 +16,15 @@ function hud:draw_health_bar(x, y, w, h, hp, max_hp)
 
     local health_ratio = hp / max_hp
     if health_ratio < 0.3 then
-        love.graphics.setColor(1, 0, 0, 1)
+        love.graphics.setColor(0.6, 0.2, 0.2, 1)
     elseif health_ratio < 0.6 then
-        love.graphics.setColor(1, 1, 0, 1)
+        love.graphics.setColor(0.7, 0.2, 0.2, 1)
     else
-        love.graphics.setColor(0, 1, 0, 1)
+        love.graphics.setColor(0.8, 0.2, 0.2, 1)
     end
     love.graphics.rectangle("fill", x, y, w * health_ratio, h)
 
+    love.graphics.setFont(self.small_font)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.print(string.format("HP: %d / %d", hp, max_hp), x + 5, y + 3)
 end
@@ -31,6 +36,8 @@ function hud:draw_cooldown(x, y, size, cd, max_cd, label, key_hint)
     love.graphics.setColor(0.2, 0.2, 0.3, 1)
     love.graphics.rectangle("fill", x, y, size, 20)
 
+    love.graphics.setFont(self.small_font)
+
     if cd > 0 then
         local cd_ratio = 1 - (cd / max_cd)
         love.graphics.setColor(0.3, 0.5, 1, 1)
@@ -40,7 +47,7 @@ function hud:draw_cooldown(x, y, size, cd, max_cd, label, key_hint)
         love.graphics.print(string.format("%s CD: %.1f", label, cd), x + 5, y + 3)
     else
         local pulse = 0.7 + 0.3 * math.sin(love.timer.getTime() * 3)
-        love.graphics.setColor(0.3, 1, 0.3, pulse)
+        love.graphics.setColor(0.2, 0.7, 0.2, pulse)
         love.graphics.rectangle("fill", x, y, size, 20)
 
         love.graphics.setColor(1, 1, 1, 1)
@@ -54,7 +61,7 @@ function hud:draw_parry_success(player, screen_w, screen_h)
     if player.parry_success_timer <= 0 then return end
 
     local text = player.parry_perfect and "PERFECT PARRY!" or "PARRY!"
-    local font_size = player.parry_perfect and 48 or 36
+    local font_size = player.parry_perfect and 32 or 24
     local font = love.graphics.newFont(font_size)
     love.graphics.setFont(font)
 
@@ -66,7 +73,7 @@ function hud:draw_parry_success(player, screen_w, screen_h)
     end
 
     local text_width = font:getWidth(text)
-    love.graphics.print(text, screen_w / 2 - text_width / 2, 150)
+    love.graphics.print(text, screen_w / 2 - text_width / 2, 100)
 
     love.graphics.setColor(1, 1, 1, 1)
 end
@@ -89,20 +96,21 @@ function hud:draw_debug_panel(player, debug_mode)
         frame_count = 4
     } or nil
 
-    local panel_height = marking_info and 280 or 230
+    local panel_height = marking_info and 200 or 170
 
     love.graphics.setColor(0, 0, 0, 0.5)
-    love.graphics.rectangle("fill", 0, 0, 280, panel_height)
+    love.graphics.rectangle("fill", 0, 0, 220, panel_height)
 
+    love.graphics.setFont(self.tiny_font)
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.print("FPS: " .. love.timer.getFPS(), 10, 10)
-    love.graphics.print(string.format("Player: %.1f, %.1f", player.x, player.y), 10, 30)
-    love.graphics.print("Press ESC to pause", 10, 50)
-    love.graphics.print("Left Click to Attack", 10, 70)
-    love.graphics.print("Right Click to Parry", 10, 90)
-    love.graphics.print("Space to Dodge/Roll", 10, 110)
-    love.graphics.print("H = Hand Marking Mode", 10, 130)
-    love.graphics.print("P = Mark Position", 10, 150)
+    love.graphics.print("FPS: " .. love.timer.getFPS(), 8, 8)
+    love.graphics.print(string.format("Player: %.1f, %.1f", player.x, player.y), 8, 22)
+    love.graphics.print("Press ESC to pause", 8, 36)
+    love.graphics.print("Left Click to Attack", 8, 50)
+    love.graphics.print("Right Click to Parry", 8, 64)
+    love.graphics.print("Space to Dodge/Roll", 8, 78)
+    love.graphics.print("H = Hand Marking Mode", 8, 92)
+    love.graphics.print("P = Mark Anchor Position", 8, 106)
 
     local state_text = "State: " .. player.state
     if player.attack_cooldown > 0 then
@@ -111,7 +119,7 @@ function hud:draw_debug_panel(player, debug_mode)
     if player.dodge_active then
         state_text = state_text .. " [DODGING]"
     end
-    love.graphics.print(state_text, 10, 170)
+    love.graphics.print(state_text, 8, 120)
 end
 
 return hud
