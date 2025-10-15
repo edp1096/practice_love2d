@@ -176,7 +176,7 @@ end
 
 function enemy:stun(duration, is_perfect)
     self.stunned = true
-    self.stun_timer = duration or (is_perfect and 2.5 or 1.5)
+    self.stun_timer = duration or (is_perfect and 1.5 or 0.5)
     self.state = "stunned"
     self.hit_flash_timer = 0.3
 end
