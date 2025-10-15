@@ -51,6 +51,9 @@ function world:new(map_path)
     instance.enemies = {}
     instance:loadEnemies()
 
+    instance.npcs = {}
+    instance:loadNPCs()
+
     return instance
 end
 
@@ -169,6 +172,35 @@ function world:loadEnemies()
     end
 end
 
+function world:loadNPCs()
+    if self.map.layers["NPCs"] then
+        local npc_module = require "entities.npc.init"
+
+        for _, obj in ipairs(self.map.layers["NPCs"].objects) do
+            local npc_type = obj.properties.type or "villager"
+            local npc_id = obj.properties.id or obj.name or ("npc_" .. math.random(10000))
+
+            local new_npc = npc_module:new(obj.x, obj.y, npc_type, npc_id)
+            new_npc.world = self
+
+            local bounds = new_npc:getColliderBounds()
+            new_npc.collider = self.physicsWorld:newBSGRectangleCollider(
+                bounds.x, bounds.y,
+                bounds.width, bounds.height,
+                8
+            )
+            new_npc.collider:setFixedRotation(true)
+            new_npc.collider:setType("static")         -- NPCs don't move
+            new_npc.collider:setCollisionClass("Wall") -- Act as obstacles
+            new_npc.collider:setObject(new_npc)
+
+            table.insert(self.npcs, new_npc)
+        end
+
+        print("Loaded " .. #self.npcs .. " NPCs")
+    end
+end
+
 function world:checkLineOfSight(x1, y1, x2, y2)
     local items = self.physicsWorld:queryLine(x1, y1, x2, y2)
 
@@ -257,9 +289,21 @@ function world:updateEnemies(dt, player_x, player_y)
     end
 end
 
+function world:updateNPCs(dt, player_x, player_y)
+    for _, npc in ipairs(self.npcs) do
+        npc:update(dt, player_x, player_y)
+    end
+end
+
 function world:drawEnemies()
     for _, enemy in ipairs(self.enemies) do
         enemy:draw()
+    end
+end
+
+function world:drawNPCs()
+    for _, npc in ipairs(self.npcs) do
+        npc:draw()
     end
 end
 
@@ -282,6 +326,20 @@ function world:drawDebug()
             love.graphics.rectangle("line", transition.x, transition.y, transition.width, transition.height)
         end
     end
+
+    -- Draw NPC debug info
+    for _, npc in ipairs(self.npcs) do
+        npc:drawDebug()
+    end
+end
+
+function world:getInteractableNPC(player_x, player_y)
+    for _, npc in ipairs(self.npcs) do
+        if npc.can_interact then
+            return npc
+        end
+    end
+    return nil
 end
 
 return world

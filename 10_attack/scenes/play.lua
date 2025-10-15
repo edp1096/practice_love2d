@@ -59,6 +59,7 @@ function play:update(dt)
 
     self.world:moveEntity(self.player, vx, vy, scaled_dt)
     self.world:updateEnemies(scaled_dt, self.player.x, self.player.y)
+    self.world:updateNPCs(scaled_dt, self.player.x, self.player.y)
 
     -- Check enemy attacks
     local shake_callback = function(intensity, duration)
@@ -147,6 +148,7 @@ function play:draw()
 
     self.world:drawLayer("Ground")
     self.world:drawEnemies()
+    self.world:drawNPCs()
     self.player:drawAll()
 
     if debug.debug_mode then
@@ -243,6 +245,13 @@ function play:keypressed(key)
     elseif key == "space" then
         if self.player:startDodge() then
             print("Dodge!")
+        end
+    elseif key == "f" then
+        -- NPC interaction
+        local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
+        if npc then
+            npc:interact()
+            -- TODO: Open dialogue window here
         end
     elseif key == "f1" and debug.debug_mode then
         -- Test effects at mouse position
