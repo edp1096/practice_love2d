@@ -1,8 +1,9 @@
 -- systems/world.lua
--- Manages map loading, rendering, and collision system integration
+-- Manages map loading, rendering, and collision system integration with effects
 
 local sti = require "vendor.sti"
 local windfield = require "vendor.windfield"
+local effects = require "systems.effects"
 
 local world = {}
 world.__index = world
@@ -40,7 +41,7 @@ function world:new(map_path)
     end
 
     -- Load portal/transition areas
-    instance:loadTransitions() -- Changed from self to instance
+    instance:loadTransitions()
 
     instance.enemies = {}
     instance:loadEnemies()
@@ -51,6 +52,7 @@ end
 function world:update(dt)
     self.physicsWorld:update(dt) -- Update physics simulation
     self.map:update(dt)          -- Update map animations if any
+    effects:update(dt)           -- Update effects
 end
 
 function world:destroy()
@@ -128,7 +130,7 @@ end
 
 function world:loadEnemies()
     if self.map.layers["Enemies"] then
-        local enemy_module = require "entities.enemy"
+        local enemy_module = require "entities.enemy.init"
 
         for _, obj in ipairs(self.map.layers["Enemies"].objects) do
             local new_enemy = enemy_module:new(obj.x, obj.y, obj.properties.type or "green_slime")
@@ -231,6 +233,18 @@ function world:applyWeaponHit(hit_result)
 
     -- Apply damage
     enemy:takeDamage(damage)
+
+    -- Spawn hit effect at enemy position
+    local hit_x = enemy.x + enemy.collider_offset_x
+    local hit_y = enemy.y + enemy.collider_offset_y
+
+    -- Use weapon angle if available for directional effect
+    local weapon_angle = nil
+    if self.player and self.player.weapon then
+        weapon_angle = self.player.weapon.angle
+    end
+
+    effects:spawnHitEffect(hit_x, hit_y, "enemy", weapon_angle)
 
     -- Apply knockback (optional)
     -- Calculate knockback direction from weapon to enemy

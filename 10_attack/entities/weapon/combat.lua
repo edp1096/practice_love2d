@@ -1,5 +1,7 @@
 -- entities/weapon/combat.lua
--- Combat logic: attack, hit detection, damage
+-- Combat logic: attack, hit detection, damage with effects integration
+
+local effects = require "systems.effects"
 
 local combat = {}
 
@@ -36,6 +38,11 @@ function combat.startAttack(weapon)
     else
         weapon.slash_flip_y = 1
     end
+
+    -- Spawn weapon trail effect
+    local trail_x = weapon.owner_x + dir_x * 40
+    local trail_y = weapon.owner_y + dir_y * 40
+    effects:spawnWeaponTrail(trail_x, trail_y, weapon.angle)
 
     return true
 end

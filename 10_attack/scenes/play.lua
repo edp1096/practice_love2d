@@ -1,5 +1,5 @@
 -- scenes/play.lua
--- Main gameplay scene with refactored modules
+-- Main gameplay scene with refactored modules and effects
 
 local play = {}
 
@@ -11,6 +11,7 @@ local debug = require "systems.debug"
 local screen = require "lib.screen"
 local camera_sys = require "systems.camera"
 local hud = require "systems.hud"
+local effects = require "systems.effects"
 
 function play:enter(previous, mapPath, spawn_x, spawn_y)
     mapPath = mapPath or "assets/maps/level1/area1.lua"
@@ -41,6 +42,9 @@ function play:update(dt)
     -- Camera system update
     camera_sys:update(dt)
     local scaled_dt = camera_sys:get_scaled_dt(dt)
+
+    -- Effects update
+    effects:update(dt)
 
     -- Fade in
     if self.is_fading and self.fade_alpha > 0 then
@@ -151,6 +155,9 @@ function play:draw()
 
     self.world:drawLayer("Trees")
 
+    -- Draw effects (between enemies/player and foreground)
+    effects:draw()
+
     if debug.debug_mode then
         self.world:drawDebug()
     end
@@ -203,6 +210,15 @@ function play:draw()
     -- Debug panel
     if debug.show_fps then
         hud:draw_debug_panel(self.player, debug.debug_mode)
+
+        -- Show effects count
+        if debug.debug_mode then
+            love.graphics.setColor(1, 1, 0, 1)
+            love.graphics.print("Active Effects: " .. effects:getCount(), 10, 190)
+            love.graphics.print("F1: Test Effects at Mouse", 10, 210)
+            love.graphics.print("F2: Toggle Effects Debug", 10, 230)
+            love.graphics.setColor(1, 1, 1, 1)
+        end
     end
 
     -- Fade overlay
@@ -224,6 +240,14 @@ function play:keypressed(key)
         if self.player:startDodge() then
             print("Dodge!")
         end
+    elseif key == "f1" and debug.debug_mode then
+        -- Test effects at mouse position
+        local mouse_x, mouse_y = love.mouse.getPosition()
+        local world_x, world_y = self.cam:worldCoords(mouse_x, mouse_y)
+        effects:test(world_x, world_y)
+    elseif key == "f2" and debug.debug_mode then
+        -- Toggle effects debug
+        effects:toggleDebug()
     elseif key == "p" and debug.debug_mode then
         local mouse_x, mouse_y = love.mouse.getPosition()
         local world_x, world_y = self.cam:worldCoords(mouse_x, mouse_y)

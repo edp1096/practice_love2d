@@ -1,7 +1,8 @@
 -- entities/player/combat.lua
--- Combat system: attack, parry, dodge, damage
+-- Combat system: attack, parry, dodge, damage with effects integration
 
 local weapon_class = require "entities.weapon"
+local effects = require "systems.effects"
 
 local combat = {}
 
@@ -31,8 +32,8 @@ function combat.initialize(player)
 
     -- Parry
     player.parry_active = false
-    player.parry_window = 0.3
-    player.parry_perfect_window = 0.15
+    player.parry_window = 0.4         -- Increased from 0.3
+    player.parry_perfect_window = 0.2 -- Increased from 0.15
     player.parry_timer = 0
     player.parry_cooldown = 0
     player.parry_cooldown_duration = 1.0
@@ -236,7 +237,7 @@ end
 
 function combat.checkParry(player, incoming_damage)
     if not player.parry_active then
-        return false, 0
+        return false, false
     end
 
     local time_elapsed = player.parry_window - player.parry_timer
@@ -248,6 +249,9 @@ function combat.checkParry(player, incoming_damage)
     player.parry_success_timer = 0.5
     player.parry_cooldown = 0
     player.state = "idle"
+
+    -- Spawn parry effect at player position
+    effects:spawnParryEffect(player.x, player.y, player.facing_angle, is_perfect)
 
     return true, is_perfect
 end
@@ -271,6 +275,10 @@ function combat.takeDamage(player, damage, shake_callback)
     end
 
     player.health = math.max(0, player.health - damage)
+
+    -- Spawn hit effect at player position
+    effects:spawnHitEffect(player.x, player.y, "player", nil)
+
     player.hit_flash_timer = 0.2
     player.invincible_timer = player.invincible_duration
 
