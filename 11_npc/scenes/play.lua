@@ -156,55 +156,48 @@ function play:draw()
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.clear(0, 0, 0, 1)
 
+    -- World rendering
     self.cam:attach()
-
     self.world:drawLayer("Ground")
     self.world:drawEnemies()
     self.world:drawNPCs()
     self.player:drawAll()
-
     if debug.debug_mode then
         self.player:drawDebug()
     end
-
     self.world:drawLayer("Trees")
-
-    -- Draw effects (between enemies/player and foreground)
     effects:draw()
-
     if debug.debug_mode then
         self.world:drawDebug()
     end
-
     self.cam:detach()
 
-    -- HUD
+    -- UI rendering (virtual resolution)
+    screen:Attach()
+
+    local vw, vh = screen:GetVirtualDimensions()
+
     hud:draw_health_bar(12, 12, 210, 20, self.player.health, self.player.max_health)
 
-    -- Use small font for status text
     love.graphics.setFont(hud.small_font)
-
     if self.player:isInvincible() then
         love.graphics.setColor(1, 1, 0, 1)
         love.graphics.print("INVINCIBLE", 17, 35)
     end
 
-    -- Dodge cooldown
-    local screen_h = love.graphics.getHeight()
     if self.player.dodge_active then
-        hud:draw_cooldown(12, screen_h - 52, 210, 0, 1, "Dodge", "")
+        hud:draw_cooldown(12, vh - 52, 210, 0, 1, "Dodge", "")
         love.graphics.setColor(0.3, 1, 0.3, 1)
-        love.graphics.print("DODGING !", 17, screen_h - 29)
+        love.graphics.print("DODGING !", 17, vh - 29)
     else
-        hud:draw_cooldown(12, screen_h - 52, 210, self.player.dodge_cooldown, self.player.dodge_cooldown_duration, "Dodge", "SPACE")
+        hud:draw_cooldown(12, vh - 52, 210, self.player.dodge_cooldown, self.player.dodge_cooldown_duration, "Dodge", "SPACE")
     end
 
     if self.player:isDodgeInvincible() then
         love.graphics.setColor(0.3, 1, 0.3, 1)
-        love.graphics.print("I-FRAMES!", 17, screen_h - 29)
+        love.graphics.print("I-FRAMES!", 17, vh - 29)
     end
 
-    -- Parry cooldown
     if self.player.parry_cooldown > 0 then
         love.graphics.setColor(0.7, 0.7, 0.7, 1)
         love.graphics.print(string.format("Parry CD: %.1f", self.player.parry_cooldown), 17, 35)
@@ -218,17 +211,11 @@ function play:draw()
 
     love.graphics.setColor(1, 1, 1, 1)
 
-    -- Parry success text
-    hud:draw_parry_success(self.player, love.graphics.getWidth(), love.graphics.getHeight())
+    hud:draw_parry_success(self.player, vw, vh)
+    hud:draw_slow_motion_vignette(camera_sys.time_scale, vw, vh)
 
-    -- Slow motion vignette
-    hud:draw_slow_motion_vignette(camera_sys.time_scale, love.graphics.getWidth(), love.graphics.getHeight())
-
-    -- Debug panel
     if debug.show_fps then
         hud:draw_debug_panel(self.player, debug.debug_mode)
-
-        -- Show effects count with small font
         if debug.debug_mode then
             love.graphics.setFont(hud.tiny_font)
             love.graphics.setColor(1, 1, 0, 1)
@@ -239,14 +226,15 @@ function play:draw()
         end
     end
 
+    dialogue:draw()
+
+    screen:Detach()
+
     -- Fade overlay
     if self.fade_alpha > 0 then
         love.graphics.setColor(0, 0, 0, self.fade_alpha)
         love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
     end
-
-    -- Dialogue (draw on top of everything)
-    dialogue:draw()
 end
 
 function play:resize(w, h)
