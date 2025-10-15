@@ -292,6 +292,14 @@ function play:keypressed(key)
 end
 
 function play:mousepressed(x, y, button)
+    -- Dialogue controls (priority when dialogue is open)
+    if dialogue:isOpen() then
+        if button == 1 then
+            dialogue:onAction()
+        end
+        return
+    end
+
     if button == 1 then
         self.player:attack()
     elseif button == 2 then

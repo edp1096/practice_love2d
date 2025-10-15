@@ -8,7 +8,7 @@ local screen = require "lib.screen"
 
 function pause:enter(previous, ...)
     self.previous = previous
-    self.options = { "Resume", "Restart", "Quit to Menu" }
+    self.options = { "Resume", "Restart", "Settings", "Quit to Menu" }
     self.selected = 1
 
     -- Get virtual dimensions (960x540 for 16:9)
@@ -21,10 +21,10 @@ function pause:enter(previous, ...)
     self.optionFont = love.graphics.newFont(24)
     self.hintFont = love.graphics.newFont(14)
 
-    -- Layout positions based on virtual resolution
+    -- Layout positions based on virtual resolution (adjusted for 4 options)
     self.layout = {
         title_y = vh * 0.185,        -- Title position (18.5% from top)
-        options_start_y = vh * 0.37, -- Options start (37% from top)
+        options_start_y = vh * 0.32, -- Options start (32% from top, adjusted for 4 items)
         option_spacing = 50,
         hint_y = vh - 30             -- 30 pixels from bottom
     }
@@ -122,6 +122,13 @@ function pause:resize(w, h)
     end
 end
 
+function pause:resume()
+    -- CRITICAL: Restore scene_control.previous to game scene
+    -- When returning from settings, scene_control.previous is nil
+    -- but pause.previous still holds the game scene
+    scene_control.previous = self.previous
+end
+
 function pause:keypressed(key)
     if key == "up" or key == "w" then
         self.selected = self.selected - 1
@@ -139,7 +146,10 @@ function pause:keypressed(key)
         elseif self.selected == 2 then -- Restart
             local play = require "scenes.play"
             scene_control.switch(play)
-        elseif self.selected == 3 then -- Quit to menu
+        elseif self.selected == 3 then -- Settings
+            local settings = require "scenes.settings"
+            scene_control.push(settings)
+        elseif self.selected == 4 then -- Quit to menu
             local menu = require "scenes.menu"
             scene_control.switch(menu)
         end
@@ -151,7 +161,7 @@ end
 function pause:mousepressed(x, y, button) end
 
 function pause:mousereleased(x, y, button)
-    if button == 1 then     -- Left mouse button
+    if button == 1 then -- Left mouse button
         -- Check if any option was clicked
         if self.mouse_over > 0 then
             self.selected = self.mouse_over
@@ -160,11 +170,12 @@ function pause:mousereleased(x, y, button)
             if self.selected == 1 then     -- Resume
                 scene_control.pop()
             elseif self.selected == 2 then -- Restart
-                --     local play = require "scenes.play"
-                --     scene_control.switch(play)
                 local play = require "scenes.play"
                 scene_control.switch(play, "assets/maps/level1/area1.lua", 400, 250)
-            elseif self.selected == 3 then -- Quit to menu
+            elseif self.selected == 3 then -- Settings
+                local settings = require "scenes.settings"
+                scene_control.push(settings)
+            elseif self.selected == 4 then -- Quit to menu
                 local menu = require "scenes.menu"
                 scene_control.switch(menu)
             end

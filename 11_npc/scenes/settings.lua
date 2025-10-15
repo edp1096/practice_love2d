@@ -120,7 +120,21 @@ function settings:update(dt)
 end
 
 function settings:draw()
-    love.graphics.clear(0.1, 0.1, 0.15, 1)
+    -- Draw previous scene in background if it exists
+    if self.previous and self.previous.draw then
+        self.previous:draw()
+    else
+        love.graphics.clear(0.1, 0.1, 0.15, 1)
+    end
+
+    -- Draw semi-transparent overlay
+    if self.previous then
+        screen:Attach()
+        love.graphics.setColor(0, 0, 0, 0.7)
+        love.graphics.rectangle("fill", 0, 0, self.virtual_width, self.virtual_height)
+        screen:Detach()
+    end
+
     love.graphics.setColor(1, 1, 1, 1)
 
     screen:Attach()
@@ -214,6 +228,8 @@ function settings:changeOption(direction)
                 display = self.current_monitor_index
             })
             screen:CalculateScale()
+            -- CRITICAL: Call resize chain like window resize does
+            self:resize(res.w, res.h)
         end
         utils:SaveConfig(GameConfig)
     elseif option.name == "Fullscreen" then
@@ -225,6 +241,8 @@ function settings:changeOption(direction)
                 display = self.current_monitor_index
             })
             screen:CalculateScale()
+            -- CRITICAL: Call resize chain
+            self:resize(GameConfig.width, GameConfig.height)
         end
         utils:SaveConfig(GameConfig)
     elseif option.name == "Monitor" then
@@ -260,6 +278,8 @@ function settings:changeOption(direction)
 
         -- Recalculate screen after monitor change
         screen:CalculateScale()
+        -- CRITICAL: Call resize chain
+        self:resize(GameConfig.width, GameConfig.height)
         utils:SaveConfig(GameConfig)
     end
 end
@@ -281,14 +301,12 @@ function settings:keypressed(key)
         self:changeOption(1)
     elseif key == "return" or key == "space" then
         if self.options[self.selected].name == "Back" then
-            local menu = require "scenes.menu"
-            scene_control.switch(menu)
+            scene_control.pop()
         else
             self:changeOption(1)
         end
     elseif key == "escape" then
-        local menu = require "scenes.menu"
-        scene_control.switch(menu)
+        scene_control.pop()
     end
 end
 
@@ -301,8 +319,7 @@ function settings:mousereleased(x, y, button)
             self.selected = self.mouse_over
 
             if self.options[self.selected].name == "Back" then
-                local menu = require "scenes.menu"
-                scene_control.switch(menu)
+                scene_control.pop()
             else
                 self:changeOption(1)
             end
@@ -318,6 +335,11 @@ end
 
 function settings:resize(w, h)
     screen:Resize(w, h)
+
+    -- CRITICAL: Propagate resize to previous scene (pause → play)
+    if self.previous and self.previous.resize then
+        self.previous:resize(w, h)
+    end
 end
 
 return settings

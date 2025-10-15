@@ -69,6 +69,7 @@ villager.NPC_TYPES = {
         sprite_sheet = "assets/images/player-sheet.png",
         dialogue = {
             "Hello player!",
+            "Good bye player!",
         },
         interaction_range = 80,
 
