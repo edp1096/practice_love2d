@@ -7,22 +7,18 @@ local effects = require "systems.effects"
 local combat = {}
 
 function combat.initialize(player)
-    -- Weapon system
     player.weapon = weapon_class:new("sword")
     player.state = "idle"
     player.attack_cooldown = 0
     player.attack_cooldown_max = 0.5
 
-    -- Weapon sheathing
     player.weapon_drawn = false
     player.last_action_time = 0
     player.weapon_sheath_delay = 5.0
 
-    -- Health
     player.max_health = 100
     player.health = player.max_health
 
-    -- Hit effects
     player.hit_flash_timer = 0
     player.hit_shake_x = 0
     player.hit_shake_y = 0
@@ -30,10 +26,9 @@ function combat.initialize(player)
     player.invincible_timer = 0
     player.invincible_duration = 1.0
 
-    -- Parry
     player.parry_active = false
-    player.parry_window = 0.4         -- Increased from 0.3
-    player.parry_perfect_window = 0.2 -- Increased from 0.15
+    player.parry_window = 0.4
+    player.parry_perfect_window = 0.2
     player.parry_timer = 0
     player.parry_cooldown = 0
     player.parry_cooldown_duration = 1.0
@@ -41,7 +36,6 @@ function combat.initialize(player)
     player.parry_success_timer = 0
     player.parry_perfect = false
 
-    -- Dodge
     player.dodge_active = false
     player.dodge_duration = 0.3
     player.dodge_timer = 0
@@ -56,40 +50,35 @@ function combat.initialize(player)
 end
 
 function combat.updateTimers(player, dt)
-    -- Attack cooldown
     if player.attack_cooldown > 0 then
         player.attack_cooldown = player.attack_cooldown - dt
     end
 
-    -- Parry cooldown
     if player.parry_cooldown > 0 then
         player.parry_cooldown = player.parry_cooldown - dt
     end
 
-    -- Dodge cooldown
     if player.dodge_cooldown > 0 then
         player.dodge_cooldown = player.dodge_cooldown - dt
     end
 
-    -- Dodge state
     if player.dodge_active then
         player.dodge_timer = player.dodge_timer - dt
         if player.dodge_timer <= 0 then
             player.dodge_active = false
             player.state = "idle"
             player.dodge_speed = 0
+            -- Change back to Player collision class
             if player.collider then
-                player.collider:setSensor(false)
+                player.collider:setCollisionClass("Player")
             end
         end
     end
 
-    -- Dodge invincibility
     if player.dodge_invincible_timer > 0 then
         player.dodge_invincible_timer = player.dodge_invincible_timer - dt
     end
 
-    -- Parry timer
     if player.parry_active then
         player.parry_timer = player.parry_timer - dt
         if player.parry_timer <= 0 then
@@ -99,7 +88,6 @@ function combat.updateTimers(player, dt)
         end
     end
 
-    -- Parry success visual
     if player.parry_success_timer > 0 then
         player.parry_success_timer = player.parry_success_timer - dt
         if player.parry_success_timer <= 0 then
@@ -108,7 +96,6 @@ function combat.updateTimers(player, dt)
         end
     end
 
-    -- Hit effects
     if player.hit_flash_timer > 0 then
         player.hit_flash_timer = math.max(0, player.hit_flash_timer - dt)
     end
@@ -117,7 +104,6 @@ function combat.updateTimers(player, dt)
         player.invincible_timer = math.max(0, player.invincible_timer - dt)
     end
 
-    -- Hit shake
     if player.hit_flash_timer > 0 then
         player.hit_shake_x = (math.random() - 0.5) * 2 * player.hit_shake_intensity
         player.hit_shake_y = (math.random() - 0.5) * 2 * player.hit_shake_intensity
@@ -126,7 +112,6 @@ function combat.updateTimers(player, dt)
         player.hit_shake_y = 0
     end
 
-    -- Auto-sheath weapon
     if player.weapon_drawn and player.state ~= "attacking" and not player.parry_active then
         player.last_action_time = player.last_action_time + dt
         if player.last_action_time >= player.weapon_sheath_delay then
@@ -226,8 +211,9 @@ function combat.startDodge(player)
     player.dodge_invincible_timer = player.dodge_invincible_duration
     player.state = "dodging"
 
+    -- Change collision class to PlayerDodging (ignores Enemy, collides with Wall)
     if player.collider then
-        player.collider:setSensor(true)
+        player.collider:setCollisionClass("PlayerDodging")
     end
 
     player.last_action_time = 0
@@ -250,7 +236,6 @@ function combat.checkParry(player, incoming_damage)
     player.parry_cooldown = 0
     player.state = "idle"
 
-    -- Spawn parry effect at player position
     effects:spawnParryEffect(player.x, player.y, player.facing_angle, is_perfect)
 
     return true, is_perfect
@@ -276,7 +261,6 @@ function combat.takeDamage(player, damage, shake_callback)
 
     player.health = math.max(0, player.health - damage)
 
-    -- Spawn hit effect at player position
     effects:spawnHitEffect(player.x, player.y, "player", nil)
 
     player.hit_flash_timer = 0.2
