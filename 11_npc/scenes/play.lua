@@ -1,5 +1,6 @@
 -- scenes/play.lua
 -- Main gameplay scene with unified debug system
+-- FIXED: Unified dodge message display (no overlapping text)
 
 local play = {}
 
@@ -166,22 +167,19 @@ function play:draw()
     hud:draw_health_bar(pb.x + 12, pb.y + 12, 210, 20, self.player.health, self.player.max_health)
 
     love.graphics.setFont(hud.small_font)
-    if self.player:isInvincible() then
+    -- Unified invincibility display (hit invincibility OR dodge invincibility)
+    if self.player:isInvincible() or self.player:isDodgeInvincible() then
         love.graphics.setColor(1, 1, 0, 1)
         love.graphics.print("INVINCIBLE", 17, 35)
     end
 
+    -- Simple dodge status display (no invincibility info here)
     if self.player.dodge_active then
         hud:draw_cooldown(pb.x + 12, pb.h - 52, 210, 0, 1, "Dodge", "")
         love.graphics.setColor(0.3, 1, 0.3, 1)
-        love.graphics.print("DODGING !", 17, vh - 29)
+        love.graphics.print("DODGING", 17, vh - 29)
     else
         hud:draw_cooldown(pb.x + 12, pb.h - 52, 210, self.player.dodge_cooldown, self.player.dodge_cooldown_duration, "Dodge", "SPACE")
-    end
-
-    if self.player:isDodgeInvincible() then
-        love.graphics.setColor(0.3, 1, 0.3, 1)
-        love.graphics.print("I-FRAMES!", 17, vh - 29)
     end
 
     if self.player.parry_cooldown > 0 then
