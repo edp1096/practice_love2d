@@ -140,7 +140,7 @@ function saveslot:draw()
 
     love.graphics.setFont(self.hintFont)
     love.graphics.setColor(0.5, 0.5, 0.5, 1)
-    love.graphics.printf("Arrow Keys / WASD: Navigate | Enter: Save | ESC: Cancel | Delete: Delete Save",
+    love.graphics.printf("Arrow Keys / WASD: Navigate | Enter: Save | ESC: Cancel",
         0, self.layout.hint_y - 20, self.virtual_width, "center")
     love.graphics.printf("Mouse: Hover and Click | F1/F2/F3: Quick Save to Slot",
         0, self.layout.hint_y, self.virtual_width, "center")
@@ -173,18 +173,6 @@ function saveslot:keypressed(key)
         self:selectSlot(2)
     elseif key == "f3" then
         self:selectSlot(3)
-    elseif key == "delete" then
-        local slot = self.slots[self.selected]
-        if slot and slot.exists and slot.slot ~= "cancel" then
-            save_sys:deleteSlot(slot.slot)
-            self.slots = save_sys:getAllSlotsInfo()
-            table.insert(self.slots, {
-                exists = false,
-                slot = "cancel",
-                display_name = "Cancel"
-            })
-            print("Deleted save slot " .. slot.slot)
-        end
     end
 end
 

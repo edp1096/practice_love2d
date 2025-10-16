@@ -121,7 +121,7 @@ function newgame:draw()
 
     love.graphics.setFont(self.hintFont)
     love.graphics.setColor(0.5, 0.5, 0.5, 1)
-    love.graphics.printf("Arrow Keys / WASD: Navigate | Enter: Start | ESC: Back | Delete: Delete Save",
+    love.graphics.printf("Arrow Keys / WASD: Navigate | Enter: Start | ESC: Back",
         0, self.layout.hint_y - 20, self.virtual_width, "center")
     love.graphics.printf("Mouse: Hover and Click",
         0, self.layout.hint_y, self.virtual_width, "center")
@@ -149,18 +149,6 @@ function newgame:keypressed(key)
     elseif key == "escape" then
         local menu = require "scenes.menu"
         scene_control.switch(menu)
-    elseif key == "delete" then
-        local slot = self.slots[self.selected]
-        if slot and slot.exists and slot.slot ~= "back" then
-            save_sys:deleteSlot(slot.slot)
-            self.slots = save_sys:getAllSlotsInfo()
-            table.insert(self.slots, {
-                exists = false,
-                slot = "back",
-                display_name = "Back to Menu"
-            })
-            print("Deleted save slot " .. slot.slot)
-        end
     end
 end
 
