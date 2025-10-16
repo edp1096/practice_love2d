@@ -1,5 +1,6 @@
 -- scenes/gameover.lua
 -- Game Over scene displayed when player dies
+-- FIXED: Added safety wrapper when drawing previous scene to prevent crashes
 
 local gameover = {}
 
@@ -81,8 +82,16 @@ end
 
 function gameover:draw()
     -- Draw previous scene (gameplay) in background (dimmed)
+    -- CRITICAL FIX: Wrap in pcall to prevent crashes if world is destroyed
     if self.previous and self.previous.draw then
-        self.previous:draw()
+        local success, err = pcall(function()
+            self.previous:draw()
+        end)
+
+        if not success then
+            -- If drawing previous scene fails, just draw black background
+            love.graphics.clear(0, 0, 0, 1)
+        end
     end
 
     -- Start virtual coordinate system

@@ -8,7 +8,7 @@ hud.tiny_font = love.graphics.newFont(10)
 
 function hud:draw_health_bar(x, y, w, h, hp, max_hp)
     love.graphics.setColor(0, 0, 0, 0.7)
-    love.graphics.rectangle("fill", x - 2, y - 2, w + 4, h + 14)
+    love.graphics.rectangle("fill", x - 2, y - 2, w + 4, h + 22)
 
     love.graphics.setColor(0.3, 0, 0, 1)
     love.graphics.rectangle("fill", x, y, w, h)

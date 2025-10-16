@@ -1,5 +1,6 @@
 -- scenes/settings.lua
 -- Settings menu scene
+-- FIXED: Fullscreen toggle now properly calls resize chain for camera zoom update
 
 local settings = {}
 
@@ -233,17 +234,29 @@ function settings:changeOption(direction)
         end
         utils:SaveConfig(GameConfig)
     elseif option.name == "Fullscreen" then
+        -- CRITICAL FIX: Always call resize chain for both fullscreen and windowed
         screen:ToggleFullScreen()
         GameConfig.fullscreen = screen.is_fullscreen
-        if not GameConfig.fullscreen then
-            love.window.updateMode(GameConfig.width, GameConfig.height, {
+
+        -- Get current dimensions (different for fullscreen vs windowed)
+        local current_w, current_h
+        if GameConfig.fullscreen then
+            -- Fullscreen: use desktop dimensions
+            current_w, current_h = love.window.getDesktopDimensions(self.current_monitor_index)
+        else
+            -- Windowed: use config dimensions
+            current_w, current_h = GameConfig.width, GameConfig.height
+            love.window.updateMode(current_w, current_h, {
                 resizable = GameConfig.resizable,
                 display = self.current_monitor_index
             })
-            screen:CalculateScale()
-            -- CRITICAL: Call resize chain
-            self:resize(GameConfig.width, GameConfig.height)
         end
+
+        screen:CalculateScale()
+        -- CRITICAL: Always call resize chain (both fullscreen and windowed)
+        -- This propagates to pause → play → camera:zoomTo()
+        self:resize(current_w, current_h)
+
         utils:SaveConfig(GameConfig)
     elseif option.name == "Monitor" then
         self.current_monitor_index = self.current_monitor_index + direction

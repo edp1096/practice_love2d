@@ -1,5 +1,6 @@
 -- systems/world.lua
 -- Manages map loading, rendering, and collision system integration with effects
+-- FIXED: Added safety checks in drawDebug to prevent crashes when world is destroyed
 
 local sti = require "vendor.sti"
 local windfield = require "vendor.windfield"
@@ -313,8 +314,14 @@ function world:drawLayer(layer_name)
 end
 
 function world:drawDebug()
-    self.physicsWorld:draw()
+    -- This happens when gameover scene tries to draw previous play scene
 
+    -- Check if physicsWorld exists
+    if not self.physicsWorld then return end
+    local success, err = pcall(function() self.physicsWorld:draw() end)
+    if not success then return end
+
+    -- Draw portal/transition zones
     if self.transitions then
         love.graphics.setColor(0, 1, 0, 0.3)
         for _, transition in ipairs(self.transitions) do
@@ -327,10 +334,16 @@ function world:drawDebug()
         end
     end
 
-    -- Draw NPC debug info
-    for _, npc in ipairs(self.npcs) do
-        npc:drawDebug()
+    -- Draw NPC debug info (with safety check)
+    if self.npcs then
+        for _, npc in ipairs(self.npcs) do
+            if npc and npc.drawDebug then
+                npc:drawDebug()
+            end
+        end
     end
+
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 function world:getInteractableNPC(player_x, player_y)
