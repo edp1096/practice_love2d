@@ -86,7 +86,7 @@ function hud:draw_slow_motion_vignette(time_scale, screen_w, screen_h)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function hud:draw_debug_panel(player)
+function hud:draw_debug_panel(player, current_save_slot)
     -- Use unified debug system
     local debug = require "systems.debug"
     if not debug.enabled then return end
@@ -106,12 +106,23 @@ function hud:draw_debug_panel(player)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.print("FPS: " .. love.timer.getFPS(), 8, 8)
     love.graphics.print(string.format("Player: %.1f, %.1f", player.x, player.y), 8, 22)
-    love.graphics.print("Press ESC to pause", 8, 36)
-    love.graphics.print("Left Click to Attack", 8, 50)
-    love.graphics.print("Right Click to Parry", 8, 64)
-    love.graphics.print("Space to Dodge/Roll", 8, 78)
-    love.graphics.print("H = Hand Marking Mode", 8, 92)
-    love.graphics.print("P = Mark Anchor Position", 8, 106)
+    
+    if current_save_slot then
+        love.graphics.print("Current Slot: " .. current_save_slot, 8, 36)
+        love.graphics.print("Press ESC to pause", 8, 50)
+        love.graphics.print("Left Click to Attack", 8, 64)
+        love.graphics.print("Right Click to Parry", 8, 78)
+        love.graphics.print("Space to Dodge/Roll", 8, 92)
+        love.graphics.print("H = Hand Marking Mode", 8, 106)
+        love.graphics.print("P = Mark Anchor Position", 8, 120)
+    else
+        love.graphics.print("Press ESC to pause", 8, 36)
+        love.graphics.print("Left Click to Attack", 8, 50)
+        love.graphics.print("Right Click to Parry", 8, 64)
+        love.graphics.print("Space to Dodge/Roll", 8, 78)
+        love.graphics.print("H = Hand Marking Mode", 8, 92)
+        love.graphics.print("P = Mark Anchor Position", 8, 106)
+    end
 
     local state_text = "State: " .. player.state
     if player.attack_cooldown > 0 then
@@ -120,7 +131,8 @@ function hud:draw_debug_panel(player)
     if player.dodge_active then
         state_text = state_text .. " [DODGING]"
     end
-    love.graphics.print(state_text, 8, 120)
+    local state_y = current_save_slot and 134 or 120
+    love.graphics.print(state_text, 8, state_y)
 end
 
 return hud
