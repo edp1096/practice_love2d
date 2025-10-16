@@ -1,6 +1,5 @@
 -- scenes/play.lua
--- Main gameplay scene with unified debug system and save functionality
--- UPDATED: Added save point detection and notification
+-- Main gameplay scene with save functionality
 
 local play = {}
 
@@ -22,24 +21,21 @@ function play:enter(previous, mapPath, spawn_x, spawn_y, save_slot)
     mapPath = mapPath or "assets/maps/level1/area1.lua"
     spawn_x = spawn_x or 400
     spawn_y = spawn_y or 250
-    save_slot = save_slot or 1 -- Default to slot 1 if not specified
+    save_slot = save_slot or 1
 
+    self.current_map_path = mapPath
     self.cam = camera(0, 0, love.graphics.getWidth() / 960, 0, 0)
     self.world = world:new(mapPath)
     self.player = player:new("assets/images/player-sheet.png", spawn_x, spawn_y)
 
-    -- Set current save slot
     self.current_save_slot = save_slot
 
-    -- Check if this is loading from a save file
     local save_data = save_sys:loadGame(save_slot)
     if save_data and save_data.hp then
-        -- Load from existing save
         self.player.health = save_data.hp
         self.player.max_health = save_data.max_hp
         print("Loaded from save slot " .. save_slot)
     else
-        -- New game - player starts with default stats
         print("Starting new game in slot " .. save_slot)
     end
 
@@ -51,7 +47,6 @@ function play:enter(previous, mapPath, spawn_x, spawn_y, save_slot)
     self.fade_speed = 2.0
     self.is_fading = true
 
-    -- Save notification
     self.save_notification = {
         active = false,
         timer = 0,
@@ -74,7 +69,7 @@ function play:saveGame(slot)
     local save_data = {
         hp = self.player.health,
         max_hp = self.player.max_health,
-        map = "assets/maps/level1/area1.lua",
+        map = self.current_map_path,
         x = self.player.x,
         y = self.player.y
     }
@@ -98,7 +93,6 @@ function play:update(dt)
     effects:update(dt)
     dialogue:update(dt)
 
-    -- Update save notification
     if self.save_notification.active then
         self.save_notification.timer = self.save_notification.timer - dt
         if self.save_notification.timer <= 0 then
@@ -175,7 +169,6 @@ function play:update(dt)
         self.transition_cooldown = self.transition_cooldown - scaled_dt
     end
 
-    -- Check for death first
     if self.transition_cooldown <= 0 then
         local player_w, player_h = 32, 32
         local transition = self.world:checkTransition(
@@ -264,7 +257,6 @@ function play:draw()
     hud:draw_parry_success(self.player, vw, vh)
     hud:draw_slow_motion_vignette(camera_sys.time_scale, vw, vh)
 
-    -- Draw save notification
     if self.save_notification.active then
         local alpha = math.min(1, self.save_notification.timer / 0.5)
         local font = love.graphics.newFont(28)
@@ -273,11 +265,9 @@ function play:draw()
         local text = self.save_notification.text
         local text_width = font:getWidth(text)
 
-        -- Background
         love.graphics.setColor(0, 0, 0, 0.7 * alpha)
         love.graphics.rectangle("fill", vw / 2 - text_width / 2 - 20, 150, text_width + 40, 50)
 
-        -- Text
         love.graphics.setColor(0, 1, 0.5, alpha)
         love.graphics.print(text, vw / 2 - text_width / 2, 160)
 
@@ -319,7 +309,6 @@ function play:keypressed(key)
             print("Dodge!")
         end
     elseif key == "f" then
-        -- Check for NPC interaction
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
             local messages = npc:interact()
@@ -327,10 +316,8 @@ function play:keypressed(key)
             return
         end
 
-        -- Check for save point interaction
         local savepoint = self.world:getInteractableSavePoint()
         if savepoint then
-            -- Open save slot selection scene
             local saveslot = require "scenes.saveslot"
             scene_control.push(saveslot, function(slot)
                 self:saveGame(slot)
@@ -338,19 +325,15 @@ function play:keypressed(key)
             end)
         end
     elseif key == "f9" then
-        -- Manual save (for testing)
         self:saveGame()
         print("Manual save triggered (F9)")
     elseif key == "f1" then
-        -- Quick save to slot 1
         self:saveGame(1)
         print("Quick saved to slot 1 (F1)")
     elseif key == "f2" then
-        -- Quick save to slot 2
         self:saveGame(2)
         print("Quick saved to slot 2 (F2)")
     elseif key == "f3" then
-        -- Quick save to slot 3
         self:saveGame(3)
         print("Quick saved to slot 3 (F3)")
     else
@@ -384,6 +367,7 @@ function play:mousereleased(x, y, button) end
 function play:switchMap(new_map_path, spawn_x, spawn_y)
     if self.world then self.world:destroy() end
 
+    self.current_map_path = new_map_path
     self.world = world:new(new_map_path)
 
     self.player.x = spawn_x

@@ -1,5 +1,5 @@
 -- scenes/newgame.lua
--- New game slot selection scene
+-- New game slot selection scene with level/area display
 
 local newgame = {}
 
@@ -20,21 +20,18 @@ function newgame:enter(previous, ...)
     self.infoFont = love.graphics.newFont(16)
     self.hintFont = love.graphics.newFont(14)
 
-    -- Load save slot information
     self.slots = save_sys:getAllSlotsInfo()
 
-    -- Add "Back" option
     table.insert(self.slots, {
         exists = false,
         slot = "back",
         display_name = "Back to Menu"
     })
 
-    -- Layout
     self.layout = {
         title_y = vh * 0.12,
         slots_start_y = vh * 0.25,
-        slot_spacing = 90,
+        slot_spacing = 100,
         hint_y = vh - 40
     }
 
@@ -48,7 +45,7 @@ function newgame:update(dt)
 
     for i, slot in ipairs(self.slots) do
         local y = self.layout.slots_start_y + (i - 1) * self.layout.slot_spacing
-        local slot_height = 80
+        local slot_height = 90
         local padding = 10
 
         if vmy >= y - padding and vmy <= y + slot_height + padding then
@@ -65,45 +62,39 @@ function newgame:draw()
 
     love.graphics.setColor(1, 1, 1, 1)
 
-    -- Title
     love.graphics.setFont(self.titleFont)
     love.graphics.printf("Select Save Slot", 0, self.layout.title_y, self.virtual_width, "center")
 
-    -- Draw save slots
     for i, slot in ipairs(self.slots) do
         local y = self.layout.slots_start_y + (i - 1) * self.layout.slot_spacing
         local is_selected = (i == self.selected or i == self.mouse_over)
 
-        -- Slot background
         if is_selected then
             love.graphics.setColor(0.3, 0.3, 0.4, 0.8)
         else
             love.graphics.setColor(0.2, 0.2, 0.25, 0.6)
         end
-        love.graphics.rectangle("fill", self.virtual_width * 0.15, y - 5, self.virtual_width * 0.7, 80)
+        love.graphics.rectangle("fill", self.virtual_width * 0.15, y - 5, self.virtual_width * 0.7, 90)
 
-        -- Border
         if is_selected then
             love.graphics.setColor(1, 1, 0, 1)
         else
             love.graphics.setColor(0.5, 0.5, 0.5, 1)
         end
-        love.graphics.rectangle("line", self.virtual_width * 0.15, y - 5, self.virtual_width * 0.7, 80)
+        love.graphics.rectangle("line", self.virtual_width * 0.15, y - 5, self.virtual_width * 0.7, 90)
 
         if slot.slot == "back" then
-            -- Back button
             love.graphics.setFont(self.slotFont)
             if is_selected then
                 love.graphics.setColor(1, 1, 0, 1)
             else
                 love.graphics.setColor(0.8, 0.8, 0.8, 1)
             end
-            love.graphics.printf(slot.display_name, 0, y + 25, self.virtual_width, "center")
+            love.graphics.printf(slot.display_name, 0, y + 30, self.virtual_width, "center")
         elseif slot.exists then
-            -- Existing save (will be overwritten)
             love.graphics.setFont(self.slotFont)
             if is_selected then
-                love.graphics.setColor(1, 0.7, 0, 1) -- Orange warning
+                love.graphics.setColor(1, 0.7, 0, 1)
             else
                 love.graphics.setColor(1, 1, 1, 1)
             end
@@ -112,23 +103,25 @@ function newgame:draw()
             love.graphics.setFont(self.infoFont)
             love.graphics.setColor(0.8, 0.8, 0.8, 1)
             love.graphics.print("HP: " .. slot.hp .. "/" .. slot.max_hp, self.virtual_width * 0.2, y + 28)
-            love.graphics.print(slot.time_string, self.virtual_width * 0.2, y + 48)
+            love.graphics.print(slot.map_display or "Unknown", self.virtual_width * 0.2, y + 48)
+
+            love.graphics.setFont(self.hintFont)
+            love.graphics.setColor(0.6, 0.6, 0.6, 1)
+            love.graphics.print(slot.time_string, self.virtual_width * 0.2, y + 68)
         else
-            -- Empty slot
             love.graphics.setFont(self.slotFont)
             if is_selected then
-                love.graphics.setColor(0, 1, 0.5, 1) -- Green for new save
+                love.graphics.setColor(0, 1, 0.5, 1)
             else
                 love.graphics.setColor(0.7, 0.7, 0.7, 1)
             end
-            love.graphics.print("Slot " .. slot.slot .. " - New Game", self.virtual_width * 0.2, y + 25)
+            love.graphics.print("Slot " .. slot.slot .. " - New Game", self.virtual_width * 0.2, y + 30)
         end
     end
 
-    -- Controls hint
     love.graphics.setFont(self.hintFont)
     love.graphics.setColor(0.5, 0.5, 0.5, 1)
-    love.graphics.printf("Arrow Keys / WASD: Navigate | Enter: Start | ESC: Back",
+    love.graphics.printf("Arrow Keys / WASD: Navigate | Enter: Start | ESC: Back | Delete: Delete Save",
         0, self.layout.hint_y - 20, self.virtual_width, "center")
     love.graphics.printf("Mouse: Hover and Click",
         0, self.layout.hint_y, self.virtual_width, "center")
@@ -156,6 +149,18 @@ function newgame:keypressed(key)
     elseif key == "escape" then
         local menu = require "scenes.menu"
         scene_control.switch(menu)
+    elseif key == "delete" then
+        local slot = self.slots[self.selected]
+        if slot and slot.exists and slot.slot ~= "back" then
+            save_sys:deleteSlot(slot.slot)
+            self.slots = save_sys:getAllSlotsInfo()
+            table.insert(self.slots, {
+                exists = false,
+                slot = "back",
+                display_name = "Back to Menu"
+            })
+            print("Deleted save slot " .. slot.slot)
+        end
     end
 end
 
@@ -163,11 +168,9 @@ function newgame:selectSlot(slot_index)
     local slot = self.slots[slot_index]
 
     if slot.slot == "back" then
-        -- Back to menu
         local menu = require "scenes.menu"
         scene_control.switch(menu)
     else
-        -- Start new game with selected slot
         local play = require "scenes.play"
         scene_control.switch(play, "assets/maps/level1/area1.lua", 400, 250, slot.slot)
     end

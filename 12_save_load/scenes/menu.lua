@@ -1,16 +1,25 @@
 -- scenes/menu.lua
--- Main menu scene with unified debug system and Load Game option
--- UPDATED: Added Load Game option
+-- Main menu with Continue feature
 
 local menu = {}
 
 local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
 local debug = require "systems.debug"
+local save_sys = require "systems.save"
 
 function menu:enter(previous, ...)
     self.title = GameConfig.title
-    self.options = { "New Game", "Load Game", "Settings", "Quit" }
+
+    -- Check if save files exist and build menu options dynamically
+    local has_saves = save_sys:hasSaveFiles()
+
+    if has_saves then
+        self.options = { "Continue", "New Game", "Load Game", "Settings", "Quit" }
+    else
+        self.options = { "New Game", "Settings", "Quit" }
+    end
+
     self.selected = 1
 
     local vw, vh = screen:GetVirtualDimensions()
@@ -114,20 +123,32 @@ function menu:keypressed(key)
 end
 
 function menu:executeOption(option_index)
-    if option_index == 1 then
-        -- New Game (with slot selection)
+    local option_name = self.options[option_index]
+
+    if option_name == "Continue" then
+        -- Load most recent save
+        local recent_slot = save_sys:getMostRecentSlot()
+        if recent_slot then
+            local save_data = save_sys:loadGame(recent_slot)
+            if save_data then
+                local play = require "scenes.play"
+                scene_control.switch(play, save_data.map, save_data.x, save_data.y, recent_slot)
+            else
+                print("ERROR: Failed to load recent save")
+            end
+        else
+            print("ERROR: No recent save found")
+        end
+    elseif option_name == "New Game" then
         local newgame = require "scenes.newgame"
         scene_control.switch(newgame)
-    elseif option_index == 2 then
-        -- Load Game
-        local load = require "scenes.load"
+    elseif option_name == "Load Game" then
+        local load = require "systems.load"
         scene_control.switch(load)
-    elseif option_index == 3 then
-        -- Settings
+    elseif option_name == "Settings" then
         local settings = require "scenes.settings"
         scene_control.switch(settings)
-    elseif option_index == 4 then
-        -- Quit
+    elseif option_name == "Quit" then
         love.event.quit()
     end
 end
