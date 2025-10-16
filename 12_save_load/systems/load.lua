@@ -1,0 +1,200 @@
+-- scenes/load.lua
+-- Load game scene with save slot selection
+
+local load = {}
+
+local scene_control = require "systems.scene_control"
+local screen = require "lib.screen"
+local save_sys = require "systems.save"
+
+function load:enter(previous, ...)
+    self.previous = previous
+    self.selected = 1
+
+    local vw, vh = screen:GetVirtualDimensions()
+    self.virtual_width = vw
+    self.virtual_height = vh
+
+    self.titleFont = love.graphics.newFont(36)
+    self.slotFont = love.graphics.newFont(24)
+    self.infoFont = love.graphics.newFont(16)
+    self.hintFont = love.graphics.newFont(14)
+
+    -- Load save slot information
+    self.slots = save_sys:getAllSlotsInfo()
+
+    -- Add "Back" option
+    table.insert(self.slots, {
+        exists = false,
+        slot = "back",
+        display_name = "Back to Menu"
+    })
+
+    -- Layout
+    self.layout = {
+        title_y = vh * 0.12,
+        slots_start_y = vh * 0.25,
+        slot_spacing = 90,
+        hint_y = vh - 40
+    }
+
+    self.mouse_over = 0
+end
+
+function load:update(dt)
+    local vmx, vmy = screen:GetVirtualMousePosition()
+
+    self.mouse_over = 0
+
+    for i, slot in ipairs(self.slots) do
+        local y = self.layout.slots_start_y + (i - 1) * self.layout.slot_spacing
+        local slot_height = 80
+        local padding = 10
+
+        if vmy >= y - padding and vmy <= y + slot_height + padding then
+            self.mouse_over = i
+            break
+        end
+    end
+end
+
+function load:draw()
+    love.graphics.clear(0.1, 0.1, 0.15, 1)
+
+    screen:Attach()
+
+    love.graphics.setColor(1, 1, 1, 1)
+
+    -- Title
+    love.graphics.setFont(self.titleFont)
+    love.graphics.printf("Load Game", 0, self.layout.title_y, self.virtual_width, "center")
+
+    -- Draw save slots
+    for i, slot in ipairs(self.slots) do
+        local y = self.layout.slots_start_y + (i - 1) * self.layout.slot_spacing
+        local is_selected = (i == self.selected or i == self.mouse_over)
+
+        -- Slot background
+        if is_selected then
+            love.graphics.setColor(0.3, 0.3, 0.4, 0.8)
+        else
+            love.graphics.setColor(0.2, 0.2, 0.25, 0.6)
+        end
+        love.graphics.rectangle("fill", self.virtual_width * 0.15, y - 5, self.virtual_width * 0.7, 80)
+
+        -- Border
+        if is_selected then
+            love.graphics.setColor(1, 1, 0, 1)
+        else
+            love.graphics.setColor(0.5, 0.5, 0.5, 1)
+        end
+        love.graphics.rectangle("line", self.virtual_width * 0.15, y - 5, self.virtual_width * 0.7, 80)
+
+        if slot.slot == "back" then
+            -- Back button
+            love.graphics.setFont(self.slotFont)
+            if is_selected then
+                love.graphics.setColor(1, 1, 0, 1)
+            else
+                love.graphics.setColor(0.8, 0.8, 0.8, 1)
+            end
+            love.graphics.printf(slot.display_name, 0, y + 25, self.virtual_width, "center")
+        elseif slot.exists then
+            -- Existing save
+            love.graphics.setFont(self.slotFont)
+            if is_selected then
+                love.graphics.setColor(1, 1, 0, 1)
+            else
+                love.graphics.setColor(1, 1, 1, 1)
+            end
+            love.graphics.print("Slot " .. slot.slot, self.virtual_width * 0.2, y)
+
+            love.graphics.setFont(self.infoFont)
+            love.graphics.setColor(0.8, 0.8, 0.8, 1)
+            love.graphics.print("HP: " .. slot.hp .. "/" .. slot.max_hp, self.virtual_width * 0.2, y + 28)
+            love.graphics.print(slot.time_string, self.virtual_width * 0.2, y + 48)
+        else
+            -- Empty slot
+            love.graphics.setFont(self.slotFont)
+            love.graphics.setColor(0.5, 0.5, 0.5, 1)
+            love.graphics.print("Slot " .. slot.slot .. " - Empty", self.virtual_width * 0.2, y + 25)
+        end
+    end
+
+    -- Controls hint
+    love.graphics.setFont(self.hintFont)
+    love.graphics.setColor(0.5, 0.5, 0.5, 1)
+    love.graphics.printf("Arrow Keys / WASD: Navigate | Enter: Select | ESC: Back | Delete: Delete Save",
+        0, self.layout.hint_y - 20, self.virtual_width, "center")
+    love.graphics.printf("Mouse: Hover and Click",
+        0, self.layout.hint_y, self.virtual_width, "center")
+
+    screen:Detach()
+end
+
+function load:resize(w, h)
+    screen:Resize(w, h)
+end
+
+function load:keypressed(key)
+    if key == "up" or key == "w" then
+        self.selected = self.selected - 1
+        if self.selected < 1 then
+            self.selected = #self.slots
+        end
+    elseif key == "down" or key == "s" then
+        self.selected = self.selected + 1
+        if self.selected > #self.slots then
+            self.selected = 1
+        end
+    elseif key == "return" or key == "space" then
+        self:selectSlot(self.selected)
+    elseif key == "escape" then
+        local menu = require "scenes.menu"
+        scene_control.switch(menu)
+    elseif key == "delete" then
+        -- Delete selected save slot
+        local slot = self.slots[self.selected]
+        if slot and slot.exists and slot.slot ~= "back" then
+            save_sys:deleteSlot(slot.slot)
+            -- Reload slots
+            self.slots = save_sys:getAllSlotsInfo()
+            table.insert(self.slots, {
+                exists = false,
+                slot = "back",
+                display_name = "Back to Menu"
+            })
+            print("Deleted save slot " .. slot.slot)
+        end
+    end
+end
+
+function load:selectSlot(slot_index)
+    local slot = self.slots[slot_index]
+
+    if slot.slot == "back" then
+        -- Back to menu
+        local menu = require "scenes.menu"
+        scene_control.switch(menu)
+    elseif slot.exists then
+        -- Load game
+        local play = require "scenes.play"
+        scene_control.switch(play, slot.map, slot.x, slot.y, slot.slot)
+    else
+        -- Empty slot - cannot load
+        print("Cannot load empty slot")
+    end
+end
+
+function load:mousepressed(x, y, button) end
+
+function load:mousereleased(x, y, button)
+    if button == 1 then
+        if self.mouse_over > 0 then
+            self.selected = self.mouse_over
+            self:selectSlot(self.selected)
+        end
+    end
+end
+
+return load
