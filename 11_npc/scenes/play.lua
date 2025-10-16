@@ -14,6 +14,8 @@ local hud = require "systems.hud"
 local effects = require "systems.effects"
 local dialogue = require "systems.dialogue"
 
+local pb = { x = 0, y = 0, w = 960, h = 540 } -- Physical bounds
+
 function play:enter(previous, mapPath, spawn_x, spawn_y)
     mapPath = mapPath or "assets/maps/level1/area1.lua"
     spawn_x = spawn_x or 400
@@ -54,9 +56,7 @@ function play:update(dt)
     dialogue:update(dt)
 
     -- If dialogue is open, skip game updates
-    if dialogue:isOpen() then
-        return
-    end
+    if dialogue:isOpen() then return end
 
     -- Fade in
     if self.is_fading and self.fade_alpha > 0 then
@@ -176,9 +176,10 @@ function play:draw()
     screen:Attach()
 
     local vw, vh = screen:GetVirtualDimensions()
+    pb = screen.physical_bounds
 
     -- HUD elements in virtual resolution
-    hud:draw_health_bar(12, 12, 210, 20, self.player.health, self.player.max_health)
+    hud:draw_health_bar(pb.x + 12, pb.y + 12, 210, 20, self.player.health, self.player.max_health)
 
     love.graphics.setFont(hud.small_font)
     if self.player:isInvincible() then
@@ -187,11 +188,11 @@ function play:draw()
     end
 
     if self.player.dodge_active then
-        hud:draw_cooldown(12, vh - 52, 210, 0, 1, "Dodge", "")
+        hud:draw_cooldown(pb.x + 12, pb.h - 52, 210, 0, 1, "Dodge", "")
         love.graphics.setColor(0.3, 1, 0.3, 1)
         love.graphics.print("DODGING !", 17, vh - 29)
     else
-        hud:draw_cooldown(12, vh - 52, 210, self.player.dodge_cooldown, self.player.dodge_cooldown_duration, "Dodge", "SPACE")
+        hud:draw_cooldown(pb.x + 12, pb.h - 52, 210, self.player.dodge_cooldown, self.player.dodge_cooldown_duration, "Dodge", "SPACE")
     end
 
     if self.player:isDodgeInvincible() then
@@ -282,14 +283,14 @@ function play:keypressed(key)
             -- Ctrl+P: Mark weapon anchor (stub for future)
             print("Weapon anchor marking not implemented in refactored version")
         else
-            debug:mark_hand_position(self.player, world_x, world_y)
+            debug:MarkHandPosition(self.player, world_x, world_y)
         end
     elseif key == "h" and debug.debug_mode then
-        debug:toggle_hand_marking(self.player)
+        debug:ToggleHandMarking(self.player)
     elseif key == "pageup" and debug.debug_mode then
-        debug:prev_frame(self.player)
+        debug:PreviousFrame(self.player)
     elseif key == "pagedown" and debug.debug_mode then
-        debug:next_frame(self.player)
+        debug:NextFrame(self.player)
     end
 end
 
@@ -311,8 +312,7 @@ function play:mousepressed(x, y, button)
     end
 end
 
-function play:mousereleased(x, y, button)
-end
+function play:mousereleased(x, y, button) end
 
 function play:switchMap(new_map_path, spawn_x, spawn_y)
     if self.world then self.world:destroy() end

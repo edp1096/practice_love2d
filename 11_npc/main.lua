@@ -49,7 +49,7 @@ function love.keypressed(key)
 
         scene_control.resize(love.graphics.getWidth(), love.graphics.getHeight())
     elseif key == "f12" then
-        debug:toggle_debug()
+        debug:ToggleDebug()
         screen:ToggleDebugInfo()
         if debug.debug_mode then
             screen:EnableVirtualMouse()

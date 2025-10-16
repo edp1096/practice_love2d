@@ -130,7 +130,7 @@ function settings:draw()
     -- Draw semi-transparent overlay
     if self.previous then
         screen:Attach()
-        love.graphics.setColor(0, 0, 0, 0.7)
+        love.graphics.setColor(0, 0, 0, 0.9)
         love.graphics.rectangle("fill", 0, 0, self.virtual_width, self.virtual_height)
         screen:Detach()
     end

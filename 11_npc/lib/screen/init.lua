@@ -1,13 +1,13 @@
 local screen = {
     is_fullscreen = false,
     scale_mode = "fit",
-    -- render_wh = { w = 1280, h = 720 },     -- Rendering size
-    render_wh = { w = 960, h = 540 },      -- Rendering size (virtual resolution)
-    screen_wh = { w = 0, h = 0 },          -- Window screen size (actual screen)
-    previous_screen_wh = { w = 0, h = 0 }, -- Previous screen size
-    previous_xy = { x = 0, y = 0 },        -- Previous window position
+    render_wh = { w = 960, h = 540 },                 -- Rendering size (virtual resolution)
+    screen_wh = { w = 0, h = 0 },                     -- Window screen size (actual screen)
+    previous_screen_wh = { w = 0, h = 0 },            -- Previous screen size
+    previous_xy = { x = 0, y = 0 },                   -- Previous window position
+    physical_bounds = { x = 0, y = 0, w = 0, h = 0 }, -- Physical screen bounds
     window = {
-        fullscreen = false,                -- Not use
+        fullscreen = false,                           -- Not use
         fullscreentype = "desktop",
         vsync = true,
         resizable = true,
@@ -181,6 +181,8 @@ function screen:CalculateScale()
             self.offset_y = (self.screen_wh.h - self.render_wh.h * self.scale) / 2
         end
     end
+
+    self.physical_bounds = self:GetVisibleVirtualBounds()
 end
 
 -- Get current screen aspect ratio
@@ -312,6 +314,33 @@ end
 -- Toggle virtual mouse visualization
 function screen:ToggleVirtualMouse()
     self.show_virtual_mouse_pointer = not self.show_virtual_mouse_pointer
+end
+
+function screen:GetVisibleVirtualBounds()
+    if self.scale_mode == "fill" then
+        local virtual_aspect = self.render_wh.w / self.render_wh.h
+        local screen_aspect = self.screen_wh.w / self.screen_wh.h
+
+        local x, y, w, h
+
+        if screen_aspect > virtual_aspect then
+            local visible_h = self.screen_wh.h / self.scale
+            x = 0
+            y = self.render_wh.h / 2 - visible_h / 2
+            w = self.render_wh.w
+            h = self.render_wh.h / 2 + visible_h / 2
+        else
+            local visible_w = self.screen_wh.w / self.scale
+            x = self.render_wh.w / 2 - visible_w / 2
+            y = 0
+            w = self.render_wh.w / 2 + visible_w / 2
+            h = self.render_wh.h
+        end
+
+        return { x = x, y = y, w = w, h = h }
+    else
+        return { x = 0, y = 0, w = self.render_wh.w, h = self.render_wh.h }
+    end
 end
 
 function screen:ShowDebugInfo()

@@ -117,7 +117,7 @@ end
 
 function render.drawDebug(player)
     if not debug.debug_mode then return end
-    debug:draw_hand_markers(player)
+    debug:DrawHandMarkers(player)
 end
 
 return render

@@ -12,13 +12,13 @@ debug.hand_marking_active = false
 debug.manual_frame = 1
 debug.actual_hand_positions = {}
 
-function debug:toggle_debug()
+function debug:ToggleDebug()
     self.debug_mode = not self.debug_mode
     self.show_fps = self.debug_mode
     self.show_colliders = self.debug_mode
 end
 
-function debug:toggle_hand_marking(player)
+function debug:ToggleHandMarking(player)
     self.hand_marking_active = not self.hand_marking_active
     if self.hand_marking_active then
         self.manual_frame = 1
@@ -35,11 +35,11 @@ function debug:toggle_hand_marking(player)
     end
 end
 
-function debug:next_frame(player)
+function debug:NextFrame(player)
     if not self.hand_marking_active then return end
 
     local anim_name = player.current_anim_name or "idle_right"
-    local frame_count = self:get_frame_count(anim_name)
+    local frame_count = self:getFrameCount(anim_name)
     self.manual_frame = self.manual_frame + 1
     if self.manual_frame > frame_count then
         self.manual_frame = 1
@@ -47,11 +47,11 @@ function debug:next_frame(player)
     print(anim_name .. " Frame: " .. self.manual_frame .. " / " .. frame_count)
 end
 
-function debug:prev_frame(player)
+function debug:PreviousFrame(player)
     if not self.hand_marking_active then return end
 
     local anim_name = player.current_anim_name or "idle_right"
-    local frame_count = self:get_frame_count(anim_name)
+    local frame_count = self:getFrameCount(anim_name)
     self.manual_frame = self.manual_frame - 1
     if self.manual_frame < 1 then
         self.manual_frame = frame_count
@@ -59,7 +59,7 @@ function debug:prev_frame(player)
     print(anim_name .. " Frame: " .. self.manual_frame .. " / " .. frame_count)
 end
 
-function debug:mark_hand_position(player, world_x, world_y)
+function debug:MarkHandPosition(player, world_x, world_y)
     if not self.hand_marking_active then return end
 
     local relative_x = world_x - player.x
@@ -81,12 +81,12 @@ function debug:mark_hand_position(player, world_x, world_y)
         angle = weapon_angle
     }
 
-    local angle_str = self:format_angle(weapon_angle)
+    local angle_str = self:formatAngle(weapon_angle)
 
     print(string.format("MARKED: %s[%d] = {x = %d, y = %d, angle = %s},",
         anim_name, frame_index, sprite_x, sprite_y, angle_str))
 
-    local frame_count = self:get_frame_count(anim_name)
+    local frame_count = self:getFrameCount(anim_name)
     local marked_count = 0
     for _ in pairs(self.actual_hand_positions[anim_name]) do
         marked_count = marked_count + 1
@@ -98,7 +98,7 @@ function debug:mark_hand_position(player, world_x, world_y)
         for i = 1, frame_count do
             local pos = self.actual_hand_positions[anim_name][i]
             if pos then
-                local angle_str = self:format_angle(pos.angle)
+                local angle_str = self:formatAngle(pos.angle)
                 print(string.format("    {x = %d, y = %d, angle = %s},",
                     pos.x, pos.y, angle_str))
             end
@@ -107,7 +107,7 @@ function debug:mark_hand_position(player, world_x, world_y)
     end
 end
 
-function debug:format_angle(angle)
+function debug:formatAngle(angle)
     if not angle then return "nil" end
 
     local pi = math.pi
@@ -140,7 +140,7 @@ function debug:format_angle(angle)
     return string.format("%.4f", angle)
 end
 
-function debug:get_frame_count(anim_name)
+function debug:getFrameCount(anim_name)
     local counts = {
         idle_right = 4,
         idle_left = 4,
@@ -158,7 +158,7 @@ function debug:get_frame_count(anim_name)
     return counts[anim_name] or 4
 end
 
-function debug:draw_hand_markers(player)
+function debug:DrawHandMarkers(player)
     if not self.debug_mode then return end
 
     local anim_name = player.current_anim_name or "idle_right"
@@ -181,7 +181,7 @@ function debug:draw_hand_markers(player)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function debug:is_hand_marking_active()
+function debug:IsHandMarkingActive()
     return self.hand_marking_active
 end
 

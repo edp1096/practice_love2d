@@ -8,7 +8,7 @@ GameConfig = {
 
     width = 1280,
     height = 720,
-    resizable = true,
+    resizable = false,
     fullscreen = false,
     vsync = true,
     scale_mode = "fill",

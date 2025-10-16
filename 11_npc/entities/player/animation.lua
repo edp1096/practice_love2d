@@ -37,7 +37,7 @@ function animation.update(player, dt, cam)
     local current_frame_index = 1
 
     -- Direction control
-    if debug:is_hand_marking_active() then
+    if debug:IsHandMarkingActive() then
         -- Hand marking mode: WASD controls direction
         if love.keyboard.isDown('w') then
             player.direction = 'up'
@@ -95,7 +95,7 @@ function animation.update(player, dt, cam)
     end
 
     -- Determine animation
-    if player.state ~= "attacking" and not player.parry_active and not player.dodge_active and not debug:is_hand_marking_active() then
+    if player.state ~= "attacking" and not player.parry_active and not player.dodge_active and not debug:IsHandMarkingActive() then
         local move_direction = nil
 
         if love.keyboard.isDown("right", "d") then
@@ -154,14 +154,14 @@ function animation.update(player, dt, cam)
     elseif player.state == "attacking" then
         current_anim_name = "attack_" .. player.direction
         player.anim = player.animations[current_anim_name]
-        if not debug:is_hand_marking_active() then
+        if not debug:IsHandMarkingActive() then
             player.anim:update(dt)
         end
     elseif player.parry_active then
         current_anim_name = "idle_" .. player.direction
         player.anim = player.animations[current_anim_name]
         player.anim:update(dt)
-    elseif debug:is_hand_marking_active() then
+    elseif debug:IsHandMarkingActive() then
         -- Hand marking mode
         if movement_input then
             player.state = "walking"
@@ -186,7 +186,7 @@ function animation.update(player, dt, cam)
     -- Always set current_anim_name (never nil)
     player.current_anim_name = current_anim_name or ("idle_" .. player.direction)
 
-    if debug:is_hand_marking_active() then
+    if debug:IsHandMarkingActive() then
         current_frame_index = debug.manual_frame
     elseif player.anim and player.anim.position then
         current_frame_index = math.floor(player.anim.position)
@@ -195,7 +195,7 @@ function animation.update(player, dt, cam)
     -- Update weapon
     if player.weapon then
         player.weapon:update(dt, player.x, player.y, player.facing_angle,
-            player.direction, player.current_anim_name, current_frame_index, debug:is_hand_marking_active())
+            player.direction, player.current_anim_name, current_frame_index, debug:IsHandMarkingActive())
     end
 
     return vx, vy
