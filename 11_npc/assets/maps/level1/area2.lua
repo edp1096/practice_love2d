@@ -151,7 +151,7 @@ return {
       id = 3,
       name = "Walls",
       class = "",
-      visible = false,
+      visible = true,
       opacity = 1,
       offsetx = 0,
       offsety = 0,
@@ -455,7 +455,7 @@ return {
             ["spawn_x"] = 400,
             ["spawn_y"] = 400,
             ["target_map"] = "assets/maps/level1/area1.lua",
-            ["type"] = "portal"
+            ["type"] = "gameclear"
           }
         },
         {
@@ -473,7 +473,7 @@ return {
             ["spawn_x"] = 400,
             ["spawn_y"] = 400,
             ["target_map"] = "assets/maps/level1/area1.lua",
-            ["type"] = "portal"
+            ["type"] = "gameclear"
           }
         }
       }

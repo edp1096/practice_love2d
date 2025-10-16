@@ -15,10 +15,7 @@ local menu = require "scenes.menu"
 
 function love.load()
     if locker then locker:ProcInit() end
-
     screen:Initialize(GameConfig)
-    love.graphics.setDefaultFilter("nearest", "nearest")
-
     scene_control.switch(menu)
 end
 

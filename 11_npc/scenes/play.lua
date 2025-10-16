@@ -1,6 +1,6 @@
 -- scenes/play.lua
 -- Main gameplay scene with unified debug system
--- FIXED: Unified dodge message display (no overlapping text)
+-- UPDATED: Added gameclear transition detection
 
 local play = {}
 
@@ -120,6 +120,13 @@ function play:update(dt)
         self.transition_cooldown = self.transition_cooldown - scaled_dt
     end
 
+    -- Check for death first
+    if not self.player:isAlive() then
+        local gameover = require "scenes.gameover"
+        scene_control.switch(gameover, false) -- false = not clear
+        return
+    end
+
     if self.transition_cooldown <= 0 then
         local player_w, player_h = 32, 32
         local transition = self.world:checkTransition(
@@ -128,14 +135,16 @@ function play:update(dt)
             player_w, player_h
         )
 
-        if not self.player:isAlive() then
-            local gameover = require "scenes.gameover"
-            scene_control.switch(gameover)
-            return
-        end
-
         if transition then
-            self:switchMap(transition.target_map, transition.spawn_x, transition.spawn_y)
+            -- Check if this is a game clear transition
+            if transition.transition_type == "gameclear" then
+                local gameover = require "scenes.gameover"
+                scene_control.switch(gameover, true) -- true = game clear!
+                return
+            else
+                -- Normal portal transition
+                self:switchMap(transition.target_map, transition.spawn_x, transition.spawn_y)
+            end
         end
     end
 end
@@ -167,13 +176,11 @@ function play:draw()
     hud:draw_health_bar(pb.x + 12, pb.y + 12, 210, 20, self.player.health, self.player.max_health)
 
     love.graphics.setFont(hud.small_font)
-    -- Unified invincibility display (hit invincibility OR dodge invincibility)
     if self.player:isInvincible() or self.player:isDodgeInvincible() then
         love.graphics.setColor(1, 1, 0, 1)
         love.graphics.print("INVINCIBLE", 17, 35)
     end
 
-    -- Simple dodge status display (no invincibility info here)
     if self.player.dodge_active then
         hud:draw_cooldown(pb.x + 12, pb.h - 52, 210, 0, 1, "Dodge", "")
         love.graphics.setColor(0.3, 1, 0.3, 1)
@@ -211,7 +218,6 @@ function play:draw()
 
     dialogue:draw()
 
-    -- Draw debug help if enabled
     if debug.enabled then
         debug:drawHelp(vw - 250, 10)
     end
@@ -230,7 +236,6 @@ function play:resize(w, h)
 end
 
 function play:keypressed(key)
-    -- Dialogue controls (priority when dialogue is open)
     if dialogue:isOpen() then
         if key == "space" or key == "return" or key == "f" then
             dialogue:onAction()
@@ -246,14 +251,12 @@ function play:keypressed(key)
             print("Dodge!")
         end
     elseif key == "f" then
-        -- NPC interaction
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
             local messages = npc:interact()
             dialogue:showMultiple(npc.name, messages)
         end
     else
-        -- Delegate all debug keys to unified debug system
         debug:handleInput(key, {
             player = self.player,
             world = self.world,

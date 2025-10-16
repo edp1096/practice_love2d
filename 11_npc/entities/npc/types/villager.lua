@@ -66,7 +66,7 @@ villager.NPC_TYPES = {
 
     villager = {
         name = "Villager",
-        sprite_sheet = "assets/images/player-sheet.png",
+        sprite_sheet = "assets/images/passerby_01-sheet.png",
         dialogue = {
             "Hello player!",
             "Good bye player!",

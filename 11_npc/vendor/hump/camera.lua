@@ -115,7 +115,8 @@ function camera:attach(x, y, w, h, noclip)
 	love.graphics.translate(cx, cy)
 	love.graphics.scale(self.scale)
 	love.graphics.rotate(self.rot)
-	love.graphics.translate(-self.x, -self.y)
+	-- love.graphics.translate(-self.x, -self.y)
+	love.graphics.translate(math.floor(-self.x), math.floor(-self.y)) -- Fix tile seam or pixel seam
 end
 
 function camera:detach()

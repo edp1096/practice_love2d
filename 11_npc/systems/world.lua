@@ -1,6 +1,6 @@
 -- systems/world.lua
 -- Manages map loading, rendering, and collision system integration with effects
--- FIXED: Added safety checks in drawDebug to prevent crashes when world is destroyed
+-- UPDATED: Added gameclear portal type support
 
 local sti = require "vendor.sti"
 local windfield = require "vendor.windfield"
@@ -20,7 +20,6 @@ function world:new(map_path)
     instance.map = sti(map_path)
     instance.physicsWorld = windfield.newWorld(0, 0, true)
 
-    -- Setup collision classes
     instance.physicsWorld:addCollisionClass("Player")
     instance.physicsWorld:addCollisionClass("PlayerDodging")
     instance.physicsWorld:addCollisionClass("Wall")
@@ -28,13 +27,10 @@ function world:new(map_path)
     instance.physicsWorld:addCollisionClass("Enemy")
     instance.physicsWorld:addCollisionClass("Item")
 
-    -- Set ignore rules directly in collision_classes table
     instance.physicsWorld.collision_classes.PlayerDodging.ignores = { "Enemy" }
 
-    -- Regenerate masks
     instance.physicsWorld:collisionClassesSet()
 
-    -- Create wall colliders from Tiled map
     instance.walls = {}
     if instance.map.layers["Walls"] then
         for i, obj in ipairs(instance.map.layers["Walls"].objects) do
@@ -73,7 +69,7 @@ function world:loadTransitions()
 
     if self.map.layers["Portals"] then
         for _, obj in ipairs(self.map.layers["Portals"].objects) do
-            if obj.properties.type == "portal" then
+            if obj.properties.type == "portal" or obj.properties.type == "gameclear" then
                 local min_x, min_y, max_x, max_y = obj.x, obj.y, obj.x, obj.y
 
                 if obj.shape == "polygon" and obj.polygon then
@@ -93,6 +89,7 @@ function world:loadTransitions()
                     y = min_y,
                     width = max_x - min_x,
                     height = max_y - min_y,
+                    transition_type = obj.properties.type, -- "portal" or "gameclear"
                     target_map = obj.properties.target_map,
                     spawn_x = obj.properties.spawn_x or 100,
                     spawn_y = obj.properties.spawn_y or 100
@@ -191,8 +188,8 @@ function world:loadNPCs()
                 8
             )
             new_npc.collider:setFixedRotation(true)
-            new_npc.collider:setType("static")         -- NPCs don't move
-            new_npc.collider:setCollisionClass("Wall") -- Act as obstacles
+            new_npc.collider:setType("static")
+            new_npc.collider:setCollisionClass("Wall")
             new_npc.collider:setObject(new_npc)
 
             table.insert(self.npcs, new_npc)
@@ -314,27 +311,29 @@ function world:drawLayer(layer_name)
 end
 
 function world:drawDebug()
-    -- This happens when gameover scene tries to draw previous play scene
-
-    -- Check if physicsWorld exists
     if not self.physicsWorld then return end
     local success, err = pcall(function() self.physicsWorld:draw() end)
     if not success then return end
 
-    -- Draw portal/transition zones
     if self.transitions then
-        love.graphics.setColor(0, 1, 0, 0.3)
         for _, transition in ipairs(self.transitions) do
+            -- Different color based on transition type
+            if transition.transition_type == "gameclear" then
+                love.graphics.setColor(1, 1, 0, 0.3) -- Gold for game clear
+            else
+                love.graphics.setColor(0, 1, 0, 0.3) -- Green for normal portal
+            end
             love.graphics.rectangle("fill", transition.x, transition.y, transition.width, transition.height)
-        end
 
-        love.graphics.setColor(0, 1, 0, 1)
-        for _, transition in ipairs(self.transitions) do
+            if transition.transition_type == "gameclear" then
+                love.graphics.setColor(1, 1, 0, 1)
+            else
+                love.graphics.setColor(0, 1, 0, 1)
+            end
             love.graphics.rectangle("line", transition.x, transition.y, transition.width, transition.height)
         end
     end
 
-    -- Draw NPC debug info (with safety check)
     if self.npcs then
         for _, npc in ipairs(self.npcs) do
             if npc and npc.drawDebug then
