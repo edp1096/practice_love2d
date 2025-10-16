@@ -1,5 +1,5 @@
 -- scenes/play.lua
--- Main gameplay scene with refactored modules and effects
+-- Main gameplay scene with unified debug system
 
 local play = {}
 
@@ -14,7 +14,7 @@ local hud = require "systems.hud"
 local effects = require "systems.effects"
 local dialogue = require "systems.dialogue"
 
-local pb = { x = 0, y = 0, w = 960, h = 540 } -- Physical bounds
+local pb = { x = 0, y = 0, w = 960, h = 540 }
 
 function play:enter(previous, mapPath, spawn_x, spawn_y)
     mapPath = mapPath or "assets/maps/level1/area1.lua"
@@ -29,12 +29,10 @@ function play:enter(previous, mapPath, spawn_x, spawn_y)
 
     self.transition_cooldown = 0
 
-    -- Fade effect
     self.fade_alpha = 1.0
     self.fade_speed = 2.0
     self.is_fading = true
 
-    -- Initialize dialogue system
     dialogue:initialize()
 end
 
@@ -45,20 +43,15 @@ function play:exit()
 end
 
 function play:update(dt)
-    -- Camera system update
     camera_sys:update(dt)
     local scaled_dt = camera_sys:get_scaled_dt(dt)
 
-    -- Effects update
     effects:update(dt)
 
-    -- Dialogue update
     dialogue:update(dt)
 
-    -- If dialogue is open, skip game updates
     if dialogue:isOpen() then return end
 
-    -- Fade in
     if self.is_fading and self.fade_alpha > 0 then
         self.fade_alpha = math.max(0, self.fade_alpha - self.fade_speed * dt)
         if self.fade_alpha == 0 then
@@ -66,14 +59,12 @@ function play:update(dt)
         end
     end
 
-    -- Update player
     local vx, vy = self.player:update(scaled_dt, self.cam)
 
     self.world:moveEntity(self.player, vx, vy, scaled_dt)
     self.world:updateEnemies(scaled_dt, self.player.x, self.player.y)
     self.world:updateNPCs(scaled_dt, self.player.x, self.player.y)
 
-    -- Check enemy attacks
     local shake_callback = function(intensity, duration)
         camera_sys:shake(intensity, duration)
     end
@@ -110,7 +101,6 @@ function play:update(dt)
     self.player.x = self.player.collider:getX()
     self.player.y = self.player.collider:getY()
 
-    -- Weapon collisions
     if self.player.weapon.is_attacking then
         local hits = self.world:checkWeaponCollisions(self.player.weapon)
         for _, hit in ipairs(hits) do
@@ -118,7 +108,6 @@ function play:update(dt)
         end
     end
 
-    -- Camera follow with shake
     local shake_x, shake_y = camera_sys:get_shake_offset()
     self.cam:lookAt(self.player.x + shake_x, self.player.y + shake_y)
 
@@ -126,12 +115,10 @@ function play:update(dt)
     local mapHeight = self.world.map.height * self.world.map.tileheight
     self.cam:lockBounds(mapWidth, mapHeight)
 
-    -- Transition cooldown
     if self.transition_cooldown > 0 then
         self.transition_cooldown = self.transition_cooldown - scaled_dt
     end
 
-    -- Check transitions and death
     if self.transition_cooldown <= 0 then
         local player_w, player_h = 32, 32
         local transition = self.world:checkTransition(
@@ -156,29 +143,26 @@ function play:draw()
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.clear(0, 0, 0, 1)
 
-    -- World rendering
     self.cam:attach()
     self.world:drawLayer("Ground")
     self.world:drawEnemies()
     self.world:drawNPCs()
     self.player:drawAll()
-    if debug.debug_mode then
+    if debug.enabled then
         self.player:drawDebug()
     end
     self.world:drawLayer("Trees")
     effects:draw()
-    if debug.debug_mode then
+    if debug.enabled then
         self.world:drawDebug()
     end
     self.cam:detach()
 
-    -- UI rendering (virtual resolution)
     screen:Attach()
 
     local vw, vh = screen:GetVirtualDimensions()
     pb = screen.physical_bounds
 
-    -- HUD elements in virtual resolution
     hud:draw_health_bar(pb.x + 12, pb.y + 12, 210, 20, self.player.health, self.player.max_health)
 
     love.graphics.setFont(hud.small_font)
@@ -214,13 +198,12 @@ function play:draw()
     love.graphics.setColor(1, 1, 1, 1)
 
     if debug.show_fps then
-        hud:draw_debug_panel(self.player, debug.debug_mode)
-        if debug.debug_mode then
+        hud:draw_debug_panel(self.player)
+        if debug.enabled then
             love.graphics.setFont(hud.tiny_font)
             love.graphics.setColor(1, 1, 0, 1)
             love.graphics.print("Active Effects: " .. effects:getCount(), 8, 140)
-            love.graphics.print("F1: Test Effects at Mouse", 8, 154)
-            love.graphics.print("F2: Toggle Effects Debug", 8, 168)
+            love.graphics.print("F5: Test Effects at Mouse", 8, 154)
             love.graphics.setColor(1, 1, 1, 1)
         end
     end
@@ -230,9 +213,13 @@ function play:draw()
 
     dialogue:draw()
 
+    -- Draw debug help if enabled
+    if debug.enabled then
+        debug:drawHelp(vw - 250, 10)
+    end
+
     screen:Detach()
 
-    -- Fade overlay (REAL screen coordinates)
     if self.fade_alpha > 0 then
         local real_w, real_h = love.graphics.getDimensions()
         love.graphics.setColor(0, 0, 0, self.fade_alpha)
@@ -267,35 +254,17 @@ function play:keypressed(key)
             local messages = npc:interact()
             dialogue:showMultiple(npc.name, messages)
         end
-    elseif key == "f1" and debug.debug_mode then
-        -- Test effects at mouse position
-        local mouse_x, mouse_y = love.mouse.getPosition()
-        local world_x, world_y = self.cam:worldCoords(mouse_x, mouse_y)
-        effects:test(world_x, world_y)
-    elseif key == "f2" and debug.debug_mode then
-        -- Toggle effects debug
-        effects:toggleDebug()
-    elseif key == "p" and debug.debug_mode then
-        local mouse_x, mouse_y = love.mouse.getPosition()
-        local world_x, world_y = self.cam:worldCoords(mouse_x, mouse_y)
-
-        if love.keyboard.isDown('lctrl') or love.keyboard.isDown('rctrl') then
-            -- Ctrl+P: Mark weapon anchor (stub for future)
-            print("Weapon anchor marking not implemented in refactored version")
-        else
-            debug:MarkHandPosition(self.player, world_x, world_y)
-        end
-    elseif key == "h" and debug.debug_mode then
-        debug:ToggleHandMarking(self.player)
-    elseif key == "pageup" and debug.debug_mode then
-        debug:PreviousFrame(self.player)
-    elseif key == "pagedown" and debug.debug_mode then
-        debug:NextFrame(self.player)
+    else
+        -- Delegate all debug keys to unified debug system
+        debug:handleInput(key, {
+            player = self.player,
+            world = self.world,
+            camera = self.cam
+        })
     end
 end
 
 function play:mousepressed(x, y, button)
-    -- Dialogue controls (priority when dialogue is open)
     if dialogue:isOpen() then
         if button == 1 then
             dialogue:onAction()

@@ -1,9 +1,8 @@
 -- systems/hud.lua
--- HUD and UI elements with smaller fonts
+-- HUD and UI elements with unified debug system
 
 local hud = {}
 
--- Create small fonts for HUD (initialized once)
 hud.small_font = love.graphics.newFont(11)
 hud.tiny_font = love.graphics.newFont(10)
 
@@ -87,8 +86,10 @@ function hud:draw_slow_motion_vignette(time_scale, screen_w, screen_h)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function hud:draw_debug_panel(player, debug_mode)
-    if not debug_mode then return end
+function hud:draw_debug_panel(player)
+    -- Use unified debug system
+    local debug = require "systems.debug"
+    if not debug.enabled then return end
 
     local marking_info = player.current_anim_name and {
         animation = player.current_anim_name,

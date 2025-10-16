@@ -1,30 +1,146 @@
 -- systems/debug.lua
--- Debug system with hand marking functionality
+-- Unified debug system: gameplay, rendering, and advanced features
 
 local debug = {}
 
-debug.debug_mode = false
+-- === Master Control ===
+debug.enabled = false
+
+-- === Gameplay Debug ===
 debug.show_fps = false
 debug.show_colliders = false
+debug.show_player_info = false
+debug.show_ai_state = false
 
--- Hand marking system
+-- === Rendering/Screen Debug ===
+debug.show_screen_info = false
+debug.show_virtual_mouse = false
+debug.show_bounds = false
+
+-- === Effects Debug ===
+debug.show_effects = false
+
+-- === NPC Debug ===
+debug.show_npcs = false
+
+-- === Advanced Features ===
 debug.hand_marking_active = false
 debug.manual_frame = 1
 debug.actual_hand_positions = {}
 
-function debug:ToggleDebug()
-    self.debug_mode = not self.debug_mode
-    self.show_fps = self.debug_mode
-    self.show_colliders = self.debug_mode
+-- Legacy compatibility (for modules that check debug.debug_mode)
+function debug:updateLegacyFlag()
+    self.debug_mode = self.enabled
 end
 
+-- === Master Toggle ===
+function debug:toggle()
+    self.enabled = not self.enabled
+
+    if self.enabled then
+        -- Enable common debug features
+        self.show_fps = true
+        self.show_colliders = true
+        self.show_player_info = true
+        print("=== DEBUG MODE ENABLED ===")
+        print("F1: Screen Info | F2: Virtual Mouse | F4: Effects | F5: Test Effects")
+        print("H: Hand Marking | P: Mark Position | PgUp/PgDn: Frame Nav")
+    else
+        -- Disable all debug features
+        self.show_fps = false
+        self.show_colliders = false
+        self.show_player_info = false
+        self.show_screen_info = false
+        self.show_virtual_mouse = false
+        self.show_effects = false
+        self.show_ai_state = false
+        self.show_npcs = false
+        self.show_bounds = false
+        print("=== DEBUG MODE DISABLED ===")
+    end
+
+    self:updateLegacyFlag()
+end
+
+-- === Layer-Specific Toggles ===
+function debug:toggleLayer(layer)
+    if not self.enabled then
+        print("Enable debug mode first (F3)")
+        return
+    end
+
+    if layer == "screen" then
+        self.show_screen_info = not self.show_screen_info
+        print("Screen debug: " .. tostring(self.show_screen_info))
+    elseif layer == "mouse" then
+        self.show_virtual_mouse = not self.show_virtual_mouse
+        print("Virtual mouse: " .. tostring(self.show_virtual_mouse))
+    elseif layer == "effects" then
+        self.show_effects = not self.show_effects
+        print("Effects debug: " .. tostring(self.show_effects))
+    elseif layer == "ai" then
+        self.show_ai_state = not self.show_ai_state
+        print("AI debug: " .. tostring(self.show_ai_state))
+    elseif layer == "npcs" then
+        self.show_npcs = not self.show_npcs
+        print("NPC debug: " .. tostring(self.show_npcs))
+    end
+end
+
+-- === Unified Input Handler ===
+function debug:handleInput(key, context)
+    -- context = { player, world, camera } (optional)
+    context = context or {}
+
+    if key == "f3" then
+        -- Master toggle (works everywhere)
+        self:toggle()
+    elseif not self.enabled then
+        -- Debug mode is off, ignore other debug keys
+        return
+
+        -- === Layer Toggles (debug mode must be on) ===
+    elseif key == "f1" then
+        self:toggleLayer("screen")
+    elseif key == "f2" then
+        self:toggleLayer("mouse")
+    elseif key == "f4" then
+        self:toggleLayer("effects")
+    elseif key == "f6" then
+        self:toggleLayer("ai")
+    elseif key == "f7" then
+        self:toggleLayer("npcs")
+
+        -- === Test Functions ===
+    elseif key == "f5" and context.camera then
+        -- Test effects at mouse position
+        local mouse_x, mouse_y = love.mouse.getPosition()
+        local world_x, world_y = context.camera:worldCoords(mouse_x, mouse_y)
+        local effects = require "systems.effects"
+        effects:test(world_x, world_y)
+
+        -- === Hand Marking Mode ===
+    elseif key == "h" and context.player then
+        self:ToggleHandMarking(context.player)
+    elseif key == "p" and self.hand_marking_active and context.player and context.camera then
+        local mouse_x, mouse_y = love.mouse.getPosition()
+        local world_x, world_y = context.camera:worldCoords(mouse_x, mouse_y)
+        self:MarkHandPosition(context.player, world_x, world_y)
+    elseif key == "pageup" and self.hand_marking_active and context.player then
+        self:PreviousFrame(context.player)
+    elseif key == "pagedown" and self.hand_marking_active and context.player then
+        self:NextFrame(context.player)
+    end
+end
+
+-- === Hand Marking Functions (unchanged) ===
 function debug:ToggleHandMarking(player)
     self.hand_marking_active = not self.hand_marking_active
     if self.hand_marking_active then
         self.manual_frame = 1
         print("=== HAND MARKING MODE ENABLED ===")
         print("Animation PAUSED")
-        print("PgUp/PgDown: Previous/Next frame")
+        print("PgUp/PgDn: Previous/Next frame")
         print("P: Mark hand position")
         print("Ctrl+P: Mark weapon anchor")
         local anim_name = player.current_anim_name or "idle_right"
@@ -159,7 +275,7 @@ function debug:getFrameCount(anim_name)
 end
 
 function debug:DrawHandMarkers(player)
-    if not self.debug_mode then return end
+    if not self.enabled then return end
 
     local anim_name = player.current_anim_name or "idle_right"
     local frame_index = self.hand_marking_active and self.manual_frame or (player.anim and math.floor(player.anim.position) or 1)
@@ -184,5 +300,31 @@ end
 function debug:IsHandMarkingActive()
     return self.hand_marking_active
 end
+
+-- === Help Display ===
+function debug:drawHelp(x, y)
+    if not self.enabled then return end
+
+    local help_font = love.graphics.newFont(12)
+    love.graphics.setFont(help_font)
+
+    love.graphics.setColor(0, 0, 0, 0.7)
+    love.graphics.rectangle("fill", x - 5, y - 5, 240, 140)
+
+    love.graphics.setColor(1, 1, 0, 1)
+    love.graphics.print("DEBUG CONTROLS:", x, y)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.print("F3: Toggle Debug", x, y + 18)
+    love.graphics.print("F1: Screen Info", x, y + 33)
+    love.graphics.print("F2: Virtual Mouse", x, y + 48)
+    love.graphics.print("F4: Effects Debug", x, y + 63)
+    love.graphics.print("F5: Test Effects", x, y + 78)
+    love.graphics.print("F6: AI State", x, y + 93)
+    love.graphics.print("F7: NPC Debug", x, y + 108)
+    love.graphics.print("H: Hand Marking", x, y + 123)
+end
+
+-- Initialize legacy flag
+debug:updateLegacyFlag()
 
 return debug

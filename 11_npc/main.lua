@@ -1,5 +1,5 @@
 -- main.lua
--- Entry point: Only handles scene routing and global configuration
+-- Entry point with unified debug system
 
 local love_version = (love._version_major .. "." .. love._version_minor)
 print("Running with LÖVE " .. love_version .. " and " .. _VERSION)
@@ -17,7 +17,6 @@ function love.load()
     if locker then locker:ProcInit() end
 
     screen:Initialize(GameConfig)
-    screen:DisableVirtualMouse()
     love.graphics.setDefaultFilter("nearest", "nearest")
 
     scene_control.switch(menu)
@@ -34,31 +33,25 @@ function love.resize(w, h)
     utils:SaveConfig(GameConfig)
     screen:CalculateScale()
 
-    scene_control.resize(w, h) -- Pass to current scene
+    scene_control.resize(w, h)
 end
 
 function love.keypressed(key)
     -- Global keys that work in all scenes
-    -- if key == "escape" then
-    --     love.event.quit()
-    -- elseif key == "f11" then
     if key == "f11" then
+        -- Toggle fullscreen
         screen:ToggleFullScreen()
         GameConfig.fullscreen = screen.is_fullscreen
         utils:SaveConfig(GameConfig)
 
         scene_control.resize(love.graphics.getWidth(), love.graphics.getHeight())
     elseif key == "f12" then
-        debug:ToggleDebug()
-        screen:ToggleDebugInfo()
-        if debug.debug_mode then
-            screen:EnableVirtualMouse()
-        else
-            screen:DisableVirtualMouse()
-        end
+        -- Legacy key: F12 still works for backwards compatibility
+        -- But F3 is the new standard (handled by debug:handleInput in scenes)
+        debug:toggle()
     end
 
-    scene_control.keypressed(key) -- Pass to current scene
+    scene_control.keypressed(key)
 end
 
 function love.mousepressed(x, y, button)
