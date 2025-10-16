@@ -172,21 +172,12 @@ function play:draw()
     end
     self.cam:detach()
 
-    -- UI rendering (virtual resolution) - only for centered UI
+    -- UI rendering (virtual resolution)
     screen:Attach()
 
     local vw, vh = screen:GetVirtualDimensions()
 
-    hud:draw_parry_success(self.player, vw, vh)
-    hud:draw_slow_motion_vignette(camera_sys.time_scale, vw, vh)
-
-    dialogue:draw()
-
-    screen:Detach()
-
-    -- HUD rendering (REAL screen coordinates - always visible)
-    local real_w, real_h = love.graphics.getDimensions()
-    
+    -- HUD elements in virtual resolution
     hud:draw_health_bar(12, 12, 210, 20, self.player.health, self.player.max_health)
 
     love.graphics.setFont(hud.small_font)
@@ -196,16 +187,16 @@ function play:draw()
     end
 
     if self.player.dodge_active then
-        hud:draw_cooldown(12, real_h - 52, 210, 0, 1, "Dodge", "")
+        hud:draw_cooldown(12, vh - 52, 210, 0, 1, "Dodge", "")
         love.graphics.setColor(0.3, 1, 0.3, 1)
-        love.graphics.print("DODGING !", 17, real_h - 29)
+        love.graphics.print("DODGING !", 17, vh - 29)
     else
-        hud:draw_cooldown(12, real_h - 52, 210, self.player.dodge_cooldown, self.player.dodge_cooldown_duration, "Dodge", "SPACE")
+        hud:draw_cooldown(12, vh - 52, 210, self.player.dodge_cooldown, self.player.dodge_cooldown_duration, "Dodge", "SPACE")
     end
 
     if self.player:isDodgeInvincible() then
         love.graphics.setColor(0.3, 1, 0.3, 1)
-        love.graphics.print("I-FRAMES!", 17, real_h - 29)
+        love.graphics.print("I-FRAMES!", 17, vh - 29)
     end
 
     if self.player.parry_cooldown > 0 then
@@ -233,8 +224,16 @@ function play:draw()
         end
     end
 
-    -- Fade overlay
+    hud:draw_parry_success(self.player, vw, vh)
+    hud:draw_slow_motion_vignette(camera_sys.time_scale, vw, vh)
+
+    dialogue:draw()
+
+    screen:Detach()
+
+    -- Fade overlay (REAL screen coordinates)
     if self.fade_alpha > 0 then
+        local real_w, real_h = love.graphics.getDimensions()
         love.graphics.setColor(0, 0, 0, self.fade_alpha)
         love.graphics.rectangle("fill", 0, 0, real_w, real_h)
     end
