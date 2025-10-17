@@ -11,18 +11,14 @@ player.__index = player
 function player:new(sprite_sheet, x, y)
     local instance = setmetatable({}, player)
 
-    -- Position
     instance.x = x or 400
     instance.y = y or 200
     instance.speed = 300
 
-    -- Load sprite and animations (delegate to animation module)
     animation.initialize(instance, sprite_sheet)
 
-    -- Combat state (delegate to combat module)
     combat.initialize(instance)
 
-    -- Collision properties
     instance.collider = nil
     instance.width = 50
     instance.height = 100
@@ -30,17 +26,14 @@ function player:new(sprite_sheet, x, y)
     return instance
 end
 
-function player:update(dt, cam)
-    -- Update combat timers
+function player:update(dt, cam, dialogue_open)
     combat.updateTimers(self, dt)
 
-    -- Update direction and animation
-    local vx, vy = animation.update(self, dt, cam)
+    local vx, vy = animation.update(self, dt, cam, dialogue_open)
 
     return vx, vy
 end
 
--- Delegate combat methods
 function player:attack() return combat.attack(self) end
 
 function player:startParry() return combat.startParry(self) end
@@ -61,7 +54,6 @@ function player:isDodging() return combat.isDodging(self) end
 
 function player:isDodgeInvincible() return combat.isDodgeInvincible(self) end
 
--- Delegate rendering methods
 function player:draw() render.draw(self) end
 
 function player:drawWeapon() render.drawWeapon(self) end

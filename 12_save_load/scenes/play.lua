@@ -100,8 +100,6 @@ function play:update(dt)
         end
     end
 
-    if dialogue:isOpen() then return end
-
     if self.is_fading and self.fade_alpha > 0 then
         self.fade_alpha = math.max(0, self.fade_alpha - self.fade_speed * dt)
         if self.fade_alpha == 0 then
@@ -109,7 +107,32 @@ function play:update(dt)
         end
     end
 
-    local vx, vy = self.player:update(scaled_dt, self.cam)
+    local is_dialogue_open = dialogue:isOpen()
+
+    local vx, vy = self.player:update(scaled_dt, self.cam, is_dialogue_open)
+
+    for _, enemy in ipairs(self.world.enemies) do
+        if enemy.anim then
+            enemy.anim:update(scaled_dt)
+        end
+    end
+
+    for _, npc in ipairs(self.world.npcs) do
+        if npc.anim then
+            npc.anim:update(scaled_dt)
+        end
+    end
+
+    if is_dialogue_open then
+        local shake_x, shake_y = camera_sys:get_shake_offset()
+        self.cam:lookAt(self.player.x + shake_x, self.player.y + shake_y)
+
+        local mapWidth = self.world.map.width * self.world.map.tilewidth
+        local mapHeight = self.world.map.height * self.world.map.tileheight
+        self.cam:lockBounds(mapWidth, mapHeight)
+
+        return
+    end
 
     self.world:moveEntity(self.player, vx, vy, scaled_dt)
     self.world:updateEnemies(scaled_dt, self.player.x, self.player.y)

@@ -32,13 +32,13 @@ function animation.initialize(player, sprite_sheet)
     player.current_anim_name = "idle_right"
 end
 
-function animation.update(player, dt, cam)
+function animation.update(player, dt, cam, dialogue_open)
+    dialogue_open = dialogue_open or false
+
     local current_anim_name = nil
     local current_frame_index = 1
 
-    -- Direction control
     if debug:IsHandMarkingActive() then
-        -- Hand marking mode: WASD controls direction
         if love.keyboard.isDown('w') then
             player.direction = 'up'
             player.facing_angle = -math.pi / 2
@@ -53,7 +53,6 @@ function animation.update(player, dt, cam)
             player.facing_angle = 0
         end
     elseif player.weapon_drawn or player.parry_active then
-        -- Mouse aim
         local mouse_x, mouse_y
         if cam then
             mouse_x, mouse_y = cam:worldCoords(love.mouse.getPosition())
@@ -78,7 +77,6 @@ function animation.update(player, dt, cam)
         end
     end
 
-    -- Check if attack animation finished
     if player.state == "attacking" and not player.weapon.is_attacking then
         player.state = "idle"
     end
@@ -87,6 +85,22 @@ function animation.update(player, dt, cam)
     local is_moving = false
     local movement_input = false
 
+    if dialogue_open then
+        current_anim_name = "idle_" .. player.direction
+        player.anim = player.animations[current_anim_name]
+        player.anim:update(dt)
+        player.state = "idle"
+        player.current_anim_name = current_anim_name
+
+        if player.weapon then
+            current_frame_index = player.anim and math.floor(player.anim.position) or 1
+            player.weapon:update(dt, player.x, player.y, player.facing_angle,
+                player.direction, player.current_anim_name, current_frame_index, debug:IsHandMarkingActive())
+        end
+
+        return 0, 0
+    end
+
     if love.keyboard.isDown("right", "d") or
         love.keyboard.isDown("left", "a") or
         love.keyboard.isDown("down", "s") or
@@ -94,7 +108,6 @@ function animation.update(player, dt, cam)
         movement_input = true
     end
 
-    -- Determine animation
     if player.state ~= "attacking" and not player.parry_active and not player.dodge_active and not debug:IsHandMarkingActive() then
         local move_direction = nil
 
@@ -162,7 +175,6 @@ function animation.update(player, dt, cam)
         player.anim = player.animations[current_anim_name]
         player.anim:update(dt)
     elseif debug:IsHandMarkingActive() then
-        -- Hand marking mode
         if movement_input then
             player.state = "walking"
             current_anim_name = "walk_" .. player.direction
@@ -179,11 +191,9 @@ function animation.update(player, dt, cam)
             player.anim = player.animations[current_anim_name]
         end
     else
-        -- Fallback: always ensure current_anim_name is set
         current_anim_name = "idle_" .. player.direction
     end
 
-    -- Always set current_anim_name (never nil)
     player.current_anim_name = current_anim_name or ("idle_" .. player.direction)
 
     if debug:IsHandMarkingActive() then
@@ -192,7 +202,6 @@ function animation.update(player, dt, cam)
         current_frame_index = math.floor(player.anim.position)
     end
 
-    -- Update weapon
     if player.weapon then
         player.weapon:update(dt, player.x, player.y, player.facing_angle,
             player.direction, player.current_anim_name, current_frame_index, debug:IsHandMarkingActive())
