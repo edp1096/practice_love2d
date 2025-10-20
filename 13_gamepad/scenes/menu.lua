@@ -1,5 +1,5 @@
 -- scenes/menu.lua
--- Main menu with Continue feature
+-- Main menu with Continue feature and gamepad support
 
 local menu = {}
 
@@ -7,6 +7,7 @@ local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
 local debug = require "systems.debug"
 local save_sys = require "systems.save"
+local input = require "systems.input"
 
 function menu:enter(previous, ...)
     self.title = GameConfig.title
@@ -87,10 +88,23 @@ function menu:draw()
         end
     end
 
-    local message = "Arrow Keys / WASD to navigate, Enter to select | Mouse to hover and click"
+    -- Show gamepad-specific controls if connected
+    local hint_text
+    if input:hasGamepad() then
+        hint_text = "D-Pad / Analog: Navigate | " .. input:getPrompt("menu_select") .. ": Select | " .. input:getPrompt("menu_back") .. ": Quit\nKeyboard: Arrow Keys / WASD | Enter: Select | Mouse: Hover & Click"
+    else
+        hint_text = "Arrow Keys / WASD to navigate, Enter to select | Mouse to hover and click"
+    end
+
     love.graphics.setFont(self.hintFont)
     love.graphics.setColor(0.5, 0.5, 0.5, 1)
-    love.graphics.printf(message, 0, self.layout.hint_y, self.virtual_width, "center")
+    love.graphics.printf(hint_text, 0, self.layout.hint_y - 20, self.virtual_width, "center")
+
+    -- Gamepad connection status
+    if input:hasGamepad() then
+        love.graphics.setColor(0.3, 0.8, 0.3, 1)
+        love.graphics.print("Controller: " .. input.joystick_name, 10, 10)
+    end
 
     if debug.enabled then
         debug:drawHelp(self.virtual_width - 250, 10)
@@ -109,16 +123,30 @@ end
 function menu:keypressed(key)
     if key == "escape" then
         love.event.quit()
-    elseif key == "up" or key == "w" then
+    elseif input:wasPressed("menu_up", "keyboard", key) then
         self.selected = self.selected - 1
         if self.selected < 1 then self.selected = #self.options end
-    elseif key == "down" or key == "s" then
+    elseif input:wasPressed("menu_down", "keyboard", key) then
         self.selected = self.selected + 1
         if self.selected > #self.options then self.selected = 1 end
-    elseif key == "return" or key == "space" then
+    elseif input:wasPressed("menu_select", "keyboard", key) then
         self:executeOption(self.selected)
     else
         debug:handleInput(key, {})
+    end
+end
+
+function menu:gamepadpressed(joystick, button)
+    if input:wasPressed("menu_up", "gamepad", button) then
+        self.selected = self.selected - 1
+        if self.selected < 1 then self.selected = #self.options end
+    elseif input:wasPressed("menu_down", "gamepad", button) then
+        self.selected = self.selected + 1
+        if self.selected > #self.options then self.selected = 1 end
+    elseif input:wasPressed("menu_select", "gamepad", button) then
+        self:executeOption(self.selected)
+    elseif input:wasPressed("menu_back", "gamepad", button) then
+        love.event.quit()
     end
 end
 

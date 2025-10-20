@@ -1,8 +1,9 @@
 -- entities/player/combat.lua
--- Combat system: attack, parry, dodge, damage with effects integration
+-- Combat system: attack, parry, dodge, damage with effects integration and haptic feedback
 
 local weapon_class = require "entities.weapon"
 local effects = require "systems.effects"
+local input = require "systems.input"
 
 local combat = {}
 
@@ -143,6 +144,10 @@ function combat.attack(player)
     if player.weapon:startAttack() then
         player.state = "attacking"
         player.attack_cooldown = player.attack_cooldown_max
+
+        -- Haptic feedback for attack
+        input:vibrateAttack()
+
         return true
     end
 
@@ -171,14 +176,11 @@ function combat.startDodge(player)
         return false
     end
 
-    local dir_x, dir_y = 0, 0
-
-    if love.keyboard.isDown("right", "d") then dir_x = 1 end
-    if love.keyboard.isDown("left", "a") then dir_x = -1 end
-    if love.keyboard.isDown("down", "s") then dir_y = 1 end
-    if love.keyboard.isDown("up", "w") then dir_y = -1 end
+    -- Get dodge direction from input system (supports gamepad)
+    local dir_x, dir_y = input:getMovement()
 
     if dir_x == 0 and dir_y == 0 then
+        -- Use current facing direction if no input
         if player.direction == "right" then
             dir_x = 1
         elseif player.direction == "left" then
@@ -218,6 +220,9 @@ function combat.startDodge(player)
 
     player.last_action_time = 0
 
+    -- Haptic feedback for dodge
+    input:vibrateDodge()
+
     return true
 end
 
@@ -237,6 +242,13 @@ function combat.checkParry(player, incoming_damage)
     player.state = "idle"
 
     effects:spawnParryEffect(player.x, player.y, player.facing_angle, is_perfect)
+
+    -- Haptic feedback for parry
+    if is_perfect then
+        input:vibratePerfectParry()
+    else
+        input:vibrateParry()
+    end
 
     return true, is_perfect
 end
@@ -265,6 +277,9 @@ function combat.takeDamage(player, damage, shake_callback)
 
     player.hit_flash_timer = 0.2
     player.invincible_timer = player.invincible_duration
+
+    -- Haptic feedback for hit
+    input:vibrateHit()
 
     if shake_callback then
         shake_callback(12, 0.3)

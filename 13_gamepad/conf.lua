@@ -41,7 +41,7 @@ function love.conf(t)
     t.window.minwidth = GameConfig.min_width
     t.window.minheight = GameConfig.min_height
 
-    t.modules.joystick = false
+    t.modules.joystick = true
     t.modules.physics = true
     t.modules.touch = false
     t.modules.video = true

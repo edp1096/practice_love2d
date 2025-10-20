@@ -1,5 +1,5 @@
 -- scenes/settings.lua
--- Settings menu scene
+-- Settings menu scene with gamepad settings
 -- FIXED: Fullscreen toggle now properly calls resize chain for camera zoom update
 
 local settings = {}
@@ -7,6 +7,7 @@ local settings = {}
 local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
 local utils = require "utils.util"
+local input = require "systems.input"
 
 local is_ready = false
 
@@ -56,7 +57,7 @@ function settings:enter(previous, ...)
         })
     end
 
-    -- Settings options - conditionally include Monitor option
+    -- Settings options - conditionally include Monitor and Gamepad options
     self.options = {
         { name = "Resolution", type = "list" },
         { name = "Fullscreen", type = "toggle" },
@@ -67,6 +68,13 @@ function settings:enter(previous, ...)
         table.insert(self.options, { name = "Monitor", type = "cycle" })
     end
 
+    -- Add gamepad settings if controller is connected
+    if input:hasGamepad() then
+        table.insert(self.options, { name = "Vibration", type = "toggle" })
+        table.insert(self.options, { name = "Vibration Strength", type = "percent" })
+        table.insert(self.options, { name = "Deadzone", type = "deadzone" })
+    end
+
     table.insert(self.options, { name = "Back", type = "action" })
 
     self.selected = 1
@@ -75,6 +83,14 @@ function settings:enter(previous, ...)
     -- Current values indices
     self.current_resolution_index = self:findCurrentResolution()
     self.current_monitor_index = GameConfig.monitor or 1
+
+    -- Vibration strength presets (0%, 25%, 50%, 75%, 100%)
+    self.vibration_strengths = { 0.0, 0.25, 0.5, 0.75, 1.0 }
+    self.current_vibration_index = self:findVibrationStrength()
+
+    -- Deadzone presets (0.05 ~ 0.30)
+    self.deadzones = { 0.05, 0.10, 0.15, 0.20, 0.25, 0.30 }
+    self.current_deadzone_index = self:findDeadzone()
 
     -- Layout
     self.layout = {
@@ -100,6 +116,26 @@ function settings:findCurrentResolution()
     end
 
     return 3 -- Default to 960x540
+end
+
+function settings:findVibrationStrength()
+    local current = input.settings.vibration_strength
+    for i, strength in ipairs(self.vibration_strengths) do
+        if math.abs(strength - current) < 0.01 then
+            return i
+        end
+    end
+    return 5 -- Default to 100%
+end
+
+function settings:findDeadzone()
+    local current = input.settings.deadzone
+    for i, dz in ipairs(self.deadzones) do
+        if math.abs(dz - current) < 0.01 then
+            return i
+        end
+    end
+    return 3 -- Default to 0.15
 end
 
 function settings:update(dt)
@@ -182,10 +218,17 @@ function settings:draw()
     -- Controls hint
     love.graphics.setFont(self.hintFont)
     love.graphics.setColor(0.5, 0.5, 0.5, 1)
-    love.graphics.printf("Arrow Keys / WASD: Navigate | Left/Right: Change | Enter: Select | ESC: Back",
-        0, self.layout.hint_y - 20, self.virtual_width, "center")
-    love.graphics.printf("Mouse: Hover and Click (Left: Next, Right: Previous)",
-        0, self.layout.hint_y, self.virtual_width, "center")
+
+    local hint_text
+    if input:hasGamepad() then
+        hint_text = "D-Pad: Navigate | " ..
+        input:getPrompt("menu_left") ..
+        input:getPrompt("menu_right") .. ": Change | " .. input:getPrompt("menu_select") .. ": Select | " .. input:getPrompt("menu_back") .. ": Back\nKeyboard: Arrow Keys / WASD | Left/Right: Change | Enter: Select | ESC: Back"
+    else
+        hint_text = "Arrow Keys / WASD: Navigate | Left/Right: Change | Enter: Select | ESC: Back\nMouse: Hover and Click (Left: Next, Right: Previous)"
+    end
+
+    love.graphics.printf(hint_text, 0, self.layout.hint_y - 40, self.virtual_width, "center")
 
     screen:Detach()
 
@@ -202,6 +245,12 @@ function settings:getOptionValue(index)
         return GameConfig.fullscreen and "On" or "Off"
     elseif option.name == "Monitor" then
         return self.monitors[self.current_monitor_index].name
+    elseif option.name == "Vibration" then
+        return input.settings.vibration_enabled and "On" or "Off"
+    elseif option.name == "Vibration Strength" then
+        return string.format("%.0f%%", self.vibration_strengths[self.current_vibration_index] * 100)
+    elseif option.name == "Deadzone" then
+        return string.format("%.2f", self.deadzones[self.current_deadzone_index])
     elseif option.name == "Back" then
         return ""
     end
@@ -294,32 +343,80 @@ function settings:changeOption(direction)
         -- CRITICAL: Call resize chain
         self:resize(GameConfig.width, GameConfig.height)
         utils:SaveConfig(GameConfig)
+    elseif option.name == "Vibration" then
+        input:setVibrationEnabled(not input.settings.vibration_enabled)
+
+        -- Test vibration when enabling
+        if input.settings.vibration_enabled then
+            input:vibrateAttack()
+        end
+    elseif option.name == "Vibration Strength" then
+        self.current_vibration_index = self.current_vibration_index + direction
+        if self.current_vibration_index < 1 then
+            self.current_vibration_index = #self.vibration_strengths
+        elseif self.current_vibration_index > #self.vibration_strengths then
+            self.current_vibration_index = 1
+        end
+
+        input:setVibrationStrength(self.vibration_strengths[self.current_vibration_index])
+
+        -- Test vibration
+        if input.settings.vibration_enabled then
+            input:vibrateAttack()
+        end
+    elseif option.name == "Deadzone" then
+        self.current_deadzone_index = self.current_deadzone_index + direction
+        if self.current_deadzone_index < 1 then
+            self.current_deadzone_index = #self.deadzones
+        elseif self.current_deadzone_index > #self.deadzones then
+            self.current_deadzone_index = 1
+        end
+
+        input:setDeadzone(self.deadzones[self.current_deadzone_index])
     end
 end
 
 function settings:keypressed(key)
-    if key == "up" or key == "w" then
+    if key == "escape" then
+        scene_control.pop()
+    elseif input:wasPressed("menu_up", "keyboard", key) then
         self.selected = self.selected - 1
-        if self.selected < 1 then
-            self.selected = #self.options
-        end
-    elseif key == "down" or key == "s" then
+        if self.selected < 1 then self.selected = #self.options end
+    elseif input:wasPressed("menu_down", "keyboard", key) then
         self.selected = self.selected + 1
-        if self.selected > #self.options then
-            self.selected = 1
-        end
-    elseif key == "left" or key == "a" then
+        if self.selected > #self.options then self.selected = 1 end
+    elseif input:wasPressed("menu_left", "keyboard", key) then
         self:changeOption(-1)
-    elseif key == "right" or key == "d" then
+    elseif input:wasPressed("menu_right", "keyboard", key) then
         self:changeOption(1)
-    elseif key == "return" or key == "space" then
+    elseif input:wasPressed("menu_select", "keyboard", key) then
         if self.options[self.selected].name == "Back" then
             scene_control.pop()
         else
             self:changeOption(1)
         end
-    elseif key == "escape" then
+    end
+end
+
+function settings:gamepadpressed(joystick, button)
+    if input:wasPressed("menu_back", "gamepad", button) then
         scene_control.pop()
+    elseif input:wasPressed("menu_up", "gamepad", button) then
+        self.selected = self.selected - 1
+        if self.selected < 1 then self.selected = #self.options end
+    elseif input:wasPressed("menu_down", "gamepad", button) then
+        self.selected = self.selected + 1
+        if self.selected > #self.options then self.selected = 1 end
+    elseif input:wasPressed("menu_left", "gamepad", button) then
+        self:changeOption(-1)
+    elseif input:wasPressed("menu_right", "gamepad", button) then
+        self:changeOption(1)
+    elseif input:wasPressed("menu_select", "gamepad", button) then
+        if self.options[self.selected].name == "Back" then
+            scene_control.pop()
+        else
+            self:changeOption(1)
+        end
     end
 end
 

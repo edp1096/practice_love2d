@@ -1,10 +1,11 @@
 -- scenes/pause.lua
--- Pause menu overlay scene with aspect ratio support and save slot persistence
+-- Pause menu overlay scene with aspect ratio support, save slot persistence, and gamepad support
 
 local pause = {}
 
 local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
+local input = require "systems.input"
 
 function pause:enter(previous, ...)
     self.previous = previous
@@ -92,7 +93,7 @@ function pause:draw()
     for i, option in ipairs(self.options) do
         local y = self.layout.options_start_y + (i - 1) * self.layout.option_spacing
 
-        -- Highlight if selected by keyboard or hovered by mouse
+        -- Highlight if selected by keyboard/gamepad or hovered by mouse
         if i == self.selected or i == self.mouse_over then
             love.graphics.setColor(1, 1, 0, 1)
             love.graphics.printf("> " .. option, 0, y, self.virtual_width, "center")
@@ -103,10 +104,16 @@ function pause:draw()
     end
 
     -- Draw controls hint
-    local message = "Arrow Keys / WASD to navigate, Enter to select, ESC to resume | Mouse to hover and click"
+    local hint_text
+    if input:hasGamepad() then
+        hint_text = "D-Pad: Navigate | " .. input:getPrompt("menu_select") .. ": Select | " .. input:getPrompt("pause") .. ": Resume\nKeyboard: Arrow Keys / WASD | Enter: Select | ESC: Resume | Mouse: Hover & Click"
+    else
+        hint_text = "Arrow Keys / WASD to navigate, Enter to select, ESC to resume | Mouse to hover and click"
+    end
+
     love.graphics.setFont(self.hintFont)
     love.graphics.setColor(0.7, 0.7, 0.7, 1)
-    love.graphics.printf(message, 0, self.layout.hint_y, self.virtual_width, "center")
+    love.graphics.printf(hint_text, 0, self.layout.hint_y - 20, self.virtual_width, "center")
 
     -- End virtual coordinate system
     screen:Detach()
@@ -128,19 +135,38 @@ function pause:resume()
 end
 
 function pause:keypressed(key)
-    if key == "up" or key == "w" then
+    if input:wasPressed("menu_up", "keyboard", key) then
         self.selected = self.selected - 1
         if self.selected < 1 then
             self.selected = #self.options
         end
-    elseif key == "down" or key == "s" then
+    elseif input:wasPressed("menu_down", "keyboard", key) then
         self.selected = self.selected + 1
         if self.selected > #self.options then
             self.selected = 1
         end
-    elseif key == "return" or key == "space" then
+    elseif input:wasPressed("menu_select", "keyboard", key) then
         self:executeOption(self.selected)
-    elseif key == "p" or key == "escape" then
+    elseif input:wasPressed("pause", "keyboard", key) then
+        -- Quick resume
+        scene_control.pop()
+    end
+end
+
+function pause:gamepadpressed(joystick, button)
+    if input:wasPressed("menu_up", "gamepad", button) then
+        self.selected = self.selected - 1
+        if self.selected < 1 then
+            self.selected = #self.options
+        end
+    elseif input:wasPressed("menu_down", "gamepad", button) then
+        self.selected = self.selected + 1
+        if self.selected > #self.options then
+            self.selected = 1
+        end
+    elseif input:wasPressed("menu_select", "gamepad", button) then
+        self:executeOption(self.selected)
+    elseif input:wasPressed("pause", "gamepad", button) then
         -- Quick resume
         scene_control.pop()
     end

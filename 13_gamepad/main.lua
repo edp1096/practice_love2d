@@ -1,5 +1,5 @@
 -- main.lua
--- Entry point with unified debug system
+-- Entry point with unified debug system and gamepad support
 
 local love_version = (love._version_major .. "." .. love._version_minor)
 print("Running with LÖVE " .. love_version .. " and " .. _VERSION)
@@ -11,15 +11,20 @@ local debug = require "systems.debug"
 local screen = require "lib.screen"
 local utils = require "utils.util"
 local scene_control = require "systems.scene_control"
+local input = require "systems.input"
 local menu = require "scenes.menu"
 
 function love.load()
     if locker then locker:ProcInit() end
     screen:Initialize(GameConfig)
+    input:init()
     scene_control.switch(menu)
 end
 
-function love.update(dt) scene_control.update(dt) end
+function love.update(dt)
+    input:update(dt)
+    scene_control.update(dt)
+end
 
 function love.draw() scene_control.draw() end
 
@@ -57,6 +62,33 @@ end
 
 function love.mousereleased(x, y, button)
     scene_control.mousereleased(x, y, button)
+end
+
+-- Gamepad callbacks
+function love.joystickadded(joystick)
+    input:joystickAdded(joystick)
+end
+
+function love.joystickremoved(joystick)
+    input:joystickRemoved(joystick)
+end
+
+function love.gamepadpressed(joystick, button)
+    if scene_control.current and scene_control.current.gamepadpressed then
+        scene_control.current:gamepadpressed(joystick, button)
+    end
+end
+
+function love.gamepadreleased(joystick, button)
+    if scene_control.current and scene_control.current.gamepadreleased then
+        scene_control.current:gamepadreleased(joystick, button)
+    end
+end
+
+function love.gamepadaxis(joystick, axis, value)
+    if scene_control.current and scene_control.current.gamepadaxis then
+        scene_control.current:gamepadaxis(joystick, axis, value)
+    end
 end
 
 function love.quit()

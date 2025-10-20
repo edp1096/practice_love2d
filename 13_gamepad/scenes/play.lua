@@ -1,5 +1,5 @@
 -- scenes/play.lua
--- Main gameplay scene with save functionality
+-- Main gameplay scene with save functionality and gamepad support
 
 local play = {}
 
@@ -14,6 +14,7 @@ local hud = require "systems.hud"
 local effects = require "systems.effects"
 local dialogue = require "systems.dialogue"
 local save_sys = require "systems.save"
+local input = require "systems.input"
 
 local pb = { x = 0, y = 0, w = 960, h = 540 }
 
@@ -178,6 +179,9 @@ function play:update(dt)
         local hits = self.world:checkWeaponCollisions(self.player.weapon)
         for _, hit in ipairs(hits) do
             self.world:applyWeaponHit(hit)
+
+            -- Haptic feedback for weapon hit
+            input:vibrateWeaponHit()
         end
     end
 
@@ -246,11 +250,11 @@ function play:draw()
     end
 
     if self.player.dodge_active then
-        hud:draw_cooldown(pb.x + 12, pb.h - 52, 210, 0, 1, "Dodge", "")
+        hud:draw_cooldown(pb.x + 12, pb.h - 52, 210, 0, 1, "Dodge", input:getPrompt("dodge"))
         love.graphics.setColor(0.3, 1, 0.3, 1)
         love.graphics.print("DODGING", 17, vh - 29)
     else
-        hud:draw_cooldown(pb.x + 12, pb.h - 52, 210, self.player.dodge_cooldown, self.player.dodge_cooldown_duration, "Dodge", "SPACE")
+        hud:draw_cooldown(pb.x + 12, pb.h - 52, 210, self.player.dodge_cooldown, self.player.dodge_cooldown_duration, "Dodge", input:getPrompt("dodge"))
     end
 
     if self.player.parry_cooldown > 0 then
@@ -273,6 +277,12 @@ function play:draw()
             love.graphics.setColor(1, 1, 0, 1)
             love.graphics.print("Active Effects: " .. effects:getCount(), 8, 140)
             love.graphics.print("F5: Test Effects at Mouse", 8, 154)
+
+            -- Gamepad debug info
+            if input:hasGamepad() then
+                love.graphics.print(input:getDebugInfo(), 8, 168)
+            end
+
             love.graphics.setColor(1, 1, 1, 1)
         end
     end
@@ -318,20 +328,20 @@ end
 
 function play:keypressed(key)
     if dialogue:isOpen() then
-        if key == "space" or key == "return" or key == "f" then
+        if input:wasPressed("interact", "keyboard", key) or input:wasPressed("menu_select", "keyboard", key) then
             dialogue:onAction()
         end
         return
     end
 
-    if key == "escape" then
+    if input:wasPressed("pause", "keyboard", key) then
         local pause = require "scenes.pause"
         scene_control.push(pause)
-    elseif key == "space" then
+    elseif input:wasPressed("dodge", "keyboard", key) then
         if self.player:startDodge() then
             print("Dodge!")
         end
-    elseif key == "f" then
+    elseif input:wasPressed("interact", "keyboard", key) then
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
             local messages = npc:interact()
@@ -347,18 +357,18 @@ function play:keypressed(key)
                 print("Game saved to slot " .. slot .. " at savepoint: " .. savepoint.id)
             end)
         end
+    elseif input:wasPressed("quicksave_1", "keyboard", key) then
+        self:saveGame(1)
+        print("Quick saved to slot 1")
+    elseif input:wasPressed("quicksave_2", "keyboard", key) then
+        self:saveGame(2)
+        print("Quick saved to slot 2")
+    elseif input:wasPressed("quicksave_3", "keyboard", key) then
+        self:saveGame(3)
+        print("Quick saved to slot 3")
     elseif key == "f9" then
         self:saveGame()
         print("Manual save triggered (F9)")
-    elseif key == "f1" then
-        self:saveGame(1)
-        print("Quick saved to slot 1 (F1)")
-    elseif key == "f2" then
-        self:saveGame(2)
-        print("Quick saved to slot 2 (F2)")
-    elseif key == "f3" then
-        self:saveGame(3)
-        print("Quick saved to slot 3 (F3)")
     else
         debug:handleInput(key, {
             player = self.player,
@@ -370,15 +380,15 @@ end
 
 function play:mousepressed(x, y, button)
     if dialogue:isOpen() then
-        if button == 1 then
+        if input:wasPressed("menu_select", "mouse", button) then
             dialogue:onAction()
         end
         return
     end
 
-    if button == 1 then
+    if input:wasPressed("attack", "mouse", button) then
         self.player:attack()
-    elseif button == 2 then
+    elseif input:wasPressed("parry", "mouse", button) then
         if self.player:startParry() then
             print("Parry stance activated!")
         end
@@ -386,6 +396,54 @@ function play:mousepressed(x, y, button)
 end
 
 function play:mousereleased(x, y, button) end
+
+function play:gamepadpressed(joystick, button)
+    if dialogue:isOpen() then
+        if input:wasPressed("interact", "gamepad", button) or input:wasPressed("menu_select", "gamepad", button) then
+            dialogue:onAction()
+        end
+        return
+    end
+
+    if input:wasPressed("pause", "gamepad", button) then
+        local pause = require "scenes.pause"
+        scene_control.push(pause)
+    elseif input:wasPressed("attack", "gamepad", button) then
+        self.player:attack()
+    elseif input:wasPressed("parry", "gamepad", button) then
+        if self.player:startParry() then
+            print("Parry stance activated!")
+        end
+    elseif input:wasPressed("dodge", "gamepad", button) then
+        if self.player:startDodge() then
+            print("Dodge!")
+        end
+    elseif input:wasPressed("interact", "gamepad", button) then
+        local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
+        if npc then
+            local messages = npc:interact()
+            dialogue:showMultiple(npc.name, messages)
+            return
+        end
+
+        local savepoint = self.world:getInteractableSavePoint()
+        if savepoint then
+            local saveslot = require "scenes.saveslot"
+            scene_control.push(saveslot, function(slot)
+                self:saveGame(slot)
+                print("Game saved to slot " .. slot .. " at savepoint: " .. savepoint.id)
+            end)
+        end
+    elseif input:wasPressed("quicksave_1", "gamepad", button) then
+        self:saveGame(1)
+        print("Quick saved to slot 1 [L1]")
+    elseif input:wasPressed("quicksave_2", "gamepad", button) then
+        self:saveGame(2)
+        print("Quick saved to slot 2 [R1]")
+    end
+end
+
+function play:gamepadreleased(joystick, button) end
 
 function play:switchMap(new_map_path, spawn_x, spawn_y)
     if self.world then self.world:destroy() end

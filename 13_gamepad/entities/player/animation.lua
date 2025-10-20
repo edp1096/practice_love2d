@@ -1,8 +1,9 @@
 -- entities/player/animation.lua
--- Animation control and direction management
+-- Animation control and direction management with gamepad support
 
 local anim8 = require "vendor.anim8"
 local debug = require "systems.debug"
+local input = require "systems.input"
 
 local animation = {}
 
@@ -38,6 +39,7 @@ function animation.update(player, dt, cam, dialogue_open)
     local current_anim_name = nil
     local current_frame_index = 1
 
+    -- Determine facing direction
     if debug:IsHandMarkingActive() then
         if love.keyboard.isDown('w') then
             player.direction = 'up'
@@ -53,14 +55,8 @@ function animation.update(player, dt, cam, dialogue_open)
             player.facing_angle = 0
         end
     elseif player.weapon_drawn or player.parry_active then
-        local mouse_x, mouse_y
-        if cam then
-            mouse_x, mouse_y = cam:worldCoords(love.mouse.getPosition())
-        else
-            mouse_x, mouse_y = love.mouse.getPosition()
-        end
-
-        local raw_angle = math.atan2(mouse_y - player.y, mouse_x - player.x)
+        -- Use aim direction from input system (gamepad right stick or mouse)
+        local raw_angle = input:getAimDirection(player.x, player.y, cam)
 
         if raw_angle > -math.pi / 4 and raw_angle <= math.pi / 4 then
             player.direction = "right"
@@ -101,35 +97,27 @@ function animation.update(player, dt, cam, dialogue_open)
         return 0, 0
     end
 
-    if love.keyboard.isDown("right", "d") or
-        love.keyboard.isDown("left", "a") or
-        love.keyboard.isDown("down", "s") or
-        love.keyboard.isDown("up", "w") then
-        movement_input = true
-    end
+    -- Check for movement input (keyboard or gamepad)
+    local move_x, move_y = input:getMovement()
+    movement_input = (math.abs(move_x) > 0.01 or math.abs(move_y) > 0.01)
 
     if player.state ~= "attacking" and not player.parry_active and not player.dodge_active and not debug:IsHandMarkingActive() then
         local move_direction = nil
 
-        if love.keyboard.isDown("right", "d") then
-            vx = player.speed
+        if movement_input then
+            vx = move_x * player.speed
+            vy = move_y * player.speed
             is_moving = true
-            move_direction = "right"
-        end
-        if love.keyboard.isDown("left", "a") then
-            vx = -player.speed
-            is_moving = true
-            move_direction = "left"
-        end
-        if love.keyboard.isDown("down", "s") then
-            vy = player.speed
-            is_moving = true
-            move_direction = "down"
-        end
-        if love.keyboard.isDown("up", "w") then
-            vy = -player.speed
-            is_moving = true
-            move_direction = "up"
+
+            -- Determine direction from movement vector
+            local abs_x = math.abs(move_x)
+            local abs_y = math.abs(move_y)
+
+            if abs_x > abs_y then
+                move_direction = move_x > 0 and "right" or "left"
+            else
+                move_direction = move_y > 0 and "down" or "up"
+            end
         end
 
         if not player.weapon_drawn and move_direction then
