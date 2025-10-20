@@ -14,6 +14,10 @@ input.settings = {
     vibration_strength = 1.0
 }
 
+-- Last aim direction (for maintaining direction when stick is released)
+input.last_aim_angle = 0
+input.last_aim_source = "none" -- "gamepad", "mouse", "initial", or "none"
+
 -- Action mappings
 input.actions = {
     -- Movement (analog or digital)
@@ -261,11 +265,24 @@ function input:getAimDirection(player_x, player_y, cam)
         stick_y = self:applyDeadzone(stick_y)
 
         if math.abs(stick_x) > 0.1 or math.abs(stick_y) > 0.1 then
-            return math.atan2(stick_y, stick_x)
+            -- Active gamepad aim input - update and remember
+            self.last_aim_angle = math.atan2(stick_y, stick_x)
+            self.last_aim_source = "gamepad"
+            return self.last_aim_angle
         end
     end
 
-    -- Mouse (fallback)
+    -- If we had gamepad input before and now stick is released, maintain last direction
+    if self.last_aim_source == "gamepad" then
+        return self.last_aim_angle
+    end
+
+    -- If weapon was just drawn (initial), maintain that direction until player aims
+    if self.last_aim_source == "initial" then
+        return self.last_aim_angle
+    end
+
+    -- Mouse (fallback) - only used if gamepad was never used
     local mouse_x, mouse_y
     if cam then
         mouse_x, mouse_y = cam:worldCoords(love.mouse.getPosition())
@@ -273,7 +290,14 @@ function input:getAimDirection(player_x, player_y, cam)
         mouse_x, mouse_y = love.mouse.getPosition()
     end
 
-    return math.atan2(mouse_y - player_y, mouse_x - player_x)
+    self.last_aim_angle = math.atan2(mouse_y - player_y, mouse_x - player_x)
+    self.last_aim_source = "mouse"
+    return self.last_aim_angle
+end
+
+-- Reset aim source when weapon is sheathed
+function input:resetAimSource()
+    self.last_aim_source = "none"
 end
 
 -- Apply deadzone to analog value
@@ -423,7 +447,8 @@ function input:getDebugInfo()
         self.joystick:getGamepadAxis("lefty")) .. "\n"
     info = info .. "Right Stick: " .. string.format("%.2f, %.2f",
         self.joystick:getGamepadAxis("rightx"),
-        self.joystick:getGamepadAxis("righty"))
+        self.joystick:getGamepadAxis("righty")) .. "\n"
+    info = info .. "Aim Source: " .. self.last_aim_source
 
     return info
 end

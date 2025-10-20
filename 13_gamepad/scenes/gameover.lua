@@ -1,11 +1,12 @@
 -- scenes/gameover.lua
 -- Game Over/Clear scene displayed when player dies or wins
--- UPDATED: Added game clear mode with different UI and options
+-- UPDATED: Added game clear mode with different UI and options, and gamepad support
 
 local gameover = {}
 
 local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
+local input = require "systems.input"
 
 function gameover:enter(previous, is_clear, ...)
     self.previous = previous
@@ -149,10 +150,18 @@ function gameover:draw()
     end
 
     -- Controls hint
-    local message = "Arrow Keys / WASD to navigate, Enter to select | Mouse to hover and click"
     love.graphics.setFont(self.hintFont)
     love.graphics.setColor(0.7, 0.7, 0.7, 1)
-    love.graphics.printf(message, 0, self.layout.hint_y, self.virtual_width, "center")
+
+    if input:hasGamepad() then
+        love.graphics.printf("D-Pad: Navigate | " .. input:getPrompt("menu_select") .. ": Select | " .. input:getPrompt("menu_back") .. ": Main Menu",
+            0, self.layout.hint_y - 20, self.virtual_width, "center")
+        love.graphics.printf("Keyboard: Arrow Keys / WASD | Enter: Select | ESC: Main Menu | Mouse: Hover & Click",
+            0, self.layout.hint_y, self.virtual_width, "center")
+    else
+        love.graphics.printf("Arrow Keys / WASD to navigate, Enter to select | Mouse to hover and click",
+            0, self.layout.hint_y, self.virtual_width, "center")
+    end
 
     screen:Detach()
 end
@@ -179,6 +188,26 @@ function gameover:keypressed(key)
     elseif key == "return" or key == "space" then
         self:executeOption(self.selected)
     elseif key == "escape" then
+        local menu = require "scenes.menu"
+        scene_control.switch(menu)
+    end
+end
+
+function gameover:gamepadpressed(joystick, button)
+    if input:wasPressed("menu_up", "gamepad", button) then
+        self.selected = self.selected - 1
+        if self.selected < 1 then
+            self.selected = #self.options
+        end
+    elseif input:wasPressed("menu_down", "gamepad", button) then
+        self.selected = self.selected + 1
+        if self.selected > #self.options then
+            self.selected = 1
+        end
+    elseif input:wasPressed("menu_select", "gamepad", button) then
+        self:executeOption(self.selected)
+    elseif input:wasPressed("menu_back", "gamepad", button) then
+        -- Circle button always goes to main menu
         local menu = require "scenes.menu"
         scene_control.switch(menu)
     end

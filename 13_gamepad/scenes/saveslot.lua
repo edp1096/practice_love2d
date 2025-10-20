@@ -1,11 +1,12 @@
 -- scenes/saveslot.lua
--- Save slot selection scene with level/area display
+-- Save slot selection scene with level/area display and gamepad support
 
 local saveslot = {}
 
 local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
 local save_sys = require "systems.save"
+local input = require "systems.input"
 
 function saveslot:enter(previous, save_callback, ...)
     self.previous = previous
@@ -140,10 +141,18 @@ function saveslot:draw()
 
     love.graphics.setFont(self.hintFont)
     love.graphics.setColor(0.5, 0.5, 0.5, 1)
-    love.graphics.printf("Arrow Keys / WASD: Navigate | Enter: Save | ESC: Cancel",
-        0, self.layout.hint_y - 20, self.virtual_width, "center")
-    love.graphics.printf("Mouse: Hover and Click | F1/F2/F3: Quick Save to Slot",
-        0, self.layout.hint_y, self.virtual_width, "center")
+
+    if input:hasGamepad() then
+        love.graphics.printf("D-Pad: Navigate | " .. input:getPrompt("menu_select") .. ": Save | " .. input:getPrompt("menu_back") .. ": Cancel",
+            0, self.layout.hint_y - 20, self.virtual_width, "center")
+        love.graphics.printf("Keyboard: Arrow Keys / WASD | Enter: Save | ESC: Cancel | Mouse: Hover & Click",
+            0, self.layout.hint_y, self.virtual_width, "center")
+    else
+        love.graphics.printf("Arrow Keys / WASD: Navigate | Enter: Save | ESC: Cancel",
+            0, self.layout.hint_y - 20, self.virtual_width, "center")
+        love.graphics.printf("Mouse: Hover and Click | F1/F2/F3: Quick Save to Slot",
+            0, self.layout.hint_y, self.virtual_width, "center")
+    end
 
     screen:Detach()
 end
@@ -173,6 +182,28 @@ function saveslot:keypressed(key)
         self:selectSlot(2)
     elseif key == "f3" then
         self:selectSlot(3)
+    end
+end
+
+function saveslot:gamepadpressed(joystick, button)
+    if input:wasPressed("menu_up", "gamepad", button) then
+        self.selected = self.selected - 1
+        if self.selected < 1 then
+            self.selected = #self.slots
+        end
+    elseif input:wasPressed("menu_down", "gamepad", button) then
+        self.selected = self.selected + 1
+        if self.selected > #self.slots then
+            self.selected = 1
+        end
+    elseif input:wasPressed("menu_select", "gamepad", button) then
+        self:selectSlot(self.selected)
+    elseif input:wasPressed("menu_back", "gamepad", button) then
+        scene_control.pop()
+    elseif input:wasPressed("quicksave_1", "gamepad", button) then
+        self:selectSlot(1)
+    elseif input:wasPressed("quicksave_2", "gamepad", button) then
+        self:selectSlot(2)
     end
 end
 

@@ -118,6 +118,8 @@ function combat.updateTimers(player, dt)
         if player.last_action_time >= player.weapon_sheath_delay then
             player.weapon_drawn = false
             player.weapon:emitSheathParticles()
+            -- Reset aim source when weapon is sheathed
+            input:resetAimSource()
         end
     end
 end
@@ -137,6 +139,9 @@ function combat.attack(player)
 
     if not player.weapon_drawn then
         player.weapon_drawn = true
+        -- Initialize aim direction to current facing direction when drawing weapon
+        input.last_aim_angle = player.facing_angle
+        input.last_aim_source = "initial"
     end
 
     player.last_action_time = 0
@@ -161,6 +166,9 @@ function combat.startParry(player)
 
     if not player.weapon_drawn then
         player.weapon_drawn = true
+        -- Initialize aim direction to current facing direction when drawing weapon
+        input.last_aim_angle = player.facing_angle
+        input.last_aim_source = "initial"
     end
 
     player.last_action_time = 0

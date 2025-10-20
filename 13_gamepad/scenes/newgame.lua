@@ -1,11 +1,12 @@
 -- scenes/newgame.lua
--- New game slot selection scene with level/area display
+-- New game slot selection scene with level/area display and gamepad support
 
 local newgame = {}
 
 local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
 local save_sys = require "systems.save"
+local input = require "systems.input"
 
 function newgame:enter(previous, ...)
     self.previous = previous
@@ -121,10 +122,18 @@ function newgame:draw()
 
     love.graphics.setFont(self.hintFont)
     love.graphics.setColor(0.5, 0.5, 0.5, 1)
-    love.graphics.printf("Arrow Keys / WASD: Navigate | Enter: Start | ESC: Back",
-        0, self.layout.hint_y - 20, self.virtual_width, "center")
-    love.graphics.printf("Mouse: Hover and Click",
-        0, self.layout.hint_y, self.virtual_width, "center")
+
+    if input:hasGamepad() then
+        love.graphics.printf("D-Pad: Navigate | " .. input:getPrompt("menu_select") .. ": Start | " .. input:getPrompt("menu_back") .. ": Back",
+            0, self.layout.hint_y - 20, self.virtual_width, "center")
+        love.graphics.printf("Keyboard: Arrow Keys / WASD | Enter: Start | ESC: Back | Mouse: Hover & Click",
+            0, self.layout.hint_y, self.virtual_width, "center")
+    else
+        love.graphics.printf("Arrow Keys / WASD: Navigate | Enter: Start | ESC: Back",
+            0, self.layout.hint_y - 20, self.virtual_width, "center")
+        love.graphics.printf("Mouse: Hover and Click",
+            0, self.layout.hint_y, self.virtual_width, "center")
+    end
 
     screen:Detach()
 end
@@ -147,6 +156,25 @@ function newgame:keypressed(key)
     elseif key == "return" or key == "space" then
         self:selectSlot(self.selected)
     elseif key == "escape" then
+        local menu = require "scenes.menu"
+        scene_control.switch(menu)
+    end
+end
+
+function newgame:gamepadpressed(joystick, button)
+    if input:wasPressed("menu_up", "gamepad", button) then
+        self.selected = self.selected - 1
+        if self.selected < 1 then
+            self.selected = #self.slots
+        end
+    elseif input:wasPressed("menu_down", "gamepad", button) then
+        self.selected = self.selected + 1
+        if self.selected > #self.slots then
+            self.selected = 1
+        end
+    elseif input:wasPressed("menu_select", "gamepad", button) then
+        self:selectSlot(self.selected)
+    elseif input:wasPressed("menu_back", "gamepad", button) then
         local menu = require "scenes.menu"
         scene_control.switch(menu)
     end
