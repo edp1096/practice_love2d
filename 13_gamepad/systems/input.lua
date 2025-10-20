@@ -417,7 +417,7 @@ function input:getPrompt(action)
             start = "[Options]",
             back = "[Share]"
         }
-        return button_names[mapping.gamepad] or "[" .. mapping.gamepad .. "]"
+        return button_names[mapping.gamepad] or ("[" .. mapping.gamepad .. "]")
     elseif self.joystick and mapping.gamepad_dpad then
         return "[D-Pad " .. mapping.gamepad_dpad:upper() .. "]"
     elseif mapping.keyboard then
