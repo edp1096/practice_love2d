@@ -137,6 +137,14 @@ end
 function World:draw(alpha)
     local r, g, b, a = love.graphics.getColor()
     alpha = alpha or 1
+
+    local old_line_width = love.graphics.getLineWidth()
+    local ww, wh = love.graphics.getDimensions()
+    local base_width = 960
+    local scale = math.max(0.1, ww / base_width)
+    local line_width = math.max(1.0, 1.5 / scale)
+    love.graphics.setLineWidth(line_width)
+
     love.graphics.setColor(1, 0, 0, alpha)
     local bodies = self.box2d_world:getBodies()
     for _, body in ipairs(bodies) do
@@ -188,6 +196,7 @@ function World:draw(alpha)
         end
     end
     love.graphics.setColor(r, g, b, a)
+    love.graphics.setLineWidth(old_line_width)
 end
 
 function World:setQueryDebugDrawing(value)
