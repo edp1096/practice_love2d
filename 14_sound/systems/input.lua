@@ -4,18 +4,13 @@ local input_config = require "data.input_config"
 
 local input = {}
 
--- Active joystick
 input.joystick = nil
 input.joystick_name = "No Controller"
-
--- Settings (loaded from config)
 input.settings = input_config.gamepad_settings
 
 -- Last aim direction
 input.last_aim_angle = 0
 input.last_aim_source = "none"
-
--- Merged action mappings from config
 input.actions = {}
 
 -- Button repeat system
@@ -25,9 +20,7 @@ input.button_repeat = {
     timers = {}
 }
 
--- Initialize input system
 function input:init()
-    -- Merge all action categories into single table
     for category, actions in pairs(input_config) do
         if type(actions) == "table" and category ~= "gamepad_settings" and category ~= "button_prompts" then
             for action_name, mapping in pairs(actions) do
@@ -45,7 +38,6 @@ function input:init()
     end
 end
 
--- Detect and connect joystick
 function input:detectJoystick()
     local joysticks = love.joystick.getJoysticks()
     if #joysticks > 0 then
@@ -77,7 +69,6 @@ function input:joystickRemoved(joystick)
     end
 end
 
--- Update (for button repeat)
 function input:update(dt)
     for action, timer in pairs(self.button_repeat.timers) do
         if timer.active then
@@ -91,24 +82,20 @@ function input:update(dt)
     end
 end
 
--- Check if action is currently pressed
 function input:isDown(action)
     local mapping = self.actions[action]
     if not mapping then return false end
 
-    -- Keyboard
     if mapping.keyboard then
         for _, key in ipairs(mapping.keyboard) do
             if love.keyboard.isDown(key) then return true end
         end
     end
 
-    -- Gamepad button
     if mapping.gamepad and self.joystick then
         if self.joystick:isGamepadDown(mapping.gamepad) then return true end
     end
 
-    -- Gamepad D-Pad
     if mapping.gamepad_dpad and self.joystick then
         if self.joystick:isGamepadDown("dp" .. mapping.gamepad_dpad) then return true end
     end
@@ -116,7 +103,6 @@ function input:isDown(action)
     return false
 end
 
--- Check if action was just pressed
 function input:wasPressed(action, source, value)
     local mapping = self.actions[action]
     if not mapping then return false end
@@ -142,7 +128,6 @@ function input:wasPressed(action, source, value)
     return false
 end
 
--- Get movement vector from keyboard or gamepad
 function input:getMovement()
     local vx, vy = 0, 0
 
@@ -159,7 +144,6 @@ function input:getMovement()
         end
     end
 
-    -- Keyboard fallback
     if self:isDown("move_right") then vx = vx + 1 end
     if self:isDown("move_left") then vx = vx - 1 end
     if self:isDown("move_down") then vy = vy + 1 end
@@ -175,11 +159,9 @@ function input:getMovement()
     return vx, vy
 end
 
--- Get aim direction from mouse or gamepad right stick
 function input:getAimDirection(player_x, player_y, cam)
     local has_gamepad_input = false
 
-    -- Check gamepad right stick
     if self.joystick then
         local stick_x = self.joystick:getGamepadAxis("rightx")
         local stick_y = self.joystick:getGamepadAxis("righty")
@@ -208,7 +190,6 @@ function input:getAimDirection(player_x, player_y, cam)
     local angle_diff = math.abs(mouse_angle - (self.last_aim_angle or 0))
     if angle_diff > math.pi then angle_diff = 2 * math.pi - angle_diff end
 
-    -- ~5 degrees
     if angle_diff > 0.087 then self.last_aim_source = "mouse" end
 
     -- Use mouse angle if active
@@ -222,10 +203,9 @@ function input:getAimDirection(player_x, player_y, cam)
     return self.last_aim_angle
 end
 
--- Reset aim source
 function input:resetAimSource() self.last_aim_source = "none" end
 
--- Apply deadzone to analog value
+-- Apply deadzone to analog value of gamepad
 function input:applyDeadzone(value)
     if math.abs(value) < self.settings.deadzone then return 0 end
 
@@ -258,7 +238,6 @@ function input:vibrateDodge() self:vibrate(0.08, 0.4, 0.4) end
 
 function input:vibrateWeaponHit() self:vibrate(0.15, 0.7, 0.7) end
 
--- Settings
 function input:setDeadzone(value) self.settings.deadzone = math.max(0, math.min(1, value)) end
 
 function input:setVibrationEnabled(enabled)
@@ -291,7 +270,6 @@ function input:getPrompt(action)
     return "?"
 end
 
--- Debug info
 function input:getDebugInfo()
     if not self.joystick then return "No controller connected" end
 
@@ -312,7 +290,6 @@ function input:getDebugInfo()
     return info
 end
 
--- Initialize on load
 input:init()
 
 return input
