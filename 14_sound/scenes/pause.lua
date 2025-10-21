@@ -6,6 +6,7 @@ local pause = {}
 local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
 local sound = require "systems.sound"
+local input = require "systems.input"
 local scene_ui = require "utils.scene_ui"
 
 function pause:enter(previous, ...)

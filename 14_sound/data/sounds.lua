@@ -7,7 +7,9 @@ return {
         menu = { path = "assets/bgm/menu.ogg", volume = 0.7, loop = true },
         level1 = { path = "assets/bgm/level1.ogg", volume = 0.7, loop = true },
         level2 = { path = "assets/bgm/level2.ogg", volume = 0.7, loop = true },
-        boss = { path = "assets/bgm/boss.ogg", volume = 0.8, loop = true }
+        boss = { path = "assets/bgm/boss.ogg", volume = 0.8, loop = true },
+        victory = { path = "assets/bgm/victory.mp3", volume = 0.8, loop = true },
+        gameover = { path = "assets/bgm/gameover.ogg", volume = 0.8, loop = true },
     },
 
     -- Sound effects organized by category

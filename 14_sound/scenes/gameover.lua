@@ -1,22 +1,25 @@
 -- scenes/gameover.lua
 -- Game Over/Clear scene displayed when player dies or wins
--- UPDATED: Added game clear mode with different UI and options, and gamepad support
 
 local gameover = {}
 
 local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
 local input = require "systems.input"
+local sound = require "systems.sound"
 
 function gameover:enter(previous, is_clear, ...)
     self.previous = previous
     self.is_clear = is_clear or false
 
-    -- Different options based on clear vs game over
     if self.is_clear then
         self.options = { "Main Menu" }
+        -- Play victory BGM
+        sound:playBGM("victory")
     else
         self.options = { "Restart", "Main Menu" }
+        -- Play game over BGM
+        sound:playBGM("gameover")
     end
 
     self.selected = 1
@@ -41,17 +44,14 @@ function gameover:enter(previous, is_clear, ...)
     self.overlay_alpha = 0
     self.target_alpha = 0.8
 
-    -- Different effects based on clear vs game over
     if self.is_clear then
-        -- Gold flash for victory
         self.flash_alpha = 1.0
         self.flash_speed = 1.5
-        self.flash_color = { 1, 0.8, 0 } -- Gold
+        self.flash_color = { 1, 0.8, 0 }
     else
-        -- Red flash for defeat
         self.flash_alpha = 1.0
         self.flash_speed = 2.0
-        self.flash_color = { 0.8, 0, 0 } -- Red
+        self.flash_color = { 0.8, 0, 0 }
     end
 
     self.mouse_over = 0
@@ -88,7 +88,6 @@ function gameover:update(dt)
 end
 
 function gameover:draw()
-    -- Draw previous scene in background (dimmed)
     if self.previous and self.previous.draw then
         local success, err = pcall(function()
             self.previous:draw()
@@ -101,29 +100,25 @@ function gameover:draw()
 
     screen:Attach()
 
-    -- Dark overlay
     love.graphics.setColor(0, 0, 0, self.overlay_alpha)
     love.graphics.rectangle("fill", 0, 0, self.virtual_width, self.virtual_height)
 
-    -- Flash overlay (gold for clear, red for game over)
     if self.flash_alpha > 0 then
         love.graphics.setColor(self.flash_color[1], self.flash_color[2], self.flash_color[3], self.flash_alpha * 0.3)
         love.graphics.rectangle("fill", 0, 0, self.virtual_width, self.virtual_height)
     end
 
-    -- Title
     love.graphics.setFont(self.titleFont)
     if self.is_clear then
-        love.graphics.setColor(1, 0.9, 0.2, 1) -- Gold
+        love.graphics.setColor(1, 0.9, 0.2, 1)
         local title = "GAME CLEAR!"
         love.graphics.printf(title, 0, self.layout.title_y, self.virtual_width, "center")
     else
-        love.graphics.setColor(1, 0.2, 0.2, 1) -- Red
+        love.graphics.setColor(1, 0.2, 0.2, 1)
         local title = "GAME OVER"
         love.graphics.printf(title, 0, self.layout.title_y, self.virtual_width, "center")
     end
 
-    -- Subtitle
     love.graphics.setFont(self.subtitleFont)
     if self.is_clear then
         love.graphics.setColor(0.9, 0.9, 0.9, 1)
@@ -135,7 +130,6 @@ function gameover:draw()
         love.graphics.printf(subtitle, 0, self.layout.subtitle_y, self.virtual_width, "center")
     end
 
-    -- Options
     love.graphics.setFont(self.optionFont)
     for i, option in ipairs(self.options) do
         local y = self.layout.options_start_y + (i - 1) * self.layout.option_spacing
@@ -149,7 +143,6 @@ function gameover:draw()
         end
     end
 
-    -- Controls hint
     love.graphics.setFont(self.hintFont)
     love.graphics.setColor(0.7, 0.7, 0.7, 1)
 
@@ -207,7 +200,6 @@ function gameover:gamepadpressed(joystick, button)
     elseif input:wasPressed("menu_select", "gamepad", button) then
         self:executeOption(self.selected)
     elseif input:wasPressed("menu_back", "gamepad", button) then
-        -- Circle button always goes to main menu
         local menu = require "scenes.menu"
         scene_control.switch(menu)
     end
@@ -215,13 +207,11 @@ end
 
 function gameover:executeOption(option_index)
     if self.is_clear then
-        -- Clear mode: only "Main Menu"
         if option_index == 1 then
             local menu = require "scenes.menu"
             scene_control.switch(menu)
         end
     else
-        -- Game over mode: "Restart" or "Main Menu"
         if option_index == 1 then
             local play = require "scenes.play"
             scene_control.switch(play, "assets/maps/level1/area1.lua", 400, 250)

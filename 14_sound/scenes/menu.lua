@@ -1,5 +1,4 @@
 -- scenes/menu_refactored.lua
--- Refactored main menu using scene_ui utility (70% code reduction)
 
 local menu = {}
 
@@ -14,7 +13,6 @@ local scene_ui = require "utils.scene_ui"
 function menu:enter(previous, ...)
     self.title = GameConfig.title
 
-    -- Build dynamic options based on save file existence
     local has_saves = save_sys:hasSaveFiles()
     self.options = has_saves and
         { "Continue", "New Game", "Load Game", "Settings", "Quit" } or
@@ -24,23 +22,19 @@ function menu:enter(previous, ...)
     self.mouse_over = 0
     self.previous_mouse_over = 0
 
-    -- Setup UI (using utility functions)
     local vw, vh = screen:GetVirtualDimensions()
     self.virtual_width = vw
     self.virtual_height = vh
     self.fonts = scene_ui.createMenuFonts()
     self.layout = scene_ui.createMenuLayout(vh)
 
-    -- Start menu BGM
     sound:playBGM("menu")
 end
 
 function menu:update(dt)
-    -- Update mouse-over state
     self.previous_mouse_over = self.mouse_over
     self.mouse_over = scene_ui.updateMouseOver(self.options, self.layout, self.virtual_width, self.fonts.option)
 
-    -- Play navigation sound when hovering over different option
     if self.mouse_over ~= self.previous_mouse_over and self.mouse_over > 0 then
         sound:playSFX("menu", "navigate")
     end
@@ -50,23 +44,18 @@ function menu:draw()
     love.graphics.clear(0.1, 0.1, 0.15, 1)
     screen:Attach()
 
-    -- Draw title
     scene_ui.drawTitle(self.title, self.fonts.title, self.layout.title_y, self.virtual_width)
 
-    -- Draw options
     scene_ui.drawOptions(self.options, self.selected, self.mouse_over, self.fonts.option,
         self.layout, self.virtual_width)
 
-    -- Draw control hints
     scene_ui.drawControlHints(self.fonts.hint, self.layout, self.virtual_width)
 
-    -- Gamepad connection status
     if input:hasGamepad() then
         love.graphics.setColor(0.3, 0.8, 0.3, 1)
         love.graphics.print("Controller: " .. input.joystick_name, 10, 10)
     end
 
-    -- Debug help
     if debug.enabled then
         debug:drawHelp(self.virtual_width - 250, 10)
     end
@@ -86,7 +75,6 @@ function menu:keypressed(key)
         return
     end
 
-    -- Handle navigation using utility
     local nav_result = scene_ui.handleKeyboardNav(key, self.selected, #self.options)
 
     if type(nav_result) == "number" then
@@ -127,8 +115,21 @@ function menu:executeOption(option_index)
             sound:playSFX("menu", "error")
         end
     elseif option_name == "New Game" then
-        local newgame = require "scenes.newgame"
-        scene_control.switch(newgame)
+        -- Find first empty slot or use slot 1
+        local empty_slot = nil
+        for i = 1, save_sys.MAX_SLOTS do
+            local info = save_sys:getSlotInfo(i)
+            if not info.exists then
+                empty_slot = i
+                break
+            end
+        end
+
+        local slot = empty_slot or 1
+        print("Starting new game in slot " .. slot)
+
+        local play = require "scenes.play"
+        scene_control.switch(play, "assets/maps/level1/area1.lua", 400, 250, slot)
     elseif option_name == "Load Game" then
         local load = require "systems.load"
         scene_control.switch(load)

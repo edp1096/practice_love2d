@@ -99,6 +99,40 @@ function sound:_createPool(category, name, config)
     print("  Created pool: " .. pool_key .. " (size: " .. config.size .. ")")
 end
 
+-- Public: Create a sound pool dynamically (for entity-specific pools)
+function sound:createPool(category, name, path, size)
+    size = size or 5
+
+    local info = love.filesystem.getInfo(path)
+    if not info then
+        print("WARNING: Cannot create pool for missing file: " .. path)
+        return false
+    end
+
+    local pool_key = category .. "_" .. name
+
+    -- Don't recreate if already exists
+    if self.pools[pool_key] then
+        print("Pool already exists: " .. pool_key)
+        return true
+    end
+
+    self.pools[pool_key] = {
+        sources = {},
+        current_index = 1,
+        base_volume = 1.0
+    }
+
+    for i = 1, size do
+        local source = love.audio.newSource(path, "static")
+        source:setVolume(self.settings.sfx_volume * self.settings.master_volume)
+        table.insert(self.pools[pool_key].sources, source)
+    end
+
+    print("Created pool: " .. pool_key .. " (size: " .. size .. ")")
+    return true
+end
+
 -- Play background music with optional fade
 function sound:playBGM(name, fade_time)
     fade_time = fade_time or 1.0

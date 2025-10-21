@@ -59,7 +59,6 @@ function play:enter(previous, mapPath, spawn_x, spawn_y, save_slot)
 
     dialogue:initialize()
 
-    -- Start BGM based on map
     local level = mapPath:match("level(%d+)")
     if level then
         sound:playBGM("level" .. level)
@@ -73,7 +72,6 @@ function play:exit()
         self.world:destroy()
     end
 
-    -- Stop BGM when exiting play scene
     sound:stopBGM()
 end
 
@@ -93,7 +91,6 @@ function play:saveGame(slot)
         self.current_save_slot = slot
         self:showSaveNotification()
 
-        -- Play save sound
         sound:playSFX("ui", "save")
     end
 end
@@ -122,6 +119,14 @@ function play:update(dt)
         if self.fade_alpha == 0 then
             self.is_fading = false
         end
+    end
+
+    -- CRITICAL: Check player death at the start
+    if self.player.health <= 0 then
+        print("Player died! Switching to game over...")
+        local gameover = require "scenes.gameover"
+        scene_control.switch(gameover, self, false)
+        return
     end
 
     local is_dialogue_open = dialogue:isOpen()
@@ -186,6 +191,14 @@ function play:update(dt)
         end
     end
 
+    -- CRITICAL: Check player death again after enemy attacks
+    if self.player.health <= 0 then
+        print("Player died after enemy attack! Switching to game over...")
+        local gameover = require "scenes.gameover"
+        scene_control.switch(gameover, self, false)
+        return
+    end
+
     self.world:update(scaled_dt)
 
     self.player.x = self.player.collider:getX()
@@ -196,10 +209,8 @@ function play:update(dt)
         for _, hit in ipairs(hits) do
             self.world:applyWeaponHit(hit)
 
-            -- Haptic feedback for weapon hit
             input:vibrateWeaponHit()
 
-            -- Play weapon hit sound
             player_sound.playWeaponHit()
         end
     end
@@ -297,7 +308,6 @@ function play:draw()
             love.graphics.print("Active Effects: " .. effects:getCount(), 8, 140)
             love.graphics.print("F5: Test Effects at Mouse", 8, 154)
 
-            -- Gamepad debug info
             if input:hasGamepad() then
                 love.graphics.print(input:getDebugInfo(), 8, 168)
             end
@@ -357,7 +367,6 @@ function play:keypressed(key)
         local pause = require "scenes.pause"
         scene_control.push(pause)
 
-        -- Play pause sound
         sound:playSFX("ui", "pause")
         sound:pauseBGM()
     elseif input:wasPressed("dodge", "keyboard", key) then
@@ -432,7 +441,6 @@ function play:gamepadpressed(joystick, button)
         local pause = require "scenes.pause"
         scene_control.push(pause)
 
-        -- Play pause sound
         sound:playSFX("ui", "pause")
         sound:pauseBGM()
     elseif input:wasPressed("attack", "gamepad", button) then
@@ -496,7 +504,6 @@ function play:switchMap(new_map_path, spawn_x, spawn_y)
     self.fade_alpha = 1.0
     self.is_fading = true
 
-    -- Update BGM based on new map
     local level = new_map_path:match("level(%d+)")
     if level then
         sound:playBGM("level" .. level)
