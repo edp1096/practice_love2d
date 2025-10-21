@@ -1,3 +1,6 @@
+-- locker.lua
+-- Make sure there is only single instance of the game. PC only.
+
 local locker = {}
 
 local ffi = require("ffi")
