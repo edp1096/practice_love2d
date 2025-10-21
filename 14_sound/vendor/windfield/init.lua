@@ -50,32 +50,6 @@ local function reversePolygonVertices(vertices)
     return reversed
 end
 
-local function getTriangleArea(x1, y1, x2, y2, x3, y3)
-    return math.abs((x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2)) / 2)
-end
-
-local function isValidTriangle(triangle)
-    if #triangle ~= 6 then return false end
-
-    local x1, y1 = triangle[1], triangle[2]
-    local x2, y2 = triangle[3], triangle[4]
-    local x3, y3 = triangle[5], triangle[6]
-
-    local area = getTriangleArea(x1, y1, x2, y2, x3, y3)
-    if area < 0.0001 then return false end
-
-    local min_distance = 0.001
-    local d12 = math.sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2)
-    local d23 = math.sqrt((x3 - x2) ^ 2 + (y3 - y2) ^ 2)
-    local d31 = math.sqrt((x1 - x3) ^ 2 + (y1 - y3) ^ 2)
-
-    if d12 < min_distance or d23 < min_distance or d31 < min_distance then
-        return false
-    end
-
-    return true
-end
-
 local function triangulatePolygon(vertices)
     if #vertices <= 16 then
         return { vertices }
@@ -97,34 +71,23 @@ local function triangulatePolygon(vertices)
         end
     end
 
-    local valid_triangles = {}
-    local invalid_count = 0
-
+    local triangles = {}
     for i, triangle in ipairs(result) do
         if #triangle == 6 then
             if getPolygonWindingOrder(triangle) == "cw" then
                 triangle = reversePolygonVertices(triangle)
             end
-
-            if isValidTriangle(triangle) then
-                table.insert(valid_triangles, triangle)
-            else
-                invalid_count = invalid_count + 1
-            end
+            table.insert(triangles, triangle)
         end
     end
 
-    if invalid_count > 0 then
-        print("Warning: " .. invalid_count .. " degenerate triangles filtered out of " .. #result)
-    end
-
-    if #valid_triangles == 0 then
-        print("Error: All triangles invalid, polygon collider will not be created")
+    if #triangles == 0 then
+        print("Error: No valid triangles created from triangulation")
         return {}
     end
 
-    print("Successfully created " .. #valid_triangles .. " valid collision triangles")
-    return valid_triangles
+    print("Created " .. #triangles .. " triangles from polygon")
+    return triangles
 end
 
 World = {}
@@ -852,18 +815,6 @@ function Collider.new(world, collider_type, ...)
         cx = cx / vertex_count
         cy = cy / vertex_count
 
-        print(string.format("Polygon body position: (%.1f, %.1f)", cx, cy))
-
-        local min_x, max_x = args[1][1], args[1][1]
-        local min_y, max_y = args[1][2], args[1][2]
-        for i = 1, #args[1], 2 do
-            min_x = math.min(min_x, args[1][i])
-            max_x = math.max(max_x, args[1][i])
-            min_y = math.min(min_y, args[1][i + 1])
-            max_y = math.max(max_y, args[1][i + 1])
-        end
-        print(string.format("Polygon bounds: x[%.1f-%.1f] y[%.1f-%.1f]", min_x, max_x, min_y, max_y))
-
         self.body = love.physics.newBody(self.world.box2d_world, cx, cy, body_type)
 
         local relative_vertices = {}
@@ -884,6 +835,8 @@ function Collider.new(world, collider_type, ...)
 
         if #triangles > 1 then
             local created_count = 0
+            local rejected_count = 0
+
             for i, triangle in ipairs(triangles) do
                 if getPolygonWindingOrder(triangle) == "cw" then
                     triangle = reversePolygonVertices(triangle)
@@ -906,13 +859,8 @@ function Collider.new(world, collider_type, ...)
                     tri_sensor:setSensor(true)
                     tri_sensor:setUserData(self)
                     self.sensors['main_' .. created_count] = tri_sensor
-
-                    if created_count == 1 then
-                        print(string.format("First triangle (relative): [%.1f,%.1f] [%.1f,%.1f] [%.1f,%.1f]",
-                            triangle[1], triangle[2], triangle[3], triangle[4], triangle[5], triangle[6]))
-                    end
                 else
-                    print("Warning: Box2D rejected triangle " .. i .. ": " .. tostring(tri_shape))
+                    rejected_count = rejected_count + 1
                 end
             end
 
@@ -920,7 +868,11 @@ function Collider.new(world, collider_type, ...)
                 error("Failed to create any valid collision shapes for polygon")
             end
 
-            print("Polygon collider created with " .. created_count .. " collision shapes")
+            if rejected_count > 0 then
+                print(string.format("Polygon collider: %d triangles created, %d rejected by Box2D", created_count, rejected_count))
+            else
+                print(string.format("Polygon collider: %d triangles created successfully", created_count))
+            end
 
             shape = self.shapes['main_1']
             fixture = self.fixtures['main_1']
