@@ -72,9 +72,7 @@ function world:loadWalls()
         local success = true
 
         if obj.shape == "rectangle" then
-            wall = self.physicsWorld:newRectangleCollider(
-                obj.x, obj.y, obj.width, obj.height
-            )
+            wall = self.physicsWorld:newRectangleCollider(obj.x, obj.y, obj.width, obj.height)
             rect_count = rect_count + 1
         elseif obj.shape == "polygon" and obj.polygon then
             print(string.format("Loading polygon #%d at obj pos (%.1f, %.1f)", i, obj.x, obj.y))
@@ -221,10 +219,9 @@ end
 
 function world:getInteractableSavePoint()
     for _, savepoint in ipairs(self.savepoints) do
-        if savepoint.can_interact then
-            return savepoint
-        end
+        if savepoint.can_interact then return savepoint end
     end
+
     return nil
 end
 
@@ -248,6 +245,7 @@ function world:checkTransition(player_x, player_y, player_w, player_h)
             return transition
         end
     end
+
     return nil
 end
 
@@ -280,10 +278,7 @@ function world:loadEnemies()
                 local points = {}
                 for point_str in string.gmatch(obj.properties.patrol_points, "([^;]+)") do
                     local x, y = point_str:match("([^,]+),([^,]+)")
-                    table.insert(points, {
-                        x = obj.x + tonumber(x),
-                        y = obj.y + tonumber(y)
-                    })
+                    table.insert(points, { x = obj.x + tonumber(x), y = obj.y + tonumber(y) })
                 end
                 new_enemy:setPatrolPoints(points)
             else
@@ -343,9 +338,7 @@ function world:checkLineOfSight(x1, y1, x2, y2)
     local items = self.physicsWorld:queryLine(x1, y1, x2, y2)
 
     for _, item in ipairs(items) do
-        if item.collision_class == "Wall" then
-            return false
-        end
+        if item.collision_class == "Wall" then return false end
     end
 
     return true
@@ -368,9 +361,7 @@ end
 function world:checkWeaponCollisions(weapon)
     local hit_results = {}
 
-    if not weapon:canDealDamage() then
-        return hit_results
-    end
+    if not weapon:canDealDamage() then return hit_results end
 
     for _, enemy in ipairs(self.enemies) do
         if enemy.state ~= "dead" and weapon:checkHit(enemy) then
@@ -410,9 +401,7 @@ function world:updateEnemies(dt, player_x, player_y)
         if enemy.state == "dead" then
             enemy.death_timer = (enemy.death_timer or 0) + dt
             if enemy.death_timer > 2 then
-                if enemy.collider then
-                    enemy.collider:destroy()
-                end
+                if enemy.collider then enemy.collider:destroy() end
                 table.remove(self.enemies, i)
             end
         else
@@ -530,9 +519,7 @@ function world:drawDebug()
 
     if self.npcs then
         for _, npc in ipairs(self.npcs) do
-            if npc and npc.drawDebug then
-                npc:drawDebug()
-            end
+            if npc and npc.drawDebug then npc:drawDebug() end
         end
     end
 
@@ -541,10 +528,9 @@ end
 
 function world:getInteractableNPC(player_x, player_y)
     for _, npc in ipairs(self.npcs) do
-        if npc.can_interact then
-            return npc
-        end
+        if npc.can_interact then return npc end
     end
+
     return nil
 end
 

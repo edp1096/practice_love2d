@@ -1,11 +1,8 @@
 -- systems/sound.lua
--- Refactored sound management system using centralized sound definitions
-
 local sound_data = require "data.sounds"
 
 local sound = {}
 
--- Master volume settings
 sound.settings = {
     master_volume = 1.0,
     bgm_volume = 0.7,
@@ -13,25 +10,26 @@ sound.settings = {
     muted = false
 }
 
--- Currently playing BGM
 sound.current_bgm = nil
 sound.current_bgm_name = nil
 
--- Loaded sound sources
 sound.bgm = {}
 sound.sfx = {}
 sound.pools = {}
 
--- Load all sounds from data definitions
+-- Pitch variation presets from config
+sound.pitch_variations = sound_data.variations.pitch
+
+-- Category constants
+sound.CATEGORY = sound_data.categories
+
 function sound:init()
     print("Sound system initializing...")
 
-    -- Load BGM tracks
     for name, config in pairs(sound_data.bgm) do
         self:_loadBGM(name, config)
     end
 
-    -- Load SFX by category
     for category, sounds in pairs(sound_data.sfx) do
         self.sfx[category] = {}
         for name, config in pairs(sounds) do
@@ -39,7 +37,6 @@ function sound:init()
         end
     end
 
-    -- Create sound pools
     for category, pools in pairs(sound_data.pools) do
         for name, config in pairs(pools) do
             self:_createPool(category, name, config)
@@ -50,7 +47,6 @@ function sound:init()
     self:printStatus()
 end
 
--- Internal: Load a single BGM track
 function sound:_loadBGM(name, config)
     local info = love.filesystem.getInfo(config.path)
     if info then
@@ -63,7 +59,6 @@ function sound:_loadBGM(name, config)
     end
 end
 
--- Internal: Load a single SFX
 function sound:_loadSFX(category, name, config)
     local info = love.filesystem.getInfo(config.path)
     if info then
@@ -75,7 +70,6 @@ function sound:_loadSFX(category, name, config)
     end
 end
 
--- Internal: Create a sound pool
 function sound:_createPool(category, name, config)
     local info = love.filesystem.getInfo(config.path)
     if not info then
@@ -87,7 +81,8 @@ function sound:_createPool(category, name, config)
     self.pools[pool_key] = {
         sources = {},
         current_index = 1,
-        base_volume = config.volume or 1.0
+        base_volume = config.volume or 1.0,
+        pitch_variation = config.pitch_variation or "normal"
     }
 
     for i = 1, (config.size or 5) do
@@ -99,9 +94,32 @@ function sound:_createPool(category, name, config)
     print("  Created pool: " .. pool_key .. " (size: " .. config.size .. ")")
 end
 
--- Public: Create a sound pool dynamically (for entity-specific pools)
-function sound:createPool(category, name, path, size)
+-- Get pitch value from variation preset name
+function sound:_getPitch(variation_name)
+    variation_name = variation_name or "normal"
+    local preset = self.pitch_variations[variation_name]
+
+    if not preset then
+        preset = self.pitch_variations.normal
+    end
+
+    return preset.min + math.random() * (preset.max - preset.min)
+end
+
+-- Get pitch from sound config
+function sound:_getPitchFromConfig(category, name)
+    local config = sound_data.sfx[category] and sound_data.sfx[category][name]
+
+    if config and config.pitch_variation then
+        return self:_getPitch(config.pitch_variation)
+    end
+
+    return self:_getPitch("normal")
+end
+
+function sound:createPool(category, name, path, size, pitch_variation)
     size = size or 5
+    pitch_variation = pitch_variation or "normal"
 
     local info = love.filesystem.getInfo(path)
     if not info then
@@ -111,7 +129,6 @@ function sound:createPool(category, name, path, size)
 
     local pool_key = category .. "_" .. name
 
-    -- Don't recreate if already exists
     if self.pools[pool_key] then
         print("Pool already exists: " .. pool_key)
         return true
@@ -120,7 +137,8 @@ function sound:createPool(category, name, path, size)
     self.pools[pool_key] = {
         sources = {},
         current_index = 1,
-        base_volume = 1.0
+        base_volume = 1.0,
+        pitch_variation = pitch_variation
     }
 
     for i = 1, size do
@@ -133,11 +151,9 @@ function sound:createPool(category, name, path, size)
     return true
 end
 
--- Play background music with optional fade
 function sound:playBGM(name, fade_time)
     fade_time = fade_time or 1.0
 
-    -- Already playing same track
     if self.current_bgm_name == name and self.current_bgm and self.current_bgm:isPlaying() then
         return
     end
@@ -147,12 +163,10 @@ function sound:playBGM(name, fade_time)
         return
     end
 
-    -- Stop current BGM (TODO: implement fade out/in)
     if self.current_bgm and self.current_bgm:isPlaying() then
         self.current_bgm:stop()
     end
 
-    -- Play new BGM
     self.current_bgm = self.bgm[name]
     self.current_bgm_name = name
 
@@ -163,7 +177,6 @@ function sound:playBGM(name, fade_time)
     print("Playing BGM: " .. name)
 end
 
--- Stop background music
 function sound:stopBGM(fade_time)
     fade_time = fade_time or 1.0
 
@@ -174,23 +187,20 @@ function sound:stopBGM(fade_time)
     end
 end
 
--- Pause background music
 function sound:pauseBGM()
     if self.current_bgm and self.current_bgm:isPlaying() then
         self.current_bgm:pause()
     end
 end
 
--- Resume background music
 function sound:resumeBGM()
     if self.current_bgm and not self.settings.muted then
         self.current_bgm:play()
     end
 end
 
--- Play sound effect with pitch and volume variation
-function sound:playSFX(category, name, pitch, volume_multiplier)
-    pitch = pitch or 1.0
+-- Play SFX with automatic pitch variation from config
+function sound:playSFX(category, name, pitch_override, volume_multiplier)
     volume_multiplier = volume_multiplier or 1.0
 
     if self.settings.muted then return end
@@ -200,15 +210,16 @@ function sound:playSFX(category, name, pitch, volume_multiplier)
         return
     end
 
+    local pitch = pitch_override or self:_getPitchFromConfig(category, name)
+
     local source = self.sfx[category][name]:clone()
     source:setPitch(pitch)
     source:setVolume(source:getVolume() * volume_multiplier)
     source:play()
 end
 
--- Play pooled sound (for frequently used sounds)
-function sound:playPooled(category, name, pitch, volume_multiplier)
-    pitch = pitch or 1.0
+-- Play pooled sound with automatic pitch variation
+function sound:playPooled(category, name, pitch_override, volume_multiplier)
     volume_multiplier = volume_multiplier or 1.0
 
     if self.settings.muted then return end
@@ -221,21 +232,20 @@ function sound:playPooled(category, name, pitch, volume_multiplier)
         return
     end
 
-    -- Get next available source from pool
+    local pitch = pitch_override or self:_getPitch(pool.pitch_variation)
+
     local source = pool.sources[pool.current_index]
     source:stop()
     source:setPitch(pitch)
     source:setVolume(pool.base_volume * self.settings.sfx_volume * self.settings.master_volume * volume_multiplier)
     source:play()
 
-    -- Rotate pool index
     pool.current_index = pool.current_index + 1
     if pool.current_index > #pool.sources then
         pool.current_index = 1
     end
 end
 
--- Volume control methods
 function sound:setMasterVolume(volume)
     self.settings.master_volume = math.max(0, math.min(1, volume))
     self:_updateAllVolumes()
@@ -244,7 +254,6 @@ end
 function sound:setBGMVolume(volume)
     self.settings.bgm_volume = math.max(0, math.min(1, volume))
 
-    -- Update all BGM tracks
     for _, bgm in pairs(self.bgm) do
         bgm:setVolume(self.settings.bgm_volume * self.settings.master_volume)
     end
@@ -253,14 +262,12 @@ end
 function sound:setSFXVolume(volume)
     self.settings.sfx_volume = math.max(0, math.min(1, volume))
 
-    -- Update all SFX
     for category, sounds in pairs(self.sfx) do
         for _, sound in pairs(sounds) do
             sound:setVolume(self.settings.sfx_volume * self.settings.master_volume)
         end
     end
 
-    -- Update all pools
     for _, pool in pairs(self.pools) do
         for _, source in ipairs(pool.sources) do
             source:setVolume(pool.base_volume * self.settings.sfx_volume * self.settings.master_volume)
@@ -268,13 +275,11 @@ function sound:setSFXVolume(volume)
     end
 end
 
--- Internal: Update all volume settings
 function sound:_updateAllVolumes()
     self:setBGMVolume(self.settings.bgm_volume)
     self:setSFXVolume(self.settings.sfx_volume)
 end
 
--- Toggle mute on/off
 function sound:toggleMute()
     self.settings.muted = not self.settings.muted
 
@@ -291,7 +296,6 @@ function sound:toggleMute()
     return self.settings.muted
 end
 
--- Cleanup all sounds
 function sound:cleanup()
     self:stopBGM()
 
@@ -302,7 +306,6 @@ function sound:cleanup()
     print("Sound system cleaned up")
 end
 
--- Print system status
 function sound:printStatus()
     print("=== Sound System Status ===")
     print("Master Volume: " .. string.format("%.0f%%", self.settings.master_volume * 100))
@@ -328,7 +331,6 @@ function sound:printStatus()
     print("===========================")
 end
 
--- Initialize on load
 sound:init()
 
 return sound
