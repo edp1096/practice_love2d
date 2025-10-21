@@ -26,6 +26,107 @@ local path = ... .. '.'
 local wf = {}
 wf.Math = require(path .. 'mlib.mlib')
 
+-- Polygon triangulation helper functions
+local function getPolygonWindingOrder(vertices)
+    local area = 0
+    local n = #vertices / 2
+
+    for i = 1, #vertices - 2, 2 do
+        local j = i + 2
+        if j > #vertices then j = 1 end
+
+        area = area + (vertices[i] * vertices[j + 1] - vertices[j] * vertices[i + 1])
+    end
+
+    return area > 0 and "ccw" or "cw"
+end
+
+local function reversePolygonVertices(vertices)
+    local reversed = {}
+    for i = #vertices - 1, 1, -2 do
+        table.insert(reversed, vertices[i])
+        table.insert(reversed, vertices[i + 1])
+    end
+    return reversed
+end
+
+local function getTriangleArea(x1, y1, x2, y2, x3, y3)
+    return math.abs((x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2)) / 2)
+end
+
+local function isValidTriangle(triangle)
+    if #triangle ~= 6 then return false end
+
+    local x1, y1 = triangle[1], triangle[2]
+    local x2, y2 = triangle[3], triangle[4]
+    local x3, y3 = triangle[5], triangle[6]
+
+    local area = getTriangleArea(x1, y1, x2, y2, x3, y3)
+    if area < 0.0001 then return false end
+
+    local min_distance = 0.001
+    local d12 = math.sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2)
+    local d23 = math.sqrt((x3 - x2) ^ 2 + (y3 - y2) ^ 2)
+    local d31 = math.sqrt((x1 - x3) ^ 2 + (y1 - y3) ^ 2)
+
+    if d12 < min_distance or d23 < min_distance or d31 < min_distance then
+        return false
+    end
+
+    return true
+end
+
+local function triangulatePolygon(vertices)
+    if #vertices <= 16 then
+        return { vertices }
+    end
+
+    if getPolygonWindingOrder(vertices) == "cw" then
+        vertices = reversePolygonVertices(vertices)
+    end
+
+    local success, result = pcall(love.math.triangulate, vertices)
+
+    if not success then
+        print("Warning: Triangulation failed, attempting to use original polygon")
+        if #vertices <= 16 then
+            return { vertices }
+        else
+            print("Error: Polygon too complex (" .. (#vertices / 2) .. " vertices), cannot create collider")
+            return {}
+        end
+    end
+
+    local valid_triangles = {}
+    local invalid_count = 0
+
+    for i, triangle in ipairs(result) do
+        if #triangle == 6 then
+            if getPolygonWindingOrder(triangle) == "cw" then
+                triangle = reversePolygonVertices(triangle)
+            end
+
+            if isValidTriangle(triangle) then
+                table.insert(valid_triangles, triangle)
+            else
+                invalid_count = invalid_count + 1
+            end
+        end
+    end
+
+    if invalid_count > 0 then
+        print("Warning: " .. invalid_count .. " degenerate triangles filtered out of " .. #result)
+    end
+
+    if #valid_triangles == 0 then
+        print("Error: All triangles invalid, polygon collider will not be created")
+        return {}
+    end
+
+    print("Successfully created " .. #valid_triangles .. " valid collision triangles")
+    return valid_triangles
+end
+
 World = {}
 World.__index = World
 
@@ -36,8 +137,6 @@ function wf.newWorld(xg, yg, sleep)
     world:collisionClear()
     world:addCollisionClass('Default')
 
-    -- Points all box2d_world functions to this wf.World object
-    -- This means that the user can call world:setGravity for instance without having to say world.box2d_world:setGravity
     for k, v in pairs(world.box2d_world.__index) do
         if k ~= '__gc' and k ~= '__eq' and k ~= '__index' and k ~= '__tostring' and k ~= 'update' and k ~= 'destroy' and k ~= 'type' and k ~= 'typeOf' then
             world[k] = function(self, ...)
@@ -51,7 +150,6 @@ end
 
 function World.new(wf_self, xg, yg, sleep)
     local self = {}
-    -- local settings = settings or {}
     self.wf = wf_self
 
     self.draw_query_for_n_frames = 10
@@ -74,12 +172,9 @@ function World:update(dt)
 end
 
 function World:draw(alpha)
-    -- get the current color values to reapply
     local r, g, b, a = love.graphics.getColor()
-    -- alpha value is optional
-    alpha = alpha or 255
-    -- Colliders debug
-    love.graphics.setColor(222, 222, 222, alpha)
+    alpha = alpha or 1
+    love.graphics.setColor(1, 0, 0, alpha)
     local bodies = self.box2d_world:getBodies()
     for _, body in ipairs(bodies) do
         local fixtures = body:getFixtures()
@@ -99,20 +194,18 @@ function World:draw(alpha)
             end
         end
     end
-    love.graphics.setColor(255, 255, 255, alpha)
+    love.graphics.setColor(1, 1, 1, alpha)
 
-    -- Joint debug
-    love.graphics.setColor(222, 128, 64, alpha)
+    love.graphics.setColor(0, 1, 0, alpha)
     local joints = self.box2d_world:getJoints()
     for _, joint in ipairs(joints) do
         local x1, y1, x2, y2 = joint:getAnchors()
         if x1 and y1 then love.graphics.circle('line', x1, y1, 4) end
         if x2 and y2 then love.graphics.circle('line', x2, y2, 4) end
     end
-    love.graphics.setColor(255, 255, 255, alpha)
+    love.graphics.setColor(1, 1, 1, alpha)
 
-    -- Query debug
-    love.graphics.setColor(64, 64, 222, alpha)
+    love.graphics.setColor(0, 0, 1, alpha)
     for _, query_draw in ipairs(self.query_debug_draw) do
         query_draw.frames = query_draw.frames - 1
         if query_draw.type == 'circle' then
@@ -286,7 +379,6 @@ function World:isCollisionBetweenSensors(type1, type2)
     end
 end
 
--- https://love2d.org/forums/viewtopic.php?f=4&t=75441
 function World:generateCategoriesMasks()
     local collision_ignores = {}
     for collision_class_name, collision_class in pairs(self.collision_classes) do
@@ -302,7 +394,6 @@ function World:generateCategoriesMasks()
     end
     for object_type, ignore_list in pairs(collision_ignores) do
         for key, ignored_type in pairs(ignore_list) do
-            -- Check ignored_type
             if ignored_type == nil then
                 error('Collision class ' .. object_type .. ' has a nil ignored type.')
             end
@@ -545,7 +636,6 @@ function World:newChainCollider(vertices, loop, settings)
     return self.wf.Collider.new(self, 'Chain', vertices, loop, settings)
 end
 
--- Internal AABB box2d query used before going for more specific and precise computations.
 function World:_queryBoundingBox(x1, y1, x2, y2)
     local colliders = {}
     local callback = function(fixture)
@@ -743,8 +833,104 @@ function Collider.new(world, collider_type, ...)
         })
     elseif self.type == 'Polygon' then
         self.collision_class = (args[2] and args[2].collision_class) or 'Default'
-        self.body = love.physics.newBody(self.world.box2d_world, 0, 0, (args[2] and args[2].body_type) or 'dynamic')
-        shape = love.physics.newPolygonShape(unpack(args[1]))
+        local body_type = (args[2] and args[2].body_type) or 'dynamic'
+
+        if #args[1] < 6 then
+            error("Polygon must have at least 3 vertices (got " .. (#args[1] / 2) .. " vertices)")
+        end
+
+        if #args[1] > 32 then
+            print("Warning: Polygon has " .. (#args[1] / 2) .. " vertices. Complex polygons may have issues.")
+        end
+
+        local cx, cy = 0, 0
+        local vertex_count = #args[1] / 2
+        for i = 1, #args[1], 2 do
+            cx = cx + args[1][i]
+            cy = cy + args[1][i + 1]
+        end
+        cx = cx / vertex_count
+        cy = cy / vertex_count
+
+        print(string.format("Polygon body position: (%.1f, %.1f)", cx, cy))
+
+        local min_x, max_x = args[1][1], args[1][1]
+        local min_y, max_y = args[1][2], args[1][2]
+        for i = 1, #args[1], 2 do
+            min_x = math.min(min_x, args[1][i])
+            max_x = math.max(max_x, args[1][i])
+            min_y = math.min(min_y, args[1][i + 1])
+            max_y = math.max(max_y, args[1][i + 1])
+        end
+        print(string.format("Polygon bounds: x[%.1f-%.1f] y[%.1f-%.1f]", min_x, max_x, min_y, max_y))
+
+        self.body = love.physics.newBody(self.world.box2d_world, cx, cy, body_type)
+
+        local relative_vertices = {}
+        for i = 1, #args[1], 2 do
+            table.insert(relative_vertices, args[1][i] - cx)
+            table.insert(relative_vertices, args[1][i + 1] - cy)
+        end
+
+        if getPolygonWindingOrder(relative_vertices) == "cw" then
+            relative_vertices = reversePolygonVertices(relative_vertices)
+        end
+
+        local triangles = triangulatePolygon(relative_vertices)
+
+        if #triangles == 0 then
+            error("Failed to triangulate polygon: no valid triangles created")
+        end
+
+        if #triangles > 1 then
+            local created_count = 0
+            for i, triangle in ipairs(triangles) do
+                if getPolygonWindingOrder(triangle) == "cw" then
+                    triangle = reversePolygonVertices(triangle)
+                end
+
+                local success, tri_shape = pcall(love.physics.newPolygonShape, unpack(triangle))
+                if success then
+                    created_count = created_count + 1
+                    self.shapes['main_' .. created_count] = tri_shape
+
+                    local tri_fixture = love.physics.newFixture(self.body, tri_shape)
+                    if self.world.masks[self.collision_class] then
+                        tri_fixture:setCategory(unpack(self.world.masks[self.collision_class].categories))
+                        tri_fixture:setMask(unpack(self.world.masks[self.collision_class].masks))
+                    end
+                    tri_fixture:setUserData(self)
+                    self.fixtures['main_' .. created_count] = tri_fixture
+
+                    local tri_sensor = love.physics.newFixture(self.body, tri_shape)
+                    tri_sensor:setSensor(true)
+                    tri_sensor:setUserData(self)
+                    self.sensors['main_' .. created_count] = tri_sensor
+
+                    if created_count == 1 then
+                        print(string.format("First triangle (relative): [%.1f,%.1f] [%.1f,%.1f] [%.1f,%.1f]",
+                            triangle[1], triangle[2], triangle[3], triangle[4], triangle[5], triangle[6]))
+                    end
+                else
+                    print("Warning: Box2D rejected triangle " .. i .. ": " .. tostring(tri_shape))
+                end
+            end
+
+            if created_count == 0 then
+                error("Failed to create any valid collision shapes for polygon")
+            end
+
+            print("Polygon collider created with " .. created_count .. " collision shapes")
+
+            shape = self.shapes['main_1']
+            fixture = self.fixtures['main_1']
+        else
+            local success, poly_shape = pcall(love.physics.newPolygonShape, unpack(relative_vertices))
+            if not success then
+                error("Failed to create polygon shape: " .. tostring(poly_shape))
+            end
+            shape = poly_shape
+        end
     elseif self.type == 'Line' then
         self.collision_class = (args[5] and args[5].collision_class) or 'Default'
         self.body = love.physics.newBody(self.world.box2d_world, 0, 0, (args[5] and args[5].body_type) or 'dynamic')
@@ -755,28 +941,28 @@ function Collider.new(world, collider_type, ...)
         shape = love.physics.newChainShape(args[1], unpack(args[2]))
     end
 
-    -- Define collision classes and attach them to fixture and sensor
-    fixture = love.physics.newFixture(self.body, shape)
-    if self.world.masks[self.collision_class] then
-        fixture:setCategory(unpack(self.world.masks[self.collision_class].categories))
-        fixture:setMask(unpack(self.world.masks[self.collision_class].masks))
-    end
-    fixture:setUserData(self)
-    local sensor = love.physics.newFixture(self.body, shape)
-    sensor:setSensor(true)
-    sensor:setUserData(self)
+    if not fixture then
+        fixture = love.physics.newFixture(self.body, shape)
+        if self.world.masks[self.collision_class] then
+            fixture:setCategory(unpack(self.world.masks[self.collision_class].categories))
+            fixture:setMask(unpack(self.world.masks[self.collision_class].masks))
+        end
+        fixture:setUserData(self)
+        local sensor = love.physics.newFixture(self.body, shape)
+        sensor:setSensor(true)
+        sensor:setUserData(self)
 
-    self.shapes['main'] = shape
-    self.fixtures['main'] = fixture
-    self.sensors['main'] = sensor
+        self.shapes['main'] = shape
+        self.fixtures['main'] = fixture
+        self.sensors['main'] = sensor
+    end
+
     self.shape = shape
     self.fixture = fixture
 
     self.preSolve = function() end
     self.postSolve = function() end
 
-    -- Points all body, fixture and shape functions to this wf.Collider object
-    -- This means that the user can call collider:setLinearVelocity for instance without having to say collider.body:setLinearVelocity
     for k, v in pairs(self.body.__index) do
         if k ~= '__gc' and k ~= '__eq' and k ~= '__index' and k ~= '__tostring' and k ~= 'destroy' and k ~= 'type' and k ~= 'typeOf' then
             self[k] = function(self, ...)

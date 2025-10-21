@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="2025.09.25" orientation="orthogonal" renderorder="right-down" width="30" height="30" tilewidth="64" tileheight="64" infinite="0" nextlayerid="6" nextobjectid="37">
+<map version="1.10" tiledversion="2025.09.25" orientation="orthogonal" renderorder="right-down" width="30" height="30" tilewidth="64" tileheight="64" infinite="0" nextlayerid="6" nextobjectid="38">
  <editorsettings>
   <export target="area2.lua" format="lua"/>
  </editorsettings>
@@ -86,12 +86,14 @@
   <object id="9" x="384" y="1408" width="64" height="64"/>
   <object id="10" x="512" y="1408" width="64" height="64"/>
   <object id="11" x="320" y="1536" width="64" height="64"/>
-  <object id="23" x="960" y="0" width="960" height="192"/>
   <object id="24" x="1792" y="192" width="128" height="768"/>
   <object id="25" x="1792" y="1280" width="128" height="640"/>
   <object id="26" x="1536" y="1792" width="256" height="128"/>
   <object id="27" x="0" y="1792" width="1344" height="128"/>
   <object id="28" x="0" y="896" width="64" height="896"/>
+  <object id="37" x="960" y="0">
+   <polygon points="0,0 0,192 64,256 256,256 320,192 704,192 768,256 832,256 832,192 960,192 960,0"/>
+  </object>
  </objectgroup>
  <objectgroup id="4" name="Portals" locked="1">
   <object id="29" x="0" y="192" width="64" height="512">

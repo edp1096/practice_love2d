@@ -1,6 +1,6 @@
 -- systems/world.lua
 -- Manages map loading, rendering, and collision system integration with effects
--- UPDATED: Added savepoint support
+-- UPDATED: Added polygon/polyline/ellipse collision support
 
 local sti = require "vendor.sti"
 local windfield = require "vendor.windfield"
@@ -32,16 +32,7 @@ function world:new(map_path)
     instance.physicsWorld:collisionClassesSet()
 
     instance.walls = {}
-    if instance.map.layers["Walls"] then
-        for i, obj in ipairs(instance.map.layers["Walls"].objects) do
-            local wall = instance.physicsWorld:newRectangleCollider(
-                obj.x, obj.y, obj.width, obj.height
-            )
-            wall:setType("static")
-            wall:setCollisionClass("Wall")
-            table.insert(instance.walls, wall)
-        end
-    end
+    instance:loadWalls()
 
     instance:loadTransitions()
 
@@ -65,6 +56,99 @@ end
 
 function world:destroy()
     if self.physicsWorld then self.physicsWorld:destroy() end
+end
+
+function world:loadWalls()
+    if not self.map.layers["Walls"] then return end
+
+    local wall_count = 0
+    local rect_count = 0
+    local polygon_count = 0
+    local polyline_count = 0
+    local ellipse_count = 0
+    local failed_count = 0
+
+    for i, obj in ipairs(self.map.layers["Walls"].objects) do
+        local wall
+        local success = true
+
+        if obj.shape == "rectangle" then
+            wall = self.physicsWorld:newRectangleCollider(
+                obj.x, obj.y, obj.width, obj.height
+            )
+            rect_count = rect_count + 1
+        elseif obj.shape == "polygon" and obj.polygon then
+            print(string.format("Loading polygon #%d at obj pos (%.1f, %.1f)", i, obj.x, obj.y))
+            print(string.format("  Polygon has %d points", #obj.polygon))
+
+            local vertices = {}
+            for pi, point in ipairs(obj.polygon) do
+                table.insert(vertices, point.x)
+                table.insert(vertices, point.y)
+                if pi <= 3 then
+                    print(string.format("  Point %d: world(%.1f,%.1f)", pi, point.x, point.y))
+                end
+            end
+
+            print(string.format("  Total vertices array length: %d", #vertices))
+
+            success, wall = pcall(self.physicsWorld.newPolygonCollider, self.physicsWorld, vertices, {
+                body_type = 'static',
+                collision_class = 'Wall'
+            })
+
+            if success then
+                polygon_count = polygon_count + 1
+            else
+                print("Error creating polygon collider #" .. i .. ": " .. tostring(wall))
+                failed_count = failed_count + 1
+                wall = nil
+            end
+        elseif obj.shape == "polyline" and obj.polyline then
+            local vertices = {}
+            for _, point in ipairs(obj.polyline) do
+                table.insert(vertices, obj.x + point.x)
+                table.insert(vertices, obj.y + point.y)
+            end
+
+            success, wall = pcall(self.physicsWorld.newChainCollider, self.physicsWorld, vertices, false, {
+                body_type = 'static',
+                collision_class = 'Wall'
+            })
+
+            if success then
+                polyline_count = polyline_count + 1
+            else
+                print("Error creating polyline collider #" .. i .. ": " .. tostring(wall))
+                failed_count = failed_count + 1
+                wall = nil
+            end
+        elseif obj.shape == "ellipse" then
+            local radius = math.min(obj.width, obj.height) / 2
+            wall = self.physicsWorld:newCircleCollider(
+                obj.x + obj.width / 2,
+                obj.y + obj.height / 2,
+                radius
+            )
+            ellipse_count = ellipse_count + 1
+        end
+
+        if wall then
+            wall:setType("static")
+            wall:setCollisionClass("Wall")
+            table.insert(self.walls, wall)
+            wall_count = wall_count + 1
+        end
+    end
+
+    local status = string.format("Loaded %d wall colliders: %d rect, %d polygon, %d polyline, %d ellipse",
+        wall_count, rect_count, polygon_count, polyline_count, ellipse_count)
+
+    if failed_count > 0 then
+        status = status .. string.format(" (%d FAILED)", failed_count)
+    end
+
+    print(status)
 end
 
 function world:loadTransitions()
@@ -106,7 +190,6 @@ function world:loadSavePoints()
     if self.map.layers["SavePoints"] then
         for _, obj in ipairs(self.map.layers["SavePoints"].objects) do
             if obj.properties.type == "savepoint" then
-                -- Calculate center position
                 local center_x = obj.x + obj.width / 2
                 local center_y = obj.y + obj.height / 2
 
@@ -148,7 +231,6 @@ end
 
 function world:drawSavePoints()
     for _, savepoint in ipairs(self.savepoints) do
-        -- Draw interaction indicator when in range
         if savepoint.can_interact then
             love.graphics.setColor(1, 1, 0, 1)
             love.graphics.circle("line", savepoint.center_x, savepoint.center_y - 30, 20)
@@ -351,7 +433,6 @@ function world:updateNPCs(dt, player_x, player_y)
         npc:update(dt, player_x, player_y)
     end
 
-    -- Update savepoints interaction range
     self:updateSavePoints(player_x, player_y)
 end
 
@@ -403,7 +484,6 @@ function world:drawDebug()
             love.graphics.rectangle("line", savepoint.x, savepoint.y, savepoint.width, savepoint.height)
             love.graphics.print("SAVE", savepoint.x + 5, savepoint.y + 5)
 
-            -- Draw interaction range
             love.graphics.setColor(0, 1, 1, 0.3)
             love.graphics.circle("line", savepoint.center_x, savepoint.center_y, savepoint.interaction_range)
         end
