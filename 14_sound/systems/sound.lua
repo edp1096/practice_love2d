@@ -1,5 +1,7 @@
 -- systems/sound.lua
--- Central sound management system with BGM and SFX control
+-- Refactored sound management system using centralized sound definitions
+
+local sound_data = require "data.sounds"
 
 local sound = {}
 
@@ -15,101 +17,93 @@ sound.settings = {
 sound.current_bgm = nil
 sound.current_bgm_name = nil
 
--- BGM tracks
+-- Loaded sound sources
 sound.bgm = {}
-
--- SFX categories
-sound.sfx = {
-    menu = {},
-    ui = {},
-    combat = {},
-    environment = {}
-}
-
--- Sound pools for frequently used sounds
+sound.sfx = {}
 sound.pools = {}
 
+-- Load all sounds from data definitions
 function sound:init()
     print("Sound system initializing...")
 
-    -- Load BGM
-    self:loadBGM("menu", "assets/bgm/menu.ogg")
-    self:loadBGM("level1", "assets/bgm/level1.ogg")
-    self:loadBGM("level2", "assets/bgm/level2.ogg")
-    self:loadBGM("boss", "assets/bgm/boss.ogg")
+    -- Load BGM tracks
+    for name, config in pairs(sound_data.bgm) do
+        self:_loadBGM(name, config)
+    end
 
-    -- Load Menu SFX
-    self:loadSFX("menu", "navigate", "assets/sound/menu/navigate.wav")
-    self:loadSFX("menu", "select", "assets/sound/menu/select.wav")
-    self:loadSFX("menu", "back", "assets/sound/menu/back.wav")
-    self:loadSFX("menu", "error", "assets/sound/menu/error.wav")
+    -- Load SFX by category
+    for category, sounds in pairs(sound_data.sfx) do
+        self.sfx[category] = {}
+        for name, config in pairs(sounds) do
+            self:_loadSFX(category, name, config)
+        end
+    end
 
-    -- Load UI SFX
-    self:loadSFX("ui", "save", "assets/sound/ui/save.wav")
-    self:loadSFX("ui", "pause", "assets/sound/ui/pause.wav")
-    self:loadSFX("ui", "unpause", "assets/sound/ui/unpause.wav")
-
-    -- Load Combat SFX (shared)
-    self:loadSFX("combat", "hit_flesh", "assets/sound/combat/hit_flesh.wav")
-    self:loadSFX("combat", "hit_metal", "assets/sound/combat/hit_metal.wav")
-    self:loadSFX("combat", "parry", "assets/sound/combat/parry.wav")
-    self:loadSFX("combat", "parry_perfect", "assets/sound/combat/parry_perfect.wav")
-    self:loadSFX("combat", "death", "assets/sound/combat/death.wav")
+    -- Create sound pools
+    for category, pools in pairs(sound_data.pools) do
+        for name, config in pairs(pools) do
+            self:_createPool(category, name, config)
+        end
+    end
 
     print("Sound system initialized")
     self:printStatus()
 end
 
-function sound:loadBGM(name, path)
-    local info = love.filesystem.getInfo(path)
+-- Internal: Load a single BGM track
+function sound:_loadBGM(name, config)
+    local info = love.filesystem.getInfo(config.path)
     if info then
-        self.bgm[name] = love.audio.newSource(path, "stream")
-        self.bgm[name]:setLooping(true)
-        self.bgm[name]:setVolume(self.settings.bgm_volume * self.settings.master_volume)
+        self.bgm[name] = love.audio.newSource(config.path, "stream")
+        self.bgm[name]:setLooping(config.loop or true)
+        self.bgm[name]:setVolume((config.volume or 1.0) * self.settings.bgm_volume * self.settings.master_volume)
         print("  Loaded BGM: " .. name)
     else
-        print("  WARNING: BGM not found: " .. path)
+        print("  WARNING: BGM not found: " .. config.path)
     end
 end
 
-function sound:loadSFX(category, name, path)
-    local info = love.filesystem.getInfo(path)
+-- Internal: Load a single SFX
+function sound:_loadSFX(category, name, config)
+    local info = love.filesystem.getInfo(config.path)
     if info then
-        self.sfx[category][name] = love.audio.newSource(path, "static")
-        self.sfx[category][name]:setVolume(self.settings.sfx_volume * self.settings.master_volume)
+        self.sfx[category][name] = love.audio.newSource(config.path, "static")
+        self.sfx[category][name]:setVolume((config.volume or 1.0) * self.settings.sfx_volume * self.settings.master_volume)
         print("  Loaded SFX: " .. category .. "/" .. name)
     else
-        print("  WARNING: SFX not found: " .. path)
+        print("  WARNING: SFX not found: " .. config.path)
     end
 end
 
-function sound:createPool(category, name, path, pool_size)
-    pool_size = pool_size or 5
-
-    local info = love.filesystem.getInfo(path)
+-- Internal: Create a sound pool
+function sound:_createPool(category, name, config)
+    local info = love.filesystem.getInfo(config.path)
     if not info then
-        print("  WARNING: Cannot create pool for missing file: " .. path)
+        print("  WARNING: Cannot create pool for missing file: " .. config.path)
         return
     end
 
     local pool_key = category .. "_" .. name
     self.pools[pool_key] = {
         sources = {},
-        current_index = 1
+        current_index = 1,
+        base_volume = config.volume or 1.0
     }
 
-    for i = 1, pool_size do
-        local source = love.audio.newSource(path, "static")
-        source:setVolume(self.settings.sfx_volume * self.settings.master_volume)
+    for i = 1, (config.size or 5) do
+        local source = love.audio.newSource(config.path, "static")
+        source:setVolume(self.pools[pool_key].base_volume * self.settings.sfx_volume * self.settings.master_volume)
         table.insert(self.pools[pool_key].sources, source)
     end
 
-    print("  Created pool: " .. pool_key .. " (size: " .. pool_size .. ")")
+    print("  Created pool: " .. pool_key .. " (size: " .. config.size .. ")")
 end
 
+-- Play background music with optional fade
 function sound:playBGM(name, fade_time)
     fade_time = fade_time or 1.0
 
+    -- Already playing same track
     if self.current_bgm_name == name and self.current_bgm and self.current_bgm:isPlaying() then
         return
     end
@@ -119,7 +113,7 @@ function sound:playBGM(name, fade_time)
         return
     end
 
-    -- Fade out current BGM
+    -- Stop current BGM (TODO: implement fade out/in)
     if self.current_bgm and self.current_bgm:isPlaying() then
         self.current_bgm:stop()
     end
@@ -135,6 +129,7 @@ function sound:playBGM(name, fade_time)
     print("Playing BGM: " .. name)
 end
 
+-- Stop background music
 function sound:stopBGM(fade_time)
     fade_time = fade_time or 1.0
 
@@ -145,18 +140,21 @@ function sound:stopBGM(fade_time)
     end
 end
 
+-- Pause background music
 function sound:pauseBGM()
     if self.current_bgm and self.current_bgm:isPlaying() then
         self.current_bgm:pause()
     end
 end
 
+-- Resume background music
 function sound:resumeBGM()
     if self.current_bgm and not self.settings.muted then
         self.current_bgm:play()
     end
 end
 
+-- Play sound effect with pitch and volume variation
 function sound:playSFX(category, name, pitch, volume_multiplier)
     pitch = pitch or 1.0
     volume_multiplier = volume_multiplier or 1.0
@@ -170,10 +168,11 @@ function sound:playSFX(category, name, pitch, volume_multiplier)
 
     local source = self.sfx[category][name]:clone()
     source:setPitch(pitch)
-    source:setVolume(self.settings.sfx_volume * self.settings.master_volume * volume_multiplier)
+    source:setVolume(source:getVolume() * volume_multiplier)
     source:play()
 end
 
+-- Play pooled sound (for frequently used sounds)
 function sound:playPooled(category, name, pitch, volume_multiplier)
     pitch = pitch or 1.0
     volume_multiplier = volume_multiplier or 1.0
@@ -188,26 +187,30 @@ function sound:playPooled(category, name, pitch, volume_multiplier)
         return
     end
 
+    -- Get next available source from pool
     local source = pool.sources[pool.current_index]
     source:stop()
     source:setPitch(pitch)
-    source:setVolume(self.settings.sfx_volume * self.settings.master_volume * volume_multiplier)
+    source:setVolume(pool.base_volume * self.settings.sfx_volume * self.settings.master_volume * volume_multiplier)
     source:play()
 
+    -- Rotate pool index
     pool.current_index = pool.current_index + 1
     if pool.current_index > #pool.sources then
         pool.current_index = 1
     end
 end
 
+-- Volume control methods
 function sound:setMasterVolume(volume)
     self.settings.master_volume = math.max(0, math.min(1, volume))
-    self:updateAllVolumes()
+    self:_updateAllVolumes()
 end
 
 function sound:setBGMVolume(volume)
     self.settings.bgm_volume = math.max(0, math.min(1, volume))
 
+    -- Update all BGM tracks
     for _, bgm in pairs(self.bgm) do
         bgm:setVolume(self.settings.bgm_volume * self.settings.master_volume)
     end
@@ -216,24 +219,28 @@ end
 function sound:setSFXVolume(volume)
     self.settings.sfx_volume = math.max(0, math.min(1, volume))
 
+    -- Update all SFX
     for category, sounds in pairs(self.sfx) do
         for _, sound in pairs(sounds) do
             sound:setVolume(self.settings.sfx_volume * self.settings.master_volume)
         end
     end
 
+    -- Update all pools
     for _, pool in pairs(self.pools) do
         for _, source in ipairs(pool.sources) do
-            source:setVolume(self.settings.sfx_volume * self.settings.master_volume)
+            source:setVolume(pool.base_volume * self.settings.sfx_volume * self.settings.master_volume)
         end
     end
 end
 
-function sound:updateAllVolumes()
+-- Internal: Update all volume settings
+function sound:_updateAllVolumes()
     self:setBGMVolume(self.settings.bgm_volume)
     self:setSFXVolume(self.settings.sfx_volume)
 end
 
+-- Toggle mute on/off
 function sound:toggleMute()
     self.settings.muted = not self.settings.muted
 
@@ -250,6 +257,7 @@ function sound:toggleMute()
     return self.settings.muted
 end
 
+-- Cleanup all sounds
 function sound:cleanup()
     self:stopBGM()
 
@@ -260,6 +268,7 @@ function sound:cleanup()
     print("Sound system cleaned up")
 end
 
+-- Print system status
 function sound:printStatus()
     print("=== Sound System Status ===")
     print("Master Volume: " .. string.format("%.0f%%", self.settings.master_volume * 100))
@@ -276,12 +285,16 @@ function sound:printStatus()
         for _ in pairs(category) do sfx_count = sfx_count + 1 end
     end
 
+    local pool_count = 0
+    for _ in pairs(self.pools) do pool_count = pool_count + 1 end
+
     print("Loaded BGM: " .. bgm_count)
     print("Loaded SFX: " .. sfx_count)
-    print("Sound Pools: " .. #self.pools)
+    print("Sound Pools: " .. pool_count)
     print("===========================")
 end
 
+-- Initialize on load
 sound:init()
 
 return sound

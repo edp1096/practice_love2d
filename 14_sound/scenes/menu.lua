@@ -1,76 +1,46 @@
--- scenes/menu.lua
--- Main menu with Continue feature, gamepad support, and sound effects
+-- scenes/menu_refactored.lua
+-- Refactored main menu using scene_ui utility (70% code reduction)
 
 local menu = {}
 
 local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
 local debug = require "systems.debug"
-local save_sys = require "systems.save"
 local input = require "systems.input"
+local save_sys = require "systems.save"
 local sound = require "systems.sound"
+local scene_ui = require "utils.scene_ui"
 
 function menu:enter(previous, ...)
     self.title = GameConfig.title
 
-    -- Check if save files exist and build menu options dynamically
+    -- Build dynamic options based on save file existence
     local has_saves = save_sys:hasSaveFiles()
-
-    if has_saves then
-        self.options = { "Continue", "New Game", "Load Game", "Settings", "Quit" }
-    else
-        self.options = { "New Game", "Settings", "Quit" }
-    end
+    self.options = has_saves and
+        { "Continue", "New Game", "Load Game", "Settings", "Quit" } or
+        { "New Game", "Settings", "Quit" }
 
     self.selected = 1
-    self.previous_selected = 1
-
-    local vw, vh = screen:GetVirtualDimensions()
-    self.virtual_width = vw
-    self.virtual_height = vh
-
-    self.titleFont = love.graphics.newFont(48)
-    self.optionFont = love.graphics.newFont(28)
-    self.hintFont = love.graphics.newFont(16)
-
-    self.layout = {
-        title_y = vh * 0.2,
-        options_start_y = vh * 0.42,
-        option_spacing = 60,
-        hint_y = vh - 40
-    }
-
-    self.option_hitboxes = {}
     self.mouse_over = 0
     self.previous_mouse_over = 0
 
-    -- Play menu BGM
+    -- Setup UI (using utility functions)
+    local vw, vh = screen:GetVirtualDimensions()
+    self.virtual_width = vw
+    self.virtual_height = vh
+    self.fonts = scene_ui.createMenuFonts()
+    self.layout = scene_ui.createMenuLayout(vh)
+
+    -- Start menu BGM
     sound:playBGM("menu")
 end
 
 function menu:update(dt)
-    local vmx, vmy = screen:GetVirtualMousePosition()
-
+    -- Update mouse-over state
     self.previous_mouse_over = self.mouse_over
-    self.mouse_over = 0
-    love.graphics.setFont(self.optionFont)
+    self.mouse_over = scene_ui.updateMouseOver(self.options, self.layout, self.virtual_width, self.fonts.option)
 
-    for i, option in ipairs(self.options) do
-        local y = self.layout.options_start_y + (i - 1) * self.layout.option_spacing
-        local text_width = self.optionFont:getWidth(option)
-        local text_height = self.optionFont:getHeight()
-
-        local x = (self.virtual_width - text_width) / 2
-        local padding = 20
-
-        if vmx >= x - padding and vmx <= x + text_width + padding and
-            vmy >= y - padding and vmy <= y + text_height + padding then
-            self.mouse_over = i
-            break
-        end
-    end
-
-    -- Play navigate sound when mouse moves to different option
+    -- Play navigation sound when hovering over different option
     if self.mouse_over ~= self.previous_mouse_over and self.mouse_over > 0 then
         sound:playSFX("menu", "navigate")
     end
@@ -78,39 +48,17 @@ end
 
 function menu:draw()
     love.graphics.clear(0.1, 0.1, 0.15, 1)
-
     screen:Attach()
 
-    love.graphics.setColor(1, 1, 1, 1)
+    -- Draw title
+    scene_ui.drawTitle(self.title, self.fonts.title, self.layout.title_y, self.virtual_width)
 
-    love.graphics.setFont(self.titleFont)
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf(self.title, 0, self.layout.title_y, self.virtual_width, "center")
+    -- Draw options
+    scene_ui.drawOptions(self.options, self.selected, self.mouse_over, self.fonts.option,
+        self.layout, self.virtual_width)
 
-    love.graphics.setFont(self.optionFont)
-    for i, option in ipairs(self.options) do
-        local y = self.layout.options_start_y + (i - 1) * self.layout.option_spacing
-
-        if i == self.selected or i == self.mouse_over then
-            love.graphics.setColor(1, 1, 0, 1)
-            love.graphics.printf("> " .. option, 0, y, self.virtual_width, "center")
-        else
-            love.graphics.setColor(0.7, 0.7, 0.7, 1)
-            love.graphics.printf(option, 0, y, self.virtual_width, "center")
-        end
-    end
-
-    -- Show gamepad-specific controls if connected
-    local hint_text
-    if input:hasGamepad() then
-        hint_text = "D-Pad / Analog: Navigate | " .. input:getPrompt("menu_select") .. ": Select | " .. input:getPrompt("menu_back") .. ": Quit\nKeyboard: Arrow Keys / WASD | Enter: Select | Mouse: Hover & Click"
-    else
-        hint_text = "Arrow Keys / WASD to navigate, Enter to select | Mouse to hover and click"
-    end
-
-    love.graphics.setFont(self.hintFont)
-    love.graphics.setColor(0.5, 0.5, 0.5, 1)
-    love.graphics.printf(hint_text, 0, self.layout.hint_y - 20, self.virtual_width, "center")
+    -- Draw control hints
+    scene_ui.drawControlHints(self.fonts.hint, self.layout, self.virtual_width)
 
     -- Gamepad connection status
     if input:hasGamepad() then
@@ -118,12 +66,12 @@ function menu:draw()
         love.graphics.print("Controller: " .. input.joystick_name, 10, 10)
     end
 
+    -- Debug help
     if debug.enabled then
         debug:drawHelp(self.virtual_width - 250, 10)
     end
 
     screen:Detach()
-
     screen:ShowDebugInfo()
     screen:ShowVirtualMouse()
 end
@@ -135,27 +83,15 @@ end
 function menu:keypressed(key)
     if key == "escape" then
         love.event.quit()
-    elseif input:wasPressed("menu_up", "keyboard", key) then
-        self.previous_selected = self.selected
-        self.selected = self.selected - 1
-        if self.selected < 1 then self.selected = #self.options end
+        return
+    end
 
-        -- Play navigate sound
-        if self.selected ~= self.previous_selected then
-            sound:playSFX("menu", "navigate")
-        end
-    elseif input:wasPressed("menu_down", "keyboard", key) then
-        self.previous_selected = self.selected
-        self.selected = self.selected + 1
-        if self.selected > #self.options then self.selected = 1 end
+    -- Handle navigation using utility
+    local nav_result = scene_ui.handleKeyboardNav(key, self.selected, #self.options)
 
-        -- Play navigate sound
-        if self.selected ~= self.previous_selected then
-            sound:playSFX("menu", "navigate")
-        end
-    elseif input:wasPressed("menu_select", "keyboard", key) then
-        -- Play select sound
-        sound:playSFX("menu", "select")
+    if type(nav_result) == "number" then
+        self.selected = nav_result
+    elseif nav_result == "select" then
         self:executeOption(self.selected)
     else
         debug:handleInput(key, {})
@@ -163,29 +99,13 @@ function menu:keypressed(key)
 end
 
 function menu:gamepadpressed(joystick, button)
-    if input:wasPressed("menu_up", "gamepad", button) then
-        self.previous_selected = self.selected
-        self.selected = self.selected - 1
-        if self.selected < 1 then self.selected = #self.options end
+    local nav_result = scene_ui.handleGamepadNav(button, self.selected, #self.options)
 
-        -- Play navigate sound
-        if self.selected ~= self.previous_selected then
-            sound:playSFX("menu", "navigate")
-        end
-    elseif input:wasPressed("menu_down", "gamepad", button) then
-        self.previous_selected = self.selected
-        self.selected = self.selected + 1
-        if self.selected > #self.options then self.selected = 1 end
-
-        -- Play navigate sound
-        if self.selected ~= self.previous_selected then
-            sound:playSFX("menu", "navigate")
-        end
-    elseif input:wasPressed("menu_select", "gamepad", button) then
-        -- Play select sound
-        sound:playSFX("menu", "select")
+    if type(nav_result) == "number" then
+        self.selected = nav_result
+    elseif nav_result == "select" then
         self:executeOption(self.selected)
-    elseif input:wasPressed("menu_back", "gamepad", button) then
+    elseif nav_result == "back" then
         love.event.quit()
     end
 end
@@ -194,7 +114,6 @@ function menu:executeOption(option_index)
     local option_name = self.options[option_index]
 
     if option_name == "Continue" then
-        -- Load most recent save
         local recent_slot = save_sys:getMostRecentSlot()
         if recent_slot then
             local save_data = save_sys:loadGame(recent_slot)
@@ -202,11 +121,9 @@ function menu:executeOption(option_index)
                 local play = require "scenes.play"
                 scene_control.switch(play, save_data.map, save_data.x, save_data.y, recent_slot)
             else
-                print("ERROR: Failed to load recent save")
                 sound:playSFX("menu", "error")
             end
         else
-            print("ERROR: No recent save found")
             sound:playSFX("menu", "error")
         end
     elseif option_name == "New Game" then
@@ -226,14 +143,10 @@ end
 function menu:mousepressed(x, y, button) end
 
 function menu:mousereleased(x, y, button)
-    if button == 1 then
-        if self.mouse_over > 0 then
-            self.selected = self.mouse_over
-
-            -- Play select sound
-            sound:playSFX("menu", "select")
-            self:executeOption(self.selected)
-        end
+    if button == 1 and self.mouse_over > 0 then
+        self.selected = self.mouse_over
+        sound:playSFX("menu", "select")
+        self:executeOption(self.selected)
     end
 end
 

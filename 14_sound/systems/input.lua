@@ -1,5 +1,7 @@
--- systems/input.lua
--- Unified input system: keyboard, mouse, gamepad support with DualSense optimization
+-- systems/input_refactored.lua
+-- Refactored input system with externalized configuration
+
+local input_config = require "data.input_config"
 
 local input = {}
 
@@ -7,52 +9,17 @@ local input = {}
 input.joystick = nil
 input.joystick_name = "No Controller"
 
--- Gamepad settings
-input.settings = {
-    deadzone = 0.15,
-    vibration_enabled = true,
-    vibration_strength = 1.0
-}
+-- Settings (loaded from config)
+input.settings = input_config.gamepad_settings
 
--- Last aim direction (for maintaining direction when stick is released)
+-- Last aim direction
 input.last_aim_angle = 0
-input.last_aim_source = "none" -- "gamepad", "mouse", "initial", or "none"
+input.last_aim_source = "none"
 
--- Action mappings
-input.actions = {
-    -- Movement (analog or digital)
-    move_left = { keyboard = { "a", "left" }, gamepad_axis = { axis = "leftx", negative = true } },
-    move_right = { keyboard = { "d", "right" }, gamepad_axis = { axis = "leftx", negative = false } },
-    move_up = { keyboard = { "w", "up" }, gamepad_axis = { axis = "lefty", negative = true } },
-    move_down = { keyboard = { "s", "down" }, gamepad_axis = { axis = "lefty", negative = false } },
+-- Merged action mappings from config
+input.actions = {}
 
-    -- Aim (analog stick)
-    aim = { gamepad_axis = { axis = "rightx", axis2 = "righty" } },
-
-    -- Combat actions
-    attack = { mouse = 1, gamepad = "a" },             -- Cross button on DualSense
-    parry = { mouse = 2, gamepad = "x" },              -- Square button on DualSense
-    dodge = { keyboard = { "space" }, gamepad = "b" }, -- Circle button on DualSense
-    interact = { keyboard = { "f" }, gamepad = "y" },  -- Triangle button on DualSense
-
-    -- Menu navigation
-    menu_up = { keyboard = { "w", "up" }, gamepad_dpad = "up" },
-    menu_down = { keyboard = { "s", "down" }, gamepad_dpad = "down" },
-    menu_left = { keyboard = { "a", "left" }, gamepad_dpad = "left" },
-    menu_right = { keyboard = { "d", "right" }, gamepad_dpad = "right" },
-    menu_select = { keyboard = { "return", "space" }, gamepad = "a" },
-    menu_back = { keyboard = { "escape" }, gamepad = "b" },
-
-    -- Pause
-    pause = { keyboard = { "p", "escape" }, gamepad = "start" },
-
-    -- Quick save (F1-F3 or L1/R1)
-    quicksave_1 = { keyboard = { "f1" }, gamepad = "leftshoulder" },
-    quicksave_2 = { keyboard = { "f2" }, gamepad = "rightshoulder" },
-    quicksave_3 = { keyboard = { "f3" } }
-}
-
--- Button repeat system for menu navigation
+-- Button repeat system
 input.button_repeat = {
     delay = 0.3,
     interval = 0.1,
@@ -61,6 +28,15 @@ input.button_repeat = {
 
 -- Initialize input system
 function input:init()
+    -- Merge all action categories into single table
+    for category, actions in pairs(input_config) do
+        if type(actions) == "table" and category ~= "gamepad_settings" and category ~= "button_prompts" then
+            for action_name, mapping in pairs(actions) do
+                self.actions[action_name] = mapping
+            end
+        end
+    end
+
     self:detectJoystick()
     print("Input system initialized")
     if self.joystick then
@@ -84,7 +60,7 @@ function input:detectJoystick()
     end
 end
 
--- Joystick connected callback
+-- Joystick callbacks
 function input:joystickAdded(joystick)
     if not self.joystick then
         self.joystick = joystick
@@ -93,7 +69,6 @@ function input:joystickAdded(joystick)
     end
 end
 
--- Joystick disconnected callback
 function input:joystickRemoved(joystick)
     if self.joystick == joystick then
         print("Controller disconnected: " .. self.joystick_name)
@@ -148,77 +123,30 @@ function input:isDown(action)
     return false
 end
 
--- Check if action was just pressed (use in keypressed/gamepadpressed)
+-- Check if action was just pressed
 function input:wasPressed(action, source, value)
     local mapping = self.actions[action]
     if not mapping then return false end
 
-    -- Keyboard
     if source == "keyboard" and mapping.keyboard then
         for _, key in ipairs(mapping.keyboard) do
-            if key == value then
-                return true
-            end
+            if key == value then return true end
         end
     end
 
-    -- Mouse button
     if source == "mouse" and mapping.mouse then
-        if mapping.mouse == value then
-            return true
-        end
+        if mapping.mouse == value then return true end
     end
 
-    -- Gamepad button
     if source == "gamepad" and mapping.gamepad then
-        if mapping.gamepad == value then
-            return true
-        end
+        if mapping.gamepad == value then return true end
     end
 
-    -- Gamepad D-Pad
     if source == "gamepad" and mapping.gamepad_dpad then
-        if "dp" .. mapping.gamepad_dpad == value then
-            return true
-        end
+        if "dp" .. mapping.gamepad_dpad == value then return true end
     end
 
     return false
-end
-
--- Get analog stick value for action
-function input:getAxis(action)
-    local mapping = self.actions[action]
-    if not mapping or not mapping.gamepad_axis or not self.joystick then
-        return 0, 0
-    end
-
-    local axis_mapping = mapping.gamepad_axis
-
-    -- Single axis (e.g., move_left/move_right)
-    if axis_mapping.axis and not axis_mapping.axis2 then
-        local value = self.joystick:getGamepadAxis(axis_mapping.axis)
-        value = self:applyDeadzone(value)
-
-        if axis_mapping.negative then
-            return -math.min(0, value), 0
-        else
-            return math.max(0, value), 0
-        end
-    end
-
-    -- Dual axis (e.g., aim with right stick)
-    if axis_mapping.axis and axis_mapping.axis2 then
-        local x = self.joystick:getGamepadAxis(axis_mapping.axis)
-        local y = self.joystick:getGamepadAxis(axis_mapping.axis2)
-
-        x = self:applyDeadzone(x)
-        y = self:applyDeadzone(y)
-
-        return x, y
-    end
-
-    return 0, 0
 end
 
 -- Get movement vector from keyboard or gamepad
@@ -238,7 +166,7 @@ function input:getMovement()
         end
     end
 
-    -- Keyboard (fallback)
+    -- Keyboard fallback
     if self:isDown("move_right") then vx = vx + 1 end
     if self:isDown("move_left") then vx = vx - 1 end
     if self:isDown("move_down") then vy = vy + 1 end
@@ -266,7 +194,6 @@ function input:getAimDirection(player_x, player_y, cam)
         stick_y = self:applyDeadzone(stick_y)
 
         if math.abs(stick_x) > 0.1 or math.abs(stick_y) > 0.1 then
-            -- Active gamepad aim input
             self.last_aim_angle = math.atan2(stick_y, stick_x)
             self.last_aim_source = "gamepad"
             has_gamepad_input = true
@@ -284,29 +211,27 @@ function input:getAimDirection(player_x, player_y, cam)
 
     local mouse_angle = math.atan2(mouse_y - player_y, mouse_x - player_x)
 
-    -- Check if mouse moved significantly (5 degrees threshold)
+    -- Check if mouse moved significantly
     local angle_diff = math.abs(mouse_angle - (self.last_aim_angle or 0))
     if angle_diff > math.pi then
         angle_diff = 2 * math.pi - angle_diff
     end
 
-    -- If mouse moved, switch to mouse control
     if angle_diff > 0.087 then -- ~5 degrees
         self.last_aim_source = "mouse"
     end
 
-    -- Use mouse angle if mouse is active
+    -- Use mouse angle if active
     if self.last_aim_source ~= "gamepad" or not has_gamepad_input then
         self.last_aim_angle = mouse_angle
         self.last_aim_source = "mouse"
         return self.last_aim_angle
     end
 
-    -- Maintain last gamepad direction if stick was just released
     return self.last_aim_angle
 end
 
--- Reset aim source when weapon is sheathed
+-- Reset aim source
 function input:resetAimSource()
     self.last_aim_source = "none"
 end
@@ -317,7 +242,6 @@ function input:applyDeadzone(value)
         return 0
     end
 
-    -- Smooth deadzone transition
     local sign = value > 0 and 1 or -1
     local adjusted = (math.abs(value) - self.settings.deadzone) / (1 - self.settings.deadzone)
     return sign * adjusted
@@ -360,36 +284,6 @@ function input:vibrateWeaponHit()
     self:vibrate(0.15, 0.7, 0.7)
 end
 
--- Button repeat for menu navigation
-function input:startRepeat(action, callback)
-    if not self.button_repeat.timers[action] then
-        self.button_repeat.timers[action] = {
-            active = false,
-            time = 0,
-            initial = true,
-            callback = nil
-        }
-    end
-
-    local timer = self.button_repeat.timers[action]
-    timer.active = true
-    timer.time = 0
-    timer.initial = true
-    timer.callback = callback
-end
-
-function input:stopRepeat(action)
-    if self.button_repeat.timers[action] then
-        self.button_repeat.timers[action].active = false
-    end
-end
-
-function input:stopAllRepeats()
-    for action, timer in pairs(self.button_repeat.timers) do
-        timer.active = false
-    end
-end
-
 -- Settings
 function input:setDeadzone(value)
     self.settings.deadzone = math.max(0, math.min(1, value))
@@ -417,24 +311,13 @@ function input:getPrompt(action)
     if not mapping then return "?" end
 
     if self.joystick and mapping.gamepad then
-        -- DualSense button names
-        local button_names = {
-            a = "[✕]", -- Cross
-            b = "[○]", -- Circle
-            x = "[□]", -- Square
-            y = "[△]", -- Triangle
-            leftshoulder = "[L1]",
-            rightshoulder = "[R1]",
-            start = "[Options]",
-            back = "[Share]"
-        }
-        return button_names[mapping.gamepad] or ("[" .. mapping.gamepad .. "]")
+        return input_config.button_prompts[mapping.gamepad] or ("[" .. mapping.gamepad .. "]")
     elseif self.joystick and mapping.gamepad_dpad then
         return "[D-Pad " .. mapping.gamepad_dpad:upper() .. "]"
     elseif mapping.keyboard then
         return "[" .. mapping.keyboard[1]:upper() .. "]"
     elseif mapping.mouse then
-        return mapping.mouse == 1 and "[LMB]" or "[RMB]"
+        return mapping.mouse == 1 and input_config.button_prompts.mouse_1 or input_config.button_prompts.mouse_2
     end
 
     return "?"
@@ -452,8 +335,7 @@ function input:getDebugInfo()
     info = info .. "Deadzone: " .. string.format("%.2f", self.settings.deadzone) .. "\n"
     info = info .. "Vibration: " .. (self.settings.vibration_enabled and "ON" or "OFF") .. "\n"
     info = info .. "Strength: " .. string.format("%.0f%%", self.settings.vibration_strength * 100) .. "\n"
-    info = info .. "\n"
-    info = info .. "Left Stick: " .. string.format("%.2f, %.2f",
+    info = info .. "\nLeft Stick: " .. string.format("%.2f, %.2f",
         self.joystick:getGamepadAxis("leftx"),
         self.joystick:getGamepadAxis("lefty")) .. "\n"
     info = info .. "Right Stick: " .. string.format("%.2f, %.2f",

@@ -1,24 +1,23 @@
--- entities/enemy/sound.lua
--- Enemy-specific sound effects
+-- entities/enemy/sound_refactored.lua
+-- Refactored enemy-specific sound effects (simplified)
 
 local sound_sys = require "systems.sound"
 
 local enemy_sound = {}
 
+-- Initialize enemy sounds
 function enemy_sound.initialize()
     print("Initializing enemy sounds...")
 
-    -- Load slime sounds
+    -- Create slime movement pool (frequent use)
     sound_sys:createPool("enemy", "slime_move", "assets/sound/enemy/slime_move.wav", 3)
-    sound_sys:loadSFX("combat", "slime_attack", "assets/sound/enemy/slime_attack.wav")
-    sound_sys:loadSFX("combat", "slime_hurt", "assets/sound/enemy/slime_hurt.wav")
-    sound_sys:loadSFX("combat", "slime_death", "assets/sound/enemy/slime_death.wav")
-    sound_sys:loadSFX("combat", "slime_stunned", "assets/sound/enemy/slime_stunned.wav")
-    sound_sys:loadSFX("combat", "enemy_detect", "assets/sound/enemy/detect.wav")
+
+    -- Other enemy sounds already loaded in main system via data/sounds.lua
 
     print("Enemy sounds initialized")
 end
 
+-- Play movement sound with type detection
 function enemy_sound.playMove(enemy_type)
     enemy_type = enemy_type or "slime"
 
@@ -27,8 +26,10 @@ function enemy_sound.playMove(enemy_type)
     if enemy_type:find("slime") then
         sound_sys:playPooled("enemy", "slime_move", pitch, 0.2)
     end
+    -- Add other enemy types here as needed
 end
 
+-- Play attack sound
 function enemy_sound.playAttack(enemy_type)
     enemy_type = enemy_type or "slime"
 
@@ -39,6 +40,7 @@ function enemy_sound.playAttack(enemy_type)
     end
 end
 
+-- Play hurt sound
 function enemy_sound.playHurt(enemy_type)
     enemy_type = enemy_type or "slime"
 
@@ -49,6 +51,7 @@ function enemy_sound.playHurt(enemy_type)
     end
 end
 
+-- Play death sound
 function enemy_sound.playDeath(enemy_type)
     enemy_type = enemy_type or "slime"
 
@@ -59,6 +62,7 @@ function enemy_sound.playDeath(enemy_type)
     end
 end
 
+-- Play stunned sound
 function enemy_sound.playStunned(enemy_type)
     enemy_type = enemy_type or "slime"
 
@@ -67,6 +71,7 @@ function enemy_sound.playStunned(enemy_type)
     end
 end
 
+-- Play detection sound
 function enemy_sound.playDetect()
     local pitch = 0.95 + math.random() * 0.1
     sound_sys:playSFX("combat", "enemy_detect", pitch, 0.5)
