@@ -1,5 +1,7 @@
 -- entities/enemy/ai.lua
--- AI state machine: idle, patrol, chase, attack, hit
+-- AI state machine: idle, patrol, chase, attack, hit with sound integration
+
+local enemy_sound = require "entities.enemy.sound"
 
 local ai = {}
 
@@ -53,6 +55,9 @@ function ai.updateIdle(enemy, dt, player_x, player_y)
         local collider_center_y = enemy.y + enemy.collider_offset_y
         if enemy.world and enemy.world:checkLineOfSight(collider_center_x, collider_center_y, player_x, player_y) then
             ai.setState(enemy, "chase")
+
+            -- Play detection sound
+            enemy_sound.playDetect()
         end
     end
 
@@ -76,6 +81,9 @@ function ai.updatePatrol(enemy, dt, player_x, player_y)
         local collider_center_y = enemy.y + enemy.collider_offset_y
         if enemy.world and enemy.world:checkLineOfSight(collider_center_x, collider_center_y, player_x, player_y) then
             ai.setState(enemy, "chase")
+
+            -- Play detection sound
+            enemy_sound.playDetect()
             return
         end
     end
@@ -132,6 +140,12 @@ function ai.updateAttack(enemy, dt, player_x, player_y)
 
     if enemy.attack_timer <= 0 then
         enemy.attack_timer = enemy.attack_cooldown
+
+        -- Play attack sound
+        if not enemy.has_attacked then
+            enemy_sound.playAttack(enemy.type)
+            enemy.has_attacked = true
+        end
     end
 
     if enemy.state_timer <= 0 then

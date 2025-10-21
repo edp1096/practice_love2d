@@ -1,16 +1,18 @@
 -- scenes/pause.lua
--- Pause menu overlay scene with aspect ratio support, save slot persistence, and gamepad support
+-- Pause menu overlay scene with aspect ratio support, save slot persistence, gamepad support, and sound
 
 local pause = {}
 
 local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
 local input = require "systems.input"
+local sound = require "systems.sound"
 
 function pause:enter(previous, ...)
     self.previous = previous
     self.options = { "Resume", "Restart", "Settings", "Quit to Menu" }
     self.selected = 1
+    self.previous_selected = 1
 
     -- Get virtual dimensions (960x540 for 16:9)
     local vw, vh = screen:GetVirtualDimensions()
@@ -36,6 +38,7 @@ function pause:enter(previous, ...)
 
     -- Mouse interaction
     self.mouse_over = 0
+    self.previous_mouse_over = 0
 end
 
 function pause:update(dt)
@@ -48,6 +51,7 @@ function pause:update(dt)
     local vmx, vmy = screen:GetVirtualMousePosition()
 
     -- Check if mouse is over any option
+    self.previous_mouse_over = self.mouse_over
     self.mouse_over = 0
     love.graphics.setFont(self.optionFont)
 
@@ -66,6 +70,11 @@ function pause:update(dt)
             self.mouse_over = i
             break
         end
+    end
+
+    -- Play navigate sound when mouse moves to different option
+    if self.mouse_over ~= self.previous_mouse_over and self.mouse_over > 0 then
+        sound:playSFX("menu", "navigate")
     end
 end
 
@@ -136,38 +145,70 @@ end
 
 function pause:keypressed(key)
     if input:wasPressed("menu_up", "keyboard", key) then
+        self.previous_selected = self.selected
         self.selected = self.selected - 1
         if self.selected < 1 then
             self.selected = #self.options
         end
+
+        -- Play navigate sound
+        if self.selected ~= self.previous_selected then
+            sound:playSFX("menu", "navigate")
+        end
     elseif input:wasPressed("menu_down", "keyboard", key) then
+        self.previous_selected = self.selected
         self.selected = self.selected + 1
         if self.selected > #self.options then
             self.selected = 1
         end
+
+        -- Play navigate sound
+        if self.selected ~= self.previous_selected then
+            sound:playSFX("menu", "navigate")
+        end
     elseif input:wasPressed("menu_select", "keyboard", key) then
+        -- Play select sound
+        sound:playSFX("menu", "select")
         self:executeOption(self.selected)
     elseif input:wasPressed("pause", "keyboard", key) then
         -- Quick resume
+        sound:playSFX("ui", "unpause")
+        sound:resumeBGM()
         scene_control.pop()
     end
 end
 
 function pause:gamepadpressed(joystick, button)
     if input:wasPressed("menu_up", "gamepad", button) then
+        self.previous_selected = self.selected
         self.selected = self.selected - 1
         if self.selected < 1 then
             self.selected = #self.options
         end
+
+        -- Play navigate sound
+        if self.selected ~= self.previous_selected then
+            sound:playSFX("menu", "navigate")
+        end
     elseif input:wasPressed("menu_down", "gamepad", button) then
+        self.previous_selected = self.selected
         self.selected = self.selected + 1
         if self.selected > #self.options then
             self.selected = 1
         end
+
+        -- Play navigate sound
+        if self.selected ~= self.previous_selected then
+            sound:playSFX("menu", "navigate")
+        end
     elseif input:wasPressed("menu_select", "gamepad", button) then
+        -- Play select sound
+        sound:playSFX("menu", "select")
         self:executeOption(self.selected)
     elseif input:wasPressed("pause", "gamepad", button) then
         -- Quick resume
+        sound:playSFX("ui", "unpause")
+        sound:resumeBGM()
         scene_control.pop()
     end
 end
@@ -175,6 +216,8 @@ end
 function pause:executeOption(option_index)
     if option_index == 1 then
         -- Resume
+        sound:playSFX("ui", "unpause")
+        sound:resumeBGM()
         scene_control.pop()
     elseif option_index == 2 then
         -- Restart (use current save slot)
@@ -187,6 +230,7 @@ function pause:executeOption(option_index)
         scene_control.push(settings)
     elseif option_index == 4 then
         -- Quit to menu
+        sound:playSFX("menu", "back")
         local menu = require "scenes.menu"
         scene_control.switch(menu)
     end
@@ -199,6 +243,9 @@ function pause:mousereleased(x, y, button)
         -- Left mouse button
         if self.mouse_over > 0 then
             self.selected = self.mouse_over
+
+            -- Play select sound
+            sound:playSFX("menu", "select")
             self:executeOption(self.selected)
         end
     end

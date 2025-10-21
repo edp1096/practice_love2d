@@ -256,33 +256,25 @@ end
 
 -- Get aim direction from mouse or gamepad right stick
 function input:getAimDirection(player_x, player_y, cam)
-    -- Gamepad right stick (priority)
+    local has_gamepad_input = false
+
+    -- Check gamepad right stick
     if self.joystick then
         local stick_x = self.joystick:getGamepadAxis("rightx")
         local stick_y = self.joystick:getGamepadAxis("righty")
-
         stick_x = self:applyDeadzone(stick_x)
         stick_y = self:applyDeadzone(stick_y)
 
         if math.abs(stick_x) > 0.1 or math.abs(stick_y) > 0.1 then
-            -- Active gamepad aim input - update and remember
+            -- Active gamepad aim input
             self.last_aim_angle = math.atan2(stick_y, stick_x)
             self.last_aim_source = "gamepad"
+            has_gamepad_input = true
             return self.last_aim_angle
         end
     end
 
-    -- If we had gamepad input before and now stick is released, maintain last direction
-    if self.last_aim_source == "gamepad" then
-        return self.last_aim_angle
-    end
-
-    -- If weapon was just drawn (initial), maintain that direction until player aims
-    if self.last_aim_source == "initial" then
-        return self.last_aim_angle
-    end
-
-    -- Mouse (fallback) - only used if gamepad was never used
+    -- Mouse (active when no gamepad input)
     local mouse_x, mouse_y
     if cam then
         mouse_x, mouse_y = cam:worldCoords(love.mouse.getPosition())
@@ -290,8 +282,27 @@ function input:getAimDirection(player_x, player_y, cam)
         mouse_x, mouse_y = love.mouse.getPosition()
     end
 
-    self.last_aim_angle = math.atan2(mouse_y - player_y, mouse_x - player_x)
-    self.last_aim_source = "mouse"
+    local mouse_angle = math.atan2(mouse_y - player_y, mouse_x - player_x)
+
+    -- Check if mouse moved significantly (5 degrees threshold)
+    local angle_diff = math.abs(mouse_angle - (self.last_aim_angle or 0))
+    if angle_diff > math.pi then
+        angle_diff = 2 * math.pi - angle_diff
+    end
+
+    -- If mouse moved, switch to mouse control
+    if angle_diff > 0.087 then -- ~5 degrees
+        self.last_aim_source = "mouse"
+    end
+
+    -- Use mouse angle if mouse is active
+    if self.last_aim_source ~= "gamepad" or not has_gamepad_input then
+        self.last_aim_angle = mouse_angle
+        self.last_aim_source = "mouse"
+        return self.last_aim_angle
+    end
+
+    -- Maintain last gamepad direction if stick was just released
     return self.last_aim_angle
 end
 

@@ -1,5 +1,5 @@
 -- scenes/play.lua
--- Main gameplay scene with save functionality and gamepad support
+-- Main gameplay scene with save functionality, gamepad support, and sound
 
 local play = {}
 
@@ -15,6 +15,8 @@ local effects = require "systems.effects"
 local dialogue = require "systems.dialogue"
 local save_sys = require "systems.save"
 local input = require "systems.input"
+local sound = require "systems.sound"
+local player_sound = require "entities.player.sound"
 
 local pb = { x = 0, y = 0, w = 960, h = 540 }
 
@@ -56,12 +58,23 @@ function play:enter(previous, mapPath, spawn_x, spawn_y, save_slot)
     }
 
     dialogue:initialize()
+
+    -- Start BGM based on map
+    local level = mapPath:match("level(%d+)")
+    if level then
+        sound:playBGM("level" .. level)
+    else
+        sound:playBGM("level1")
+    end
 end
 
 function play:exit()
     if self.world then
         self.world:destroy()
     end
+
+    -- Stop BGM when exiting play scene
+    sound:stopBGM()
 end
 
 function play:saveGame(slot)
@@ -79,6 +92,9 @@ function play:saveGame(slot)
     if success then
         self.current_save_slot = slot
         self:showSaveNotification()
+
+        -- Play save sound
+        sound:playSFX("ui", "save")
     end
 end
 
@@ -182,6 +198,9 @@ function play:update(dt)
 
             -- Haptic feedback for weapon hit
             input:vibrateWeaponHit()
+
+            -- Play weapon hit sound
+            player_sound.playWeaponHit()
         end
     end
 
@@ -207,7 +226,7 @@ function play:update(dt)
         if transition then
             if transition.transition_type == "gameclear" then
                 local gameover = require "scenes.gameover"
-                scene_control.switch(gameover, true)
+                scene_control.switch(gameover, self, true)
                 return
             else
                 self:switchMap(transition.target_map, transition.spawn_x, transition.spawn_y)
@@ -337,6 +356,10 @@ function play:keypressed(key)
     if input:wasPressed("pause", "keyboard", key) then
         local pause = require "scenes.pause"
         scene_control.push(pause)
+
+        -- Play pause sound
+        sound:playSFX("ui", "pause")
+        sound:pauseBGM()
     elseif input:wasPressed("dodge", "keyboard", key) then
         if self.player:startDodge() then
             print("Dodge!")
@@ -408,6 +431,10 @@ function play:gamepadpressed(joystick, button)
     if input:wasPressed("pause", "gamepad", button) then
         local pause = require "scenes.pause"
         scene_control.push(pause)
+
+        -- Play pause sound
+        sound:playSFX("ui", "pause")
+        sound:pauseBGM()
     elseif input:wasPressed("attack", "gamepad", button) then
         self.player:attack()
     elseif input:wasPressed("parry", "gamepad", button) then
@@ -468,6 +495,12 @@ function play:switchMap(new_map_path, spawn_x, spawn_y)
 
     self.fade_alpha = 1.0
     self.is_fading = true
+
+    -- Update BGM based on new map
+    local level = new_map_path:match("level(%d+)")
+    if level then
+        sound:playBGM("level" .. level)
+    end
 end
 
 return play

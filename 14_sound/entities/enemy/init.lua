@@ -1,16 +1,26 @@
 -- entities/enemy/init.lua
--- Base enemy class: coordinates AI, rendering, and common properties
+-- Base enemy class: coordinates AI, rendering, common properties, and sound
 
 local anim8 = require "vendor.anim8"
 local ai = require "entities.enemy.ai"
 local render = require "entities.enemy.render"
 local slime_types = require "entities.enemy.types.slime"
+local enemy_sound = require "entities.enemy.sound"
 
 local enemy = {}
 enemy.__index = enemy
 
+-- Initialize enemy sounds (called once)
+local sounds_initialized = false
+
 function enemy:new(x, y, enemy_type)
     local instance = setmetatable({}, enemy)
+
+    -- Initialize sounds once
+    if not sounds_initialized then
+        enemy_sound.initialize()
+        sounds_initialized = true
+    end
 
     enemy_type = enemy_type or "red_slime"
     local config = slime_types.ENEMY_TYPES[enemy_type]
@@ -60,6 +70,7 @@ function enemy:new(x, y, enemy_type)
     -- AI state
     instance.state = "idle"
     instance.state_timer = 0
+    instance.previous_state = "idle"
 
     -- Patrol
     instance.patrol_points = {}
@@ -80,6 +91,10 @@ function enemy:new(x, y, enemy_type)
     -- Stun system
     instance.stunned = false
     instance.stun_timer = 0
+
+    -- Sound
+    instance.move_sound_timer = 0
+    instance.move_sound_interval = 0.6
 
     -- Animation
     instance.spriteSheet = love.graphics.newImage(config.sprite_sheet)
@@ -154,10 +169,25 @@ function enemy:update(dt, player_x, player_y)
         self.hit_shake_y = 0
     end
 
+    -- Movement sound
+    if (self.state == "walk" or self.state == "chase") and not self.stunned and self.state ~= "dead" then
+        self.move_sound_timer = self.move_sound_timer + dt
+
+        if self.move_sound_timer >= self.move_sound_interval then
+            enemy_sound.playMove(self.type)
+            self.move_sound_timer = 0
+        end
+    else
+        self.move_sound_timer = 0
+    end
+
     -- If stunned, skip AI
     if self.stunned then
         return 0, 0
     end
+
+    -- Store previous state for sound detection
+    self.previous_state = self.state
 
     -- Delegate to AI module
     return ai.update(self, dt, player_x, player_y)
@@ -169,8 +199,14 @@ function enemy:takeDamage(damage)
     if self.health <= 0 then
         self.health = 0
         ai.setState(self, "dead")
+
+        -- Play death sound
+        enemy_sound.playDeath(self.type)
     else
         ai.setState(self, "hit")
+
+        -- Play hurt sound
+        enemy_sound.playHurt(self.type)
     end
 end
 
@@ -179,6 +215,9 @@ function enemy:stun(duration, is_perfect)
     self.stun_timer = duration or (is_perfect and 1.5 or 0.5)
     self.state = "stunned"
     self.hit_flash_timer = 0.3
+
+    -- Play stunned sound
+    enemy_sound.playStunned(self.type)
 end
 
 function enemy:getDistanceToPoint(x, y)

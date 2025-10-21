@@ -1,5 +1,5 @@
 -- scenes/settings.lua
--- Settings menu scene with gamepad settings
+-- Settings menu scene with gamepad settings and sound volume controls
 -- FIXED: Fullscreen toggle now properly calls resize chain for camera zoom update
 
 local settings = {}
@@ -8,6 +8,7 @@ local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
 local utils = require "utils.util"
 local input = require "systems.input"
+local sound = require "systems.sound"
 
 local is_ready = false
 
@@ -68,6 +69,12 @@ function settings:enter(previous, ...)
         table.insert(self.options, { name = "Monitor", type = "cycle" })
     end
 
+    -- Add sound options
+    table.insert(self.options, { name = "Master Volume", type = "percent" })
+    table.insert(self.options, { name = "BGM Volume", type = "percent" })
+    table.insert(self.options, { name = "SFX Volume", type = "percent" })
+    table.insert(self.options, { name = "Mute", type = "toggle" })
+
     -- Add gamepad settings if controller is connected
     if input:hasGamepad() then
         table.insert(self.options, { name = "Vibration", type = "toggle" })
@@ -83,6 +90,12 @@ function settings:enter(previous, ...)
     -- Current values indices
     self.current_resolution_index = self:findCurrentResolution()
     self.current_monitor_index = GameConfig.monitor or 1
+
+    -- Volume presets (0%, 25%, 50%, 75%, 100%)
+    self.volume_levels = { 0.0, 0.25, 0.5, 0.75, 1.0 }
+    self.current_master_volume_index = self:findVolumeLevel(sound.settings.master_volume)
+    self.current_bgm_volume_index = self:findVolumeLevel(sound.settings.bgm_volume)
+    self.current_sfx_volume_index = self:findVolumeLevel(sound.settings.sfx_volume)
 
     -- Vibration strength presets (0%, 25%, 50%, 75%, 100%)
     self.vibration_strengths = { 0.0, 0.25, 0.5, 0.75, 1.0 }
@@ -116,6 +129,15 @@ function settings:findCurrentResolution()
     end
 
     return 3 -- Default to 960x540
+end
+
+function settings:findVolumeLevel(current_volume)
+    for i, volume in ipairs(self.volume_levels) do
+        if math.abs(volume - current_volume) < 0.01 then
+            return i
+        end
+    end
+    return 5 -- Default to 100%
 end
 
 function settings:findVibrationStrength()
@@ -222,8 +244,8 @@ function settings:draw()
     local hint_text
     if input:hasGamepad() then
         hint_text = "D-Pad: Navigate | " ..
-        input:getPrompt("menu_left") ..
-        input:getPrompt("menu_right") .. ": Change | " .. input:getPrompt("menu_select") .. ": Select | " .. input:getPrompt("menu_back") .. ": Back\nKeyboard: Arrow Keys / WASD | Left/Right: Change | Enter: Select | ESC: Back"
+            input:getPrompt("menu_left") ..
+            input:getPrompt("menu_right") .. ": Change | " .. input:getPrompt("menu_select") .. ": Select | " .. input:getPrompt("menu_back") .. ": Back\nKeyboard: Arrow Keys / WASD | Left/Right: Change | Enter: Select | ESC: Back"
     else
         hint_text = "Arrow Keys / WASD: Navigate | Left/Right: Change | Enter: Select | ESC: Back\nMouse: Hover and Click (Left: Next, Right: Previous)"
     end
@@ -245,6 +267,14 @@ function settings:getOptionValue(index)
         return GameConfig.fullscreen and "On" or "Off"
     elseif option.name == "Monitor" then
         return self.monitors[self.current_monitor_index].name
+    elseif option.name == "Master Volume" then
+        return string.format("%.0f%%", self.volume_levels[self.current_master_volume_index] * 100)
+    elseif option.name == "BGM Volume" then
+        return string.format("%.0f%%", self.volume_levels[self.current_bgm_volume_index] * 100)
+    elseif option.name == "SFX Volume" then
+        return string.format("%.0f%%", self.volume_levels[self.current_sfx_volume_index] * 100)
+    elseif option.name == "Mute" then
+        return sound.settings.muted and "On" or "Off"
     elseif option.name == "Vibration" then
         return input.settings.vibration_enabled and "On" or "Off"
     elseif option.name == "Vibration Strength" then
@@ -282,6 +312,9 @@ function settings:changeOption(direction)
             self:resize(res.w, res.h)
         end
         utils:SaveConfig(GameConfig)
+
+        -- Play navigate sound
+        sound:playSFX("menu", "navigate")
     elseif option.name == "Fullscreen" then
         -- CRITICAL FIX: Always call resize chain for both fullscreen and windowed
         screen:ToggleFullScreen()
@@ -307,6 +340,9 @@ function settings:changeOption(direction)
         self:resize(current_w, current_h)
 
         utils:SaveConfig(GameConfig)
+
+        -- Play navigate sound
+        sound:playSFX("menu", "navigate")
     elseif option.name == "Monitor" then
         self.current_monitor_index = self.current_monitor_index + direction
         if self.current_monitor_index < 1 then
@@ -343,6 +379,44 @@ function settings:changeOption(direction)
         -- CRITICAL: Call resize chain
         self:resize(GameConfig.width, GameConfig.height)
         utils:SaveConfig(GameConfig)
+
+        -- Play navigate sound
+        sound:playSFX("menu", "navigate")
+    elseif option.name == "Master Volume" then
+        self.current_master_volume_index = self.current_master_volume_index + direction
+        if self.current_master_volume_index < 1 then
+            self.current_master_volume_index = #self.volume_levels
+        elseif self.current_master_volume_index > #self.volume_levels then
+            self.current_master_volume_index = 1
+        end
+
+        sound:setMasterVolume(self.volume_levels[self.current_master_volume_index])
+
+        -- Test sound
+        sound:playSFX("menu", "navigate")
+    elseif option.name == "BGM Volume" then
+        self.current_bgm_volume_index = self.current_bgm_volume_index + direction
+        if self.current_bgm_volume_index < 1 then
+            self.current_bgm_volume_index = #self.volume_levels
+        elseif self.current_bgm_volume_index > #self.volume_levels then
+            self.current_bgm_volume_index = 1
+        end
+
+        sound:setBGMVolume(self.volume_levels[self.current_bgm_volume_index])
+    elseif option.name == "SFX Volume" then
+        self.current_sfx_volume_index = self.current_sfx_volume_index + direction
+        if self.current_sfx_volume_index < 1 then
+            self.current_sfx_volume_index = #self.volume_levels
+        elseif self.current_sfx_volume_index > #self.volume_levels then
+            self.current_sfx_volume_index = 1
+        end
+
+        sound:setSFXVolume(self.volume_levels[self.current_sfx_volume_index])
+
+        -- Test sound
+        sound:playSFX("menu", "navigate")
+    elseif option.name == "Mute" then
+        sound:toggleMute()
     elseif option.name == "Vibration" then
         input:setVibrationEnabled(not input.settings.vibration_enabled)
 
@@ -378,19 +452,23 @@ end
 
 function settings:keypressed(key)
     if key == "escape" then
+        sound:playSFX("menu", "back")
         scene_control.pop()
     elseif input:wasPressed("menu_up", "keyboard", key) then
         self.selected = self.selected - 1
         if self.selected < 1 then self.selected = #self.options end
+        sound:playSFX("menu", "navigate")
     elseif input:wasPressed("menu_down", "keyboard", key) then
         self.selected = self.selected + 1
         if self.selected > #self.options then self.selected = 1 end
+        sound:playSFX("menu", "navigate")
     elseif input:wasPressed("menu_left", "keyboard", key) then
         self:changeOption(-1)
     elseif input:wasPressed("menu_right", "keyboard", key) then
         self:changeOption(1)
     elseif input:wasPressed("menu_select", "keyboard", key) then
         if self.options[self.selected].name == "Back" then
+            sound:playSFX("menu", "back")
             scene_control.pop()
         else
             self:changeOption(1)
@@ -400,19 +478,23 @@ end
 
 function settings:gamepadpressed(joystick, button)
     if input:wasPressed("menu_back", "gamepad", button) then
+        sound:playSFX("menu", "back")
         scene_control.pop()
     elseif input:wasPressed("menu_up", "gamepad", button) then
         self.selected = self.selected - 1
         if self.selected < 1 then self.selected = #self.options end
+        sound:playSFX("menu", "navigate")
     elseif input:wasPressed("menu_down", "gamepad", button) then
         self.selected = self.selected + 1
         if self.selected > #self.options then self.selected = 1 end
+        sound:playSFX("menu", "navigate")
     elseif input:wasPressed("menu_left", "gamepad", button) then
         self:changeOption(-1)
     elseif input:wasPressed("menu_right", "gamepad", button) then
         self:changeOption(1)
     elseif input:wasPressed("menu_select", "gamepad", button) then
         if self.options[self.selected].name == "Back" then
+            sound:playSFX("menu", "back")
             scene_control.pop()
         else
             self:changeOption(1)
@@ -429,6 +511,7 @@ function settings:mousereleased(x, y, button)
             self.selected = self.mouse_over
 
             if self.options[self.selected].name == "Back" then
+                sound:playSFX("menu", "back")
                 scene_control.pop()
             else
                 self:changeOption(1)

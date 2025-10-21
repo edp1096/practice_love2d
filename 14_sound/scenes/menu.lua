@@ -1,5 +1,5 @@
 -- scenes/menu.lua
--- Main menu with Continue feature and gamepad support
+-- Main menu with Continue feature, gamepad support, and sound effects
 
 local menu = {}
 
@@ -8,6 +8,7 @@ local screen = require "lib.screen"
 local debug = require "systems.debug"
 local save_sys = require "systems.save"
 local input = require "systems.input"
+local sound = require "systems.sound"
 
 function menu:enter(previous, ...)
     self.title = GameConfig.title
@@ -22,6 +23,7 @@ function menu:enter(previous, ...)
     end
 
     self.selected = 1
+    self.previous_selected = 1
 
     local vw, vh = screen:GetVirtualDimensions()
     self.virtual_width = vw
@@ -40,11 +42,16 @@ function menu:enter(previous, ...)
 
     self.option_hitboxes = {}
     self.mouse_over = 0
+    self.previous_mouse_over = 0
+
+    -- Play menu BGM
+    sound:playBGM("menu")
 end
 
 function menu:update(dt)
     local vmx, vmy = screen:GetVirtualMousePosition()
 
+    self.previous_mouse_over = self.mouse_over
     self.mouse_over = 0
     love.graphics.setFont(self.optionFont)
 
@@ -61,6 +68,11 @@ function menu:update(dt)
             self.mouse_over = i
             break
         end
+    end
+
+    -- Play navigate sound when mouse moves to different option
+    if self.mouse_over ~= self.previous_mouse_over and self.mouse_over > 0 then
+        sound:playSFX("menu", "navigate")
     end
 end
 
@@ -124,12 +136,26 @@ function menu:keypressed(key)
     if key == "escape" then
         love.event.quit()
     elseif input:wasPressed("menu_up", "keyboard", key) then
+        self.previous_selected = self.selected
         self.selected = self.selected - 1
         if self.selected < 1 then self.selected = #self.options end
+
+        -- Play navigate sound
+        if self.selected ~= self.previous_selected then
+            sound:playSFX("menu", "navigate")
+        end
     elseif input:wasPressed("menu_down", "keyboard", key) then
+        self.previous_selected = self.selected
         self.selected = self.selected + 1
         if self.selected > #self.options then self.selected = 1 end
+
+        -- Play navigate sound
+        if self.selected ~= self.previous_selected then
+            sound:playSFX("menu", "navigate")
+        end
     elseif input:wasPressed("menu_select", "keyboard", key) then
+        -- Play select sound
+        sound:playSFX("menu", "select")
         self:executeOption(self.selected)
     else
         debug:handleInput(key, {})
@@ -138,12 +164,26 @@ end
 
 function menu:gamepadpressed(joystick, button)
     if input:wasPressed("menu_up", "gamepad", button) then
+        self.previous_selected = self.selected
         self.selected = self.selected - 1
         if self.selected < 1 then self.selected = #self.options end
+
+        -- Play navigate sound
+        if self.selected ~= self.previous_selected then
+            sound:playSFX("menu", "navigate")
+        end
     elseif input:wasPressed("menu_down", "gamepad", button) then
+        self.previous_selected = self.selected
         self.selected = self.selected + 1
         if self.selected > #self.options then self.selected = 1 end
+
+        -- Play navigate sound
+        if self.selected ~= self.previous_selected then
+            sound:playSFX("menu", "navigate")
+        end
     elseif input:wasPressed("menu_select", "gamepad", button) then
+        -- Play select sound
+        sound:playSFX("menu", "select")
         self:executeOption(self.selected)
     elseif input:wasPressed("menu_back", "gamepad", button) then
         love.event.quit()
@@ -163,9 +203,11 @@ function menu:executeOption(option_index)
                 scene_control.switch(play, save_data.map, save_data.x, save_data.y, recent_slot)
             else
                 print("ERROR: Failed to load recent save")
+                sound:playSFX("menu", "error")
             end
         else
             print("ERROR: No recent save found")
+            sound:playSFX("menu", "error")
         end
     elseif option_name == "New Game" then
         local newgame = require "scenes.newgame"
@@ -187,6 +229,9 @@ function menu:mousereleased(x, y, button)
     if button == 1 then
         if self.mouse_over > 0 then
             self.selected = self.mouse_over
+
+            -- Play select sound
+            sound:playSFX("menu", "select")
             self:executeOption(self.selected)
         end
     end

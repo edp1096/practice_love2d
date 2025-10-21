@@ -1,9 +1,10 @@
 -- entities/player/combat.lua
--- Combat system: attack, parry, dodge, damage with effects integration and haptic feedback
+-- Combat system: attack, parry, dodge, damage with effects integration, haptic feedback, and sound
 
 local weapon_class = require "entities.weapon"
 local effects = require "systems.effects"
 local input = require "systems.input"
+local player_sound = require "entities.player.sound"
 
 local combat = {}
 
@@ -48,6 +49,9 @@ function combat.initialize(player)
     player.dodge_direction_y = 0
     player.dodge_invincible_duration = 0.25
     player.dodge_invincible_timer = 0
+
+    -- Initialize player sounds
+    player_sound.initialize()
 end
 
 function combat.updateTimers(player, dt)
@@ -120,8 +124,14 @@ function combat.updateTimers(player, dt)
             player.weapon:emitSheathParticles()
             -- Reset aim source when weapon is sheathed
             input:resetAimSource()
+
+            -- Play weapon sheath sound
+            player_sound.playWeaponSheath()
         end
     end
+
+    -- Update player sound system
+    player_sound.update(dt, player)
 end
 
 function combat.attack(player)
@@ -142,6 +152,9 @@ function combat.attack(player)
         -- Initialize aim direction to current facing direction when drawing weapon
         input.last_aim_angle = player.facing_angle
         input.last_aim_source = "initial"
+
+        -- Play weapon draw sound
+        player_sound.playWeaponDraw()
     end
 
     player.last_action_time = 0
@@ -152,6 +165,9 @@ function combat.attack(player)
 
         -- Haptic feedback for attack
         input:vibrateAttack()
+
+        -- Play attack sound
+        player_sound.playAttack()
 
         return true
     end
@@ -169,6 +185,9 @@ function combat.startParry(player)
         -- Initialize aim direction to current facing direction when drawing weapon
         input.last_aim_angle = player.facing_angle
         input.last_aim_source = "initial"
+
+        -- Play weapon draw sound
+        player_sound.playWeaponDraw()
     end
 
     player.last_action_time = 0
@@ -231,6 +250,9 @@ function combat.startDodge(player)
     -- Haptic feedback for dodge
     input:vibrateDodge()
 
+    -- Play dodge sound
+    player_sound.playDodge()
+
     return true
 end
 
@@ -257,6 +279,9 @@ function combat.checkParry(player, incoming_damage)
     else
         input:vibrateParry()
     end
+
+    -- Play parry sound
+    player_sound.playParry(is_perfect)
 
     return true, is_perfect
 end
@@ -288,6 +313,9 @@ function combat.takeDamage(player, damage, shake_callback)
 
     -- Haptic feedback for hit
     input:vibrateHit()
+
+    -- Play hurt sound
+    player_sound.playHurt()
 
     if shake_callback then
         shake_callback(12, 0.3)
