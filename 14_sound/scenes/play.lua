@@ -20,7 +20,8 @@ local player_sound = require "entities.player.sound"
 
 local pb = { x = 0, y = 0, w = 960, h = 540 }
 
-function play:enter(previous, mapPath, spawn_x, spawn_y, save_slot)
+-- function play:enter(previous, mapPath, spawn_x, spawn_y, save_slot)
+function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     mapPath = mapPath or "assets/maps/level1/area1.lua"
     spawn_x = spawn_x or 400
     spawn_y = spawn_y or 250
@@ -195,7 +196,8 @@ function play:update(dt)
     if self.player.health <= 0 then
         print("Player died after enemy attack! Switching to game over...")
         local gameover = require "scenes.gameover"
-        scene_control.switch(gameover, self, false)
+        -- scene_control.switch(gameover, self, false)
+        scene_control.switch(gameover, false)
         return
     end
 
@@ -226,6 +228,7 @@ function play:update(dt)
         self.transition_cooldown = self.transition_cooldown - scaled_dt
     end
 
+    -- Transition check
     if self.transition_cooldown <= 0 then
         local player_w, player_h = 32, 32
         local transition = self.world:checkTransition(
@@ -237,7 +240,8 @@ function play:update(dt)
         if transition then
             if transition.transition_type == "gameclear" then
                 local gameover = require "scenes.gameover"
-                scene_control.switch(gameover, self, true)
+                -- scene_control.switch(gameover, self, true)
+                scene_control.switch(gameover, true)
                 return
             else
                 self:switchMap(transition.target_map, transition.spawn_x, transition.spawn_y)
