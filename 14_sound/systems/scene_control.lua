@@ -1,5 +1,5 @@
--- systems/scene_manager.lua
--- Simple scene management system without external dependencies
+-- systems/scene_control.lua
+-- Simple scene control system
 
 local scene_control = {}
 

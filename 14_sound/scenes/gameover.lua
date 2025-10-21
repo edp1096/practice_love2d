@@ -89,13 +89,8 @@ end
 
 function gameover:draw()
     if self.previous and self.previous.draw then
-        local success, err = pcall(function()
-            self.previous:draw()
-        end)
-
-        if not success then
-            love.graphics.clear(0, 0, 0, 1)
-        end
+        local success, err = pcall(function() self.previous:draw() end)
+        if not success then love.graphics.clear(0, 0, 0, 1) end
     end
 
     screen:Attach()
@@ -147,7 +142,9 @@ function gameover:draw()
     love.graphics.setColor(0.7, 0.7, 0.7, 1)
 
     if input:hasGamepad() then
-        love.graphics.printf("D-Pad: Navigate | " .. input:getPrompt("menu_select") .. ": Select | " .. input:getPrompt("menu_back") .. ": Main Menu",
+        love.graphics.printf("D-Pad: Navigate | " ..
+            input:getPrompt("menu_select") .. ": Select | " ..
+            input:getPrompt("menu_back") .. ": Main Menu",
             0, self.layout.hint_y - 20, self.virtual_width, "center")
         love.graphics.printf("Keyboard: Arrow Keys / WASD | Enter: Select | ESC: Main Menu | Mouse: Hover & Click",
             0, self.layout.hint_y, self.virtual_width, "center")
@@ -161,23 +158,16 @@ end
 
 function gameover:resize(w, h)
     screen:Resize(w, h)
-
-    if self.previous and self.previous.resize then
-        self.previous:resize(w, h)
-    end
+    if self.previous and self.previous.resize then self.previous:resize(w, h) end
 end
 
 function gameover:keypressed(key)
     if key == "up" or key == "w" then
         self.selected = self.selected - 1
-        if self.selected < 1 then
-            self.selected = #self.options
-        end
+        if self.selected < 1 then self.selected = #self.options end
     elseif key == "down" or key == "s" then
         self.selected = self.selected + 1
-        if self.selected > #self.options then
-            self.selected = 1
-        end
+        if self.selected > #self.options then self.selected = 1 end
     elseif key == "return" or key == "space" then
         self:executeOption(self.selected)
     elseif key == "escape" then
@@ -189,14 +179,10 @@ end
 function gameover:gamepadpressed(joystick, button)
     if input:wasPressed("menu_up", "gamepad", button) then
         self.selected = self.selected - 1
-        if self.selected < 1 then
-            self.selected = #self.options
-        end
+        if self.selected < 1 then self.selected = #self.options end
     elseif input:wasPressed("menu_down", "gamepad", button) then
         self.selected = self.selected + 1
-        if self.selected > #self.options then
-            self.selected = 1
-        end
+        if self.selected > #self.options then self.selected = 1 end
     elseif input:wasPressed("menu_select", "gamepad", button) then
         self:executeOption(self.selected)
     elseif input:wasPressed("menu_back", "gamepad", button) then

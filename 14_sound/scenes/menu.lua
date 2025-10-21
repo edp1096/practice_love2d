@@ -1,4 +1,4 @@
--- scenes/menu_refactored.lua
+-- scenes/menu.lua
 
 local menu = {}
 
@@ -56,18 +56,14 @@ function menu:draw()
         love.graphics.print("Controller: " .. input.joystick_name, 10, 10)
     end
 
-    if debug.enabled then
-        debug:drawHelp(self.virtual_width - 250, 10)
-    end
+    if debug.enabled then debug:drawHelp(self.virtual_width - 250, 10) end
 
     screen:Detach()
     screen:ShowDebugInfo()
     screen:ShowVirtualMouse()
 end
 
-function menu:resize(w, h)
-    screen:Resize(w, h)
-end
+function menu:resize(w, h) screen:Resize(w, h) end
 
 function menu:keypressed(key)
     if key == "escape" then

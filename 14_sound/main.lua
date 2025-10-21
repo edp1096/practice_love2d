@@ -56,22 +56,14 @@ function love.keypressed(key)
     scene_control.keypressed(key)
 end
 
-function love.mousepressed(x, y, button)
-    scene_control.mousepressed(x, y, button)
-end
+function love.mousepressed(x, y, button) scene_control.mousepressed(x, y, button) end
 
-function love.mousereleased(x, y, button)
-    scene_control.mousereleased(x, y, button)
-end
+function love.mousereleased(x, y, button) scene_control.mousereleased(x, y, button) end
 
 -- Gamepad callbacks
-function love.joystickadded(joystick)
-    input:joystickAdded(joystick)
-end
+function love.joystickadded(joystick) input:joystickAdded(joystick) end
 
-function love.joystickremoved(joystick)
-    input:joystickRemoved(joystick)
-end
+function love.joystickremoved(joystick) input:joystickRemoved(joystick) end
 
 function love.gamepadpressed(joystick, button)
     if scene_control.current and scene_control.current.gamepadpressed then

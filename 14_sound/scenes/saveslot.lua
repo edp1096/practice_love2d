@@ -1,5 +1,5 @@
 -- scenes/saveslot.lua
--- Save slot selection scene with level/area display and gamepad support
+-- Save slot selection scene with level/area display and gamepad
 
 local saveslot = {}
 
@@ -70,9 +70,7 @@ function saveslot:draw()
             self.previous:draw()
         end)
 
-        if not success then
-            love.graphics.clear(0, 0, 0, 1)
-        end
+        if not success then love.graphics.clear(0, 0, 0, 1) end
     end
 
     screen:Attach()
@@ -157,21 +155,15 @@ function saveslot:draw()
     screen:Detach()
 end
 
-function saveslot:resize(w, h)
-    screen:Resize(w, h)
-end
+function saveslot:resize(w, h) screen:Resize(w, h) end
 
 function saveslot:keypressed(key)
     if key == "up" or key == "w" then
         self.selected = self.selected - 1
-        if self.selected < 1 then
-            self.selected = #self.slots
-        end
+        if self.selected < 1 then self.selected = #self.slots end
     elseif key == "down" or key == "s" then
         self.selected = self.selected + 1
-        if self.selected > #self.slots then
-            self.selected = 1
-        end
+        if self.selected > #self.slots then self.selected = 1 end
     elseif key == "return" or key == "space" then
         self:selectSlot(self.selected)
     elseif key == "escape" or key == "f" then
@@ -188,14 +180,10 @@ end
 function saveslot:gamepadpressed(joystick, button)
     if input:wasPressed("menu_up", "gamepad", button) then
         self.selected = self.selected - 1
-        if self.selected < 1 then
-            self.selected = #self.slots
-        end
+        if self.selected < 1 then self.selected = #self.slots end
     elseif input:wasPressed("menu_down", "gamepad", button) then
         self.selected = self.selected + 1
-        if self.selected > #self.slots then
-            self.selected = 1
-        end
+        if self.selected > #self.slots then self.selected = 1 end
     elseif input:wasPressed("menu_select", "gamepad", button) then
         self:selectSlot(self.selected)
     elseif input:wasPressed("menu_back", "gamepad", button) then
@@ -213,9 +201,7 @@ function saveslot:selectSlot(slot_index)
     if slot.slot == "cancel" then
         scene_control.pop()
     else
-        if self.save_callback then
-            self.save_callback(slot.slot)
-        end
+        if self.save_callback then self.save_callback(slot.slot) end
         scene_control.pop()
     end
 end

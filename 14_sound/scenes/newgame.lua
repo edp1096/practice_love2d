@@ -1,5 +1,5 @@
 -- scenes/newgame.lua
--- New game slot selection scene with level/area display and gamepad support
+-- New game slot selection scene with level/area display and gamepad
 
 local newgame = {}
 
@@ -124,7 +124,9 @@ function newgame:draw()
     love.graphics.setColor(0.5, 0.5, 0.5, 1)
 
     if input:hasGamepad() then
-        love.graphics.printf("D-Pad: Navigate | " .. input:getPrompt("menu_select") .. ": Start | " .. input:getPrompt("menu_back") .. ": Back",
+        love.graphics.printf("D-Pad: Navigate | " ..
+            input:getPrompt("menu_select") .. ": Start | " ..
+            input:getPrompt("menu_back") .. ": Back",
             0, self.layout.hint_y - 20, self.virtual_width, "center")
         love.graphics.printf("Keyboard: Arrow Keys / WASD | Enter: Start | ESC: Back | Mouse: Hover & Click",
             0, self.layout.hint_y, self.virtual_width, "center")
@@ -138,21 +140,15 @@ function newgame:draw()
     screen:Detach()
 end
 
-function newgame:resize(w, h)
-    screen:Resize(w, h)
-end
+function newgame:resize(w, h) screen:Resize(w, h) end
 
 function newgame:keypressed(key)
     if key == "up" or key == "w" then
         self.selected = self.selected - 1
-        if self.selected < 1 then
-            self.selected = #self.slots
-        end
+        if self.selected < 1 then self.selected = #self.slots end
     elseif key == "down" or key == "s" then
         self.selected = self.selected + 1
-        if self.selected > #self.slots then
-            self.selected = 1
-        end
+        if self.selected > #self.slots then self.selected = 1 end
     elseif key == "return" or key == "space" then
         self:selectSlot(self.selected)
     elseif key == "escape" then
@@ -164,14 +160,10 @@ end
 function newgame:gamepadpressed(joystick, button)
     if input:wasPressed("menu_up", "gamepad", button) then
         self.selected = self.selected - 1
-        if self.selected < 1 then
-            self.selected = #self.slots
-        end
+        if self.selected < 1 then self.selected = #self.slots end
     elseif input:wasPressed("menu_down", "gamepad", button) then
         self.selected = self.selected + 1
-        if self.selected > #self.slots then
-            self.selected = 1
-        end
+        if self.selected > #self.slots then self.selected = 1 end
     elseif input:wasPressed("menu_select", "gamepad", button) then
         self:selectSlot(self.selected)
     elseif input:wasPressed("menu_back", "gamepad", button) then

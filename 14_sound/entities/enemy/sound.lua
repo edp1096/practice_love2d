@@ -1,5 +1,4 @@
--- entities/enemy/sound_refactored.lua
--- Refactored enemy-specific sound effects (simplified)
+-- entities/enemy/sound.lua
 
 local sound_sys = require "systems.sound"
 

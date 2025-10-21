@@ -1,5 +1,5 @@
 -- scenes/play.lua
--- Main gameplay scene with save functionality, gamepad support, and sound
+-- Main gameplay scene with save, gamepad, sound
 
 local play = {}
 
@@ -61,18 +61,13 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     dialogue:initialize()
 
     local level = mapPath:match("level(%d+)")
-    if level then
-        sound:playBGM("level" .. level)
-    else
-        sound:playBGM("level1")
-    end
+    if not level then level = "1" end
+    level = "level" .. level
+    sound:playBGM(level)
 end
 
 function play:exit()
-    if self.world then
-        self.world:destroy()
-    end
-
+    if self.world then self.world:destroy() end
     sound:stopBGM()
 end
 
@@ -135,15 +130,11 @@ function play:update(dt)
     local vx, vy = self.player:update(scaled_dt, self.cam, is_dialogue_open)
 
     for _, enemy in ipairs(self.world.enemies) do
-        if enemy.anim then
-            enemy.anim:update(scaled_dt)
-        end
+        if enemy.anim then enemy.anim:update(scaled_dt) end
     end
 
     for _, npc in ipairs(self.world.npcs) do
-        if npc.anim then
-            npc.anim:update(scaled_dt)
-        end
+        if npc.anim then npc.anim:update(scaled_dt) end
     end
 
     if is_dialogue_open then
@@ -210,9 +201,7 @@ function play:update(dt)
         local hits = self.world:checkWeaponCollisions(self.player.weapon)
         for _, hit in ipairs(hits) do
             self.world:applyWeaponHit(hit)
-
             input:vibrateWeaponHit()
-
             player_sound.playWeaponHit()
         end
     end
@@ -255,19 +244,18 @@ function play:draw()
     love.graphics.clear(0, 0, 0, 1)
 
     self.cam:attach()
+
     self.world:drawLayer("Ground")
     self.world:drawEnemies()
     self.world:drawNPCs()
     self.world:drawSavePoints()
     self.player:drawAll()
-    if debug.enabled then
-        self.player:drawDebug()
-    end
+    if debug.enabled then self.player:drawDebug() end
+
     self.world:drawLayer("Trees")
     effects:draw()
-    if debug.enabled then
-        self.world:drawDebug()
-    end
+    if debug.enabled then self.world:drawDebug() end
+
     self.cam:detach()
 
     screen:Attach()
@@ -312,9 +300,7 @@ function play:draw()
             love.graphics.print("Active Effects: " .. effects:getCount(), 8, 140)
             love.graphics.print("F5: Test Effects at Mouse", 8, 154)
 
-            if input:hasGamepad() then
-                love.graphics.print(input:getDebugInfo(), 8, 168)
-            end
+            if input:hasGamepad() then love.graphics.print(input:getDebugInfo(), 8, 168) end
 
             love.graphics.setColor(1, 1, 1, 1)
         end
@@ -342,9 +328,7 @@ function play:draw()
 
     dialogue:draw()
 
-    if debug.enabled then
-        debug:drawHelp(vw - 250, 10)
-    end
+    if debug.enabled then debug:drawHelp(vw - 250, 10) end
 
     screen:Detach()
 
@@ -355,15 +339,15 @@ function play:draw()
     end
 end
 
-function play:resize(w, h)
-    self.cam:zoomTo(w / 960)
-end
+function play:resize(w, h) self.cam:zoomTo(w / 960) end
 
 function play:keypressed(key)
     if dialogue:isOpen() then
-        if input:wasPressed("interact", "keyboard", key) or input:wasPressed("menu_select", "keyboard", key) then
+        if input:wasPressed("interact", "keyboard", key) or
+            input:wasPressed("menu_select", "keyboard", key) then
             dialogue:onAction()
         end
+
         return
     end
 
@@ -374,14 +358,13 @@ function play:keypressed(key)
         sound:playSFX("ui", "pause")
         sound:pauseBGM()
     elseif input:wasPressed("dodge", "keyboard", key) then
-        if self.player:startDodge() then
-            print("Dodge!")
-        end
+        if self.player:startDodge() then print("Dodge!") end
     elseif input:wasPressed("interact", "keyboard", key) then
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
             local messages = npc:interact()
             dialogue:showMultiple(npc.name, messages)
+
             return
         end
 
@@ -416,18 +399,14 @@ end
 
 function play:mousepressed(x, y, button)
     if dialogue:isOpen() then
-        if input:wasPressed("menu_select", "mouse", button) then
-            dialogue:onAction()
-        end
+        if input:wasPressed("menu_select", "mouse", button) then dialogue:onAction() end
         return
     end
 
     if input:wasPressed("attack", "mouse", button) then
         self.player:attack()
     elseif input:wasPressed("parry", "mouse", button) then
-        if self.player:startParry() then
-            print("Parry stance activated!")
-        end
+        if self.player:startParry() then print("Parry stance activated!") end
     end
 end
 
@@ -435,9 +414,11 @@ function play:mousereleased(x, y, button) end
 
 function play:gamepadpressed(joystick, button)
     if dialogue:isOpen() then
-        if input:wasPressed("interact", "gamepad", button) or input:wasPressed("menu_select", "gamepad", button) then
+        if input:wasPressed("interact", "gamepad", button) or
+            input:wasPressed("menu_select", "gamepad", button) then
             dialogue:onAction()
         end
+
         return
     end
 
@@ -450,18 +431,15 @@ function play:gamepadpressed(joystick, button)
     elseif input:wasPressed("attack", "gamepad", button) then
         self.player:attack()
     elseif input:wasPressed("parry", "gamepad", button) then
-        if self.player:startParry() then
-            print("Parry stance activated!")
-        end
+        if self.player:startParry() then print("Parry activated!") end
     elseif input:wasPressed("dodge", "gamepad", button) then
-        if self.player:startDodge() then
-            print("Dodge!")
-        end
+        if self.player:startDodge() then print("Dodge!") end
     elseif input:wasPressed("interact", "gamepad", button) then
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
             local messages = npc:interact()
             dialogue:showMultiple(npc.name, messages)
+
             return
         end
 
@@ -509,9 +487,7 @@ function play:switchMap(new_map_path, spawn_x, spawn_y)
     self.is_fading = true
 
     local level = new_map_path:match("level(%d+)")
-    if level then
-        sound:playBGM("level" .. level)
-    end
+    if level then sound:playBGM("level" .. level) end
 end
 
 return play

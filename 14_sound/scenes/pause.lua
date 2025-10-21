@@ -1,5 +1,4 @@
--- scenes/pause_refactored.lua
--- Refactored pause menu using scene_ui utility (60% code reduction)
+-- scenes/pause.lua
 
 local pause = {}
 
@@ -48,9 +47,7 @@ end
 
 function pause:draw()
     -- Draw background scene (gameplay)
-    if self.previous and self.previous.draw then
-        self.previous:draw()
-    end
+    if self.previous and self.previous.draw then self.previous:draw() end
 
     screen:Attach()
 
@@ -59,8 +56,7 @@ function pause:draw()
 
     -- Draw menu
     scene_ui.drawTitle("PAUSED", self.fonts.title, self.layout.title_y, self.virtual_width)
-    scene_ui.drawOptions(self.options, self.selected, self.mouse_over, self.fonts.option,
-        self.layout, self.virtual_width)
+    scene_ui.drawOptions(self.options, self.selected, self.mouse_over, self.fonts.option, self.layout, self.virtual_width)
 
     -- Custom control hints for pause menu
     local hint_text = input:hasGamepad() and
@@ -77,9 +73,7 @@ end
 function pause:resize(w, h)
     screen:Resize(w, h)
 
-    if self.previous and self.previous.resize then
-        self.previous:resize(w, h)
-    end
+    if self.previous and self.previous.resize then self.previous:resize(w, h) end
 end
 
 function pause:resume()
@@ -93,6 +87,7 @@ function pause:keypressed(key)
         sound:playSFX("ui", "unpause")
         sound:resumeBGM()
         scene_control.pop()
+
         return
     end
 
@@ -112,6 +107,7 @@ function pause:gamepadpressed(joystick, button)
         sound:playSFX("ui", "unpause")
         sound:resumeBGM()
         scene_control.pop()
+
         return
     end
 

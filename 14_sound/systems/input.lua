@@ -1,5 +1,4 @@
--- systems/input_refactored.lua
--- Refactored input system with externalized configuration
+-- systems/input.lua
 
 local input_config = require "data.input_config"
 
@@ -100,24 +99,18 @@ function input:isDown(action)
     -- Keyboard
     if mapping.keyboard then
         for _, key in ipairs(mapping.keyboard) do
-            if love.keyboard.isDown(key) then
-                return true
-            end
+            if love.keyboard.isDown(key) then return true end
         end
     end
 
     -- Gamepad button
     if mapping.gamepad and self.joystick then
-        if self.joystick:isGamepadDown(mapping.gamepad) then
-            return true
-        end
+        if self.joystick:isGamepadDown(mapping.gamepad) then return true end
     end
 
     -- Gamepad D-Pad
     if mapping.gamepad_dpad and self.joystick then
-        if self.joystick:isGamepadDown("dp" .. mapping.gamepad_dpad) then
-            return true
-        end
+        if self.joystick:isGamepadDown("dp" .. mapping.gamepad_dpad) then return true end
     end
 
     return false
@@ -213,18 +206,16 @@ function input:getAimDirection(player_x, player_y, cam)
 
     -- Check if mouse moved significantly
     local angle_diff = math.abs(mouse_angle - (self.last_aim_angle or 0))
-    if angle_diff > math.pi then
-        angle_diff = 2 * math.pi - angle_diff
-    end
+    if angle_diff > math.pi then angle_diff = 2 * math.pi - angle_diff end
 
-    if angle_diff > 0.087 then -- ~5 degrees
-        self.last_aim_source = "mouse"
-    end
+    -- ~5 degrees
+    if angle_diff > 0.087 then self.last_aim_source = "mouse" end
 
     -- Use mouse angle if active
     if self.last_aim_source ~= "gamepad" or not has_gamepad_input then
         self.last_aim_angle = mouse_angle
         self.last_aim_source = "mouse"
+
         return self.last_aim_angle
     end
 
@@ -232,26 +223,21 @@ function input:getAimDirection(player_x, player_y, cam)
 end
 
 -- Reset aim source
-function input:resetAimSource()
-    self.last_aim_source = "none"
-end
+function input:resetAimSource() self.last_aim_source = "none" end
 
 -- Apply deadzone to analog value
 function input:applyDeadzone(value)
-    if math.abs(value) < self.settings.deadzone then
-        return 0
-    end
+    if math.abs(value) < self.settings.deadzone then return 0 end
 
     local sign = value > 0 and 1 or -1
     local adjusted = (math.abs(value) - self.settings.deadzone) / (1 - self.settings.deadzone)
+
     return sign * adjusted
 end
 
 -- Vibration (haptic feedback)
 function input:vibrate(duration, left_strength, right_strength)
-    if not self.settings.vibration_enabled or not self.joystick then
-        return
-    end
+    if not self.settings.vibration_enabled or not self.joystick then return end
 
     left_strength = (left_strength or 1.0) * self.settings.vibration_strength
     right_strength = (right_strength or left_strength) * self.settings.vibration_strength
@@ -260,40 +246,24 @@ function input:vibrate(duration, left_strength, right_strength)
 end
 
 -- Preset vibration patterns
-function input:vibrateAttack()
-    self:vibrate(0.1, 0.5, 0.5)
-end
+function input:vibrateAttack() self:vibrate(0.1, 0.5, 0.5) end
 
-function input:vibrateParry()
-    self:vibrate(0.15, 0.8, 0.8)
-end
+function input:vibrateParry() self:vibrate(0.15, 0.8, 0.8) end
 
-function input:vibratePerfectParry()
-    self:vibrate(0.3, 1.0, 1.0)
-end
+function input:vibratePerfectParry() self:vibrate(0.3, 1.0, 1.0) end
 
-function input:vibrateHit()
-    self:vibrate(0.2, 0.8, 0.3)
-end
+function input:vibrateHit() self:vibrate(0.2, 0.8, 0.3) end
 
-function input:vibrateDodge()
-    self:vibrate(0.08, 0.4, 0.4)
-end
+function input:vibrateDodge() self:vibrate(0.08, 0.4, 0.4) end
 
-function input:vibrateWeaponHit()
-    self:vibrate(0.15, 0.7, 0.7)
-end
+function input:vibrateWeaponHit() self:vibrate(0.15, 0.7, 0.7) end
 
 -- Settings
-function input:setDeadzone(value)
-    self.settings.deadzone = math.max(0, math.min(1, value))
-end
+function input:setDeadzone(value) self.settings.deadzone = math.max(0, math.min(1, value)) end
 
 function input:setVibrationEnabled(enabled)
     self.settings.vibration_enabled = enabled
-    if not enabled and self.joystick then
-        self.joystick:setVibration(0, 0)
-    end
+    if not enabled and self.joystick then self.joystick:setVibration(0, 0) end
 end
 
 function input:setVibrationStrength(strength)
@@ -301,9 +271,7 @@ function input:setVibrationStrength(strength)
 end
 
 -- Check if gamepad is connected
-function input:hasGamepad()
-    return self.joystick ~= nil
-end
+function input:hasGamepad() return self.joystick ~= nil end
 
 -- Get button prompt string (for UI)
 function input:getPrompt(action)
@@ -325,9 +293,7 @@ end
 
 -- Debug info
 function input:getDebugInfo()
-    if not self.joystick then
-        return "No controller connected"
-    end
+    if not self.joystick then return "No controller connected" end
 
     local info = "Controller: " .. self.joystick_name .. "\n"
     info = info .. "Buttons: " .. self.joystick:getButtonCount() .. "\n"

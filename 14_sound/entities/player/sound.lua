@@ -1,5 +1,4 @@
--- entities/player/sound_refactored.lua
--- Refactored player-specific sound effects (simplified)
+-- entities/player/sound.lua
 
 local sound_sys = require "systems.sound"
 

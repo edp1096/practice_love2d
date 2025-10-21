@@ -1,6 +1,5 @@
 -- scenes/settings.lua
 -- Settings menu scene with gamepad settings and sound volume controls
--- FIXED: Fullscreen toggle now properly calls resize chain for camera zoom update
 
 local settings = {}
 
@@ -42,9 +41,7 @@ function settings:enter(previous, ...)
     for i = #self.resolutions, 1, -1 do
         local res = self.resolutions[i]
         local w, h = love.window.getDesktopDimensions()
-        if res.w > w or res.h > h then
-            table.remove(self.resolutions, i)
-        end
+        if res.w > w or res.h > h then table.remove(self.resolutions, i) end
     end
 
     -- Get monitor information
@@ -52,10 +49,7 @@ function settings:enter(previous, ...)
     self.monitors = {}
     for i = 1, self.monitor_count do
         local w, h = love.window.getDesktopDimensions(i)
-        table.insert(self.monitors, {
-            index = i,
-            name = i .. " (" .. w .. "x" .. h .. ")"
-        })
+        table.insert(self.monitors, { index = i, name = i .. " (" .. w .. "x" .. h .. ")" })
     end
 
     -- Settings options - conditionally include Monitor and Gamepad options
@@ -65,9 +59,7 @@ function settings:enter(previous, ...)
     }
 
     -- Only show Monitor option if multiple monitors exist
-    if self.monitor_count > 1 then
-        table.insert(self.options, { name = "Monitor", type = "cycle" })
-    end
+    if self.monitor_count > 1 then table.insert(self.options, { name = "Monitor", type = "cycle" }) end
 
     -- Add sound options
     table.insert(self.options, { name = "Master Volume", type = "percent" })
@@ -123,9 +115,7 @@ function settings:findCurrentResolution()
     local current_h = GameConfig.height
 
     for i, res in ipairs(self.resolutions) do
-        if res.w == current_w and res.h == current_h then
-            return i
-        end
+        if res.w == current_w and res.h == current_h then return i end
     end
 
     return 3 -- Default to 960x540
@@ -133,30 +123,27 @@ end
 
 function settings:findVolumeLevel(current_volume)
     for i, volume in ipairs(self.volume_levels) do
-        if math.abs(volume - current_volume) < 0.01 then
-            return i
-        end
+        if math.abs(volume - current_volume) < 0.01 then return i end
     end
+
     return 5 -- Default to 100%
 end
 
 function settings:findVibrationStrength()
     local current = input.settings.vibration_strength
     for i, strength in ipairs(self.vibration_strengths) do
-        if math.abs(strength - current) < 0.01 then
-            return i
-        end
+        if math.abs(strength - current) < 0.01 then return i end
     end
+
     return 5 -- Default to 100%
 end
 
 function settings:findDeadzone()
     local current = input.settings.deadzone
     for i, dz in ipairs(self.deadzones) do
-        if math.abs(dz - current) < 0.01 then
-            return i
-        end
+        if math.abs(dz - current) < 0.01 then return i end
     end
+
     return 3 -- Default to 0.15
 end
 
@@ -232,8 +219,7 @@ function settings:draw()
         if is_selected and option.type ~= "action" then
             love.graphics.setColor(0.5, 0.5, 1, 1)
             local value_width = self.valueFont:getWidth(value_text)
-            love.graphics.printf("< >", self.layout.value_x + value_width + 20, y,
-                self.virtual_width - self.layout.value_x - value_width - 20, "left")
+            love.graphics.printf("< >", self.layout.value_x + value_width + 20, y, self.virtual_width - self.layout.value_x - value_width - 20, "left")
         end
     end
 
@@ -245,7 +231,9 @@ function settings:draw()
     if input:hasGamepad() then
         hint_text = "D-Pad: Navigate | " ..
             input:getPrompt("menu_left") ..
-            input:getPrompt("menu_right") .. ": Change | " .. input:getPrompt("menu_select") .. ": Select | " .. input:getPrompt("menu_back") .. ": Back\nKeyboard: Arrow Keys / WASD | Left/Right: Change | Enter: Select | ESC: Back"
+            input:getPrompt("menu_right") .. ": Change | " ..
+            input:getPrompt("menu_select") .. ": Select | " ..
+            input:getPrompt("menu_back") .. ": Back\nKeyboard: Arrow Keys / WASD | Left/Right: Change | Enter: Select | ESC: Back"
     else
         hint_text = "Arrow Keys / WASD: Navigate | Left/Right: Change | Enter: Select | ESC: Back\nMouse: Hover and Click (Left: Next, Right: Previous)"
     end
@@ -421,9 +409,7 @@ function settings:changeOption(direction)
         input:setVibrationEnabled(not input.settings.vibration_enabled)
 
         -- Test vibration when enabling
-        if input.settings.vibration_enabled then
-            input:vibrateAttack()
-        end
+        if input.settings.vibration_enabled then input:vibrateAttack() end
     elseif option.name == "Vibration Strength" then
         self.current_vibration_index = self.current_vibration_index + direction
         if self.current_vibration_index < 1 then
@@ -435,9 +421,7 @@ function settings:changeOption(direction)
         input:setVibrationStrength(self.vibration_strengths[self.current_vibration_index])
 
         -- Test vibration
-        if input.settings.vibration_enabled then
-            input:vibrateAttack()
-        end
+        if input.settings.vibration_enabled then input:vibrateAttack() end
     elseif option.name == "Deadzone" then
         self.current_deadzone_index = self.current_deadzone_index + direction
         if self.current_deadzone_index < 1 then
@@ -528,11 +512,7 @@ end
 
 function settings:resize(w, h)
     screen:Resize(w, h)
-
-    -- CRITICAL: Propagate resize to previous scene (pause → play)
-    if self.previous and self.previous.resize then
-        self.previous:resize(w, h)
-    end
+    if self.previous and self.previous.resize then self.previous:resize(w, h) end
 end
 
 return settings
