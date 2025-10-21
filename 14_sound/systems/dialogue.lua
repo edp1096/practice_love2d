@@ -12,32 +12,18 @@ function dialogue:initialize()
     Talkies.indicatorCharacter = ">"
 end
 
-function dialogue:showSimple(npc_name, message)
-    Talkies.say(npc_name, { message })
-end
+function dialogue:showSimple(npc_name, message) Talkies.say(npc_name, { message }) end
 
-function dialogue:showMultiple(npc_name, messages)
-    Talkies.say(npc_name, messages)
-end
+function dialogue:showMultiple(npc_name, messages) Talkies.say(npc_name, messages) end
 
-function dialogue:isOpen()
-    return Talkies.isOpen()
-end
+function dialogue:isOpen() return Talkies.isOpen() end
 
-function dialogue:update(dt)
-    Talkies.update(dt)
-end
+function dialogue:update(dt) Talkies.update(dt) end
 
-function dialogue:draw()
-    Talkies.draw()
-end
+function dialogue:draw() Talkies.draw() end
 
-function dialogue:onAction()
-    Talkies.onAction()
-end
+function dialogue:onAction() Talkies.onAction() end
 
-function dialogue:clear()
-    Talkies.clearMessages()
-end
+function dialogue:clear() Talkies.clearMessages() end
 
 return dialogue

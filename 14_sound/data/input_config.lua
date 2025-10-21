@@ -69,6 +69,7 @@ return {
         },
         menu_select = {
             keyboard = { "return", "space" },
+            mouse = 1,
             gamepad = "a"
         },
         menu_back = {

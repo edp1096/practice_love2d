@@ -1,6 +1,5 @@
 -- systems/world.lua
 -- Manages map loading, rendering, and collision system integration with effects
--- UPDATED: Added polygon/polyline/ellipse collision support
 
 local sti = require "vendor.sti"
 local windfield = require "vendor.windfield"
@@ -445,6 +444,46 @@ end
 function world:drawNPCs()
     for _, npc in ipairs(self.npcs) do
         npc:draw()
+    end
+end
+
+function world:drawEntitiesYSorted(player)
+    local drawables = {}
+
+    -- Collect all entities
+    table.insert(drawables, player)
+
+    for _, enemy in ipairs(self.enemies) do
+        table.insert(drawables, enemy)
+    end
+
+    for _, npc in ipairs(self.npcs) do
+        table.insert(drawables, npc)
+    end
+
+    -- Sort by Y coordinate (foot position for accurate depth)
+    table.sort(drawables, function(a, b)
+        local a_y = a.y
+        local b_y = b.y
+
+        -- Use foot position if collider info is available
+        if a.collider_offset_y and a.collider_height then
+            a_y = a_y + a.collider_offset_y + a.collider_height / 2
+        end
+        if b.collider_offset_y and b.collider_height then
+            b_y = b_y + b.collider_offset_y + b.collider_height / 2
+        end
+
+        return a_y < b_y
+    end)
+
+    -- Draw in sorted order
+    for _, entity in ipairs(drawables) do
+        if entity == player then
+            entity:drawAll()
+        else
+            entity:draw()
+        end
     end
 end
 

@@ -246,11 +246,11 @@ function play:draw()
     self.cam:attach()
 
     self.world:drawLayer("Ground")
-    self.world:drawEnemies()
-    self.world:drawNPCs()
+    self.world:drawEntitiesYSorted(self.player)
     self.world:drawSavePoints()
-    self.player:drawAll()
-    if debug.enabled then self.player:drawDebug() end
+    if debug.enabled then
+        self.player:drawDebug()
+    end
 
     self.world:drawLayer("Trees")
     effects:draw()
@@ -300,7 +300,9 @@ function play:draw()
             love.graphics.print("Active Effects: " .. effects:getCount(), 8, 140)
             love.graphics.print("F5: Test Effects at Mouse", 8, 154)
 
-            if input:hasGamepad() then love.graphics.print(input:getDebugInfo(), 8, 168) end
+            if input:hasGamepad() then
+                love.graphics.print(input:getDebugInfo(), 8, 168)
+            end
 
             love.graphics.setColor(1, 1, 1, 1)
         end
@@ -399,7 +401,9 @@ end
 
 function play:mousepressed(x, y, button)
     if dialogue:isOpen() then
-        if input:wasPressed("menu_select", "mouse", button) then dialogue:onAction() end
+        if input:wasPressed("menu_select", "mouse", button) then
+            dialogue:onAction()
+        end
         return
     end
 
