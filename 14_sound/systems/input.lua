@@ -224,9 +224,15 @@ function input:getAimDirection(player_x, player_y, cam)
         mouse_x, mouse_y = love.mouse.getPosition()
     end
 
-    -- CRITICAL: Ignore mouse position if it's in virtual gamepad area
-    -- This prevents aim pointing at D-pad or buttons when touching them
+    -- CRITICAL: Ignore mouse aiming when virtual gamepad has active touches
+    -- This prevents aim changing when dragging D-pad/buttons outside their area
     if self.virtual_gamepad and self.virtual_gamepad.enabled then
+        if self.virtual_gamepad:hasActiveTouches() then
+            -- Virtual gamepad is handling touches, keep last aim direction
+            return self.last_aim_angle
+        end
+
+        -- Also ignore if mouse is in virtual pad area
         local screen_mouse_x, screen_mouse_y = love.mouse.getPosition()
         if self.virtual_gamepad:isInVirtualPadArea(screen_mouse_x, screen_mouse_y) then
             -- Mouse is in virtual pad area, keep last aim direction

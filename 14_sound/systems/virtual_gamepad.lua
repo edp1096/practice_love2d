@@ -564,4 +564,18 @@ function virtual_gamepad:isInVirtualPadArea(x, y)
     return false
 end
 
+-- Check if virtual gamepad is currently handling any touches
+function virtual_gamepad:hasActiveTouches()
+    if not self.enabled then return false end
+
+    -- Check if any touch is being tracked
+    for id, touch in pairs(self.touches) do
+        if touch.type == "dpad" or touch.type == "button" or touch.type == "menu" then
+            return true
+        end
+    end
+
+    return false
+end
+
 return virtual_gamepad
