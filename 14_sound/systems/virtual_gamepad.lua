@@ -59,7 +59,7 @@ virtual_gamepad.stick_y = 0
 
 -- Mouse aim block cooldown (prevents aim jumping to touch release position)
 virtual_gamepad.mouse_aim_block_time = 0
-virtual_gamepad.MOUSE_AIM_BLOCK_DURATION = 0.15
+virtual_gamepad.MOUSE_AIM_BLOCK_DURATION = 0.35
 
 function virtual_gamepad:init()
     -- Detect if we're on Android
