@@ -6,8 +6,8 @@ local virtual_gamepad = {}
 -- Configuration
 virtual_gamepad.enabled = false
 virtual_gamepad.alpha = 0.5
-virtual_gamepad.size = 120
-virtual_gamepad.button_size = 80
+virtual_gamepad.size = 160
+virtual_gamepad.button_size = 100
 
 -- Touch state tracking
 virtual_gamepad.touches = {}
@@ -26,8 +26,8 @@ virtual_gamepad.aim_touch = {
 virtual_gamepad.dpad = {
     x = 0,
     y = 0,
-    radius = 60,
-    center_radius = 25
+    radius = 80,
+    center_radius = 30
 }
 
 virtual_gamepad.buttons = {
@@ -41,7 +41,8 @@ virtual_gamepad.menu_button = {
     x = 0,
     y = 0,
     pressed = false,
-    label = "☰"
+    label = "☰",
+    radius = 45
 }
 
 -- D-pad direction state
@@ -55,6 +56,10 @@ virtual_gamepad.dpad_direction = {
 -- Analog stick value
 virtual_gamepad.stick_x = 0
 virtual_gamepad.stick_y = 0
+
+-- Mouse aim block cooldown (prevents aim jumping to touch release position)
+virtual_gamepad.mouse_aim_block_time = 0
+virtual_gamepad.MOUSE_AIM_BLOCK_DURATION = 0.15
 
 function virtual_gamepad:init()
     -- Detect if we're on Android
@@ -72,35 +77,44 @@ end
 function virtual_gamepad:calculatePositions()
     local w, h = love.graphics.getDimensions()
 
-    -- D-pad on bottom left
-    self.dpad.x = 100
-    self.dpad.y = h - 120
+    -- D-pad on bottom left (adjusted for larger size)
+    self.dpad.x = 120
+    self.dpad.y = h - 140
 
-    -- Action buttons on bottom right
-    local button_base_x = w - 100
-    local button_base_y = h - 120
+    -- Action buttons on bottom right (adjusted for larger size)
+    local button_base_x = w - 120
+    local button_base_y = h - 140
 
-    -- Button layout (diamond pattern)
+    -- Button layout (diamond pattern with larger spacing)
     self.buttons.a.x = button_base_x
-    self.buttons.a.y = button_base_y + 60
+    self.buttons.a.y = button_base_y + 70
 
-    self.buttons.b.x = button_base_x + 60
+    self.buttons.b.x = button_base_x + 70
     self.buttons.b.y = button_base_y
 
-    self.buttons.x.x = button_base_x - 60
+    self.buttons.x.x = button_base_x - 70
     self.buttons.x.y = button_base_y
 
     self.buttons.y.x = button_base_x
-    self.buttons.y.y = button_base_y - 60
+    self.buttons.y.y = button_base_y - 70
 
-    -- Menu button on top right
-    self.menu_button.x = w - 50
-    self.menu_button.y = 50
+    -- Menu button on top right (slightly larger)
+    self.menu_button.x = w - 60
+    self.menu_button.y = 60
 end
 
 function virtual_gamepad:resize(w, h)
     if not self.enabled then return end
     self:calculatePositions()
+end
+
+function virtual_gamepad:update(dt)
+    if not self.enabled then return end
+
+    -- Decrease mouse aim block cooldown
+    if self.mouse_aim_block_time > 0 then
+        self.mouse_aim_block_time = math.max(0, self.mouse_aim_block_time - dt)
+    end
 end
 
 function virtual_gamepad:touchpressed(id, x, y)
@@ -168,6 +182,8 @@ function virtual_gamepad:touchreleased(id, x, y)
     if touch.type == "dpad" then
         self:resetDPad()
         self.touches[id] = nil
+        -- Block mouse aim briefly to prevent aim snapping to release position
+        self.mouse_aim_block_time = self.MOUSE_AIM_BLOCK_DURATION
         return true
     elseif touch.type == "button" then
         local button = self.buttons[touch.button]
@@ -176,10 +192,14 @@ function virtual_gamepad:touchreleased(id, x, y)
             self:triggerButtonRelease(touch.button)
         end
         self.touches[id] = nil
+        -- Block mouse aim briefly
+        self.mouse_aim_block_time = self.MOUSE_AIM_BLOCK_DURATION
         return true
     elseif touch.type == "menu" then
         self.menu_button.pressed = false
         self.touches[id] = nil
+        -- Block mouse aim briefly
+        self.mouse_aim_block_time = self.MOUSE_AIM_BLOCK_DURATION
         return true
     elseif touch.type == "aim" then
         -- Release aim touch
@@ -229,7 +249,8 @@ function virtual_gamepad:isInButton(x, y, button)
     local dx = x - button.x
     local dy = y - button.y
     local dist = math.sqrt(dx * dx + dy * dy)
-    return dist <= (self.button_size / 2)
+    local radius = button.radius or (self.button_size / 2)
+    return dist <= radius
 end
 
 function virtual_gamepad:updateDPad(x, y)
@@ -391,7 +412,7 @@ function virtual_gamepad:drawDPad()
     love.graphics.setLineWidth(3)
     love.graphics.circle("line", x, y, r)
 
-    -- Directional indicators
+    -- Directional indicators (scaled for larger D-pad)
     love.graphics.setColor(0.4, 0.4, 0.4, self.alpha)
 
     -- Up arrow
@@ -399,9 +420,9 @@ function virtual_gamepad:drawDPad()
         love.graphics.setColor(0.8, 0.8, 1.0, self.alpha * 2)
     end
     love.graphics.polygon("fill",
-        x, y - r + 15,
-        x - 15, y - r + 35,
-        x + 15, y - r + 35
+        x, y - r + 20,
+        x - 18, y - r + 45,
+        x + 18, y - r + 45
     )
 
     -- Down arrow
@@ -410,9 +431,9 @@ function virtual_gamepad:drawDPad()
         love.graphics.setColor(0.8, 0.8, 1.0, self.alpha * 2)
     end
     love.graphics.polygon("fill",
-        x, y + r - 15,
-        x - 15, y + r - 35,
-        x + 15, y + r - 35
+        x, y + r - 20,
+        x - 18, y + r - 45,
+        x + 18, y + r - 45
     )
 
     -- Left arrow
@@ -421,9 +442,9 @@ function virtual_gamepad:drawDPad()
         love.graphics.setColor(0.8, 0.8, 1.0, self.alpha * 2)
     end
     love.graphics.polygon("fill",
-        x - r + 15, y,
-        x - r + 35, y - 15,
-        x - r + 35, y + 15
+        x - r + 20, y,
+        x - r + 45, y - 18,
+        x - r + 45, y + 18
     )
 
     -- Right arrow
@@ -432,17 +453,17 @@ function virtual_gamepad:drawDPad()
         love.graphics.setColor(0.8, 0.8, 1.0, self.alpha * 2)
     end
     love.graphics.polygon("fill",
-        x + r - 15, y,
-        x + r - 35, y - 15,
-        x + r - 35, y + 15
+        x + r - 20, y,
+        x + r - 45, y - 18,
+        x + r - 45, y + 18
     )
 
     -- Center indicator (current stick position)
     if self.stick_x ~= 0 or self.stick_y ~= 0 then
         love.graphics.setColor(1.0, 1.0, 1.0, self.alpha * 2)
-        local indicator_x = x + self.stick_x * (r - 15)
-        local indicator_y = y + self.stick_y * (r - 15)
-        love.graphics.circle("fill", indicator_x, indicator_y, 12)
+        local indicator_x = x + self.stick_x * (r - 20)
+        local indicator_y = y + self.stick_y * (r - 20)
+        love.graphics.circle("fill", indicator_x, indicator_y, 15)
     end
 
     love.graphics.setLineWidth(1)
@@ -464,7 +485,7 @@ function virtual_gamepad:drawActionButtons()
 
         -- Button label
         love.graphics.setColor(1, 1, 1, alpha * 2)
-        local font = love.graphics.newFont(24)
+        local font = love.graphics.newFont(28)
         love.graphics.setFont(font)
         local text_width = font:getWidth(button.label)
         local text_height = font:getHeight()
@@ -480,19 +501,20 @@ end
 function virtual_gamepad:drawMenuButton()
     local button = self.menu_button
     local alpha = button.pressed and (self.alpha * 2) or self.alpha
+    local radius = button.radius
 
     -- Button background
     love.graphics.setColor(0.2, 0.2, 0.2, alpha)
-    love.graphics.circle("fill", button.x, button.y, 35)
+    love.graphics.circle("fill", button.x, button.y, radius)
 
     -- Button border
     love.graphics.setColor(0.6, 0.6, 0.6, alpha * 1.5)
     love.graphics.setLineWidth(3)
-    love.graphics.circle("line", button.x, button.y, 35)
+    love.graphics.circle("line", button.x, button.y, radius)
 
     -- Menu icon (hamburger)
     love.graphics.setColor(1, 1, 1, alpha * 2)
-    local font = love.graphics.newFont(28)
+    local font = love.graphics.newFont(32)
     love.graphics.setFont(font)
     local text_width = font:getWidth(button.label)
     local text_height = font:getHeight()
@@ -567,6 +589,11 @@ end
 -- Check if virtual gamepad is currently handling any touches
 function virtual_gamepad:hasActiveTouches()
     if not self.enabled then return false end
+
+    -- Check if mouse aim is blocked (cooldown after releasing controls)
+    if self.mouse_aim_block_time > 0 then
+        return true
+    end
 
     -- Check if any touch is being tracked
     for id, touch in pairs(self.touches) do

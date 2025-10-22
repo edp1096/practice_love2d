@@ -69,6 +69,12 @@ end
 
 function love.update(dt)
     input:update(dt)
+
+    -- Update virtual gamepad (cooldown timers, etc)
+    if virtual_gamepad then
+        virtual_gamepad:update(dt)
+    end
+
     scene_control.update(dt)
 end
 
