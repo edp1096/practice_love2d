@@ -1,4 +1,5 @@
 -- systems/input.lua
+-- Input system with Android virtual gamepad integration
 
 local input_config = require "data.input_config"
 
@@ -20,6 +21,9 @@ input.button_repeat = {
     timers = {}
 }
 
+-- Virtual gamepad reference (will be set from main.lua)
+input.virtual_gamepad = nil
+
 function input:init()
     for category, actions in pairs(input_config) do
         if type(actions) == "table" and category ~= "gamepad_settings" and category ~= "button_prompts" then
@@ -36,6 +40,11 @@ function input:init()
         print("  Buttons: " .. self.joystick:getButtonCount())
         print("  Axes: " .. self.joystick:getAxisCount())
     end
+end
+
+function input:setVirtualGamepad(vgp)
+    self.virtual_gamepad = vgp
+    print("Virtual gamepad linked to input system")
 end
 
 function input:detectJoystick()
@@ -86,18 +95,29 @@ function input:isDown(action)
     local mapping = self.actions[action]
     if not mapping then return false end
 
+    -- Keyboard check
     if mapping.keyboard then
         for _, key in ipairs(mapping.keyboard) do
             if love.keyboard.isDown(key) then return true end
         end
     end
 
+    -- Physical gamepad check
     if mapping.gamepad and self.joystick then
         if self.joystick:isGamepadDown(mapping.gamepad) then return true end
     end
 
     if mapping.gamepad_dpad and self.joystick then
         if self.joystick:isGamepadDown("dp" .. mapping.gamepad_dpad) then return true end
+    end
+
+    -- Virtual gamepad check
+    if self.virtual_gamepad and self.virtual_gamepad.enabled then
+        if mapping.gamepad_dpad then
+            if self.virtual_gamepad:isDirectionPressed(mapping.gamepad_dpad) then
+                return true
+            end
+        end
     end
 
     return false
@@ -131,7 +151,15 @@ end
 function input:getMovement()
     local vx, vy = 0, 0
 
-    -- Gamepad left stick (priority)
+    -- Virtual gamepad check (highest priority on mobile)
+    if self.virtual_gamepad and self.virtual_gamepad.enabled then
+        local stick_x, stick_y = self.virtual_gamepad:getStickAxis()
+        if math.abs(stick_x) > 0.01 or math.abs(stick_y) > 0.01 then
+            return stick_x, stick_y
+        end
+    end
+
+    -- Physical gamepad left stick
     if self.joystick then
         local stick_x = self.joystick:getGamepadAxis("leftx")
         local stick_y = self.joystick:getGamepadAxis("lefty")
@@ -144,6 +172,7 @@ function input:getMovement()
         end
     end
 
+    -- Keyboard
     if self:isDown("move_right") then vx = vx + 1 end
     if self:isDown("move_left") then vx = vx - 1 end
     if self:isDown("move_down") then vy = vy + 1 end
@@ -162,6 +191,7 @@ end
 function input:getAimDirection(player_x, player_y, cam)
     local has_gamepad_input = false
 
+    -- Physical gamepad right stick
     if self.joystick then
         local stick_x = self.joystick:getGamepadAxis("rightx")
         local stick_y = self.joystick:getGamepadAxis("righty")
@@ -176,7 +206,7 @@ function input:getAimDirection(player_x, player_y, cam)
         end
     end
 
-    -- Mouse (active when no gamepad input)
+    -- Mouse aiming (or touch position when weapon is drawn)
     local mouse_x, mouse_y
     if cam then
         mouse_x, mouse_y = cam:worldCoords(love.mouse.getPosition())
@@ -249,13 +279,33 @@ function input:setVibrationStrength(strength)
     self.settings.vibration_strength = math.max(0, math.min(1, strength))
 end
 
--- Check if gamepad is connected
-function input:hasGamepad() return self.joystick ~= nil end
+-- Check if gamepad is connected (physical or virtual)
+function input:hasGamepad()
+    if self.virtual_gamepad and self.virtual_gamepad.enabled then
+        return true
+    end
+    return self.joystick ~= nil
+end
 
 -- Get button prompt string (for UI)
 function input:getPrompt(action)
     local mapping = self.actions[action]
     if not mapping then return "?" end
+
+    -- If virtual gamepad is active, show mobile-friendly prompts
+    if self.virtual_gamepad and self.virtual_gamepad.enabled then
+        if action == "attack" then
+            return "[A]"
+        elseif action == "dodge" then
+            return "[B]"
+        elseif action == "parry" then
+            return "[X]"
+        elseif action == "interact" then
+            return "[Y]"
+        elseif action == "pause" then
+            return "[☰]"
+        end
+    end
 
     if self.joystick and mapping.gamepad then
         return input_config.button_prompts[mapping.gamepad] or ("[" .. mapping.gamepad .. "]")
@@ -271,9 +321,23 @@ function input:getPrompt(action)
 end
 
 function input:getDebugInfo()
-    if not self.joystick then return "No controller connected" end
+    local info = ""
 
-    local info = "Controller: " .. self.joystick_name .. "\n"
+    -- Virtual gamepad status
+    if self.virtual_gamepad and self.virtual_gamepad.enabled then
+        info = info .. "Virtual Gamepad: ENABLED\n"
+        local vx, vy = self.virtual_gamepad:getStickAxis()
+        info = info .. "Virtual Stick: " .. string.format("%.2f, %.2f", vx, vy) .. "\n"
+        info = info .. "\n"
+    end
+
+    -- Physical controller status
+    if not self.joystick then
+        info = info .. "Physical Controller: Not connected"
+        return info
+    end
+
+    info = info .. "Controller: " .. self.joystick_name .. "\n"
     info = info .. "Buttons: " .. self.joystick:getButtonCount() .. "\n"
     info = info .. "Axes: " .. self.joystick:getAxisCount() .. "\n"
     info = info .. "Deadzone: " .. string.format("%.2f", self.settings.deadzone) .. "\n"

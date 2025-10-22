@@ -1,5 +1,5 @@
 -- main.lua
--- Entry point with unified debug system and gamepad support
+-- Entry point with unified debug system, gamepad support, and Android virtual gamepad
 
 local love_version = (love._version_major .. "." .. love._version_minor)
 print("Running with LÖVE " .. love_version .. " and " .. _VERSION)
@@ -26,6 +26,12 @@ local scene_control = require "systems.scene_control"
 local input = require "systems.input"
 local menu = require "scenes.menu"
 
+-- Virtual gamepad for Android
+local virtual_gamepad
+if is_mobile then
+    virtual_gamepad = require "systems.virtual_gamepad"
+end
+
 function love.load()
     if locker then
         local success, err = pcall(locker.ProcInit, locker)
@@ -50,6 +56,14 @@ function love.load()
     end
 
     input:init()
+
+    -- Initialize virtual gamepad for mobile
+    if virtual_gamepad then
+        virtual_gamepad:init()
+        input:setVirtualGamepad(virtual_gamepad)
+        print("Virtual gamepad enabled for mobile platform")
+    end
+
     scene_control.switch(menu)
 end
 
@@ -60,6 +74,11 @@ end
 
 function love.draw()
     scene_control.draw()
+
+    -- Draw virtual gamepad overlay on top of everything
+    if virtual_gamepad and virtual_gamepad.enabled then
+        virtual_gamepad:draw()
+    end
 end
 
 function love.resize(w, h)
@@ -73,6 +92,11 @@ function love.resize(w, h)
 
     pcall(screen.CalculateScale, screen)
     scene_control.resize(w, h)
+
+    -- Update virtual gamepad positions
+    if virtual_gamepad then
+        virtual_gamepad:resize(w, h)
+    end
 end
 
 function love.keypressed(key)
@@ -98,8 +122,14 @@ function love.mousereleased(x, y, button)
     scene_control.mousereleased(x, y, button)
 end
 
--- Touch support for mobile
+-- Touch support for mobile with virtual gamepad integration
 function love.touchpressed(id, x, y, dx, dy, pressure)
+    -- First check if virtual gamepad handled it
+    if virtual_gamepad and virtual_gamepad:touchpressed(id, x, y) then
+        return -- Virtual gamepad consumed the touch
+    end
+
+    -- Otherwise pass to scene
     if scene_control.current and scene_control.current.touchpressed then
         scene_control.current:touchpressed(id, x, y, dx, dy, pressure)
     else
@@ -109,6 +139,12 @@ function love.touchpressed(id, x, y, dx, dy, pressure)
 end
 
 function love.touchreleased(id, x, y, dx, dy, pressure)
+    -- First check if virtual gamepad handled it
+    if virtual_gamepad and virtual_gamepad:touchreleased(id, x, y) then
+        return -- Virtual gamepad consumed the touch
+    end
+
+    -- Otherwise pass to scene
     if scene_control.current and scene_control.current.touchreleased then
         scene_control.current:touchreleased(id, x, y, dx, dy, pressure)
     else
@@ -118,6 +154,12 @@ function love.touchreleased(id, x, y, dx, dy, pressure)
 end
 
 function love.touchmoved(id, x, y, dx, dy, pressure)
+    -- First check if virtual gamepad handled it
+    if virtual_gamepad and virtual_gamepad:touchmoved(id, x, y) then
+        return -- Virtual gamepad consumed the touch
+    end
+
+    -- Otherwise pass to scene
     if scene_control.current and scene_control.current.touchmoved then
         scene_control.current:touchmoved(id, x, y, dx, dy, pressure)
     end
