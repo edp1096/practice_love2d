@@ -20,6 +20,9 @@ local player_sound = require "entities.player.sound"
 
 local pb = { x = 0, y = 0, w = 960, h = 540 }
 
+-- Check if on mobile platform
+local is_mobile = (love.system.getOS() == "Android" or love.system.getOS() == "iOS")
+
 -- function play:enter(previous, mapPath, spawn_x, spawn_y, save_slot)
 function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     mapPath = mapPath or "assets/maps/level1/area1.lua"
@@ -400,6 +403,11 @@ function play:keypressed(key)
 end
 
 function play:mousepressed(x, y, button)
+    -- Ignore mouse events on mobile (virtual gamepad handles all input)
+    if is_mobile then
+        return
+    end
+
     if dialogue:isOpen() then
         if input:wasPressed("menu_select", "mouse", button) then
             dialogue:onAction()
@@ -414,7 +422,12 @@ function play:mousepressed(x, y, button)
     end
 end
 
-function play:mousereleased(x, y, button) end
+function play:mousereleased(x, y, button)
+    -- Ignore mouse events on mobile
+    if is_mobile then
+        return
+    end
+end
 
 function play:gamepadpressed(joystick, button)
     if dialogue:isOpen() then
