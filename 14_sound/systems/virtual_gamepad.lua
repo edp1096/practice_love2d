@@ -540,4 +540,28 @@ function virtual_gamepad:setAlpha(alpha)
     self.alpha = math.max(0, math.min(1, alpha))
 end
 
+-- Check if coordinates are in any virtual gamepad control area
+function virtual_gamepad:isInVirtualPadArea(x, y)
+    if not self.enabled then return false end
+
+    -- Check D-pad
+    if self:isInDPad(x, y) then
+        return true
+    end
+
+    -- Check action buttons
+    for _, button in pairs(self.buttons) do
+        if self:isInButton(x, y, button) then
+            return true
+        end
+    end
+
+    -- Check menu button
+    if self:isInButton(x, y, self.menu_button) then
+        return true
+    end
+
+    return false
+end
+
 return virtual_gamepad
