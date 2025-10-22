@@ -112,6 +112,11 @@ function virtual_gamepad:touchpressed(id, x, y)
     if self:isInDPad(x, y) then
         self.touches[id].type = "dpad"
         self:updateDPad(x, y)
+        -- Deactivate aim touch when touching D-pad (prevents aim pointing left)
+        if self.aim_touch.active then
+            self.aim_touch.active = false
+            self.aim_touch.id = nil
+        end
         return true
     end
 
@@ -122,6 +127,11 @@ function virtual_gamepad:touchpressed(id, x, y)
             self.touches[id].type = "button"
             self.touches[id].button = name
             self:triggerButtonPress(name)
+            -- Deactivate aim touch when pressing buttons
+            if self.aim_touch.active then
+                self.aim_touch.active = false
+                self.aim_touch.id = nil
+            end
             return true
         end
     end
@@ -131,6 +141,11 @@ function virtual_gamepad:touchpressed(id, x, y)
         self.menu_button.pressed = true
         self.touches[id].type = "menu"
         self:triggerMenuPress()
+        -- Deactivate aim touch when pressing menu button
+        if self.aim_touch.active then
+            self.aim_touch.active = false
+            self.aim_touch.id = nil
+        end
         return true
     end
 
@@ -145,31 +160,40 @@ function virtual_gamepad:touchpressed(id, x, y)
 end
 
 function virtual_gamepad:touchreleased(id, x, y)
-    if not self.enabled then return end
+    if not self.enabled then return false end
 
     local touch = self.touches[id]
     if not touch then return false end
 
     if touch.type == "dpad" then
         self:resetDPad()
+        self.touches[id] = nil
+        return true
     elseif touch.type == "button" then
         local button = self.buttons[touch.button]
         if button then
             button.pressed = false
             self:triggerButtonRelease(touch.button)
         end
+        self.touches[id] = nil
+        return true
     elseif touch.type == "menu" then
         self.menu_button.pressed = false
+        self.touches[id] = nil
+        return true
     elseif touch.type == "aim" then
         -- Release aim touch
         if self.aim_touch.id == id then
             self.aim_touch.active = false
             self.aim_touch.id = nil
         end
+        self.touches[id] = nil
+        -- Return false so scene can handle it (allows menu touches to work)
+        return false
     end
 
     self.touches[id] = nil
-    return true
+    return false
 end
 
 function virtual_gamepad:touchmoved(id, x, y)

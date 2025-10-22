@@ -148,8 +148,18 @@ end
 
 function love.touchreleased(id, x, y, dx, dy, pressure)
     -- First check if virtual gamepad handled it
-    if virtual_gamepad and virtual_gamepad:touchreleased(id, x, y) then
-        return -- Virtual gamepad consumed the touch, don't pass to scene
+    if virtual_gamepad then
+        local handled = virtual_gamepad:touchreleased(id, x, y)
+        if handled then
+            return -- Virtual gamepad consumed the touch, don't pass to scene
+        else
+            -- If not handled by virtual gamepad (aim touch), convert to mouse release
+            -- This allows menu touches to work in menu/pause/gameover scenes
+            if scene_control.current and scene_control.current.mousereleased then
+                scene_control.current:mousereleased(x, y, 1)
+                return
+            end
+        end
     end
 
     -- Pass to scene if it has touch handler
