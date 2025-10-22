@@ -126,37 +126,31 @@ end
 function love.touchpressed(id, x, y, dx, dy, pressure)
     -- First check if virtual gamepad handled it
     if virtual_gamepad and virtual_gamepad:touchpressed(id, x, y) then
-        return -- Virtual gamepad consumed the touch
+        return -- Virtual gamepad consumed the touch, don't pass to scene
     end
 
-    -- Otherwise pass to scene
+    -- Otherwise pass to scene (but this should rarely happen on mobile)
     if scene_control.current and scene_control.current.touchpressed then
         scene_control.current:touchpressed(id, x, y, dx, dy, pressure)
-    else
-        -- Fallback: treat as mouse click
-        love.mousepressed(x, y, 1)
     end
 end
 
 function love.touchreleased(id, x, y, dx, dy, pressure)
     -- First check if virtual gamepad handled it
     if virtual_gamepad and virtual_gamepad:touchreleased(id, x, y) then
-        return -- Virtual gamepad consumed the touch
+        return -- Virtual gamepad consumed the touch, don't pass to scene
     end
 
     -- Otherwise pass to scene
     if scene_control.current and scene_control.current.touchreleased then
         scene_control.current:touchreleased(id, x, y, dx, dy, pressure)
-    else
-        -- Fallback: treat as mouse release
-        love.mousereleased(x, y, 1)
     end
 end
 
 function love.touchmoved(id, x, y, dx, dy, pressure)
     -- First check if virtual gamepad handled it
     if virtual_gamepad and virtual_gamepad:touchmoved(id, x, y) then
-        return -- Virtual gamepad consumed the touch
+        return -- Virtual gamepad consumed the touch, don't pass to scene
     end
 
     -- Otherwise pass to scene

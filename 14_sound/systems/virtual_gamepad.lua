@@ -13,6 +13,15 @@ virtual_gamepad.button_size = 80
 virtual_gamepad.touches = {}
 virtual_gamepad.active_buttons = {}
 
+-- Aim touch state (separate from button presses)
+virtual_gamepad.aim_touch = {
+    active = false,
+    id = nil,
+    x = 0,
+    y = 0,
+    angle = 0
+}
+
 -- Button positions (set in init based on screen size)
 virtual_gamepad.dpad = {
     x = 0,
@@ -125,7 +134,14 @@ function virtual_gamepad:touchpressed(id, x, y)
         return true
     end
 
-    return false
+    -- If not in any virtual pad area, treat as aim touch
+    self.touches[id].type = "aim"
+    self.aim_touch.active = true
+    self.aim_touch.id = id
+    self.aim_touch.x = x
+    self.aim_touch.y = y
+    -- Don't trigger attack, just set aim direction
+    return true
 end
 
 function virtual_gamepad:touchreleased(id, x, y)
@@ -144,6 +160,12 @@ function virtual_gamepad:touchreleased(id, x, y)
         end
     elseif touch.type == "menu" then
         self.menu_button.pressed = false
+    elseif touch.type == "aim" then
+        -- Release aim touch
+        if self.aim_touch.id == id then
+            self.aim_touch.active = false
+            self.aim_touch.id = nil
+        end
     end
 
     self.touches[id] = nil
@@ -161,6 +183,11 @@ function virtual_gamepad:touchmoved(id, x, y)
 
     if touch.type == "dpad" then
         self:updateDPad(x, y)
+        return true
+    elseif touch.type == "aim" then
+        -- Update aim position
+        self.aim_touch.x = x
+        self.aim_touch.y = y
         return true
     end
 
@@ -281,6 +308,28 @@ function virtual_gamepad:getStickAxis()
     return self.stick_x, self.stick_y
 end
 
+-- Get aim direction (returns angle and whether aim touch is active)
+function virtual_gamepad:getAimDirection(player_x, player_y, cam)
+    if not self.enabled or not self.aim_touch.active then
+        return nil, false
+    end
+
+    -- Convert screen touch coordinates to world coordinates
+    local world_x, world_y
+    if cam then
+        world_x, world_y = cam:worldCoords(self.aim_touch.x, self.aim_touch.y)
+    else
+        world_x, world_y = self.aim_touch.x, self.aim_touch.y
+    end
+
+    -- Calculate angle from player to touch position
+    local dx = world_x - player_x
+    local dy = world_y - player_y
+    local angle = math.atan2(dy, dx)
+
+    return angle, true
+end
+
 -- Check if direction is pressed
 function virtual_gamepad:isDirectionPressed(direction)
     if not self.enabled then
@@ -301,6 +350,9 @@ function virtual_gamepad:draw()
 
     -- Draw menu button
     self:drawMenuButton()
+
+    -- Draw aim indicator
+    self:drawAimIndicator()
 end
 
 function virtual_gamepad:drawDPad()
@@ -423,6 +475,32 @@ function virtual_gamepad:drawMenuButton()
     love.graphics.print(button.label,
         button.x - text_width / 2,
         button.y - text_height / 2)
+
+    love.graphics.setLineWidth(1)
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+function virtual_gamepad:drawAimIndicator()
+    if not self.aim_touch.active then return end
+
+    -- Draw crosshair at touch position
+    local x = self.aim_touch.x
+    local y = self.aim_touch.y
+    local size = 20
+
+    love.graphics.setColor(1, 0, 0, self.alpha * 2)
+    love.graphics.setLineWidth(3)
+
+    -- Horizontal line
+    love.graphics.line(x - size, y, x + size, y)
+    -- Vertical line
+    love.graphics.line(x, y - size, x, y + size)
+
+    -- Outer circle
+    love.graphics.circle("line", x, y, size + 5)
+
+    -- Inner dot
+    love.graphics.circle("fill", x, y, 4)
 
     love.graphics.setLineWidth(1)
     love.graphics.setColor(1, 1, 1, 1)

@@ -191,6 +191,16 @@ end
 function input:getAimDirection(player_x, player_y, cam)
     local has_gamepad_input = false
 
+    -- Virtual gamepad aim touch (highest priority on mobile)
+    if self.virtual_gamepad and self.virtual_gamepad.enabled then
+        local aim_angle, has_aim = self.virtual_gamepad:getAimDirection(player_x, player_y, cam)
+        if has_aim and aim_angle then
+            self.last_aim_angle = aim_angle
+            self.last_aim_source = "touch"
+            return self.last_aim_angle
+        end
+    end
+
     -- Physical gamepad right stick
     if self.joystick then
         local stick_x = self.joystick:getGamepadAxis("rightx")
@@ -206,7 +216,7 @@ function input:getAimDirection(player_x, player_y, cam)
         end
     end
 
-    -- Mouse aiming (or touch position when weapon is drawn)
+    -- Mouse aiming (desktop only, not used on mobile with virtual gamepad)
     local mouse_x, mouse_y
     if cam then
         mouse_x, mouse_y = cam:worldCoords(love.mouse.getPosition())
@@ -223,7 +233,7 @@ function input:getAimDirection(player_x, player_y, cam)
     if angle_diff > 0.087 then self.last_aim_source = "mouse" end
 
     -- Use mouse angle if active
-    if self.last_aim_source ~= "gamepad" or not has_gamepad_input then
+    if self.last_aim_source ~= "gamepad" and self.last_aim_source ~= "touch" or not has_gamepad_input then
         self.last_aim_angle = mouse_angle
         self.last_aim_source = "mouse"
 
