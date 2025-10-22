@@ -354,23 +354,49 @@ function virtual_gamepad:getStickAxis()
 end
 
 -- Get aim direction (returns angle and whether aim touch is active)
+-- Get aim direction (returns angle and whether aim touch is active)
 function virtual_gamepad:getAimDirection(player_x, player_y, cam)
     if not self.enabled or not self.aim_touch.active then
         return nil, false
     end
 
-    -- Convert screen touch coordinates to world coordinates
-    local world_x, world_y
+    -- Touch position is already in screen coordinates
+    local screen_touch_x = self.aim_touch.x
+    local screen_touch_y = self.aim_touch.y
+
+    -- Convert player world position to screen coordinates
+    local screen_player_x, screen_player_y
     if cam then
-        world_x, world_y = cam:worldCoords(self.aim_touch.x, self.aim_touch.y)
+        screen_player_x, screen_player_y = cam:cameraCoords(player_x, player_y)
     else
-        world_x, world_y = self.aim_touch.x, self.aim_touch.y
+        screen_player_x, screen_player_y = player_x, player_y
     end
 
-    -- Calculate angle from player to touch position
-    local dx = world_x - player_x
-    local dy = world_y - player_y
-    local angle = math.atan2(dy, dx)
+    -- Calculate square aim area using actual screen height
+    local screen = require "lib.screen"
+    local aim_area_size = screen.screen_wh.h -- Actual screen pixel height
+    local half_area = aim_area_size / 2
+
+    -- Check distance in screen coordinates
+    local dx = screen_touch_x - screen_player_x
+    local dy = screen_touch_y - screen_player_y
+
+    -- If outside aim area, deactivate and return
+    if math.abs(dx) > half_area or math.abs(dy) > half_area then
+        self.aim_touch.active = false
+        self.aim_touch.id = nil
+        return nil, false
+    end
+
+    -- Calculate angle in world coordinates
+    local world_touch_x, world_touch_y
+    if cam then
+        world_touch_x, world_touch_y = cam:worldCoords(screen_touch_x, screen_touch_y)
+    else
+        world_touch_x, world_touch_y = screen_touch_x, screen_touch_y
+    end
+
+    local angle = math.atan2(world_touch_y - player_y, world_touch_x - player_x)
 
     return angle, true
 end

@@ -1,6 +1,36 @@
 -- main.lua
 -- Entry point with unified debug system, gamepad support, and Android virtual gamepad
 
+-- Android crash debugging error handler
+function love.errorhandler(msg)
+    msg = tostring(msg)
+    local trace = debug.traceback("Error: " .. msg, 2):gsub("\n[^\n]+$", "")
+
+    print("=== FATAL ERROR ===")
+    print(trace)
+
+    -- Try to write error log for Android debugging
+    local log_path = love.filesystem.getSaveDirectory() .. "/crash.log"
+    local success, file = pcall(io.open, log_path, "w")
+    if success and file then
+        file:write("LOVE2D Crash Report\n")
+        file:write(os.date("%Y-%m-%d %H:%M:%S") .. "\n\n")
+        file:write(trace .. "\n")
+        file:close()
+        print("Crash log written to: " .. log_path)
+    end
+
+    -- Also try love.filesystem write (more reliable on Android)
+    pcall(function()
+        love.filesystem.write("crash.log", trace)
+        print("Crash log also saved to: " .. love.filesystem.getSaveDirectory() .. "/crash.log")
+    end)
+
+    return function()
+        love.event.quit()
+    end
+end
+
 local love_version = (love._version_major .. "." .. love._version_minor)
 print("Running with LÖVE " .. love_version .. " and " .. _VERSION)
 
@@ -138,7 +168,21 @@ end
 
 -- Touch support for mobile with virtual gamepad integration
 function love.touchpressed(id, x, y, dx, dy, pressure)
-    -- First check if virtual gamepad handled it
+    -- Check debug button first (before virtual gamepad)
+    if scene_control.current and scene_control.current.debug_button then
+        local btn = scene_control.current.debug_button
+        local in_button = x >= btn.x and x <= btn.x + btn.size and
+            y >= btn.y and y <= btn.y + btn.size
+        if in_button then
+            -- Let scene handle debug button
+            if scene_control.current.touchpressed then
+                scene_control.current:touchpressed(id, x, y, dx, dy, pressure)
+            end
+            return
+        end
+    end
+
+    -- Then check if virtual gamepad handled it
     if virtual_gamepad and virtual_gamepad:touchpressed(id, x, y) then
         return -- Virtual gamepad consumed the touch, don't pass to scene
     end
@@ -153,7 +197,21 @@ function love.touchpressed(id, x, y, dx, dy, pressure)
 end
 
 function love.touchreleased(id, x, y, dx, dy, pressure)
-    -- First check if virtual gamepad handled it
+    -- Check debug button first (before virtual gamepad)
+    if scene_control.current and scene_control.current.debug_button then
+        local btn = scene_control.current.debug_button
+        local in_button = x >= btn.x and x <= btn.x + btn.size and
+            y >= btn.y and y <= btn.y + btn.size
+        if in_button or btn.touch_id == id then
+            -- Let scene handle debug button release
+            if scene_control.current.touchreleased then
+                scene_control.current:touchreleased(id, x, y, dx, dy, pressure)
+            end
+            return
+        end
+    end
+
+    -- Then check if virtual gamepad handled it
     if virtual_gamepad then
         local handled = virtual_gamepad:touchreleased(id, x, y)
         if handled then

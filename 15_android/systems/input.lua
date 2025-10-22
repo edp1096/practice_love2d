@@ -217,45 +217,58 @@ function input:getAimDirection(player_x, player_y, cam)
     end
 
     -- Mouse aiming (desktop only, not used on mobile with virtual gamepad)
-    local mouse_x, mouse_y
-    if cam then
-        mouse_x, mouse_y = cam:worldCoords(love.mouse.getPosition())
-    else
-        mouse_x, mouse_y = love.mouse.getPosition()
-    end
+    -- Get mouse position in screen coordinates
+    local screen_mouse_x, screen_mouse_y = love.mouse.getPosition()
 
     -- CRITICAL: Ignore mouse aiming when virtual gamepad has active touches
-    -- This prevents aim changing when dragging D-pad/buttons outside their area
     if self.virtual_gamepad and self.virtual_gamepad.enabled then
         if self.virtual_gamepad:hasActiveTouches() then
-            -- Virtual gamepad is handling touches, keep last aim direction
             return self.last_aim_angle
         end
 
-        -- Also ignore if mouse is in virtual pad area
-        local screen_mouse_x, screen_mouse_y = love.mouse.getPosition()
         if self.virtual_gamepad:isInVirtualPadArea(screen_mouse_x, screen_mouse_y) then
-            -- Mouse is in virtual pad area, keep last aim direction
             return self.last_aim_angle
         end
     end
 
-    local mouse_angle = math.atan2(mouse_y - player_y, mouse_x - player_x)
-
-    -- Check if mouse moved significantly
-    local angle_diff = math.abs(mouse_angle - (self.last_aim_angle or 0))
-    if angle_diff > math.pi then angle_diff = 2 * math.pi - angle_diff end
-
-    if angle_diff > 0.087 then self.last_aim_source = "mouse" end
-
-    -- Use mouse angle if active
-    if self.last_aim_source ~= "gamepad" and self.last_aim_source ~= "touch" or not has_gamepad_input then
-        self.last_aim_angle = mouse_angle
-        self.last_aim_source = "mouse"
-
-        return self.last_aim_angle
+    -- Convert player world position to screen coordinates
+    local screen_player_x, screen_player_y
+    if cam then
+        screen_player_x, screen_player_y = cam:cameraCoords(player_x, player_y)
+    else
+        screen_player_x, screen_player_y = player_x, player_y
     end
 
+    -- Calculate square aim area using actual screen height
+    local screen = require "lib.screen"
+    local aim_area_size = screen.screen_wh.h -- Actual screen pixel height
+    local half_area = aim_area_size / 2
+
+    -- Check if mouse is within square area centered on player (screen coordinates)
+    local dx = screen_mouse_x - screen_player_x
+    local dy = screen_mouse_y - screen_player_y
+
+    -- Only update aim if mouse is within the square area
+    if math.abs(dx) <= half_area and math.abs(dy) <= half_area then
+        -- Calculate angle in world coordinates
+        local world_mouse_x, world_mouse_y
+        if cam then
+            world_mouse_x, world_mouse_y = cam:worldCoords(screen_mouse_x, screen_mouse_y)
+        else
+            world_mouse_x, world_mouse_y = screen_mouse_x, screen_mouse_y
+        end
+
+        local mouse_angle = math.atan2(world_mouse_y - player_y, world_mouse_x - player_x)
+
+        -- Use mouse angle if active
+        if self.last_aim_source ~= "gamepad" and self.last_aim_source ~= "touch" or not has_gamepad_input then
+            self.last_aim_angle = mouse_angle
+            self.last_aim_source = "mouse"
+            return self.last_aim_angle
+        end
+    end
+
+    -- Outside aim area or gamepad is active - keep last aim direction
     return self.last_aim_angle
 end
 

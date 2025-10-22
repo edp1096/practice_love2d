@@ -1,10 +1,23 @@
 -- systems/scene_control.lua
--- Simple scene control system
+-- Simple scene control system with sound system integration
 
 local scene_control = {}
 
 scene_control.current = nil
 scene_control.previous = nil
+
+-- Lazy load sound system
+local sound
+
+local function get_sound()
+    if not sound then
+        local success, result = pcall(require, "systems.sound")
+        if success then
+            sound = result
+        end
+    end
+    return sound
+end
 
 -- Switch to a new scene
 function scene_control.switch(scene, ...)
@@ -58,6 +71,12 @@ end
 
 -- Route LÖVE callbacks to current scene
 function scene_control.update(dt)
+    -- Update sound system (cleanup, memory monitoring)
+    local snd = get_sound()
+    if snd and snd.update then
+        snd:update(dt)
+    end
+
     if scene_control.current and scene_control.current.update then
         scene_control.current:update(dt)
     end

@@ -1,4 +1,6 @@
 -- systems/sound.lua
+-- Optimized for Android with memory tracking and automatic cleanup
+
 local sound_data = require "data.sounds"
 
 local sound = {}
@@ -16,6 +18,20 @@ sound.current_bgm_name = nil
 sound.bgm = {}
 sound.sfx = {}
 sound.pools = {}
+
+-- Active source tracking for memory management
+sound.active_sources = {}
+sound.max_active_sources = 32 -- Limit for Android
+sound.cleanup_interval = 1.0  -- Cleanup every 1 second
+sound.cleanup_timer = 0
+
+-- Memory monitoring (Android optimization)
+sound.memory_stats = {
+    last_check = 0,
+    check_interval = 5.0,
+    peak_memory = 0,
+    warnings = 0
+}
 
 -- Pitch variation presets from config
 sound.pitch_variations = sound_data.variations.pitch
@@ -117,6 +133,76 @@ function sound:_getPitchFromConfig(category, name)
     return self:_getPitch("normal")
 end
 
+-- Cleanup finished sources to prevent memory leak
+function sound:_cleanupFinishedSources()
+    local i = 1
+    while i <= #self.active_sources do
+        local source = self.active_sources[i]
+        if not source:isPlaying() then
+            source:stop() -- Ensure stopped
+            table.remove(self.active_sources, i)
+        else
+            i = i + 1
+        end
+    end
+end
+
+-- Force cleanup if too many active sources
+function sound:_forceCleanup()
+    if #self.active_sources >= self.max_active_sources then
+        print("WARNING: Max active sources reached (" .. self.max_active_sources .. "), forcing cleanup")
+
+        -- Stop oldest sources first
+        local to_remove = math.ceil(#self.active_sources * 0.3) -- Remove 30%
+        for i = 1, to_remove do
+            if self.active_sources[1] then
+                self.active_sources[1]:stop()
+                table.remove(self.active_sources, 1)
+            end
+        end
+    end
+end
+
+-- Memory monitoring (Android specific)
+function sound:_checkMemory()
+    local current_time = love.timer.getTime()
+    if current_time - self.memory_stats.last_check < self.memory_stats.check_interval then
+        return
+    end
+
+    self.memory_stats.last_check = current_time
+
+    -- Check Lua memory
+    local mem_kb = collectgarbage("count")
+    local mem_mb = mem_kb / 1024
+
+    if mem_mb > self.memory_stats.peak_memory then
+        self.memory_stats.peak_memory = mem_mb
+    end
+
+    -- Warning threshold: 50MB
+    if mem_mb > 50 then
+        self.memory_stats.warnings = self.memory_stats.warnings + 1
+        print(string.format("WARNING: High memory usage: %.2f MB (Peak: %.2f MB)",
+            mem_mb, self.memory_stats.peak_memory))
+
+        -- Emergency cleanup
+        collectgarbage("collect")
+        self:_forceCleanup()
+    end
+end
+
+-- Update function for periodic cleanup (call from love.update)
+function sound:update(dt)
+    self.cleanup_timer = self.cleanup_timer + dt
+
+    if self.cleanup_timer >= self.cleanup_interval then
+        self.cleanup_timer = 0
+        self:_cleanupFinishedSources()
+        self:_checkMemory()
+    end
+end
+
 function sound:createPool(category, name, path, size, pitch_variation)
     size = size or 5
     pitch_variation = pitch_variation or "normal"
@@ -199,7 +285,7 @@ function sound:resumeBGM()
     end
 end
 
--- Play SFX with automatic pitch variation from config
+-- Play SFX with automatic pitch variation and memory tracking
 function sound:playSFX(category, name, pitch_override, volume_multiplier)
     volume_multiplier = volume_multiplier or 1.0
 
@@ -210,12 +296,18 @@ function sound:playSFX(category, name, pitch_override, volume_multiplier)
         return
     end
 
+    -- Check active source limit before creating new one
+    self:_forceCleanup()
+
     local pitch = pitch_override or self:_getPitchFromConfig(category, name)
 
     local source = self.sfx[category][name]:clone()
     source:setPitch(pitch)
     source:setVolume(source:getVolume() * volume_multiplier)
     source:play()
+
+    -- Track active source for cleanup
+    table.insert(self.active_sources, source)
 end
 
 -- Play pooled sound with automatic pitch variation
@@ -299,6 +391,12 @@ end
 function sound:cleanup()
     self:stopBGM()
 
+    -- Stop all active cloned sources
+    for _, source in ipairs(self.active_sources) do
+        source:stop()
+    end
+    self.active_sources = {}
+
     for _, bgm in pairs(self.bgm) do
         bgm:stop()
     end
@@ -313,6 +411,11 @@ function sound:printStatus()
     print("SFX Volume: " .. string.format("%.0f%%", self.settings.sfx_volume * 100))
     print("Muted: " .. tostring(self.settings.muted))
     print("Current BGM: " .. tostring(self.current_bgm_name or "None"))
+    print("Active Sources: " .. #self.active_sources .. "/" .. self.max_active_sources)
+
+    local mem_kb = collectgarbage("count")
+    local mem_mb = mem_kb / 1024
+    print(string.format("Memory Usage: %.2f MB (Peak: %.2f MB)", mem_mb, self.memory_stats.peak_memory))
 
     local bgm_count = 0
     for _ in pairs(self.bgm) do bgm_count = bgm_count + 1 end
@@ -329,6 +432,18 @@ function sound:printStatus()
     print("Loaded SFX: " .. sfx_count)
     print("Sound Pools: " .. pool_count)
     print("===========================")
+end
+
+-- Get debug info for display
+function sound:getDebugInfo()
+    local mem_kb = collectgarbage("count")
+    return {
+        active_sources = #self.active_sources,
+        max_sources = self.max_active_sources,
+        memory_mb = mem_kb / 1024,
+        peak_memory_mb = self.memory_stats.peak_memory,
+        warnings = self.memory_stats.warnings
+    }
 end
 
 sound:init()
