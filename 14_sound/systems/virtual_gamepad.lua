@@ -26,7 +26,8 @@ virtual_gamepad.aim_touch = {
 virtual_gamepad.dpad = {
     x = 0,
     y = 0,
-    radius = 80,
+    -- radius = 80,
+    radius = 120,
     center_radius = 30
 }
 
