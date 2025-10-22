@@ -17,6 +17,7 @@ local save_sys = require "systems.save"
 local input = require "systems.input"
 local sound = require "systems.sound"
 local player_sound = require "entities.player.sound"
+local util = require "utils.util"
 
 local pb = { x = 0, y = 0, w = 960, h = 540 }
 
@@ -31,7 +32,11 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     save_slot = save_slot or 1
 
     self.current_map_path = mapPath
-    self.cam = camera(0, 0, love.graphics.getWidth() / 960, 0, 0)
+    local w, h = util:Get16by9Size(love.graphics.getWidth(), love.graphics.getHeight())
+    local scale_x = love.graphics.getWidth() / w
+    local scale_y = love.graphics.getHeight() / h
+    local cam_scale = math.min(scale_x, scale_y)
+    self.cam = camera(0, 0, cam_scale, 0, 0)
     self.world = world:new(mapPath)
     self.player = player:new("assets/images/player-sheet.png", spawn_x, spawn_y)
 
@@ -150,7 +155,9 @@ function play:update(dt)
 
         local mapWidth = self.world.map.width * self.world.map.tilewidth
         local mapHeight = self.world.map.height * self.world.map.tileheight
-        self.cam:lockBounds(mapWidth, mapHeight)
+
+        local w, h = util:Get16by9Size(love.graphics.getWidth(), love.graphics.getHeight())
+        self.cam:lockBounds(mapWidth, mapHeight, w, h)
 
         return
     end
@@ -218,7 +225,9 @@ function play:update(dt)
 
     local mapWidth = self.world.map.width * self.world.map.tilewidth
     local mapHeight = self.world.map.height * self.world.map.tileheight
-    self.cam:lockBounds(mapWidth, mapHeight)
+
+    local w, h = util:Get16by9Size(love.graphics.getWidth(), love.graphics.getHeight())
+    self.cam:lockBounds(mapWidth, mapHeight, w, h)
 
     if self.transition_cooldown > 0 then
         self.transition_cooldown = self.transition_cooldown - scaled_dt
@@ -357,7 +366,12 @@ function play:draw()
     end
 end
 
-function play:resize(w, h) self.cam:zoomTo(w / 960) end
+function play:resize(w, h)
+    local scale_x = w / 960
+    local scale_y = h / 540
+    local cam_scale = math.min(scale_x, scale_y)
+    self.cam:zoomTo(cam_scale)
+end
 
 function play:keypressed(key)
     -- Toggle debug with F12
@@ -532,7 +546,9 @@ function play:switchMap(new_map_path, spawn_x, spawn_y)
 
     local mapWidth = self.world.map.width * self.world.map.tilewidth
     local mapHeight = self.world.map.height * self.world.map.tileheight
-    self.cam:lockBounds(mapWidth, mapHeight)
+
+    local w, h = util:Get16by9Size(love.graphics.getWidth(), love.graphics.getHeight())
+    self.cam:lockBounds(mapWidth, mapHeight, w, h)
 
     self.fade_alpha = 1.0
     self.is_fading = true

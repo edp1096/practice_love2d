@@ -249,6 +249,7 @@ function screen:GetAspectRatioName()
 end
 
 function screen:Attach()
+    -- self:DrawLetterbox(0, 0, 0, 0.5)
     self:DrawLetterbox()
     love.graphics.push()
     love.graphics.translate(self.offset_x, self.offset_y)

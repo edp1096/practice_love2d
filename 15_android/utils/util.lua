@@ -97,4 +97,17 @@ function utils:ReadOrCreateConfig()
     return true
 end
 
+function utils:Get16by9Size(w, h)
+    local target_aspect = 16 / 9
+    local current_aspect = w / h
+
+    if current_aspect > target_aspect then
+        -- Screen is wider than 16:9 (e.g., 21:9) - constrain width
+        return h * target_aspect, h
+    else
+        -- Screen is narrower than 16:9 (e.g., 16:10) - constrain height
+        return w, w / target_aspect
+    end
+end
+
 return utils
