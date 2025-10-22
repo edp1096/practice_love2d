@@ -115,10 +115,18 @@ function love.keypressed(key)
 end
 
 function love.mousepressed(x, y, button)
+    -- Ignore mouse events on mobile (touch events are used instead)
+    if virtual_gamepad and virtual_gamepad.enabled then
+        return
+    end
     scene_control.mousepressed(x, y, button)
 end
 
 function love.mousereleased(x, y, button)
+    -- Ignore mouse events on mobile (touch events are used instead)
+    if virtual_gamepad and virtual_gamepad.enabled then
+        return
+    end
     scene_control.mousereleased(x, y, button)
 end
 
@@ -129,9 +137,12 @@ function love.touchpressed(id, x, y, dx, dy, pressure)
         return -- Virtual gamepad consumed the touch, don't pass to scene
     end
 
-    -- Otherwise pass to scene (but this should rarely happen on mobile)
+    -- Pass to scene if it has touch handler
     if scene_control.current and scene_control.current.touchpressed then
         scene_control.current:touchpressed(id, x, y, dx, dy, pressure)
+    elseif not is_mobile then
+        -- Fallback for PC touchscreens: treat as mouse click
+        love.mousepressed(x, y, 1)
     end
 end
 
@@ -141,9 +152,12 @@ function love.touchreleased(id, x, y, dx, dy, pressure)
         return -- Virtual gamepad consumed the touch, don't pass to scene
     end
 
-    -- Otherwise pass to scene
+    -- Pass to scene if it has touch handler
     if scene_control.current and scene_control.current.touchreleased then
         scene_control.current:touchreleased(id, x, y, dx, dy, pressure)
+    elseif not is_mobile then
+        -- Fallback for PC touchscreens: treat as mouse release
+        love.mousereleased(x, y, 1)
     end
 end
 
