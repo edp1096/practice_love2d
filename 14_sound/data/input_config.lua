@@ -6,23 +6,19 @@ return {
     movement = {
         move_left = {
             keyboard = { "a", "left" },
-            gamepad_axis = { axis = "leftx", negative = true },
-            gamepad_dpad = "left"
+            gamepad_axis = { axis = "leftx", negative = true }
         },
         move_right = {
             keyboard = { "d", "right" },
-            gamepad_axis = { axis = "leftx", negative = false },
-            gamepad_dpad = "right"
+            gamepad_axis = { axis = "leftx", negative = false }
         },
         move_up = {
             keyboard = { "w", "up" },
-            gamepad_axis = { axis = "lefty", negative = true },
-            gamepad_dpad = "up"
+            gamepad_axis = { axis = "lefty", negative = true }
         },
         move_down = {
             keyboard = { "s", "down" },
-            gamepad_axis = { axis = "lefty", negative = false },
-            gamepad_dpad = "down"
+            gamepad_axis = { axis = "lefty", negative = false }
         }
     },
 

@@ -1,15 +1,13 @@
--- lib/screen.lua (Android-compatible version)
-
 local screen = {
     is_fullscreen = false,
     scale_mode = "fit",
-    render_wh = { w = 960, h = 540 },
-    screen_wh = { w = 0, h = 0 },
-    previous_screen_wh = { w = 0, h = 0 },
-    previous_xy = { x = 0, y = 0 },
-    physical_bounds = { x = 0, y = 0, w = 0, h = 0 },
+    render_wh = { w = 960, h = 540 },                 -- Rendering size (virtual resolution)
+    screen_wh = { w = 0, h = 0 },                     -- Window screen size (actual screen)
+    previous_screen_wh = { w = 0, h = 0 },            -- Previous screen size
+    previous_xy = { x = 0, y = 0 },                   -- Previous window position
+    physical_bounds = { x = 0, y = 0, w = 0, h = 0 }, -- Physical screen bounds
     window = {
-        fullscreen = false,
+        fullscreen = false,                           -- Not use
         fullscreentype = "desktop",
         vsync = true,
         resizable = true,
@@ -27,9 +25,11 @@ local screen = {
         mag = "nearest",
         anisotropy = 1
     },
+    -- Calculated values for virtual resolution
     scale = 1,
     offset_x = 0,
     offset_y = 0,
+    -- Supported aspect ratios (for reference)
     aspect_ratios = {
         ["1:1"] = 1 / 1,
         ["3:4"] = 3 / 4,
@@ -39,109 +39,53 @@ local screen = {
         ["21:9"] = 21 / 9,
         ["9:21"] = 9 / 21,
         ["9:32"] = 9 / 32
-    },
-    -- Android/Mobile detection
-    is_mobile = false,
-    is_android = false,
-    dpi_scale = 1
+    }
 }
 
--- Detect platform
-function screen:DetectPlatform()
-    local os_name = love.system.getOS()
-    self.is_android = (os_name == "Android")
-    self.is_mobile = (os_name == "Android" or os_name == "iOS")
-
-    -- Get DPI scale for high-resolution displays
-    if self.is_mobile then
-        local dpi_scale = love.window.getDPIScale()
-        if dpi_scale and dpi_scale > 0 then
-            self.dpi_scale = dpi_scale
-        end
-    end
-end
-
 function screen:Initialize(config)
-    self:DetectPlatform()
+    self.window.display = config.monitor
+
+    local dx, dy = love.window.getDesktopDimensions(config.monitor)
+    self.window.x, self.window.y = dx / 2 - self.render_wh.w / 2, dy / 2 - self.render_wh.h / 2
 
     love.graphics.setDefaultFilter(self.filter.min, self.filter.mag, self.filter.anisotropy)
 
-    -- Get initial dimensions
     self.screen_wh.w, self.screen_wh.h = love.graphics.getDimensions()
-    self.previous_screen_wh.w, self.previous_screen_wh.h = self.screen_wh.w, self.screen_wh.h
+    self.previous_screen_wh.w, self.previous_screen_wh.h = love.graphics.getDimensions()
+    self.previous_xy.x, self.previous_xy.y = love.window.getPosition()
 
-    if not self.is_mobile then
-        -- Desktop: normal window handling
-        self.window.display = config.monitor or 1
-
-        local success, dx, dy = pcall(love.window.getDesktopDimensions, self.window.display)
-        if success and dx and dy then
-            self.window.x = dx / 2 - self.render_wh.w / 2
-            self.window.y = dy / 2 - self.render_wh.h / 2
-        end
-
-        local success2, x, y = pcall(love.window.getPosition)
-        if success2 and x and y then
-            self.previous_xy.x, self.previous_xy.y = x, y
-        end
-
-        if self.window.display ~= 1 then
-            pcall(love.window.updateMode, self.screen_wh.w, self.screen_wh.h, self.window)
-        end
-
-        if config.fullscreen then
-            self:EnableFullScreen()
-        end
-    else
-        -- Mobile: always fullscreen
-        self.is_fullscreen = true
-        print("Running on mobile platform: " .. love.system.getOS())
-        print("Screen dimensions: " .. self.screen_wh.w .. "x" .. self.screen_wh.h)
-        print("DPI scale: " .. self.dpi_scale)
+    if self.window.display ~= 1 then
+        love.window.updateMode(self.screen_wh.w, self.screen_wh.h, self.window)
     end
 
-    if config.scale_mode then
-        self:SetScaleMode(config.scale_mode)
-    end
+    if config.scale_mode then self:SetScaleMode(config.scale_mode) end
+    if config.fullscreen then self:EnableFullScreen() end
 
     self:CalculateScale()
 end
 
 function screen:EnableFullScreen()
-    if self.is_mobile then return end -- Already fullscreen on mobile
     if self.is_fullscreen then return end
 
-    local success, x, y = pcall(love.window.getPosition)
-    if success and x and y then
-        self.previous_xy.x, self.previous_xy.y = x, y
-    end
-
+    self.previous_xy.x, self.previous_xy.y = love.window.getPosition()
     self.previous_screen_wh.w, self.previous_screen_wh.h = self.screen_wh.w, self.screen_wh.h
 
-    local success2, w, h = pcall(love.window.getDesktopDimensions, self.window.display)
-    if success2 and w and h then
-        self.screen_wh.w, self.screen_wh.h = w, h
-    else
-        self.screen_wh.w, self.screen_wh.h = love.graphics.getDimensions()
-    end
-
+    self.screen_wh.w, self.screen_wh.h = love.window.getDesktopDimensions(self.window.display)
     self.window.x, self.window.y = 0, 0
     self.window.resizable = false
     self.window.borderless = false
 
-    pcall(love.window.updateMode, self.screen_wh.w, self.screen_wh.h, self.window)
+    love.window.updateMode(self.screen_wh.w, self.screen_wh.h, self.window)
     self.is_fullscreen = true
 
     self:CalculateScale()
 end
 
 function screen:DisableFullScreen()
-    if self.is_mobile then return end -- Can't exit fullscreen on mobile
     if not self.is_fullscreen then return end
 
     if self.previous_screen_wh.w == self.screen_wh.w and self.previous_screen_wh.h == self.screen_wh.h then
-        self.window.x = self.screen_wh.w / 2 - self.render_wh.w / 2
-        self.window.y = self.screen_wh.h / 2 - self.render_wh.h / 2
+        self.window.x, self.window.y = self.screen_wh.w / 2 - self.render_wh.w / 2, self.screen_wh.h / 2 - self.render_wh.h / 2
         self.screen_wh.w, self.screen_wh.h = self.render_wh.w, self.render_wh.h
         self.window.resizable = true
         self.window.borderless = false
@@ -153,15 +97,13 @@ function screen:DisableFullScreen()
         self.window.borderless = false
     end
 
-    pcall(love.window.updateMode, self.screen_wh.w, self.screen_wh.h, self.window)
+    love.window.updateMode(self.screen_wh.w, self.screen_wh.h, self.window)
     self.is_fullscreen = false
 
     self:CalculateScale()
 end
 
 function screen:ToggleFullScreen()
-    if self.is_mobile then return end -- Can't toggle on mobile
-
     if self.is_fullscreen then
         self:DisableFullScreen()
     else
@@ -209,7 +151,7 @@ function screen:CalculateScale()
         end
         self.offset_x = (self.screen_wh.w - self.render_wh.w * self.scale) / 2
         self.offset_y = (self.screen_wh.h - self.render_wh.h * self.scale) / 2
-    else -- "fit" mode (default for mobile)
+    else
         if screen_aspect > virtual_aspect then
             self.scale = self.screen_wh.h / self.render_wh.h
             self.offset_x = (self.screen_wh.w - self.render_wh.w * self.scale) / 2
@@ -292,48 +234,10 @@ function screen:ToScreenCoords(x, y)
     return screen_x, screen_y
 end
 
--- Get mouse position (works for both mouse and touch)
 function screen:GetVirtualMousePosition()
-    local mx, my
-
-    if self.is_mobile then
-        -- On mobile, use touch if available, otherwise mouse
-        local touches = love.touch.getTouches()
-        if #touches > 0 then
-            mx, my = love.touch.getPosition(touches[1])
-        else
-            mx, my = love.mouse.getPosition()
-        end
-    else
-        mx, my = love.mouse.getPosition()
-    end
-
+    local mx, my = love.mouse.getPosition()
     local vmx, vmy = self:ToVirtualCoords(mx, my)
     return vmx, vmy, mx, my
-end
-
--- Get all touch positions (Android multi-touch support)
-function screen:GetAllTouches()
-    if not self.is_mobile then
-        return {}
-    end
-
-    local touches = {}
-    local touch_ids = love.touch.getTouches()
-
-    for i, id in ipairs(touch_ids) do
-        local x, y = love.touch.getPosition(id)
-        local vx, vy = self:ToVirtualCoords(x, y)
-        table.insert(touches, {
-            id = id,
-            x = x,
-            y = y,
-            virtual_x = vx,
-            virtual_y = vy
-        })
-    end
-
-    return touches
 end
 
 function screen:IsPointInVirtualBounds(x, y)
@@ -376,6 +280,7 @@ function screen:GetVisibleVirtualBounds()
 end
 
 function screen:ShowDebugInfo()
+    -- Use unified debug system
     local debug = require "systems.debug"
     if not debug.show_screen_info then return end
 
@@ -386,7 +291,7 @@ function screen:ShowDebugInfo()
     local vmx, vmy, mx, my = self:GetVirtualMousePosition()
 
     love.graphics.setColor(0, 0, 0, 0.5)
-    love.graphics.rectangle("fill", 0, 0, 280, 280)
+    love.graphics.rectangle("fill", 0, 0, 280, 250)
 
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.print("Screen: " .. sw .. "x" .. sh, 10, 10)
@@ -397,21 +302,11 @@ function screen:ShowDebugInfo()
     love.graphics.print("Mode: " .. self.scale_mode, 10, 110)
     love.graphics.print("Virtual Mouse: " .. string.format("%.1f", vmx) .. ", " .. string.format("%.1f", vmy), 10, 130)
 
-    if self.is_mobile then
-        love.graphics.print("Platform: " .. love.system.getOS(), 10, 150)
-        love.graphics.print("DPI Scale: " .. string.format("%.2f", self.dpi_scale), 10, 170)
-
-        local touches = self:GetAllTouches()
-        love.graphics.print("Touches: " .. #touches, 10, 190)
-    else
-        love.graphics.print("F11: Toggle Fullscreen", 10, 170)
-        love.graphics.print("1: Fit  2: Stretch  3: Fill", 10, 190)
-    end
-
-    love.graphics.print("F3: Debug  F1: Info", 10, 210)
+    love.graphics.print("F11: Toggle Fullscreen", 10, 170)
+    love.graphics.print("1: Fit  2: Stretch  3: Fill", 10, 190)
+    love.graphics.print("F3: Debug  F1: Info  F2: Mouse", 10, 210)
     love.graphics.print("FPS: " .. love.timer.getFPS(), 10, 230)
 
-    -- Visual coordinate space indicator
     love.graphics.setColor(0.2, 0.6, 1, 0.3)
     local x0, y0 = self:ToScreenCoords(100, 100)
     local x1, y1 = self:ToScreenCoords(vw - 100, vh - 100)
@@ -430,10 +325,17 @@ function screen:ShowDebugInfo()
         love.graphics.line(gx, gy, gw, gy)
     end
 
+    love.graphics.setColor(1, 0, 1, 1)
+    local cx1, cy1 = self:ToScreenCoords(vw / 2 - 75, 50)
+    local cx2, cy2 = self:ToScreenCoords(vw / 2 - 75, 70)
+    love.graphics.print("Virtual Coordinate Space", cx1, cy1)
+    love.graphics.print("Resolution: " .. vw .. " x " .. vh, cx2, cy2)
+
     love.graphics.setColor(1, 1, 1, 1)
 end
 
 function screen:ShowVirtualMouse()
+    -- Use unified debug system
     local debug = require "systems.debug"
     if not debug.show_virtual_mouse then return end
 
@@ -471,17 +373,6 @@ function screen:ShowVirtualMouse()
         love.graphics.line(mx, my + 17, mx, my + 22)
 
         love.graphics.setLineWidth(1)
-    end
-
-    -- Show all touch points on mobile
-    if self.is_mobile then
-        local touches = self:GetAllTouches()
-        for _, touch in ipairs(touches) do
-            love.graphics.setColor(0, 1, 0, 0.5)
-            love.graphics.circle("fill", touch.x, touch.y, 30)
-            love.graphics.setColor(0, 1, 0, 1)
-            love.graphics.circle("line", touch.x, touch.y, 30)
-        end
     end
 
     love.graphics.setColor(1, 1, 1, 1)

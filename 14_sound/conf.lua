@@ -1,10 +1,5 @@
--- conf.lua
 local ini = require "lib.ini"
 local util = require "utils.util"
-
--- Detect platform early
-local is_android = love._os == "Android"
-local is_mobile = is_android or love._os == "iOS"
 
 GameConfig = {
     title = "Hello Love2D",
@@ -16,81 +11,38 @@ GameConfig = {
     resizable = false,
     fullscreen = false,
     vsync = true,
+    -- scale_mode = "fill",
     scale_mode = "fit",
 
     min_width = 640,
     min_height = 360
 }
 
--- Only try to read config on desktop
-if not is_mobile then
-    local success, err = pcall(util.ReadOrCreateConfig, util)
-    if not success then
-        print("Warning: Could not read/create config: " .. tostring(err))
-    end
+util:ReadOrCreateConfig()
 
-    local success2, config, err2 = pcall(ini.Read, ini, "config.ini")
-    if success2 and config and not err2 then
-        GameConfig.width = config.Window.Width or GameConfig.width
-        GameConfig.height = config.Window.Height or GameConfig.height
-        GameConfig.resizable = config.Window.Resizable or GameConfig.resizable
-        GameConfig.fullscreen = config.Window.FullScreen or GameConfig.fullscreen
-        GameConfig.monitor = config.Window.Monitor or 1
-    end
+local config, err = ini:Read("config.ini")
+if not err then
+    GameConfig.width = config and config.Window.Width
+    GameConfig.height = config and config.Window.Height
+    GameConfig.resizable = config and config.Window.Resizable
+    GameConfig.fullscreen = config and config.Window.FullScreen
+    GameConfig.monitor = config and config.Window.Monitor
 end
 
 function love.conf(t)
-    t.identity = "hello_love2d"
-    t.version = "11.4"
-    t.console = false
+    t.title = GameConfig.title
+    t.author = GameConfig.author
 
-    t.window.title = GameConfig.title
-    t.window.icon = nil
+    t.window.width = GameConfig.width
+    t.window.height = GameConfig.height
+    t.window.resizable = GameConfig.resizable
+    -- t.window.fullscreen = GameConfig.fullscreen -- Not use
+    t.window.vsync = GameConfig.vsync
+    t.window.minwidth = GameConfig.min_width
+    t.window.minheight = GameConfig.min_height
 
-    if is_mobile then
-        -- Mobile: use device screen size
-        t.window.width = 0
-        t.window.height = 0
-        t.window.borderless = false
-        t.window.resizable = false
-        t.window.fullscreen = false
-        t.window.fullscreentype = "desktop"
-        t.window.vsync = 1
-    else
-        -- Desktop: use config
-        t.window.width = GameConfig.width
-        t.window.height = GameConfig.height
-        t.window.borderless = false
-        t.window.resizable = GameConfig.resizable
-        t.window.fullscreen = false
-        t.window.fullscreentype = "desktop"
-        t.window.vsync = GameConfig.vsync and 1 or 0
-        t.window.minwidth = GameConfig.min_width
-        t.window.minheight = GameConfig.min_height
-    end
-
-    t.window.display = 1
-    t.window.highdpi = false
-    t.window.usedpiscale = true
-    t.window.depth = nil
-    t.window.stencil = nil
-
-    t.modules.audio = true
-    t.modules.data = true
-    t.modules.event = true
-    t.modules.font = true
-    t.modules.graphics = true
-    t.modules.image = true
     t.modules.joystick = true
-    t.modules.keyboard = true
-    t.modules.math = true
-    t.modules.mouse = true
     t.modules.physics = true
-    t.modules.sound = true
-    t.modules.system = true
-    t.modules.thread = true
-    t.modules.timer = true
-    t.modules.touch = true
-    t.modules.video = false
-    t.modules.window = true
+    t.modules.touch = false
+    t.modules.video = true
 end
