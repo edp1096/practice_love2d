@@ -14,7 +14,7 @@ constants.INPUT = {
     GAMEPAD_DEADZONE = 0.15,
     STICK_THRESHOLD = 0.01,
     AIM_STICK_THRESHOLD = 0.1,
-    
+
     -- Button repeat system
     REPEAT_DELAY = 0.3,
     REPEAT_INTERVAL = 0.1,

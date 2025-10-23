@@ -2,7 +2,7 @@
 -- Entry point with refactored modular system and legacy fallback
 
 -- Flag to enable/disable refactored system
-USE_REFACTORED_MAIN = false  -- main_refactored.lua removed, using direct implementation
+USE_REFACTORED_MAIN = false -- main_refactored.lua removed, using direct implementation
 
 -- Try to load refactored main module
 local main_refactored
@@ -23,63 +23,63 @@ if USE_REFACTORED_MAIN and main_refactored then
     function love.load()
         main_refactored.load()
     end
-    
+
     function love.update(dt)
         main_refactored.update(dt)
     end
-    
+
     function love.draw()
         main_refactored.draw()
     end
-    
+
     function love.resize(w, h)
         main_refactored.resize(w, h)
     end
-    
+
     function love.keypressed(key)
         main_refactored.keypressed(key)
     end
-    
+
     function love.mousepressed(x, y, button)
         main_refactored.mousepressed(x, y, button)
     end
-    
+
     function love.mousereleased(x, y, button)
         main_refactored.mousereleased(x, y, button)
     end
-    
+
     function love.touchpressed(id, x, y, dx, dy, pressure)
         main_refactored.touchpressed(id, x, y, dx, dy, pressure)
     end
-    
+
     function love.touchreleased(id, x, y, dx, dy, pressure)
         main_refactored.touchreleased(id, x, y, dx, dy, pressure)
     end
-    
+
     function love.touchmoved(id, x, y, dx, dy, pressure)
         main_refactored.touchmoved(id, x, y, dx, dy, pressure)
     end
-    
+
     function love.joystickadded(joystick)
         main_refactored.joystickAdded(joystick)
     end
-    
+
     function love.joystickremoved(joystick)
         main_refactored.joystickRemoved(joystick)
     end
-    
+
     function love.gamepadpressed(joystick, button)
         main_refactored.gamepadpressed(joystick, button)
     end
-    
+
     function love.gamepadreleased(joystick, button)
         main_refactored.gamepadreleased(joystick, button)
     end
-    
+
     function love.gamepadaxis(joystick, axis, value)
         main_refactored.gamepadaxis(joystick, axis, value)
     end
-    
+
     function love.quit()
         main_refactored.quit()
     end
@@ -151,8 +151,8 @@ else
         local success, err = pcall(screen.Initialize, screen, GameConfig)
         if not success then
             print("ERROR: Screen initialization failed: " .. tostring(err))
-            screen.screen_wh = {w = 0, h = 0}
-            screen.render_wh = {w = 960, h = 540}
+            screen.screen_wh = { w = 0, h = 0 }
+            screen.render_wh = { w = 960, h = 540 }
             screen.screen_wh.w, screen.screen_wh.h = love.graphics.getDimensions()
             screen.scale = math.min(
                 screen.screen_wh.w / screen.render_wh.w,

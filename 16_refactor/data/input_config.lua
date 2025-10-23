@@ -95,7 +95,8 @@ return {
     gamepad_settings = {
         deadzone = 0.15,
         vibration_enabled = true,
-        vibration_strength = 1.0
+        vibration_strength = 1.0,
+        mobile_vibration_enabled = true -- Separate control for mobile device vibration
     },
 
     -- Button prompts (DualSense controller)

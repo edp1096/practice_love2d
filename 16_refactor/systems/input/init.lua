@@ -36,12 +36,12 @@ end
 -- Initialize input system
 function input:init()
     self:detectJoystick()
-    
+
     -- Initialize coordinator
     local input_coordinator = require "systems.input.input_coordinator"
     self.coordinator = input_coordinator
     input_coordinator:init(self.joystick, self.virtual_gamepad, self.settings)
-    
+
     print("Input system initialized")
     if self.joystick then
         print("  Controller: " .. self.joystick_name)
@@ -76,7 +76,7 @@ function input:joystickAdded(joystick)
         self.joystick = joystick
         self.joystick_name = joystick:getName()
         print("Controller connected: " .. self.joystick_name)
-        
+
         if self.coordinator then
             self.coordinator:setJoystick(joystick, self.settings)
         end
@@ -88,7 +88,7 @@ function input:joystickRemoved(joystick)
         print("Controller disconnected: " .. self.joystick_name)
         self.joystick = nil
         self.joystick_name = "No Controller"
-        
+
         if self.coordinator then
             self.coordinator:setJoystick(nil)
         end
@@ -107,7 +107,7 @@ function input:update(dt)
             end
         end
     end
-    
+
     -- Update coordinator
     if self.coordinator then
         self.coordinator:update(dt)
@@ -169,12 +169,16 @@ function input:setVibrationStrength(strength)
     self.settings.vibration_strength = math.max(0, math.min(1, strength))
 end
 
+function input:setMobileVibrationEnabled(enabled)
+    self.settings.mobile_vibration_enabled = enabled
+end
+
 -- Queries
 function input:hasGamepad()
     if self.coordinator then
         return self.coordinator:hasGamepad()
     end
-    
+
     if self.virtual_gamepad and self.virtual_gamepad.enabled then
         return true
     end
@@ -184,29 +188,34 @@ end
 function input:getPrompt(action)
     local mapping = getActionMapping(action)
     if not mapping then return "?" end
-    
+
     -- Virtual gamepad prompts
     if self.virtual_gamepad and self.virtual_gamepad.enabled then
-        if action == "attack" then return "[A]"
-        elseif action == "dodge" then return "[B]"
-        elseif action == "parry" then return "[X]"
-        elseif action == "interact" then return "[Y]"
-        elseif action == "pause" then return "[START]"
+        if action == "attack" then
+            return "[A]"
+        elseif action == "dodge" then
+            return "[B]"
+        elseif action == "parry" then
+            return "[X]"
+        elseif action == "interact" then
+            return "[Y]"
+        elseif action == "pause" then
+            return "[START]"
         end
     end
-    
+
     -- Physical gamepad prompts
     if self.joystick then
         if mapping.gamepad then
             return "[" .. mapping.gamepad:upper() .. "]"
         end
     end
-    
+
     -- Keyboard prompts
     if mapping.keyboard and #mapping.keyboard > 0 then
         return "[" .. mapping.keyboard[1]:upper() .. "]"
     end
-    
+
     return "?"
 end
 
@@ -216,11 +225,11 @@ function input:getDebugInfo()
     info = info .. "  Deadzone: " .. string.format("%.2f", self.settings.deadzone) .. "\n"
     info = info .. "  Vibration: " .. tostring(self.settings.vibration_enabled) .. "\n"
     info = info .. "  Last Aim: " .. self.last_aim_source .. "\n"
-    
+
     if self.coordinator then
         info = info .. "  Coordinator: Active\n"
     end
-    
+
     return info
 end
 

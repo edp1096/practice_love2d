@@ -106,7 +106,7 @@ function hud:draw_debug_panel(player, current_save_slot)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.print("FPS: " .. love.timer.getFPS(), 8, 8)
     love.graphics.print(string.format("Player: %.1f, %.1f", player.x, player.y), 8, 22)
-    
+
     if current_save_slot then
         love.graphics.print("Current Slot: " .. current_save_slot, 8, 36)
         love.graphics.print("Press ESC to pause", 8, 50)

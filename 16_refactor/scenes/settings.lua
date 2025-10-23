@@ -75,6 +75,11 @@ function settings:enter(previous, ...)
         table.insert(self.options, { name = "Deadzone", type = "deadzone" })
     end
 
+    -- Add mobile vibration option for Android/iOS
+    if love._os == "Android" or love._os == "iOS" then
+        table.insert(self.options, { name = "Mobile Vibration", type = "toggle" })
+    end
+
     table.insert(self.options, { name = "Back", type = "action" })
 
     self.selected = 1
@@ -266,6 +271,8 @@ function settings:getOptionValue(index)
         return sound.settings.muted and "On" or "Off"
     elseif option.name == "Vibration" then
         return input.settings.vibration_enabled and "On" or "Off"
+    elseif option.name == "Mobile Vibration" then
+        return input.settings.mobile_vibration_enabled and "On" or "Off"
     elseif option.name == "Vibration Strength" then
         return string.format("%.0f%%", self.vibration_strengths[self.current_vibration_index] * 100)
     elseif option.name == "Deadzone" then
@@ -410,7 +417,16 @@ function settings:changeOption(direction)
         input:setVibrationEnabled(not input.settings.vibration_enabled)
 
         -- Test vibration when enabling
-        if input.settings.vibration_enabled then local v = constants.VIBRATION.ATTACK; input:vibrate(v.duration, v.left, v.right) end
+        if input.settings.vibration_enabled then
+            local v = constants.VIBRATION.ATTACK; input:vibrate(v.duration, v.left, v.right)
+        end
+    elseif option.name == "Mobile Vibration" then
+        input:setMobileVibrationEnabled(not input.settings.mobile_vibration_enabled)
+
+        -- Test vibration when enabling
+        if input.settings.mobile_vibration_enabled then
+            local v = constants.VIBRATION.ATTACK; input:vibrate(v.duration, v.left, v.right)
+        end
     elseif option.name == "Vibration Strength" then
         self.current_vibration_index = self.current_vibration_index + direction
         if self.current_vibration_index < 1 then
@@ -422,7 +438,9 @@ function settings:changeOption(direction)
         input:setVibrationStrength(self.vibration_strengths[self.current_vibration_index])
 
         -- Test vibration
-        if input.settings.vibration_enabled then local v = constants.VIBRATION.ATTACK; input:vibrate(v.duration, v.left, v.right) end
+        if input.settings.vibration_enabled then
+            local v = constants.VIBRATION.ATTACK; input:vibrate(v.duration, v.left, v.right)
+        end
     elseif option.name == "Deadzone" then
         self.current_deadzone_index = self.current_deadzone_index + direction
         if self.current_deadzone_index < 1 then

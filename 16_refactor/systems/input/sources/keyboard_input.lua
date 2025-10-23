@@ -4,14 +4,14 @@
 local base_input = require "systems.input.sources.base_input"
 
 local keyboard_input = {}
-setmetatable(keyboard_input, {__index = base_input})
+setmetatable(keyboard_input, { __index = base_input })
 keyboard_input.__index = keyboard_input
 
 function keyboard_input:new()
     local instance = setmetatable(base_input:new(), keyboard_input)
     instance.name = "Keyboard"
     instance.priority = 50 -- Medium priority
-    
+
     -- Load input config to get key mappings
     local input_config = require "data.input_config"
     instance.actions = {}
@@ -22,7 +22,7 @@ function keyboard_input:new()
             end
         end
     end
-    
+
     return instance
 end
 
@@ -34,15 +34,15 @@ function keyboard_input:getMovement()
     if not self:isAvailable() then
         return 0, 0, false
     end
-    
+
     local vx, vy = 0, 0
-    
+
     -- Check WASD and arrow keys
     local move_right = self.actions.move_right
     local move_left = self.actions.move_left
     local move_down = self.actions.move_down
     local move_up = self.actions.move_up
-    
+
     if move_right and move_right.keyboard then
         for _, key in ipairs(move_right.keyboard) do
             if love.keyboard.isDown(key) then
@@ -51,7 +51,7 @@ function keyboard_input:getMovement()
             end
         end
     end
-    
+
     if move_left and move_left.keyboard then
         for _, key in ipairs(move_left.keyboard) do
             if love.keyboard.isDown(key) then
@@ -60,7 +60,7 @@ function keyboard_input:getMovement()
             end
         end
     end
-    
+
     if move_down and move_down.keyboard then
         for _, key in ipairs(move_down.keyboard) do
             if love.keyboard.isDown(key) then
@@ -69,7 +69,7 @@ function keyboard_input:getMovement()
             end
         end
     end
-    
+
     if move_up and move_up.keyboard then
         for _, key in ipairs(move_up.keyboard) do
             if love.keyboard.isDown(key) then
@@ -78,19 +78,19 @@ function keyboard_input:getMovement()
             end
         end
     end
-    
+
     -- Normalize diagonal movement
     if vx ~= 0 and vy ~= 0 then
         local length = math.sqrt(vx * vx + vy * vy)
         vx = vx / length
         vy = vy / length
     end
-    
+
     -- Return true if any movement detected
     if vx ~= 0 or vy ~= 0 then
         return vx, vy, true
     end
-    
+
     return 0, 0, false
 end
 
@@ -103,7 +103,7 @@ function keyboard_input:isActionDown(action_mapping)
     if not self:isAvailable() then
         return false
     end
-    
+
     if action_mapping.keyboard then
         for _, key in ipairs(action_mapping.keyboard) do
             if love.keyboard.isDown(key) then
@@ -111,7 +111,7 @@ function keyboard_input:isActionDown(action_mapping)
             end
         end
     end
-    
+
     return false
 end
 
@@ -119,7 +119,7 @@ function keyboard_input:wasActionPressed(action_mapping, source, value)
     if not self:isAvailable() or source ~= "keyboard" then
         return false
     end
-    
+
     if action_mapping.keyboard then
         for _, key in ipairs(action_mapping.keyboard) do
             if key == value then
@@ -127,7 +127,7 @@ function keyboard_input:wasActionPressed(action_mapping, source, value)
             end
         end
     end
-    
+
     return false
 end
 
@@ -135,7 +135,7 @@ function keyboard_input:getDebugInfo()
     if not self:isAvailable() then
         return self.name .. ": Not available"
     end
-    
+
     return self.name .. ": Active"
 end
 

@@ -33,14 +33,14 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     save_slot = save_slot or 1
 
     self.current_map_path = mapPath
-    
+
     -- Use screen module for proper scaling
     local vw, vh = screen:GetVirtualDimensions()
     local sw, sh = screen:GetScreenDimensions()
     local scale_x = sw / vw
     local scale_y = sh / vh
     local cam_scale = math.min(scale_x, scale_y)
-    
+
     self.cam = camera(0, 0, cam_scale, 0, 0)
     self.world = world:new(mapPath)
     self.player = player:new("assets/images/player-sheet.png", spawn_x, spawn_y)

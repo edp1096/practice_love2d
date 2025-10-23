@@ -15,19 +15,20 @@ function input_coordinator:init(joystick, virtual_gamepad, settings)
     self.last_aim_angle = 0
     self.last_aim_source = "none"
     self.active_input = "keyboard_mouse" -- Track last used input device type
-    
+    self.settings = settings or {}       -- Store settings for access in vibrate method
+
     -- Create input sources
     self.keyboard = keyboard_input:new()
     self.mouse = mouse_input:new()
-    
+
     if joystick then
         self.physical_gamepad = physical_gamepad_input:new(joystick, settings)
     end
-    
+
     if virtual_gamepad then
         self.virtual_gamepad = virtual_gamepad_input:new(virtual_gamepad)
     end
-    
+
     -- Register sources in priority order
     self:registerSources()
 end
@@ -35,19 +36,19 @@ end
 -- Register all input sources in priority order
 function input_coordinator:registerSources()
     self.sources = {}
-    
+
     -- Add sources (they auto-sort by priority)
     if self.virtual_gamepad then
         table.insert(self.sources, self.virtual_gamepad)
     end
-    
+
     if self.physical_gamepad then
         table.insert(self.sources, self.physical_gamepad)
     end
-    
+
     table.insert(self.sources, self.keyboard)
     table.insert(self.sources, self.mouse)
-    
+
     -- Sort by priority (highest first)
     table.sort(self.sources, function(a, b)
         return a.priority > b.priority
@@ -80,7 +81,7 @@ function input_coordinator:getMovement()
             end
         end
     end
-    
+
     -- No input source provided movement, return zero
     return 0, 0
 end
@@ -99,7 +100,7 @@ function input_coordinator:getAimDirection(player_x, player_y, cam)
             end
             return self.last_aim_angle
         end
-        
+
         -- Check if mouse is in virtual gamepad area
         if self.mouse and self.mouse:isAvailable() then
             local mx, my = love.mouse.getPosition()
@@ -108,7 +109,7 @@ function input_coordinator:getAimDirection(player_x, player_y, cam)
             end
         end
     end
-    
+
     -- Use aim source based on active_input
     if self.active_input == "gamepad" then
         -- Using gamepad, check physical gamepad aim
@@ -131,7 +132,7 @@ function input_coordinator:getAimDirection(player_x, player_y, cam)
             end
         end
     end
-    
+
     -- No aim input, return last known direction
     return self.last_aim_angle
 end
@@ -184,10 +185,20 @@ function input_coordinator:getAimSource()
     return self.last_aim_source
 end
 
--- Vibrate physical gamepad if available
+-- Vibrate physical gamepad and/or mobile device if available
 function input_coordinator:vibrate(duration, left_strength, right_strength)
+    -- Vibrate physical gamepad (DualSense, etc.)
     if self.physical_gamepad and self.physical_gamepad:isAvailable() then
         self.physical_gamepad:vibrate(duration, left_strength, right_strength)
+    end
+
+    -- Vibrate mobile device (Android/iOS) if enabled in settings
+    if self.settings.mobile_vibration_enabled and love.system and love.system.vibrate then
+        -- Calculate average strength from left and right motors
+        local avg_strength = ((left_strength or 1.0) + (right_strength or left_strength or 1.0)) / 2
+        -- Scale duration based on strength (stronger vibrations feel longer)
+        local scaled_duration = duration * (0.5 + avg_strength * 0.5)
+        love.system.vibrate(scaled_duration)
     end
 end
 
@@ -196,11 +207,11 @@ function input_coordinator:hasGamepad()
     if self.virtual_gamepad and self.virtual_gamepad:isAvailable() then
         return true
     end
-    
+
     if self.physical_gamepad and self.physical_gamepad:isAvailable() then
         return true
     end
-    
+
     return false
 end
 
@@ -245,11 +256,11 @@ function input_coordinator:getDebugInfo()
     local info = "Input Coordinator:\n"
     info = info .. "  Active Sources: " .. #self.sources .. "\n"
     info = info .. "  Last Aim Source: " .. self.last_aim_source .. "\n\n"
-    
+
     for i, source in ipairs(self.sources) do
         info = info .. "[" .. i .. "] " .. source:getDebugInfo() .. "\n"
     end
-    
+
     return info
 end
 
