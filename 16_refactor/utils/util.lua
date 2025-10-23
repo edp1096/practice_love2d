@@ -105,10 +105,9 @@ end
 
 function utils:ReadOrCreateConfig()
     -- Don't try on mobile platforms
+    if not love.system then return false end
     local os_name = love.system.getOS()
-    if os_name == "Android" or os_name == "iOS" then
-        return false
-    end
+    if os_name == "Android" or os_name == "iOS" then return false end
 
     local success, err = pcall(function()
         local file = io.open("config.ini", "r")
