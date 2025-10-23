@@ -28,17 +28,17 @@ function gameover:enter(previous, is_clear, ...)
     self.virtual_width = vw
     self.virtual_height = vh
 
-    self.titleFont = love.graphics.newFont(48)
-    self.subtitleFont = love.graphics.newFont(32)
-    self.optionFont = love.graphics.newFont(24)
-    self.hintFont = love.graphics.newFont(14)
+    self.titleFont = love.graphics.newFont(44)
+    self.subtitleFont = love.graphics.newFont(28)
+    self.optionFont = love.graphics.newFont(22)
+    self.hintFont = love.graphics.newFont(13)
 
     self.layout = {
-        title_y = vh * 0.25,
-        subtitle_y = vh * 0.35,
-        options_start_y = vh * 0.50,
-        option_spacing = 50,
-        hint_y = vh - 30
+        title_y = vh * 0.24,
+        subtitle_y = vh * 0.34,
+        options_start_y = vh * 0.49,
+        option_spacing = 48,
+        hint_y = vh - 28
     }
 
     self.overlay_alpha = 0

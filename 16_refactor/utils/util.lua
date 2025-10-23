@@ -31,7 +31,7 @@ function utils:DeepCopy(obj, seen)
     return res
 end
 
-function utils:SaveConfig(GameConfig)
+function utils:SaveConfig(GameConfig, sound_settings)
     -- Don't save on mobile platforms
     local os_name = love.system.getOS()
     if os_name == "Android" or os_name == "iOS" then
@@ -49,6 +49,17 @@ function utils:SaveConfig(GameConfig)
             file:write("Height = " .. GameConfig.height .. "\n")
             file:write("FullScreen = " .. tostring(GameConfig.fullscreen) .. "\n")
             file:write("Monitor = " .. tostring(GameConfig.monitor) .. "\n")
+
+            -- Write Sound settings if provided
+            if sound_settings then
+                file:write("\n")
+                file:write("[Sound]\n")
+                file:write("MasterVolume = " .. tostring(sound_settings.master_volume) .. "\n")
+                file:write("BGMVolume = " .. tostring(sound_settings.bgm_volume) .. "\n")
+                file:write("SFXVolume = " .. tostring(sound_settings.sfx_volume) .. "\n")
+                file:write("Muted = " .. tostring(sound_settings.muted) .. "\n")
+            end
+
             file:close()
             return true
         end

@@ -19,7 +19,15 @@ GameConfig = {
     scale_mode = "fit",
 
     min_width = 640,
-    min_height = 360
+    min_height = 360,
+
+    -- Sound settings (defaults)
+    sound = {
+        master_volume = 1.0,
+        bgm_volume = 0.7,
+        sfx_volume = 0.8,
+        muted = false
+    }
 }
 
 -- Only try to read config on desktop
@@ -36,6 +44,14 @@ if not is_mobile then
         GameConfig.resizable = config.Window.Resizable or GameConfig.resizable
         GameConfig.fullscreen = config.Window.FullScreen or GameConfig.fullscreen
         GameConfig.monitor = config.Window.Monitor or 1
+
+        -- Load Sound settings if available
+        if config.Sound then
+            GameConfig.sound.master_volume = tonumber(config.Sound.MasterVolume) or GameConfig.sound.master_volume
+            GameConfig.sound.bgm_volume = tonumber(config.Sound.BGMVolume) or GameConfig.sound.bgm_volume
+            GameConfig.sound.sfx_volume = tonumber(config.Sound.SFXVolume) or GameConfig.sound.sfx_volume
+            GameConfig.sound.muted = (config.Sound.Muted == "true") or GameConfig.sound.muted
+        end
     end
 end
 

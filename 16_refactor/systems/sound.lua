@@ -42,6 +42,15 @@ sound.CATEGORY = sound_data.categories
 function sound:init()
     print("Sound system initializing...")
 
+    -- Load settings from GameConfig if available
+    if GameConfig and GameConfig.sound then
+        self.settings.master_volume = GameConfig.sound.master_volume
+        self.settings.bgm_volume = GameConfig.sound.bgm_volume
+        self.settings.sfx_volume = GameConfig.sound.sfx_volume
+        self.settings.muted = GameConfig.sound.muted
+        print("Loaded sound settings from config")
+    end
+
     for name, config in pairs(sound_data.bgm) do
         self:_loadBGM(name, config)
     end

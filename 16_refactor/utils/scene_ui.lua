@@ -10,20 +10,20 @@ local scene_ui = {}
 -- Create standard menu layout configuration
 function scene_ui.createMenuLayout(vh)
     return {
-        title_y = vh * 0.2,
-        options_start_y = vh * 0.42,
-        option_spacing = 60,
-        hint_y = vh - 40
+        title_y = vh * 0.18,
+        options_start_y = vh * 0.38,
+        option_spacing = 52,
+        hint_y = vh - 30
     }
 end
 
 -- Create standard fonts for menu scenes
 function scene_ui.createMenuFonts()
     return {
-        title = love.graphics.newFont(48),
-        option = love.graphics.newFont(28),
-        hint = love.graphics.newFont(16),
-        label = love.graphics.newFont(24),
+        title = love.graphics.newFont(44),
+        option = love.graphics.newFont(26),
+        hint = love.graphics.newFont(14),
+        label = love.graphics.newFont(22),
         info = love.graphics.newFont(16)
     }
 end
@@ -64,7 +64,7 @@ function scene_ui.updateMouseOver(options, layout, width, font)
         local text_width = font:getWidth(option)
         local text_height = font:getHeight()
         local x = (width - text_width) / 2
-        local padding = 20
+        local padding = 15
 
         if vmx >= x - padding and vmx <= x + text_width + padding and
             vmy >= y - padding and vmy <= y + text_height + padding then
@@ -85,13 +85,12 @@ function scene_ui.drawControlHints(font, layout, width, custom_text)
         hint_text = custom_text
     elseif input:hasGamepad() then
         hint_text = "D-Pad: Navigate | " .. input:getPrompt("menu_select") .. ": Select | " ..
-            input:getPrompt("menu_back") .. ": Back\n" ..
-            "Keyboard: Arrow Keys / WASD | Enter: Select | Mouse: Hover & Click"
+            input:getPrompt("menu_back") .. ": Back"
     else
-        hint_text = "Arrow Keys / WASD to navigate, Enter to select | Mouse to hover and click"
+        hint_text = "Arrow/WASD: Navigate | Enter: Select | Mouse: Click"
     end
 
-    love.graphics.printf(hint_text, 0, layout.hint_y - 20, width, "center")
+    love.graphics.printf(hint_text, 0, layout.hint_y - 10, width, "center")
 end
 
 -- Handle keyboard navigation (returns new selection or nil if no change)

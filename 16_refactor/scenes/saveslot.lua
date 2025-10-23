@@ -17,10 +17,10 @@ function saveslot:enter(previous, save_callback, ...)
     self.virtual_width = vw
     self.virtual_height = vh
 
-    self.titleFont = love.graphics.newFont(36)
-    self.slotFont = love.graphics.newFont(24)
-    self.infoFont = love.graphics.newFont(16)
-    self.hintFont = love.graphics.newFont(14)
+    self.titleFont = love.graphics.newFont(32)
+    self.slotFont = love.graphics.newFont(22)
+    self.infoFont = love.graphics.newFont(14)
+    self.hintFont = love.graphics.newFont(13)
 
     self.slots = save_sys:getAllSlotsInfo()
 
@@ -31,10 +31,10 @@ function saveslot:enter(previous, save_callback, ...)
     })
 
     self.layout = {
-        title_y = vh * 0.12,
-        slots_start_y = vh * 0.25,
-        slot_spacing = 100,
-        hint_y = vh - 40
+        title_y = vh * 0.10,
+        slots_start_y = vh * 0.22,
+        slot_spacing = 85,
+        hint_y = vh - 30
     }
 
     self.mouse_over = 0
@@ -54,8 +54,8 @@ function saveslot:update(dt)
 
     for i, slot in ipairs(self.slots) do
         local y = self.layout.slots_start_y + (i - 1) * self.layout.slot_spacing
-        local slot_height = 90
-        local padding = 10
+        local slot_height = 75
+        local padding = 8
 
         if vmy >= y - padding and vmy <= y + slot_height + padding then
             self.mouse_over = i
@@ -92,14 +92,14 @@ function saveslot:draw()
         else
             love.graphics.setColor(0.2, 0.2, 0.25, 0.7)
         end
-        love.graphics.rectangle("fill", self.virtual_width * 0.15, y - 5, self.virtual_width * 0.7, 90)
+        love.graphics.rectangle("fill", self.virtual_width * 0.15, y - 5, self.virtual_width * 0.7, 75)
 
         if is_selected then
             love.graphics.setColor(1, 1, 0, 1)
         else
             love.graphics.setColor(0.5, 0.5, 0.5, 1)
         end
-        love.graphics.rectangle("line", self.virtual_width * 0.15, y - 5, self.virtual_width * 0.7, 90)
+        love.graphics.rectangle("line", self.virtual_width * 0.15, y - 5, self.virtual_width * 0.7, 75)
 
         if slot.slot == "cancel" then
             love.graphics.setFont(self.slotFont)
@@ -108,7 +108,7 @@ function saveslot:draw()
             else
                 love.graphics.setColor(0.8, 0.8, 0.8, 1)
             end
-            love.graphics.printf(slot.display_name, 0, y + 30, self.virtual_width, "center")
+            love.graphics.printf(slot.display_name, 0, y + 24, self.virtual_width, "center")
         elseif slot.exists then
             love.graphics.setFont(self.slotFont)
             if is_selected then
@@ -120,12 +120,12 @@ function saveslot:draw()
 
             love.graphics.setFont(self.infoFont)
             love.graphics.setColor(0.8, 0.8, 0.8, 1)
-            love.graphics.print("HP: " .. slot.hp .. "/" .. slot.max_hp, self.virtual_width * 0.2, y + 28)
-            love.graphics.print(slot.map_display or "Unknown", self.virtual_width * 0.2, y + 48)
+            love.graphics.print("HP: " .. slot.hp .. "/" .. slot.max_hp, self.virtual_width * 0.2, y + 24)
+            love.graphics.print(slot.map_display or "Unknown", self.virtual_width * 0.2, y + 41)
 
             love.graphics.setFont(self.hintFont)
             love.graphics.setColor(0.6, 0.6, 0.6, 1)
-            love.graphics.print(slot.time_string, self.virtual_width * 0.2, y + 68)
+            love.graphics.print(slot.time_string, self.virtual_width * 0.2, y + 58)
         else
             love.graphics.setFont(self.slotFont)
             if is_selected then
@@ -133,7 +133,7 @@ function saveslot:draw()
             else
                 love.graphics.setColor(0.7, 0.7, 0.7, 1)
             end
-            love.graphics.print("Slot " .. slot.slot .. " - Empty", self.virtual_width * 0.2, y + 30)
+            love.graphics.print("Slot " .. slot.slot .. " - Empty", self.virtual_width * 0.2, y + 24)
         end
     end
 

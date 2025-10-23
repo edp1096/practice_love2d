@@ -19,15 +19,15 @@ function pause:enter(previous, ...)
     self.virtual_width = vw
     self.virtual_height = vh
     self.fonts = {
-        title = love.graphics.newFont(32),
-        option = love.graphics.newFont(24),
+        title = love.graphics.newFont(30),
+        option = love.graphics.newFont(22),
         hint = love.graphics.newFont(14)
     }
     self.layout = {
-        title_y = vh * 0.185,
+        title_y = vh * 0.18,
         options_start_y = vh * 0.32,
-        option_spacing = 50,
-        hint_y = vh - 30
+        option_spacing = 48,
+        hint_y = vh - 28
     }
 
     -- Fade-in effect

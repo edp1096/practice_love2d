@@ -20,11 +20,11 @@ function settings:enter(previous, ...)
     self.virtual_width = vw
     self.virtual_height = vh
 
-    -- Create fonts
-    self.titleFont = love.graphics.newFont(36)
-    self.labelFont = love.graphics.newFont(24)
-    self.valueFont = love.graphics.newFont(24)
-    self.hintFont = love.graphics.newFont(16)
+    -- Create fonts (slightly smaller for more items)
+    self.titleFont = love.graphics.newFont(32)
+    self.labelFont = love.graphics.newFont(20)
+    self.valueFont = love.graphics.newFont(20)
+    self.hintFont = love.graphics.newFont(14)
 
     -- Resolution presets
     self.resolutions = {
@@ -103,12 +103,12 @@ function settings:enter(previous, ...)
     self.deadzones = { 0.05, 0.10, 0.15, 0.20, 0.25, 0.30 }
     self.current_deadzone_index = self:findDeadzone()
 
-    -- Layout
+    -- Layout (adjusted for more items)
     self.layout = {
-        title_y = vh * 0.15,
-        options_start_y = vh * 0.28,
-        option_spacing = 48,
-        hint_y = vh - 40,
+        title_y = vh * 0.11,
+        options_start_y = vh * 0.21,
+        option_spacing = 29,
+        hint_y = vh - 25,
         label_x = vw * 0.25,
         value_x = vw * 0.65
     }
@@ -162,7 +162,7 @@ function settings:update(dt)
     for i, option in ipairs(self.options) do
         local y = self.layout.options_start_y + (i - 1) * self.layout.option_spacing
         local text_height = self.labelFont:getHeight()
-        local padding = 15
+        local padding = 10
 
         if vmy >= y - padding and vmy <= y + text_height + padding then
             self.mouse_over = i
@@ -235,16 +235,13 @@ function settings:draw()
 
     local hint_text
     if input:hasGamepad() then
-        hint_text = "D-Pad: Navigate | " ..
-            input:getPrompt("menu_left") ..
-            input:getPrompt("menu_right") .. ": Change | " ..
-            input:getPrompt("menu_select") .. ": Select | " ..
-            input:getPrompt("menu_back") .. ": Back\nKeyboard: Arrow Keys / WASD | Left/Right: Change | Enter: Select | ESC: Back"
+        hint_text = input:getPrompt("menu_back") .. ": Back | " ..
+            input:getPrompt("menu_select") .. ": Select | D-Pad/Left-Right: Change"
     else
-        hint_text = "Arrow Keys / WASD: Navigate | Left/Right: Change | Enter: Select | ESC: Back\nMouse: Hover and Click (Left: Next, Right: Previous)"
+        hint_text = "ESC: Back | Enter: Select | Arrow/WASD: Navigate | Left-Right: Change"
     end
 
-    love.graphics.printf(hint_text, 0, self.layout.hint_y - 40, self.virtual_width, "center")
+    love.graphics.printf(hint_text, 0, self.layout.hint_y - 20, self.virtual_width, "center")
 
     screen:Detach()
 
@@ -387,6 +384,7 @@ function settings:changeOption(direction)
         end
 
         sound:setMasterVolume(self.volume_levels[self.current_master_volume_index])
+        utils:SaveConfig(GameConfig, sound.settings)
 
         -- Test sound
         sound:playSFX("menu", "navigate")
@@ -399,6 +397,7 @@ function settings:changeOption(direction)
         end
 
         sound:setBGMVolume(self.volume_levels[self.current_bgm_volume_index])
+        utils:SaveConfig(GameConfig, sound.settings)
     elseif option.name == "SFX Volume" then
         self.current_sfx_volume_index = self.current_sfx_volume_index + direction
         if self.current_sfx_volume_index < 1 then
@@ -408,11 +407,13 @@ function settings:changeOption(direction)
         end
 
         sound:setSFXVolume(self.volume_levels[self.current_sfx_volume_index])
+        utils:SaveConfig(GameConfig, sound.settings)
 
         -- Test sound
         sound:playSFX("menu", "navigate")
     elseif option.name == "Mute" then
         sound:toggleMute()
+        utils:SaveConfig(GameConfig, sound.settings)
     elseif option.name == "Vibration" then
         input:setVibrationEnabled(not input.settings.vibration_enabled)
 
