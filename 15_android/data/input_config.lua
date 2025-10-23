@@ -87,18 +87,8 @@ return {
         pause = {
             keyboard = { "p", "escape" },
             gamepad = "start"
-        },
-        quicksave_1 = {
-            keyboard = { "f1" },
-            gamepad = "leftshoulder" -- L1
-        },
-        quicksave_2 = {
-            keyboard = { "f2" },
-            gamepad = "rightshoulder" -- R1
-        },
-        quicksave_3 = {
-            keyboard = { "f3" }
         }
+        -- F1, F2, F3 quicksave removed - only F9 manual save remains (handled separately in play.lua)
     },
 
     -- Default gamepad settings

@@ -10,7 +10,6 @@ debug.enabled = false
 debug.show_fps = false
 debug.show_colliders = false
 debug.show_player_info = false
-debug.show_ai_state = false
 
 -- === Rendering/Screen Debug ===
 debug.show_screen_info = false
@@ -20,18 +19,10 @@ debug.show_bounds = false
 -- === Effects Debug ===
 debug.show_effects = false
 
--- === NPC Debug ===
-debug.show_npcs = false
-
 -- === Advanced Features ===
 debug.hand_marking_active = false
 debug.manual_frame = 1
 debug.actual_hand_positions = {}
-
--- Legacy compatibility (for modules that check debug.debug_mode)
-function debug:updateLegacyFlag()
-    self.debug_mode = self.enabled
-end
 
 -- === Master Toggle ===
 function debug:toggle()
@@ -53,19 +44,15 @@ function debug:toggle()
         self.show_screen_info = false
         self.show_virtual_mouse = false
         self.show_effects = false
-        self.show_ai_state = false
-        self.show_npcs = false
         self.show_bounds = false
         print("=== DEBUG MODE DISABLED ===")
     end
-
-    self:updateLegacyFlag()
 end
 
 -- === Layer-Specific Toggles ===
 function debug:toggleLayer(layer)
     if not self.enabled then
-        print("Enable debug mode first (F3)")
+        print("Enable debug mode first (F12)")
         return
     end
 
@@ -78,12 +65,6 @@ function debug:toggleLayer(layer)
     elseif layer == "effects" then
         self.show_effects = not self.show_effects
         print("Effects debug: " .. tostring(self.show_effects))
-    elseif layer == "ai" then
-        self.show_ai_state = not self.show_ai_state
-        print("AI debug: " .. tostring(self.show_ai_state))
-    elseif layer == "npcs" then
-        self.show_npcs = not self.show_npcs
-        print("NPC debug: " .. tostring(self.show_npcs))
     end
 end
 
@@ -92,10 +73,7 @@ function debug:handleInput(key, context)
     -- context = { player, world, camera } (optional)
     context = context or {}
 
-    if key == "f3" then
-        -- Master toggle (works everywhere)
-        self:toggle()
-    elseif not self.enabled then
+    if not self.enabled then
         -- Debug mode is off, ignore other debug keys
         return
 
@@ -106,10 +84,6 @@ function debug:handleInput(key, context)
         self:toggleLayer("mouse")
     elseif key == "f4" then
         self:toggleLayer("effects")
-    elseif key == "f6" then
-        self:toggleLayer("ai")
-    elseif key == "f7" then
-        self:toggleLayer("npcs")
 
         -- === Test Functions ===
     elseif key == "f5" and context.camera then
@@ -309,22 +283,17 @@ function debug:drawHelp(x, y)
     love.graphics.setFont(help_font)
 
     love.graphics.setColor(0, 0, 0, 0.7)
-    love.graphics.rectangle("fill", x - 5, y - 5, 240, 140)
+    love.graphics.rectangle("fill", x - 5, y - 5, 240, 120)
 
     love.graphics.setColor(1, 1, 0, 1)
     love.graphics.print("DEBUG CONTROLS:", x, y)
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.print("F3: Toggle Debug", x, y + 18)
+    love.graphics.print("F12: Toggle Debug", x, y + 18)
     love.graphics.print("F1: Screen Info", x, y + 33)
     love.graphics.print("F2: Virtual Mouse", x, y + 48)
     love.graphics.print("F4: Effects Debug", x, y + 63)
     love.graphics.print("F5: Test Effects", x, y + 78)
-    love.graphics.print("F6: AI State", x, y + 93)
-    love.graphics.print("F7: NPC Debug", x, y + 108)
-    love.graphics.print("H: Hand Marking", x, y + 123)
+    love.graphics.print("H: Hand Marking", x, y + 93)
 end
-
--- Initialize legacy flag
-debug:updateLegacyFlag()
 
 return debug

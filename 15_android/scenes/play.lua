@@ -72,10 +72,6 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     if not level then level = "1" end
     level = "level" .. level
     sound:playBGM(level)
-
-    -- Android debug system
-    self.debug_enabled = false
-    self.debug_button = { x = 10, y = 10, size = 50, touch_id = nil, tap_count = 0, last_tap_time = 0, double_tap_threshold = 0.7 }
 end
 
 function play:exit()
@@ -313,8 +309,7 @@ function play:draw()
         if debug.enabled then
             love.graphics.setFont(hud.tiny_font)
             love.graphics.setColor(1, 1, 0, 1)
-            love.graphics.print("Active Effects: " .. effects:getCount(), 8, 140)
-            love.graphics.print("F5: Test Effects at Mouse", 8, 154)
+            love.graphics.print("Active Effects: " .. effects:getCount(), 8, 150)
 
             if input:hasGamepad() then
                 love.graphics.print(input:getDebugInfo(), 8, 168)
@@ -350,15 +345,6 @@ function play:draw()
 
     screen:Detach()
 
-    -- Android debug visualization
-    if self.debug_enabled then
-        self:drawDebugAimArea()
-        self:drawDebugInfo()
-    end
-    if love.system.getOS() == "Android" then
-        self:drawDebugButton()
-    end
-
     if self.fade_alpha > 0 then
         local real_w, real_h = love.graphics.getDimensions()
         love.graphics.setColor(0, 0, 0, self.fade_alpha)
@@ -375,11 +361,6 @@ end
 
 function play:keypressed(key)
     -- Toggle debug with F12
-    if key == "f12" then
-        self.debug_enabled = not self.debug_enabled
-        print("Debug mode: " .. tostring(self.debug_enabled))
-        return
-    end
 
     if dialogue:isOpen() then
         if input:wasPressed("interact", "keyboard", key) or
@@ -511,15 +492,6 @@ function play:gamepadpressed(joystick, button)
     end
 end
 
-function play:gamepadreleased(joystick, button) end
-
-function play:touchpressed(id, x, y, dx, dy, pressure)
-    -- Handle debug button touch
-    if self:handleDebugButtonTouch(x, y, id, true) then
-        return
-    end
-end
-
 function play:touchreleased(id, x, y, dx, dy, pressure)
     -- Handle debug button release
     if self:handleDebugButtonTouch(x, y, id, false) then
@@ -552,108 +524,6 @@ function play:switchMap(new_map_path, spawn_x, spawn_y)
 
     self.fade_alpha = 1.0
     self.is_fading = true
-
-    local level = new_map_path:match("level(%d+)")
-    if level then sound:playBGM("level" .. level) end
-end
-
--- === ANDROID DEBUG SYSTEM ===
-
-function play:drawDebugButton()
-    local btn = self.debug_button
-    if not btn then return end
-
-    if self.debug_enabled then
-        love.graphics.setColor(0, 1, 0, 0.7)
-    else
-        love.graphics.setColor(0.5, 0.5, 0.5, 0.5)
-    end
-    love.graphics.rectangle("fill", btn.x, btn.y, btn.size, btn.size)
-
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.rectangle("line", btn.x, btn.y, btn.size, btn.size)
-    love.graphics.print("D", btn.x + 15, btn.y + 15, 0, 2, 2)
-end
-
-function play:drawDebugAimArea()
-    if not self.player then return end
-
-    local screen = require "lib.screen"
-    local sx, sy = self.cam:cameraCoords(self.player.x, self.player.y)
-    local aim_area_size = screen.screen_wh.h
-    local half_area = aim_area_size / 2
-
-    love.graphics.push()
-    love.graphics.origin()
-
-    love.graphics.setColor(1, 0, 0, 0.3)
-    love.graphics.rectangle("line", sx - half_area, sy - half_area, aim_area_size, aim_area_size)
-
-    love.graphics.setColor(1, 1, 0, 0.5)
-    love.graphics.line(sx - 20, sy, sx + 20, sy)
-    love.graphics.line(sx, sy - 20, sx, sy + 20)
-
-    love.graphics.pop()
-end
-
-function play:drawDebugInfo()
-    local screen = require "lib.screen"
-    local info = { "=== DEBUG ===", string.format("FPS: %d", love.timer.getFPS()),
-        string.format("Mem: %.1fMB", collectgarbage("count") / 1024), "" }
-
-    if self.player then
-        table.insert(info, string.format("Pos: (%.0f,%.0f)", self.player.x, self.player.y))
-        table.insert(info, string.format("Aim: %.2f", self.player.aim_angle or 0))
-        table.insert(info, string.format("Src: %s", input.last_aim_source or "-"))
-    end
-
-    local sound = require "systems.sound"
-    if sound then
-        table.insert(info, "")
-        table.insert(info, string.format("Sounds: %d/%d", #sound.active_sources, sound.max_active_sources))
-    end
-
-    love.graphics.push()
-    love.graphics.origin()
-    local x, y = screen.render_wh.w - 250, 80
-    love.graphics.setColor(0, 0, 0, 0.8)
-    love.graphics.rectangle("fill", x - 5, y - 5, 240, #info * 18 + 10)
-    love.graphics.setColor(1, 1, 1, 1)
-    for i, line in ipairs(info) do
-        love.graphics.print(line, x, y + (i - 1) * 18, 0, 0.9, 0.9)
-    end
-    love.graphics.pop()
-end
-
-function play:handleDebugButtonTouch(touch_x, touch_y, touch_id, is_pressed)
-    local btn = self.debug_button
-    if not btn then return false end
-
-    local in_button = touch_x >= btn.x and touch_x <= btn.x + btn.size and
-        touch_y >= btn.y and touch_y <= btn.y + btn.size
-
-    if is_pressed and in_button then
-        btn.touch_id = touch_id
-        print("Debug button touched: tap_count=" .. btn.tap_count)
-        local current_time = love.timer.getTime()
-        if current_time - btn.last_tap_time < btn.double_tap_threshold then
-            btn.tap_count = btn.tap_count + 1
-            if btn.tap_count >= 2 then
-                self.debug_enabled = not self.debug_enabled
-                print("Debug mode: " .. tostring(self.debug_enabled))
-                btn.tap_count = 0
-            end
-        else
-            btn.tap_count = 1
-        end
-        btn.last_tap_time = current_time
-        return true
-    elseif not is_pressed and btn.touch_id == touch_id then
-        btn.touch_id = nil
-        return true
-    end
-
-    return false
 end
 
 return play

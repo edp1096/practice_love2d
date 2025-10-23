@@ -94,7 +94,7 @@ function render.draw(player)
 end
 
 function render.drawWeapon(player)
-    player.weapon:draw(debug.debug_mode)
+    player.weapon:draw(debug.enabled)
 end
 
 function render.drawAll(player)
@@ -116,7 +116,7 @@ function render.drawAll(player)
 end
 
 function render.drawDebug(player)
-    if not debug.debug_mode then return end
+    if not debug.enabled then return end
     debug:DrawHandMarkers(player)
 end
 

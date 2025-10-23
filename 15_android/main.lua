@@ -115,6 +115,12 @@ function love.draw()
     if virtual_gamepad and virtual_gamepad.enabled then
         virtual_gamepad:draw()
     end
+
+    -- Draw screen debug info (F1, F2)
+    if screen then
+        screen:ShowDebugInfo()
+        screen:ShowVirtualMouse()
+    end
 end
 
 function love.resize(w, h)
@@ -145,6 +151,7 @@ function love.keypressed(key)
         scene_control.resize(love.graphics.getWidth(), love.graphics.getHeight())
     elseif key == "f12" then
         debug:toggle()
+        return
     end
 
     scene_control.keypressed(key)

@@ -39,7 +39,7 @@ function render.draw(enemy)
     local collider_center_y = enemy.y + enemy.collider_offset_y
 
     -- Debug: detection and attack ranges
-    if debug.debug_mode then
+    if debug.enabled then
         love.graphics.setColor(1, 1, 0, 0.1)
         love.graphics.circle("fill", collider_center_x, collider_center_y, enemy.detection_range)
         love.graphics.setColor(1, 1, 0, 0.5)
@@ -157,7 +157,7 @@ function render.draw(enemy)
     end
 
     -- Debug: state info
-    if debug.debug_mode then
+    if debug.enabled then
         love.graphics.setColor(1, 1, 1, 1)
         local status = enemy.type .. " " .. enemy.state .. " (" .. enemy.direction .. ")"
         if enemy.stunned then
