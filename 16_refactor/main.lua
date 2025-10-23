@@ -49,6 +49,7 @@ local screen = require "lib.screen"
 local utils = require "utils.util"
 local scene_control = require "systems.scene_control"
 local input = require "systems.input"
+local sound = require "systems.sound"
 local menu = require "scenes.menu"
 
 local virtual_gamepad
@@ -116,9 +117,7 @@ function love.resize(w, h)
     GameConfig.width = w
     GameConfig.height = h
 
-    if not is_mobile then
-        pcall(utils.SaveConfig, utils, GameConfig)
-    end
+    pcall(utils.SaveConfig, utils, GameConfig, sound.settings)
 
     pcall(screen.CalculateScale, screen)
     scene_control.resize(w, h)
@@ -133,7 +132,7 @@ function love.keypressed(key)
         screen:ToggleFullScreen()
         GameConfig.fullscreen = screen.is_fullscreen
         if not is_mobile then
-            pcall(utils.SaveConfig, utils, GameConfig)
+            pcall(utils.SaveConfig, utils, GameConfig, sound.settings)
         end
         scene_control.resize(love.graphics.getWidth(), love.graphics.getHeight())
     elseif key == "f12" then
@@ -251,15 +250,13 @@ function love.gamepadaxis(joystick, axis, value)
 end
 
 function love.quit()
-    if not is_mobile then
-        local current_w, current_h, current_flags = love.window.getMode()
-        if not screen.is_fullscreen then
-            GameConfig.width = current_w
-            GameConfig.height = current_h
-        end
+    local current_w, current_h, current_flags = love.window.getMode()
+    if not is_mobile and not screen.is_fullscreen then
+        GameConfig.width = current_w
+        GameConfig.height = current_h
         GameConfig.monitor = current_flags.display
-        pcall(utils.SaveConfig, utils, GameConfig)
     end
+    pcall(utils.SaveConfig, utils, GameConfig, sound.settings)
 
     if locker then
         pcall(locker.ProcQuit, locker)

@@ -53,6 +53,29 @@ if not is_mobile then
             GameConfig.sound.muted = (config.Sound.Muted == "true") or GameConfig.sound.muted
         end
     end
+else
+    -- Mobile: load from love.filesystem
+    local success, mobile_config = pcall(function()
+        local content = love.filesystem.read("mobile_config.lua")
+        if content then
+            local chunk = load(content)
+            if chunk then
+                return chunk()
+            end
+        end
+        return nil
+    end)
+
+    if success and mobile_config then
+        print("Loading mobile config...")
+        if mobile_config.sound then
+            GameConfig.sound.master_volume = mobile_config.sound.master_volume or GameConfig.sound.master_volume
+            GameConfig.sound.bgm_volume = mobile_config.sound.bgm_volume or GameConfig.sound.bgm_volume
+            GameConfig.sound.sfx_volume = mobile_config.sound.sfx_volume or GameConfig.sound.sfx_volume
+            GameConfig.sound.muted = mobile_config.sound.muted or GameConfig.sound.muted
+            print("Mobile sound settings loaded")
+        end
+    end
 end
 
 function love.conf(t)

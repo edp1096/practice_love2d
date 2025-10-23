@@ -26,43 +26,55 @@ function settings:enter(previous, ...)
     self.valueFont = love.graphics.newFont(20)
     self.hintFont = love.graphics.newFont(14)
 
-    -- Resolution presets
-    self.resolutions = {
-        { w = 640,  h = 360,  name = "640x360" },
-        { w = 854,  h = 480,  name = "854x480" },
-        { w = 960,  h = 540,  name = "960x540" },
-        { w = 1280, h = 720,  name = "1280x720" },
-        { w = 1600, h = 900,  name = "1600x900" },
-        { w = 1920, h = 1080, name = "1920x1080" },
-        { w = 2560, h = 1440, name = "2560x1440" },
-        { w = 3840, h = 2160, name = "3840x2160" },
-    }
+    -- Detect mobile platform
+    local is_mobile = (love._os == "Android" or love._os == "iOS")
 
-    -- if item of resolution is larger than monitor size, remove it
-    for i = #self.resolutions, 1, -1 do
-        local res = self.resolutions[i]
-        local w, h = love.window.getDesktopDimensions()
-        if res.w > w or res.h > h then table.remove(self.resolutions, i) end
+    -- Resolution presets (desktop only)
+    if not is_mobile then
+        self.resolutions = {
+            { w = 640,  h = 360,  name = "640x360" },
+            { w = 854,  h = 480,  name = "854x480" },
+            { w = 960,  h = 540,  name = "960x540" },
+            { w = 1280, h = 720,  name = "1280x720" },
+            { w = 1600, h = 900,  name = "1600x900" },
+            { w = 1920, h = 1080, name = "1920x1080" },
+            { w = 2560, h = 1440, name = "2560x1440" },
+            { w = 3840, h = 2160, name = "3840x2160" },
+        }
+
+        -- if item of resolution is larger than monitor size, remove it
+        for i = #self.resolutions, 1, -1 do
+            local res = self.resolutions[i]
+            local w, h = love.window.getDesktopDimensions()
+            if res.w > w or res.h > h then table.remove(self.resolutions, i) end
+        end
     end
 
-    -- Get monitor information
-    self.monitor_count = love.window.getDisplayCount()
-    self.monitors = {}
-    for i = 1, self.monitor_count do
-        local w, h = love.window.getDesktopDimensions(i)
-        table.insert(self.monitors, { index = i, name = i .. " (" .. w .. "x" .. h .. ")" })
+    -- Get monitor information (desktop only)
+    if not is_mobile then
+        self.monitor_count = love.window.getDisplayCount()
+        self.monitors = {}
+        for i = 1, self.monitor_count do
+            local w, h = love.window.getDesktopDimensions(i)
+            table.insert(self.monitors, { index = i, name = i .. " (" .. w .. "x" .. h .. ")" })
+        end
     end
 
-    -- Settings options - conditionally include Monitor and Gamepad options
-    self.options = {
-        { name = "Resolution", type = "list" },
-        { name = "Fullscreen", type = "toggle" },
-    }
+    -- Settings options - conditionally include desktop/mobile options
+    self.options = {}
 
-    -- Only show Monitor option if multiple monitors exist
-    if self.monitor_count > 1 then table.insert(self.options, { name = "Monitor", type = "cycle" }) end
+    -- Desktop-only options
+    if not is_mobile then
+        table.insert(self.options, { name = "Resolution", type = "list" })
+        table.insert(self.options, { name = "Fullscreen", type = "toggle" })
 
-    -- Add sound options
+        -- Only show Monitor option if multiple monitors exist
+        if self.monitor_count > 1 then
+            table.insert(self.options, { name = "Monitor", type = "cycle" })
+        end
+    end
+
+    -- Add sound options (both desktop and mobile)
     table.insert(self.options, { name = "Master Volume", type = "percent" })
     table.insert(self.options, { name = "BGM Volume", type = "percent" })
     table.insert(self.options, { name = "SFX Volume", type = "percent" })
@@ -76,7 +88,7 @@ function settings:enter(previous, ...)
     end
 
     -- Add mobile vibration option for Android/iOS
-    if love._os == "Android" or love._os == "iOS" then
+    if is_mobile then
         table.insert(self.options, { name = "Mobile Vibration", type = "toggle" })
     end
 
@@ -85,9 +97,11 @@ function settings:enter(previous, ...)
     self.selected = 1
     self.mouse_over = 0
 
-    -- Current values indices
-    self.current_resolution_index = self:findCurrentResolution()
-    self.current_monitor_index = GameConfig.monitor or 1
+    -- Current values indices (desktop only)
+    if not is_mobile then
+        self.current_resolution_index = self:findCurrentResolution()
+        self.current_monitor_index = GameConfig.monitor or 1
+    end
 
     -- Volume presets (0%, 25%, 50%, 75%, 100%)
     self.volume_levels = { 0.0, 0.25, 0.5, 0.75, 1.0 }
@@ -384,6 +398,13 @@ function settings:changeOption(direction)
         end
 
         sound:setMasterVolume(self.volume_levels[self.current_master_volume_index])
+
+        -- Sync to GameConfig before saving
+        GameConfig.sound.master_volume = sound.settings.master_volume
+        GameConfig.sound.bgm_volume = sound.settings.bgm_volume
+        GameConfig.sound.sfx_volume = sound.settings.sfx_volume
+        GameConfig.sound.muted = sound.settings.muted
+
         utils:SaveConfig(GameConfig, sound.settings)
 
         -- Test sound
@@ -397,6 +418,13 @@ function settings:changeOption(direction)
         end
 
         sound:setBGMVolume(self.volume_levels[self.current_bgm_volume_index])
+
+        -- Sync to GameConfig before saving
+        GameConfig.sound.master_volume = sound.settings.master_volume
+        GameConfig.sound.bgm_volume = sound.settings.bgm_volume
+        GameConfig.sound.sfx_volume = sound.settings.sfx_volume
+        GameConfig.sound.muted = sound.settings.muted
+
         utils:SaveConfig(GameConfig, sound.settings)
     elseif option.name == "SFX Volume" then
         self.current_sfx_volume_index = self.current_sfx_volume_index + direction
@@ -407,12 +435,26 @@ function settings:changeOption(direction)
         end
 
         sound:setSFXVolume(self.volume_levels[self.current_sfx_volume_index])
+
+        -- Sync to GameConfig before saving
+        GameConfig.sound.master_volume = sound.settings.master_volume
+        GameConfig.sound.bgm_volume = sound.settings.bgm_volume
+        GameConfig.sound.sfx_volume = sound.settings.sfx_volume
+        GameConfig.sound.muted = sound.settings.muted
+
         utils:SaveConfig(GameConfig, sound.settings)
 
         -- Test sound
         sound:playSFX("menu", "navigate")
     elseif option.name == "Mute" then
         sound:toggleMute()
+
+        -- Sync to GameConfig before saving
+        GameConfig.sound.master_volume = sound.settings.master_volume
+        GameConfig.sound.bgm_volume = sound.settings.bgm_volume
+        GameConfig.sound.sfx_volume = sound.settings.sfx_volume
+        GameConfig.sound.muted = sound.settings.muted
+
         utils:SaveConfig(GameConfig, sound.settings)
     elseif option.name == "Vibration" then
         input:setVibrationEnabled(not input.settings.vibration_enabled)

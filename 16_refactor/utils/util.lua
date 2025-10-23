@@ -32,12 +32,41 @@ function utils:DeepCopy(obj, seen)
 end
 
 function utils:SaveConfig(GameConfig, sound_settings)
-    -- Don't save on mobile platforms
     local os_name = love.system.getOS()
-    if os_name == "Android" or os_name == "iOS" then
-        return false
+    local is_mobile = (os_name == "Android" or os_name == "iOS")
+
+    if is_mobile then
+        -- Mobile: save using love.filesystem (Lua format)
+        local success, err = pcall(function()
+            local config_str = "return {\n"
+            config_str = config_str .. "  title = \"" .. GameConfig.title .. "\",\n"
+            config_str = config_str .. "  author = \"" .. GameConfig.author .. "\",\n"
+            config_str = config_str .. "  width = " .. GameConfig.width .. ",\n"
+            config_str = config_str .. "  height = " .. GameConfig.height .. ",\n"
+            config_str = config_str .. "  fullscreen = " .. tostring(GameConfig.fullscreen) .. ",\n"
+
+            if sound_settings then
+                config_str = config_str .. "  sound = {\n"
+                config_str = config_str .. "    master_volume = " .. tostring(sound_settings.master_volume) .. ",\n"
+                config_str = config_str .. "    bgm_volume = " .. tostring(sound_settings.bgm_volume) .. ",\n"
+                config_str = config_str .. "    sfx_volume = " .. tostring(sound_settings.sfx_volume) .. ",\n"
+                config_str = config_str .. "    muted = " .. tostring(sound_settings.muted) .. "\n"
+                config_str = config_str .. "  }\n"
+            end
+
+            config_str = config_str .. "}\n"
+
+            return love.filesystem.write("mobile_config.lua", config_str)
+        end)
+
+        if not success then
+            print("Warning: Could not save mobile config: " .. tostring(err))
+            return false
+        end
+        return true
     end
 
+    -- Desktop: save to config.ini
     local success, err = pcall(function()
         local file = io.open("config.ini", "w")
         if file then
