@@ -5,6 +5,7 @@ local weapon_class = require "entities.weapon"
 local effects = require "systems.effects"
 local input = require "systems.input"
 local player_sound = require "entities.player.sound"
+local constants = require "systems.constants"
 
 local combat = {}
 
@@ -150,8 +151,7 @@ function combat.attack(player)
     if not player.weapon_drawn then
         player.weapon_drawn = true
         -- Initialize aim direction to current facing direction when drawing weapon
-        input.last_aim_angle = player.facing_angle
-        input.last_aim_source = "initial"
+        input:setAimAngle(player.facing_angle, "initial")
 
         -- Play weapon draw sound
         player_sound.playWeaponDraw()
@@ -164,7 +164,7 @@ function combat.attack(player)
         player.attack_cooldown = player.attack_cooldown_max
 
         -- Haptic feedback for attack
-        input:vibrateAttack()
+        local v = constants.VIBRATION.ATTACK; input:vibrate(v.duration, v.left, v.right)
 
         -- Play attack sound
         player_sound.playAttack()
@@ -183,8 +183,7 @@ function combat.startParry(player)
     if not player.weapon_drawn then
         player.weapon_drawn = true
         -- Initialize aim direction to current facing direction when drawing weapon
-        input.last_aim_angle = player.facing_angle
-        input.last_aim_source = "initial"
+        input:setAimAngle(player.facing_angle, "initial")
 
         -- Play weapon draw sound
         player_sound.playWeaponDraw()
@@ -248,7 +247,7 @@ function combat.startDodge(player)
     player.last_action_time = 0
 
     -- Haptic feedback for dodge
-    input:vibrateDodge()
+    local v = constants.VIBRATION.DODGE; input:vibrate(v.duration, v.left, v.right)
 
     -- Play dodge sound
     player_sound.playDodge()
@@ -275,9 +274,9 @@ function combat.checkParry(player, incoming_damage)
 
     -- Haptic feedback for parry
     if is_perfect then
-        input:vibratePerfectParry()
+        local v = constants.VIBRATION.PERFECT_PARRY; input:vibrate(v.duration, v.left, v.right)
     else
-        input:vibrateParry()
+        local v = constants.VIBRATION.PARRY; input:vibrate(v.duration, v.left, v.right)
     end
 
     -- Play parry sound
@@ -312,7 +311,7 @@ function combat.takeDamage(player, damage, shake_callback)
     player.invincible_timer = player.invincible_duration
 
     -- Haptic feedback for hit
-    input:vibrateHit()
+    local v = constants.VIBRATION.HIT; input:vibrate(v.duration, v.left, v.right)
 
     -- Play hurt sound
     player_sound.playHurt()

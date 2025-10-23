@@ -15,13 +15,14 @@ local effects = require "systems.effects"
 local dialogue = require "systems.dialogue"
 local save_sys = require "systems.save"
 local input = require "systems.input"
+local constants = require "systems.constants"
 local sound = require "systems.sound"
 local player_sound = require "entities.player.sound"
 local util = require "utils.util"
 
 local pb = { x = 0, y = 0, w = 960, h = 540 }
 
--- Check if on mobile platform
+-- Check if on mobile OS
 local is_mobile = (love.system.getOS() == "Android" or love.system.getOS() == "iOS")
 
 -- function play:enter(previous, mapPath, spawn_x, spawn_y, save_slot)
@@ -32,10 +33,14 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     save_slot = save_slot or 1
 
     self.current_map_path = mapPath
-    local w, h = util:Get16by9Size(love.graphics.getWidth(), love.graphics.getHeight())
-    local scale_x = love.graphics.getWidth() / w
-    local scale_y = love.graphics.getHeight() / h
+    
+    -- Use screen module for proper scaling
+    local vw, vh = screen:GetVirtualDimensions()
+    local sw, sh = screen:GetScreenDimensions()
+    local scale_x = sw / vw
+    local scale_y = sh / vh
     local cam_scale = math.min(scale_x, scale_y)
+    
     self.cam = camera(0, 0, cam_scale, 0, 0)
     self.world = world:new(mapPath)
     self.player = player:new("assets/images/player-sheet.png", spawn_x, spawn_y)
@@ -211,7 +216,7 @@ function play:update(dt)
         local hits = self.world:checkWeaponCollisions(self.player.weapon)
         for _, hit in ipairs(hits) do
             self.world:applyWeaponHit(hit)
-            input:vibrateWeaponHit()
+            local v = constants.VIBRATION.WEAPON_HIT; input:vibrate(v.duration, v.left, v.right)
             player_sound.playWeaponHit()
         end
     end
@@ -353,8 +358,10 @@ function play:draw()
 end
 
 function play:resize(w, h)
-    local scale_x = w / 960
-    local scale_y = h / 540
+    -- Use screen module for proper scaling
+    local vw, vh = screen:GetVirtualDimensions()
+    local scale_x = w / vw
+    local scale_y = h / vh
     local cam_scale = math.min(scale_x, scale_y)
     self.cam:zoomTo(cam_scale)
 end

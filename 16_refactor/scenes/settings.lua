@@ -8,6 +8,7 @@ local screen = require "lib.screen"
 local utils = require "utils.util"
 local input = require "systems.input"
 local sound = require "systems.sound"
+local constants = require "systems.constants"
 
 local is_ready = false
 
@@ -409,7 +410,7 @@ function settings:changeOption(direction)
         input:setVibrationEnabled(not input.settings.vibration_enabled)
 
         -- Test vibration when enabling
-        if input.settings.vibration_enabled then input:vibrateAttack() end
+        if input.settings.vibration_enabled then local v = constants.VIBRATION.ATTACK; input:vibrate(v.duration, v.left, v.right) end
     elseif option.name == "Vibration Strength" then
         self.current_vibration_index = self.current_vibration_index + direction
         if self.current_vibration_index < 1 then
@@ -421,7 +422,7 @@ function settings:changeOption(direction)
         input:setVibrationStrength(self.vibration_strengths[self.current_vibration_index])
 
         -- Test vibration
-        if input.settings.vibration_enabled then input:vibrateAttack() end
+        if input.settings.vibration_enabled then local v = constants.VIBRATION.ATTACK; input:vibrate(v.duration, v.left, v.right) end
     elseif option.name == "Deadzone" then
         self.current_deadzone_index = self.current_deadzone_index + direction
         if self.current_deadzone_index < 1 then
