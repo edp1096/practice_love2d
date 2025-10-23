@@ -29,7 +29,8 @@ function love.errorhandler(msg)
 end
 
 local love_version = (love._version_major .. "." .. love._version_minor)
-print("Running with LÖVE " .. love_version .. " and " .. _VERSION)
+-- print("Running with LÖVE " .. love_version .. " and " .. _VERSION)
+print("Running with LOVE " .. love_version .. " and " .. _VERSION)
 
 local is_android = love.system.getOS() == "Android"
 local is_mobile = is_android or love.system.getOS() == "iOS"
