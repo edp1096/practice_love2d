@@ -19,6 +19,7 @@ local constants = require "systems.constants"
 local sound = require "systems.sound"
 local player_sound = require "entities.player.sound"
 local util = require "utils.util"
+local inventory_class = require "systems.inventory"
 
 local pb = { x = 0, y = 0, w = 960, h = 540 }
 
@@ -58,6 +59,19 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
 
     self.world:addEntity(self.player)
 
+    -- Initialize inventory
+    self.inventory = inventory_class:new()
+
+    -- Load inventory from save data
+    if save_data and save_data.inventory then
+        self.inventory:load(save_data.inventory)
+    else
+        -- Give starting items for testing
+        self.inventory:addItem("small_potion", 3)
+        self.inventory:addItem("large_potion", 1)
+    end
+
+
     self.transition_cooldown = 0
 
     self.fade_alpha = 1.0
@@ -92,7 +106,8 @@ function play:saveGame(slot)
         max_hp = self.player.max_health,
         map = self.current_map_path,
         x = self.player.x,
-        y = self.player.y
+        y = self.player.y,
+        inventory = self.inventory and self.inventory:save() or nil,
     }
 
     local success = save_sys:saveGame(slot, save_data)
@@ -142,6 +157,15 @@ function play:update(dt)
 
     local vx, vy = self.player:update(scaled_dt, self.cam, is_dialogue_open)
 
+    -- Update healing points
+    self.world:updateHealingPoints(scaled_dt, self.player)
+    -- Update healing points
+    self.world:updateHealingPoints(scaled_dt, self.player)
+    -- Update healing points
+    self.world:updateHealingPoints(scaled_dt, self.player)
+    -- Update healing points
+    self.world:updateHealingPoints(scaled_dt, self.player)
+
     for _, enemy in ipairs(self.world.enemies) do
         if enemy.anim then enemy.anim:update(scaled_dt) end
     end
@@ -172,7 +196,7 @@ function play:update(dt)
     end
 
     for _, enemy in ipairs(self.world.enemies) do
-        if enemy.state == "attack" and not enemy.stunned then
+        if enemy.state == "attack" and not enemy.stunned and not enemy.has_attacked then
             local dx = enemy.x - self.player.x
             local dy = enemy.y - self.player.y
             local distance = math.sqrt(dx * dx + dy * dy)
@@ -270,6 +294,12 @@ function play:draw()
     end
 
     self.world:drawLayer("Trees")
+
+    -- Draw healing points
+    self.world:drawHealingPoints()
+    if debug.enabled then
+        self.world:drawHealingPointsDebug()
+    end
     effects:draw()
     if debug.enabled then self.world:drawDebug() end
 
@@ -348,6 +378,9 @@ function play:draw()
 
     if debug.enabled then debug:drawHelp(vw - 250, 10) end
 
+    -- Draw inventory
+    hud:draw_inventory(self.inventory, vw, vh)
+
     screen:Detach()
 
     if self.fade_alpha > 0 then
@@ -384,8 +417,36 @@ function play:keypressed(key)
 
         sound:playSFX("ui", "pause")
         sound:pauseBGM()
+    elseif key == "i" then
+        -- Open inventory UI
+        local inventory_ui = require "scenes.inventory_ui"
+        scene_control.push(inventory_ui, self.inventory, self.player)
     elseif input:wasPressed("dodge", "keyboard", key) then
         if self.player:startDodge() then print("Dodge!") end
+    elseif key == "q" then
+        -- Use selected item from inventory
+        if self.inventory and self.inventory:useSelectedItem(self.player) then
+            print("Used item!")
+        end
+    elseif key == "tab" then
+        -- Select next item in inventory
+        if self.inventory then
+            self.inventory:selectNext()
+            local item = self.inventory:getSelectedItem()
+            if item then
+                print("Selected: " .. item.name)
+            end
+        end
+    elseif key == "1" or key == "2" or key == "3" or key == "4" or key == "5" then
+        -- Direct slot selection
+        local slot_num = tonumber(key)
+        if self.inventory and slot_num then
+            self.inventory:selectSlot(slot_num)
+            local item = self.inventory:getSelectedItem()
+            if item then
+                print("Selected slot " .. slot_num .. ": " .. item.name)
+            end
+        end
     elseif input:wasPressed("interact", "keyboard", key) then
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then

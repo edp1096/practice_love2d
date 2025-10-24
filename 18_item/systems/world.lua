@@ -44,6 +44,9 @@ function world:new(map_path)
     instance.savepoints = {}
     instance:loadSavePoints()
 
+    instance.healing_points = {}
+    instance:loadHealingPoints()
+
     return instance
 end
 
@@ -532,6 +535,50 @@ function world:getInteractableNPC(player_x, player_y)
     end
 
     return nil
+end
+
+
+function world:loadHealingPoints()
+    local healing_point_class = require "entities.healing_point"
+    
+    if self.map.layers["HealingPoints"] then
+        for _, obj in ipairs(self.map.layers["HealingPoints"].objects) do
+            if obj.properties.type == "healing_point" or obj.name == "healing_point" then
+                local center_x = obj.x + obj.width / 2
+                local center_y = obj.y + obj.height / 2
+                
+                local heal_amount = obj.properties.heal_amount or 50
+                local radius = obj.properties.radius or math.max(obj.width, obj.height) / 2
+                local cooldown = obj.properties.cooldown or 5.0
+                
+                local hp = healing_point_class:new(center_x, center_y, heal_amount, radius)
+                hp.cooldown_max = cooldown
+                
+                table.insert(self.healing_points, hp)
+            end
+        end
+        print("Loaded " .. #self.healing_points .. " healing points from map")
+    else
+        print("No HealingPoints layer found in map")
+    end
+end
+
+function world:updateHealingPoints(dt, player)
+    for _, hp in ipairs(self.healing_points) do
+        hp:update(dt, player)
+    end
+end
+
+function world:drawHealingPoints()
+    for _, hp in ipairs(self.healing_points) do
+        hp:draw()
+    end
+end
+
+function world:drawHealingPointsDebug()
+    for _, hp in ipairs(self.healing_points) do
+        hp:drawDebug()
+    end
 end
 
 return world

@@ -135,4 +135,61 @@ function hud:draw_debug_panel(player, current_save_slot)
     love.graphics.print(state_text, 8, state_y)
 end
 
+function hud:draw_inventory(inventory, screen_w, screen_h)
+    if not inventory or #inventory.items == 0 then
+        return
+    end
+
+    local slot_size = 50
+    local slot_spacing = 8
+    local start_x = screen_w - (slot_size + slot_spacing) * math.min(#inventory.items, 5) - 20
+    local start_y = screen_h - slot_size - 20
+
+    love.graphics.setFont(self.small_font)
+
+    for i, item in ipairs(inventory.items) do
+        local x = start_x + (i - 1) * (slot_size + slot_spacing)
+        local y = start_y
+
+        -- Background
+        if i == inventory.selected_slot then
+            love.graphics.setColor(0.3, 0.5, 0.8, 0.9)
+        else
+            love.graphics.setColor(0.2, 0.2, 0.3, 0.8)
+        end
+        love.graphics.rectangle("fill", x, y, slot_size, slot_size)
+
+        -- Border
+        if i == inventory.selected_slot then
+            love.graphics.setColor(0.5, 0.8, 1, 1)
+            love.graphics.setLineWidth(2)
+        else
+            love.graphics.setColor(0.4, 0.4, 0.5, 1)
+            love.graphics.setLineWidth(1)
+        end
+        love.graphics.rectangle("line", x, y, slot_size, slot_size)
+
+        -- Item icon (text representation for now)
+        love.graphics.setColor(1, 1, 1, 1)
+        local icon_text = "HP"
+        if item.type == "small_potion" then
+            love.graphics.setColor(0.5, 1, 0.5, 1)
+        elseif item.type == "large_potion" then
+            love.graphics.setColor(0.3, 1, 0.8, 1)
+        end
+        love.graphics.print(icon_text, x + 10, y + 8)
+
+        -- Quantity
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.print("x" .. item.quantity, x + 5, y + 30)
+
+        -- Slot number
+        love.graphics.setColor(0.7, 0.7, 0.7, 1)
+        love.graphics.print(tostring(i), x + 5, y + 3)
+    end
+
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setLineWidth(1)
+end
+
 return hud
