@@ -9,8 +9,8 @@ return {
   height = 30,
   tilewidth = 64,
   tileheight = 64,
-  nextlayerid = 6,
-  nextobjectid = 38,
+  nextlayerid = 8,
+  nextobjectid = 39,
   properties = {},
   tilesets = {
     {
@@ -392,6 +392,38 @@ return {
             { x = 960, y = 0 }
           },
           properties = {}
+        }
+      }
+    },
+    {
+      type = "objectgroup",
+      draworder = "topdown",
+      id = 7,
+      name = "Enemies",
+      class = "",
+      visible = true,
+      opacity = 1,
+      offsetx = 0,
+      offsety = 0,
+      parallaxx = 1,
+      parallaxy = 1,
+      properties = {},
+      objects = {
+        {
+          id = 38,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 320,
+          y = 1024,
+          width = 64,
+          height = 128,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["patrol_points"] = "100,20;150,25",
+            ["type"] = "bandit"
+          }
         }
       }
     },

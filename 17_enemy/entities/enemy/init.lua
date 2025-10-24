@@ -14,28 +14,22 @@ enemy.__index = enemy
 -- Initialize enemy sounds (called once)
 local sounds_initialized = false
 
--- Helper function to parse animation frames
-local function parseFrames(grid, frames_str, row_str)
-    if type(row_str) == "table" then
-        -- Multiple rows case (e.g., "5-8,1-2" with rows "4,5")
-        local frame_groups = {}
-        for frame_group in frames_str:gmatch("[^,]+") do
-            table.insert(frame_groups, frame_group)
-        end
-
+-- Helper function to create animation from frames and rows
+local function createAnimation(grid, frames, rows, duration)
+    if type(frames) == "table" and type(rows) == "table" then
+        -- Multiple frame ranges with multiple rows (e.g., walk_left)
         local all_frames = {}
-        for i, frame_group in ipairs(frame_groups) do
-            local row = row_str[i]
-            for frame in grid(frame_group, row) do
+        for i = 1, #frames do
+            local frame_range = frames[i]
+            local row = rows[i]
+            for _, frame in ipairs(grid(frame_range, row)) do
                 table.insert(all_frames, frame)
             end
         end
-        return all_frames
-    elseif frames_str:find(",") then
-        -- Single row but multiple frame ranges
-        return grid(frames_str, row_str)
+        return anim8.newAnimation(all_frames, duration)
     else
-        return grid(frames_str, row_str)
+        -- Single frame range with single row
+        return anim8.newAnimation(grid(frames, rows), duration)
     end
 end
 
@@ -139,21 +133,31 @@ function enemy:new(x, y, enemy_type)
     instance.animations = {}
 
     if instance.is_humanoid then
-        -- Humanoid has 4 directions (up, down, left, right)
-        instance.animations.idle_up = anim8.newAnimation(parseFrames(instance.grid, config.idle_up, config.idle_row_up), 0.15)
-        instance.animations.idle_down = anim8.newAnimation(parseFrames(instance.grid, config.idle_down, config.idle_row_down), 0.15)
-        instance.animations.idle_left = anim8.newAnimation(parseFrames(instance.grid, config.idle_left, config.idle_row_left), 0.15)
-        instance.animations.idle_right = anim8.newAnimation(parseFrames(instance.grid, config.idle_right, config.idle_row_right), 0.15)
+        -- Humanoid has 4 directions (up, down, left, right) with slower animations
+        local dirs = { "up", "down", "left", "right" }
 
-        instance.animations.walk_up = anim8.newAnimation(parseFrames(instance.grid, config.walk_up, config.walk_row_up), 0.1)
-        instance.animations.walk_down = anim8.newAnimation(parseFrames(instance.grid, config.walk_down, config.walk_row_down), 0.1)
-        instance.animations.walk_left = anim8.newAnimation(parseFrames(instance.grid, config.walk_left, config.walk_row_left), 0.1)
-        instance.animations.walk_right = anim8.newAnimation(parseFrames(instance.grid, config.walk_right, config.walk_row_right), 0.1)
+        for _, dir in ipairs(dirs) do
+            instance.animations["idle_" .. dir] = createAnimation(
+                instance.grid,
+                config.idle_frames[dir],
+                config.idle_rows[dir],
+                0.2 -- slower: 0.15 -> 0.2
+            )
 
-        instance.animations.attack_up = anim8.newAnimation(parseFrames(instance.grid, config.attack_up, config.attack_row_up), 0.08)
-        instance.animations.attack_down = anim8.newAnimation(parseFrames(instance.grid, config.attack_down, config.attack_row_down), 0.08)
-        instance.animations.attack_left = anim8.newAnimation(parseFrames(instance.grid, config.attack_left, config.attack_row_left), 0.08)
-        instance.animations.attack_right = anim8.newAnimation(parseFrames(instance.grid, config.attack_right, config.attack_row_right), 0.08)
+            instance.animations["walk_" .. dir] = createAnimation(
+                instance.grid,
+                config.walk_frames[dir],
+                config.walk_rows[dir],
+                0.15 -- slower: 0.1 -> 0.15
+            )
+
+            instance.animations["attack_" .. dir] = createAnimation(
+                instance.grid,
+                config.attack_frames[dir],
+                config.attack_rows[dir],
+                0.12 -- slower: 0.08 -> 0.12
+            )
+        end
     else
         -- Slime only has 2 directions (left, right)
         instance.animations.idle_right = anim8.newAnimation(instance.grid("1-3", 1), 0.2)

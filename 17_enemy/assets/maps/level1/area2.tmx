@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="2025.09.25" orientation="orthogonal" renderorder="right-down" width="30" height="30" tilewidth="64" tileheight="64" infinite="0" nextlayerid="6" nextobjectid="38">
+<map version="1.10" tiledversion="2025.09.25" orientation="orthogonal" renderorder="right-down" width="30" height="30" tilewidth="64" tileheight="64" infinite="0" nextlayerid="8" nextobjectid="39">
  <editorsettings>
   <export target="area2.lua" format="lua"/>
  </editorsettings>
@@ -93,6 +93,14 @@
   <object id="28" x="0" y="896" width="64" height="896"/>
   <object id="37" x="960" y="0">
    <polygon points="0,0 0,192 64,256 256,256 320,192 704,192 768,256 832,256 832,192 960,192 960,0"/>
+  </object>
+ </objectgroup>
+ <objectgroup id="7" name="Enemies">
+  <object id="38" x="320" y="1024" width="64" height="128">
+   <properties>
+    <property name="patrol_points" value="100,20;150,25"/>
+    <property name="type" value="bandit"/>
+   </properties>
   </object>
  </objectgroup>
  <objectgroup id="4" name="Portals" locked="1">
