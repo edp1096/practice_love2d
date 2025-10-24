@@ -32,11 +32,33 @@ function ai.update(enemy, dt, player_x, player_y)
             vx = (dx / distance) * enemy.speed
             vy = (dy / distance) * enemy.speed
 
-            if math.abs(dx) > 5 then
-                if dx > 0 then
-                    enemy.direction = "right"
+            -- Update direction based on movement vector
+            if enemy.is_humanoid then
+                -- 4-direction movement for humanoid
+                local abs_dx = math.abs(dx)
+                local abs_dy = math.abs(dy)
+
+                if abs_dx > abs_dy then
+                    if dx > 0 then
+                        enemy.direction = "right"
+                    else
+                        enemy.direction = "left"
+                    end
                 else
-                    enemy.direction = "left"
+                    if dy > 0 then
+                        enemy.direction = "down"
+                    else
+                        enemy.direction = "up"
+                    end
+                end
+            else
+                -- 2-direction movement for slime
+                if math.abs(dx) > 5 then
+                    if dx > 0 then
+                        enemy.direction = "right"
+                    else
+                        enemy.direction = "left"
+                    end
                 end
             end
         end

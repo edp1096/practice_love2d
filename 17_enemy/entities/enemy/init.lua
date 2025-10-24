@@ -5,6 +5,7 @@ local anim8 = require "vendor.anim8"
 local ai = require "entities.enemy.ai"
 local render = require "entities.enemy.render"
 local slime_types = require "entities.enemy.types.slime"
+local humanoid_types = require "entities.enemy.types.humanoid"
 local enemy_sound = require "entities.enemy.sound"
 
 local enemy = {}
@@ -12,6 +13,31 @@ enemy.__index = enemy
 
 -- Initialize enemy sounds (called once)
 local sounds_initialized = false
+
+-- Helper function to parse animation frames
+local function parseFrames(grid, frames_str, row_str)
+    if type(row_str) == "table" then
+        -- Multiple rows case (e.g., "5-8,1-2" with rows "4,5")
+        local frame_groups = {}
+        for frame_group in frames_str:gmatch("[^,]+") do
+            table.insert(frame_groups, frame_group)
+        end
+
+        local all_frames = {}
+        for i, frame_group in ipairs(frame_groups) do
+            local row = row_str[i]
+            for frame in grid(frame_group, row) do
+                table.insert(all_frames, frame)
+            end
+        end
+        return all_frames
+    elseif frames_str:find(",") then
+        -- Single row but multiple frame ranges
+        return grid(frames_str, row_str)
+    else
+        return grid(frames_str, row_str)
+    end
+end
 
 function enemy:new(x, y, enemy_type)
     local instance = setmetatable({}, enemy)
@@ -23,11 +49,16 @@ function enemy:new(x, y, enemy_type)
     end
 
     enemy_type = enemy_type or "red_slime"
-    local config = slime_types.ENEMY_TYPES[enemy_type]
+
+    -- Check both slime and humanoid types
+    local config = slime_types.ENEMY_TYPES[enemy_type] or humanoid_types.ENEMY_TYPES[enemy_type]
 
     if not config then
         error("Unknown enemy type: " .. tostring(enemy_type))
     end
+
+    -- Determine if this is a humanoid enemy
+    instance.is_humanoid = (humanoid_types.ENEMY_TYPES[enemy_type] ~= nil)
 
     -- Position
     instance.x = x or 100
@@ -106,13 +137,41 @@ function enemy:new(x, y, enemy_type)
     )
 
     instance.animations = {}
-    instance.animations.idle_right = anim8.newAnimation(instance.grid("1-3", 1), 0.2)
-    instance.animations.walk_right = anim8.newAnimation(instance.grid("4-7", 1), 0.12)
-    instance.animations.attack_right = anim8.newAnimation(instance.grid("8-11", 1), 0.1)
 
-    instance.animations.idle_left = anim8.newAnimation(instance.grid("1-3", 2), 0.2)
-    instance.animations.walk_left = anim8.newAnimation(instance.grid("4-7", 2), 0.12)
-    instance.animations.attack_left = anim8.newAnimation(instance.grid("8-11", 2), 0.1)
+    if instance.is_humanoid then
+        -- Humanoid has 4 directions (up, down, left, right)
+        instance.animations.idle_up = anim8.newAnimation(parseFrames(instance.grid, config.idle_up, config.idle_row_up), 0.15)
+        instance.animations.idle_down = anim8.newAnimation(parseFrames(instance.grid, config.idle_down, config.idle_row_down), 0.15)
+        instance.animations.idle_left = anim8.newAnimation(parseFrames(instance.grid, config.idle_left, config.idle_row_left), 0.15)
+        instance.animations.idle_right = anim8.newAnimation(parseFrames(instance.grid, config.idle_right, config.idle_row_right), 0.15)
+
+        instance.animations.walk_up = anim8.newAnimation(parseFrames(instance.grid, config.walk_up, config.walk_row_up), 0.1)
+        instance.animations.walk_down = anim8.newAnimation(parseFrames(instance.grid, config.walk_down, config.walk_row_down), 0.1)
+        instance.animations.walk_left = anim8.newAnimation(parseFrames(instance.grid, config.walk_left, config.walk_row_left), 0.1)
+        instance.animations.walk_right = anim8.newAnimation(parseFrames(instance.grid, config.walk_right, config.walk_row_right), 0.1)
+
+        instance.animations.attack_up = anim8.newAnimation(parseFrames(instance.grid, config.attack_up, config.attack_row_up), 0.08)
+        instance.animations.attack_down = anim8.newAnimation(parseFrames(instance.grid, config.attack_down, config.attack_row_down), 0.08)
+        instance.animations.attack_left = anim8.newAnimation(parseFrames(instance.grid, config.attack_left, config.attack_row_left), 0.08)
+        instance.animations.attack_right = anim8.newAnimation(parseFrames(instance.grid, config.attack_right, config.attack_row_right), 0.08)
+    else
+        -- Slime only has 2 directions (left, right)
+        instance.animations.idle_right = anim8.newAnimation(instance.grid("1-3", 1), 0.2)
+        instance.animations.walk_right = anim8.newAnimation(instance.grid("4-7", 1), 0.12)
+        instance.animations.attack_right = anim8.newAnimation(instance.grid("8-11", 1), 0.1)
+
+        instance.animations.idle_left = anim8.newAnimation(instance.grid("1-3", 2), 0.2)
+        instance.animations.walk_left = anim8.newAnimation(instance.grid("4-7", 2), 0.12)
+        instance.animations.attack_left = anim8.newAnimation(instance.grid("8-11", 2), 0.1)
+
+        -- Create up/down as aliases to right for compatibility
+        instance.animations.idle_up = instance.animations.idle_right
+        instance.animations.idle_down = instance.animations.idle_right
+        instance.animations.walk_up = instance.animations.walk_right
+        instance.animations.walk_down = instance.animations.walk_right
+        instance.animations.attack_up = instance.animations.attack_right
+        instance.animations.attack_down = instance.animations.attack_right
+    end
 
     instance.anim = instance.animations.idle_right
     instance.direction = "right"
