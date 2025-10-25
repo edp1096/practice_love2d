@@ -1,6 +1,13 @@
 -- entities/weapon/config/swing_configs.lua
 -- Swing direction configurations
 
+-- Degrees
+-- math.pi = 180
+-- math.pi / 2 = 90
+-- math.pi / 3 = 60
+-- math.pi / 4 = 45
+
+
 local swing_configs = {}
 
 swing_configs.SWING_CONFIGS = {
@@ -8,13 +15,13 @@ swing_configs.SWING_CONFIGS = {
         type = "vertical",
         start_angle = -math.pi / 2,
         end_angle = math.pi / 2,
-        flip_x = false
+        flip_x = true
     },
     left = {
         type = "vertical",
         start_angle = -math.pi / 2,
         end_angle = math.pi / 2,
-        flip_x = true
+        flip_x = false
     },
     down = {
         type = "horizontal",

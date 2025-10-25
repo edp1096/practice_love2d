@@ -63,13 +63,13 @@ hand_anchors.HAND_ANCHORS = {
     -- Attack animations (4 frames each)
     attack_right = {
         { x = 6,  y = -2, angle = -math.pi / 2 },
-        { x = 5,  y = -7, angle = -math.pi / 6 },
+        { x = 5,  y = -7, angle = -math.pi },
         { x = 5,  y = 8,  angle = math.pi / 2 },
         { x = -2, y = 7,  angle = math.pi / 3 }
     },
     attack_left = {
         { x = -7, y = -2, angle = -math.pi / 2 },
-        { x = -5, y = -8, angle = -2.6180 },
+        { x = -5, y = -8, angle = math.pi / 6 },
         { x = -6, y = 8,  angle = math.pi / 2 },
         { x = 2,  y = 8,  angle = math.pi * 2 / 3 },
     },

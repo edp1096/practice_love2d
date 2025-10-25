@@ -59,14 +59,13 @@ function render.draw(weapon, debug_mode, swing_configs)
         )
     end
 
-    -- Determine sprite flip (diagonal flip for left direction)
+    -- Determine sprite flip (X-axis flip for direction change)
     local swing_config = swing_configs[weapon.current_direction]
     local scale_x = weapon.config.scale
     local scale_y = weapon.config.scale
 
     if swing_config and swing_config.flip_x then
         scale_x = -scale_x -- Horizontal flip
-        scale_y = -scale_y -- Vertical flip (diagonal flip: 10:30 -> 1:30)
     end
 
     -- Draw weapon sprite
@@ -118,10 +117,9 @@ function render.drawDebug(weapon, swing_configs)
     local handle_x = handle_anchor.x
     local handle_y = handle_anchor.y
 
-    -- Diagonal flip: mirror both X and Y
+    -- X-axis flip: mirror X only
     if swing_config and swing_config.flip_x then
         handle_x = weapon.config.sprite_w - handle_anchor.x
-        handle_y = weapon.config.sprite_h - handle_anchor.y
     end
 
     local handle_offset_x = (handle_x - weapon.config.sprite_w / 2)
