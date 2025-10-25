@@ -197,11 +197,36 @@ function play:update(dt)
 
     for _, enemy in ipairs(self.world.enemies) do
         if enemy.state == "attack" and not enemy.stunned and not enemy.has_attacked then
-            local dx = enemy.x - self.player.x
-            local dy = enemy.y - self.player.y
+            -- Calculate distance using collider centers
+            local enemy_center_x = enemy.x + enemy.collider_offset_x
+            local enemy_center_y = enemy.y + enemy.collider_offset_y
+            local dx = enemy_center_x - self.player.x
+            local dy = enemy_center_y - self.player.y
             local distance = math.sqrt(dx * dx + dy * dy)
 
-            if distance < (enemy.attack_range or 60) then
+            local in_attack_range = false
+
+            if enemy.is_humanoid then
+                -- Calculate edge-to-edge distance for humanoid
+                local abs_dx = math.abs(dx)
+                local abs_dy = math.abs(dy)
+
+                local edge_distance = distance
+                if abs_dy > abs_dx then
+                    -- Vertical: subtract height radii (enemy: 40, player: 50)
+                    edge_distance = distance - 90
+                else
+                    -- Horizontal: subtract width radii (enemy: 20, player: 25)
+                    edge_distance = distance - 45
+                end
+
+                in_attack_range = (edge_distance < (enemy.attack_range or 60))
+            else
+                -- Slime uses simple center-to-center distance
+                in_attack_range = (distance < (enemy.attack_range or 60))
+            end
+
+            if in_attack_range then
                 local damaged, parried, is_perfect = self.player:takeDamage(enemy.damage or 10, shake_callback)
 
                 enemy.has_attacked = true
