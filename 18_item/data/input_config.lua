@@ -61,6 +61,28 @@ return {
         }
     },
 
+    -- Inventory controls
+    inventory = {
+        open_inventory = {
+            keyboard = { "i" }
+        },
+        slot_1 = {
+            keyboard = { "1" }
+        },
+        slot_2 = {
+            keyboard = { "2" }
+        },
+        slot_3 = {
+            keyboard = { "3" }
+        },
+        slot_4 = {
+            keyboard = { "4" }
+        },
+        slot_5 = {
+            keyboard = { "5" }
+        }
+    },
+
     -- Menu navigation
     menu = {
         menu_up = {
@@ -95,8 +117,10 @@ return {
         pause = {
             keyboard = { "p", "escape" },
             gamepad = "start"
+        },
+        manual_save = {
+            keyboard = { "f9" }
         }
-        -- F1, F2, F3 quicksave removed - only F9 manual save remains (handled separately in play.lua)
     },
 
     -- Default gamepad settings

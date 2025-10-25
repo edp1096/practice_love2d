@@ -442,7 +442,7 @@ function play:keypressed(key)
 
         sound:playSFX("ui", "pause")
         sound:pauseBGM()
-    elseif key == "i" then
+    elseif input:wasPressed("open_inventory", "keyboard", key) then
         -- Open inventory UI
         local inventory_ui = require "scenes.inventory_ui"
         scene_control.push(inventory_ui, self.inventory, self.player)
@@ -462,15 +462,35 @@ function play:keypressed(key)
                 print("Selected: " .. item.name)
             end
         end
-    elseif key == "1" or key == "2" or key == "3" or key == "4" or key == "5" then
-        -- Direct slot selection
-        local slot_num = tonumber(key)
-        if self.inventory and slot_num then
-            self.inventory:selectSlot(slot_num)
+    elseif input:wasPressed("slot_1", "keyboard", key) then
+        if self.inventory then
+            self.inventory:selectSlot(1)
             local item = self.inventory:getSelectedItem()
-            if item then
-                print("Selected slot " .. slot_num .. ": " .. item.name)
-            end
+            if item then print("Selected slot 1: " .. item.name) end
+        end
+    elseif input:wasPressed("slot_2", "keyboard", key) then
+        if self.inventory then
+            self.inventory:selectSlot(2)
+            local item = self.inventory:getSelectedItem()
+            if item then print("Selected slot 2: " .. item.name) end
+        end
+    elseif input:wasPressed("slot_3", "keyboard", key) then
+        if self.inventory then
+            self.inventory:selectSlot(3)
+            local item = self.inventory:getSelectedItem()
+            if item then print("Selected slot 3: " .. item.name) end
+        end
+    elseif input:wasPressed("slot_4", "keyboard", key) then
+        if self.inventory then
+            self.inventory:selectSlot(4)
+            local item = self.inventory:getSelectedItem()
+            if item then print("Selected slot 4: " .. item.name) end
+        end
+    elseif input:wasPressed("slot_5", "keyboard", key) then
+        if self.inventory then
+            self.inventory:selectSlot(5)
+            local item = self.inventory:getSelectedItem()
+            if item then print("Selected slot 5: " .. item.name) end
         end
     elseif input:wasPressed("interact", "keyboard", key) then
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
@@ -489,16 +509,7 @@ function play:keypressed(key)
                 print("Game saved to slot " .. slot .. " at savepoint: " .. savepoint.id)
             end)
         end
-    elseif input:wasPressed("quicksave_1", "keyboard", key) then
-        self:saveGame(1)
-        print("Quick saved to slot 1")
-    elseif input:wasPressed("quicksave_2", "keyboard", key) then
-        self:saveGame(2)
-        print("Quick saved to slot 2")
-    elseif input:wasPressed("quicksave_3", "keyboard", key) then
-        self:saveGame(3)
-        print("Quick saved to slot 3")
-    elseif key == "f9" then
+    elseif input:wasPressed("manual_save", "keyboard", key) then
         self:saveGame()
         print("Manual save triggered (F9)")
     else
