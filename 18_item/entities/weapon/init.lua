@@ -124,15 +124,14 @@ function weapon:update(dt, owner_x, owner_y, owner_angle, direction, anim_name, 
                 local t = self.attack_progress
                 local eased = 1 - math.pow(1 - t, 3)
 
-                self.current_swing_angle = swing_config.start_angle +
-                    (swing_config.end_angle - swing_config.start_angle) * eased
+                self.current_swing_angle = swing_config.start_angle + (swing_config.end_angle - swing_config.start_angle) * eased
 
                 self.angle = self.current_swing_angle
             end
 
             -- Calculate handle offset
             local handle_anchor = handle_anchors.WEAPON_HANDLE_ANCHORS[self.current_direction] or handle_anchors.WEAPON_HANDLE_ANCHORS.right
-            local swing_config = swing_configs.SWING_CONFIGS[self.current_direction]
+            swing_config = swing_configs.SWING_CONFIGS[self.current_direction]
 
             local handle_x = handle_anchor.x
             local handle_y = handle_anchor.y
@@ -173,17 +172,7 @@ function weapon:update(dt, owner_x, owner_y, owner_angle, direction, anim_name, 
         local handle_offset_y = (handle_y - self.config.sprite_h / 2)
 
         -- Set idle angle
-        if hand_angle then
-            -- right
-            -- self.angle = hand_angle
-            self.angle = -math.pi / 4
-        elseif self.current_direction == "left" then
-            self.angle = 3 * math.pi / 4
-        elseif self.current_direction == "down" then
-            self.angle = math.pi / 2
-        elseif self.current_direction == "up" then
-            self.angle = -math.pi / 2
-        end
+        self.angle = hand_angle or 0
 
         -- Rotate handle offset
         local actual_angle = self.angle + math.pi / 2
