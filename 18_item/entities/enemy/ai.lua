@@ -134,13 +134,13 @@ function ai.updateChase(enemy, dt, player_x, player_y)
 
     -- Calculate edge-to-edge distance for attack range check
     local effective_attack_range = enemy.attack_range
-    
+
     if enemy.is_humanoid then
         local dx = player_x - (enemy.x + enemy.collider_offset_x)
         local dy = player_y - (enemy.y + enemy.collider_offset_y)
         local abs_dx = math.abs(dx)
         local abs_dy = math.abs(dy)
-        
+
         -- Calculate edge-to-edge distance by subtracting collider radii
         local edge_distance = distance
         if abs_dy > abs_dx then
@@ -150,7 +150,7 @@ function ai.updateChase(enemy, dt, player_x, player_y)
             -- Horizontal: subtract width radii (enemy: 20, player: ~25)
             edge_distance = distance - 45
         end
-        
+
         -- Check edge-to-edge distance instead of center-to-center
         if edge_distance < effective_attack_range then
             ai.setState(enemy, "attack")
