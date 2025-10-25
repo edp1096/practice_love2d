@@ -7,6 +7,7 @@ local render = require "entities.enemy.render"
 local slime_types = require "entities.enemy.types.slime"
 local humanoid_types = require "entities.enemy.types.humanoid"
 local enemy_sound = require "entities.enemy.sound"
+local weapon_class = require "entities.weapon"
 
 local enemy = {}
 enemy.__index = enemy
@@ -180,6 +181,12 @@ function enemy:new(x, y, enemy_type)
     instance.anim = instance.animations.idle_right
     instance.direction = "right"
 
+    -- Weapon (only for humanoid enemies)
+    if instance.is_humanoid then
+        instance.weapon = weapon_class:new("axe")
+        instance.weapon_drawn = true -- humanoids always have weapon drawn
+    end
+
     -- Collider (set by world)
     instance.collider = nil
 
@@ -251,6 +258,27 @@ function enemy:update(dt, player_x, player_y)
 
     -- Store previous state for sound detection
     self.previous_state = self.state
+
+    -- Update weapon for humanoid enemies
+    if self.is_humanoid and self.weapon then
+        -- Map state to actual animation name
+        local anim_base = self.state
+        if self.state == "chase" or self.state == "patrol" then
+            anim_base = "walk"
+        elseif self.state == "hit" or self.state == "dead" or self.state == "stunned" then
+            anim_base = "idle"
+        end
+
+        local anim_name = anim_base .. "_" .. self.direction
+        local frame_index = math.floor(self.anim.position) + 1
+
+        local collider_center_x = self.x + self.collider_offset_x
+        local collider_center_y = self.y + self.collider_offset_y
+        local sprite_x = collider_center_x + self.sprite_draw_offset_x
+        local sprite_y = collider_center_y + self.sprite_draw_offset_y
+
+        self.weapon:update(dt, sprite_x, sprite_y, 0, self.direction, anim_name, frame_index, false)
+    end
 
     -- Delegate to AI module
     return ai.update(self, dt, player_x, player_y)

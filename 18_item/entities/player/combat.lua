@@ -10,7 +10,8 @@ local constants = require "systems.constants"
 local combat = {}
 
 function combat.initialize(player)
-    player.weapon = weapon_class:new("sword")
+    -- player.weapon = weapon_class:new("sword")
+    player.weapon = weapon_class:new("axe")
     player.state = "idle"
     player.attack_cooldown = 0
     player.attack_cooldown_max = 0.5
@@ -309,6 +310,7 @@ function combat.takeDamage(player, damage, shake_callback)
 
     player.hit_flash_timer = 0.2
     player.invincible_timer = player.invincible_duration
+    player.parry_cooldown = 0 -- reset parry cooldown when taking damage
 
     -- Haptic feedback for hit
     local v = constants.VIBRATION.HIT; input:vibrate(v.duration, v.left, v.right)

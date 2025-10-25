@@ -59,6 +59,13 @@ function render.draw(enemy)
     love.graphics.ellipse("fill", collider_center_x, collider_center_y + 30, 18, 8)
     love.graphics.setColor(1, 1, 1, 1)
 
+    -- Draw weapon behind sprite for left/up directions (humanoid only)
+    if enemy.is_humanoid and enemy.weapon and enemy.weapon_drawn then
+        if enemy.direction == "left" or enemy.direction == "up" then
+            render.drawWeapon(enemy)
+        end
+    end
+
     -- Apply color swap shader
     if enemy.target_color then
         love.graphics.setShader(color_swap_shader)
@@ -133,6 +140,13 @@ function render.draw(enemy)
     love.graphics.setShader()
     love.graphics.setColor(1, 1, 1, 1)
 
+    -- Draw weapon in front of sprite for right/down directions (humanoid only)
+    if enemy.is_humanoid and enemy.weapon and enemy.weapon_drawn then
+        if enemy.direction == "right" or enemy.direction == "down" then
+            render.drawWeapon(enemy)
+        end
+    end
+
     -- Debug: collider
     if debug.show_colliders and enemy.collider then
         love.graphics.setColor(1, 0, 0, 0.3)
@@ -183,6 +197,12 @@ function render.draw(enemy)
             love.graphics.line(collider_center_x, collider_center_y, enemy.target_x, enemy.target_y)
             love.graphics.setLineWidth(1)
         end
+    end
+end
+
+function render.drawWeapon(enemy)
+    if enemy.weapon then
+        enemy.weapon:draw(debug.enabled)
     end
 end
 

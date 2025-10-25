@@ -135,12 +135,16 @@ function weapon:update(dt, owner_x, owner_y, owner_angle, direction, anim_name, 
             local swing_config = swing_configs.SWING_CONFIGS[self.current_direction]
 
             local handle_x = handle_anchor.x
+            local handle_y = handle_anchor.y
+
+            -- Diagonal flip: mirror both X and Y
             if swing_config and swing_config.flip_x then
                 handle_x = self.config.sprite_w - handle_anchor.x
+                handle_y = self.config.sprite_h - handle_anchor.y
             end
 
             local handle_offset_x = (handle_x - self.config.sprite_w / 2)
-            local handle_offset_y = (handle_anchor.y - self.config.sprite_h / 2)
+            local handle_offset_y = (handle_y - self.config.sprite_h / 2)
 
             -- Rotate handle offset
             local actual_angle = self.angle + math.pi / 2
@@ -159,18 +163,23 @@ function weapon:update(dt, owner_x, owner_y, owner_angle, direction, anim_name, 
         local swing_config = swing_configs.SWING_CONFIGS[self.current_direction]
 
         local handle_x = handle_anchor.x
+        local handle_y = handle_anchor.y
+
+        -- Diagonal flip: mirror both X and Y
         if swing_config and swing_config.flip_x then
             handle_x = self.config.sprite_w - handle_anchor.x
+            handle_y = self.config.sprite_h - handle_anchor.y
         end
 
         local handle_offset_x = (handle_x - self.config.sprite_w / 2)
-        local handle_offset_y = (handle_anchor.y - self.config.sprite_h / 2)
+        local handle_offset_y = (handle_y - self.config.sprite_h / 2)
 
         -- Set idle angle
         if hand_angle then
-            self.angle = hand_angle
-        elseif self.current_direction == "right" then
+            -- self.angle = hand_angle
             self.angle = math.pi / 4
+        elseif self.current_direction == "right" then
+            self.angle = math.pi / 4 -- not reached
         elseif self.current_direction == "left" then
             self.angle = 3 * math.pi / 4
         elseif self.current_direction == "down" then

@@ -89,7 +89,82 @@ function save:getMostRecentSlot()
 end
 
 function save:getSlotPath(slot)
-    return self.SAVE_DIRECTORY .. "/save_" .. slot .. ".json"
+    return self.SAVE_DIRECTORY .. "/save_" .. slot .. ".lua"
+end
+
+-- Serialize Lua table to string (supports nested tables and arrays)
+function save:serialize(t, indent)
+    indent = indent or ""
+
+    if type(t) ~= "table" then
+        if type(t) == "string" then
+            return string.format("%q", t)
+        elseif type(t) == "number" or type(t) == "boolean" then
+            return tostring(t)
+        else
+            return "nil"
+        end
+    end
+
+    local result = "{\n"
+    local next_indent = indent .. "  "
+    local is_array = true
+    local array_size = 0
+
+    -- Check if table is an array
+    for k, v in pairs(t) do
+        if type(k) ~= "number" then
+            is_array = false
+            break
+        end
+        array_size = math.max(array_size, k)
+    end
+
+    if is_array then
+        -- Array-style serialization
+        for i = 1, array_size do
+            local v = t[i]
+            if v ~= nil then
+                result = result .. next_indent .. self:serialize(v, next_indent) .. ",\n"
+            end
+        end
+    else
+        -- Table-style serialization
+        for k, v in pairs(t) do
+            local key_str
+            if type(k) == "string" then
+                key_str = string.format("[%q]", k)
+            else
+                key_str = "[" .. tostring(k) .. "]"
+            end
+
+            result = result .. next_indent .. key_str .. " = " .. self:serialize(v, next_indent) .. ",\n"
+        end
+    end
+
+    result = result .. indent .. "}"
+    return result
+end
+
+-- Deserialize string to Lua table
+function save:deserialize(str)
+    if not str or str == "" then
+        return nil
+    end
+
+    local func, err = load("return " .. str)
+    if not func then
+        print("ERROR: Failed to deserialize: " .. tostring(err))
+        return nil
+    end
+
+    local success, result = pcall(func)
+    if not success then
+        print("ERROR: Failed to execute deserialized data: " .. tostring(result))
+        return nil
+    end
+
+    return result
 end
 
 function save:saveGame(slot, data)
@@ -101,14 +176,14 @@ function save:saveGame(slot, data)
     data.timestamp = os.time()
     data.slot = slot
 
-    local json_data = self:encodeJSON(data)
-    if not json_data then
-        print("ERROR: Failed to encode save data")
+    local serialized = self:serialize(data)
+    if not serialized then
+        print("ERROR: Failed to serialize save data")
         return false
     end
 
     local filepath = self:getSlotPath(slot)
-    local success, message = love.filesystem.write(filepath, json_data)
+    local success, message = love.filesystem.write(filepath, serialized)
 
     if success then
         print("Game saved to slot " .. slot)
@@ -139,9 +214,9 @@ function save:loadGame(slot)
         return nil
     end
 
-    local data = self:decodeJSON(contents)
+    local data = self:deserialize(contents)
     if not data then
-        print("ERROR: Failed to decode save data")
+        print("ERROR: Failed to deserialize save data")
         return nil
     end
 
@@ -255,56 +330,6 @@ function save:printStatus()
         end
     end
     print("========================")
-end
-
-function save:encodeJSON(data)
-    local json = "{\n"
-    local items = {}
-
-    for k, v in pairs(data) do
-        local key = '"' .. tostring(k) .. '"'
-        local value
-
-        if type(v) == "string" then
-            value = '"' .. v .. '"'
-        elseif type(v) == "number" then
-            value = tostring(v)
-        elseif type(v) == "boolean" then
-            value = tostring(v)
-        else
-            value = '"' .. tostring(v) .. '"'
-        end
-
-        table.insert(items, '  ' .. key .. ': ' .. value)
-    end
-
-    json = json .. table.concat(items, ',\n') .. '\n}'
-    return json
-end
-
-function save:decodeJSON(json_string)
-    local data = {}
-
-    json_string = json_string:gsub("^%s*{%s*", ""):gsub("%s*}%s*$", "")
-
-    for line in json_string:gmatch("[^\n]+") do
-        local key, value = line:match('"([^"]+)"%s*:%s*(.+)')
-        if key and value then
-            value = value:gsub(",%s*$", "")
-
-            if value:match('^".*"$') then
-                data[key] = value:match('^"(.*)"$')
-            elseif value == "true" then
-                data[key] = true
-            elseif value == "false" then
-                data[key] = false
-            elseif tonumber(value) then
-                data[key] = tonumber(value)
-            end
-        end
-    end
-
-    return data
 end
 
 save:init()
