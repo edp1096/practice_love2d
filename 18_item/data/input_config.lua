@@ -50,6 +50,14 @@ return {
         interact = {
             keyboard = { "f" },
             gamepad = "y" -- Triangle button (DualSense)
+        },
+        use_item = {
+            keyboard = { "q" },
+            gamepad = "leftshoulder" -- L1 button (DualSense)
+        },
+        next_item = {
+            keyboard = { "tab" },
+            gamepad = "rightshoulder" -- R1 button (DualSense)
         }
     },
 

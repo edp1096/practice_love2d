@@ -448,12 +448,12 @@ function play:keypressed(key)
         scene_control.push(inventory_ui, self.inventory, self.player)
     elseif input:wasPressed("dodge", "keyboard", key) then
         if self.player:startDodge() then print("Dodge!") end
-    elseif key == "q" then
+    elseif input:wasPressed("use_item", "keyboard", key) then
         -- Use selected item from inventory
         if self.inventory and self.inventory:useSelectedItem(self.player) then
             print("Used item!")
         end
-    elseif key == "tab" then
+    elseif input:wasPressed("next_item", "keyboard", key) then
         -- Select next item in inventory
         if self.inventory then
             self.inventory:selectNext()
@@ -576,12 +576,20 @@ function play:gamepadpressed(joystick, button)
                 print("Game saved to slot " .. slot .. " at savepoint: " .. savepoint.id)
             end)
         end
-    elseif input:wasPressed("quicksave_1", "gamepad", button) then
-        self:saveGame(1)
-        print("Quick saved to slot 1 [L1]")
-    elseif input:wasPressed("quicksave_2", "gamepad", button) then
-        self:saveGame(2)
-        print("Quick saved to slot 2 [R1]")
+    elseif input:wasPressed("use_item", "gamepad", button) then
+        -- Use selected item from inventory
+        if self.inventory and self.inventory:useSelectedItem(self.player) then
+            print("Used item! [L1]")
+        end
+    elseif input:wasPressed("next_item", "gamepad", button) then
+        -- Select next item in inventory
+        if self.inventory then
+            self.inventory:selectNext()
+            local item = self.inventory:getSelectedItem()
+            if item then
+                print("Selected: " .. item.name .. " [R1]")
+            end
+        end
     end
 end
 

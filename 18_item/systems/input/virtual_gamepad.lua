@@ -51,6 +51,8 @@ virtual_gamepad.buttons = {
     b = { x = 0, y = 0, pressed = false, label = "B", action = "dodge" },
     x = { x = 0, y = 0, pressed = false, label = "X", action = "parry" },
     y = { x = 0, y = 0, pressed = false, label = "Y", action = "interact" },
+    l1 = { x = 0, y = 0, pressed = false, label = "L1", action = "use_item" },
+    r1 = { x = 0, y = 0, pressed = false, label = "R1", action = "next_item" },
 }
 
 virtual_gamepad.menu_button = {
@@ -127,7 +129,15 @@ function virtual_gamepad:calculatePositions()
     self.buttons.y.x = button_base_x
     self.buttons.y.y = button_base_y - 70
 
-    -- Menu button on top right
+    -- L1 button on top left (above D-pad)
+    self.buttons.l1.x = 120
+    self.buttons.l1.y = 120
+
+    -- R1 button on top right (above action buttons)
+    self.buttons.r1.x = w - 120
+    self.buttons.r1.y = 120
+
+    -- Menu button on top center-right
     self.menu_button.x = w - 60
     self.menu_button.y = 60
 end
@@ -414,6 +424,16 @@ function virtual_gamepad:triggerButtonPress(button_name)
         if scene_control.current and scene_control.current.gamepadpressed then
             scene_control.current:gamepadpressed(nil, "y")
         end
+    elseif button.action == "use_item" then
+        local scene_control = require "systems.scene_control"
+        if scene_control.current and scene_control.current.gamepadpressed then
+            scene_control.current:gamepadpressed(nil, "leftshoulder")
+        end
+    elseif button.action == "next_item" then
+        local scene_control = require "systems.scene_control"
+        if scene_control.current and scene_control.current.gamepadpressed then
+            scene_control.current:gamepadpressed(nil, "rightshoulder")
+        end
     end
 end
 
@@ -428,7 +448,9 @@ function virtual_gamepad:triggerButtonRelease(button_name)
             a = "a",
             b = "b",
             x = "x",
-            y = "y"
+            y = "y",
+            l1 = "leftshoulder",
+            r1 = "rightshoulder"
         }
         scene_control.current:gamepadreleased(nil, button_map[button_name])
     end
