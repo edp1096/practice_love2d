@@ -30,6 +30,10 @@ function inventory_ui:enter(previous, player_inventory, player)
     self.item_font = love.graphics.newFont(16)
     self.desc_font = love.graphics.newFont(14)
 
+    -- Close button settings
+    self.close_button_size = 30
+    self.close_button_padding = 15
+
     play_sound("ui", "open")
 end
 
@@ -71,6 +75,17 @@ function inventory_ui:mousepressed(x, y, button)
         -- Convert screen coordinates to virtual coordinates
         local mouse_vx = (x / sw) * vw
         local mouse_vy = (y / sh) * vh
+
+        -- Check if clicked on close button
+        if self.close_button_bounds then
+            local cb = self.close_button_bounds
+            if mouse_vx >= cb.x and mouse_vx <= cb.x + cb.size and
+                mouse_vy >= cb.y and mouse_vy <= cb.y + cb.size then
+                local scene_control = require "systems.scene_control"
+                scene_control.pop()
+                return
+            end
+        end
 
         -- Check if clicked on a slot
         local start_x = (vw - (self.slot_size + self.slot_spacing) * math.min(#self.inventory.items, 5)) / 2
@@ -158,6 +173,34 @@ function inventory_ui:draw()
     local title = "INVENTORY"
     local title_w = self.title_font:getWidth(title)
     love.graphics.print(title, (vw - title_w) / 2, window_y + 20)
+
+    -- Draw close button (top-right corner)
+    local close_x = window_x + window_w - self.close_button_size - self.close_button_padding
+    local close_y = window_y + self.close_button_padding
+    self.close_button_bounds = { x = close_x, y = close_y, size = self.close_button_size }
+
+    -- Button background
+    love.graphics.setColor(0.8, 0.2, 0.2, 0.8)
+    love.graphics.rectangle("fill", close_x, close_y, self.close_button_size, self.close_button_size, 3, 3)
+
+    -- Button border
+    love.graphics.setColor(1, 0.3, 0.3, 1)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle("line", close_x, close_y, self.close_button_size, self.close_button_size, 3, 3)
+
+    -- Draw X
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setLineWidth(3)
+    local x_padding = 8
+    love.graphics.line(
+        close_x + x_padding, close_y + x_padding,
+        close_x + self.close_button_size - x_padding, close_y + self.close_button_size - x_padding
+    )
+    love.graphics.line(
+        close_x + self.close_button_size - x_padding, close_y + x_padding,
+        close_x + x_padding, close_y + self.close_button_size - x_padding
+    )
+    love.graphics.setLineWidth(1)
 
     -- Draw close instruction
     love.graphics.setFont(self.desc_font)

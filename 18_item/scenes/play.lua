@@ -399,12 +399,12 @@ function play:draw()
         love.graphics.setColor(1, 1, 1, 1)
     end
 
+    -- Draw inventory
+    hud:draw_inventory(self.inventory, vw, vh)
+
     dialogue:draw()
 
     if debug.enabled then debug:drawHelp(vw - 250, 10) end
-
-    -- Draw inventory
-    hud:draw_inventory(self.inventory, vw, vh)
 
     screen:Detach()
 

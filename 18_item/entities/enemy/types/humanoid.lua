@@ -5,13 +5,13 @@ local humanoid = {}
 
 humanoid.ENEMY_TYPES = {
     bandit = {
-        sprite_sheet = "assets/images/player-sheet.png",
+        sprite_sheet = "assets/images/enemy-sheet-human.png",
         health = 120,
         damage = 15,
         speed = 120,
         attack_cooldown = 1.2,
         detection_range = 250,
-        attack_range = 60,
+        attack_range = 35,
 
         sprite_width = 48,
         sprite_height = 48,
@@ -49,7 +49,7 @@ humanoid.ENEMY_TYPES = {
         speed = 150,
         attack_cooldown = 0.9,
         detection_range = 280,
-        attack_range = 55,
+        attack_range = 35,
 
         sprite_width = 48,
         sprite_height = 48,
@@ -86,7 +86,7 @@ humanoid.ENEMY_TYPES = {
         speed = 100,
         attack_cooldown = 1.5,
         detection_range = 230,
-        attack_range = 65,
+        attack_range = 35,
 
         sprite_width = 48,
         sprite_height = 48,
@@ -123,7 +123,7 @@ humanoid.ENEMY_TYPES = {
         speed = 110,
         attack_cooldown = 1.3,
         detection_range = 240,
-        attack_range = 60,
+        attack_range = 35,
 
         sprite_width = 48,
         sprite_height = 48,
