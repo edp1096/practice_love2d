@@ -44,8 +44,12 @@ return {
             gamepad = "x" -- Square button (DualSense)
         },
         dodge = {
-            keyboard = { "space" },
+            keyboard = { "lshift" }, -- Left Shift for dodge
             gamepad = "b" -- Circle button (DualSense)
+        },
+        jump = {
+            keyboard = { "space" }, -- Space for jump (platformer mode)
+            gamepad = "a"           -- Cross button for jump in platformer mode
         },
         interact = {
             keyboard = { "f" },

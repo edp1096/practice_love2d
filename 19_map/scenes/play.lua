@@ -20,6 +20,8 @@ local sound = require "systems.sound"
 local player_sound = require "entities.player.sound"
 local util = require "utils.util"
 local inventory_class = require "systems.inventory"
+local game_mode = require "systems.game_mode"
+local parallax_sys = require "systems.parallax"
 
 local pb = { x = 0, y = 0, w = 960, h = 540 }
 
@@ -45,6 +47,14 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     self.cam = camera(0, 0, cam_scale, 0, 0)
     self.world = world:new(mapPath)
     self.player = player:new("assets/images/player-sheet.png", spawn_x, spawn_y)
+
+    -- Set player game mode based on world
+    self.player.game_mode = self.world.game_mode
+    print("=== PLAYER GAME MODE SET TO: " .. tostring(self.player.game_mode) .. " ===")
+
+    -- Initialize parallax backgrounds
+    self.parallax = parallax_sys:new()
+    self.parallax:loadFromMap(self.world.map)
 
     self.current_save_slot = save_slot
 
@@ -256,6 +266,12 @@ function play:update(dt)
         return
     end
 
+    -- Reset grounded status BEFORE physics update
+    -- PreSolve callback will set it to true if player is on ground
+    if self.player.game_mode == "platformer" then
+        self.player.is_grounded = false
+    end
+
     self.world:update(scaled_dt)
 
     self.player.x = self.player.collider:getX()
@@ -310,6 +326,13 @@ function play:draw()
     love.graphics.clear(0, 0, 0, 1)
 
     self.cam:attach()
+
+    -- Draw parallax backgrounds
+    if self.parallax then
+        local cam_x, cam_y = self.cam:position()
+        local vw, vh = screen:GetVirtualDimensions()
+        self.parallax:draw(cam_x, cam_y, vw, vh)
+    end
 
     self.world:drawLayer("Ground")
     self.world:drawEntitiesYSorted(self.player)
@@ -427,6 +450,11 @@ end
 function play:keypressed(key)
     -- Toggle debug with F12
 
+    -- DEBUG: Log all key presses in platformer mode
+    if self.player.game_mode == "platformer" then
+        print("=== KEY PRESSED: " .. tostring(key) .. " ===")
+    end
+
     if dialogue:isOpen() then
         if input:wasPressed("interact", "keyboard", key) or
             input:wasPressed("menu_select", "keyboard", key) then
@@ -447,7 +475,21 @@ function play:keypressed(key)
         local inventory_ui = require "scenes.inventory_ui"
         scene_control.push(inventory_ui, self.inventory, self.player)
     elseif input:wasPressed("dodge", "keyboard", key) then
-        if self.player:startDodge() then print("Dodge!") end
+        -- Dodge (lshift) - works in both modes
+        print("DEBUG: Dodge key detected")
+        self.player:startDodge()
+    elseif input:wasPressed("jump", "keyboard", key) then
+        print("DEBUG: Jump key detected! game_mode=" .. tostring(self.player.game_mode))
+        -- Jump/Dodge - mode dependent
+        if self.player.game_mode == "platformer" then
+            -- Platformer: space = jump
+            print("DEBUG: Calling player:jump()")
+            local jump_result = self.player:jump()
+            print("DEBUG: Jump result = " .. tostring(jump_result))
+        else
+            -- Topdown: space = dodge (for convenience)
+            self.player:startDodge()
+        end
     elseif input:wasPressed("use_item", "keyboard", key) then
         -- Use selected item from inventory
         if self.inventory and self.inventory:useSelectedItem(self.player) then
@@ -564,8 +606,15 @@ function play:gamepadpressed(joystick, button)
 
         sound:playSFX("ui", "pause")
         sound:pauseBGM()
-    elseif input:wasPressed("attack", "gamepad", button) then
-        self.player:attack()
+    elseif input:wasPressed("attack", "gamepad", button) or input:wasPressed("jump", "gamepad", button) then
+        -- A button: attack in topdown, jump in platformer
+        if self.player.game_mode == "platformer" then
+            if self.player:jump() then
+                print("Jump!")
+            end
+        else
+            self.player:attack()
+        end
     elseif input:wasPressed("parry", "gamepad", button) then
         if self.player:startParry() then print("Parry activated!") end
     elseif input:wasPressed("dodge", "gamepad", button) then
@@ -623,6 +672,16 @@ function play:switchMap(new_map_path, spawn_x, spawn_y)
     self.player.collider = nil
 
     self.world:addEntity(self.player)
+
+    -- CRITICAL: Update player game mode when switching maps
+    self.player.game_mode = self.world.game_mode
+    print("=== MAP SWITCHED: player.game_mode = " .. tostring(self.player.game_mode) .. " ===")
+
+    -- Reload parallax backgrounds for new map
+    if self.parallax then
+        self.parallax:clear()
+        self.parallax:loadFromMap(self.world.map)
+    end
 
     self.transition_cooldown = 0.5
 

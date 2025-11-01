@@ -460,24 +460,6 @@ return {
           }
         },
         {
-          id = 32,
-          name = "",
-          type = "",
-          shape = "rectangle",
-          x = 1344,
-          y = 1856,
-          width = 192,
-          height = 64,
-          rotation = 0,
-          visible = true,
-          properties = {
-            ["spawn_x"] = 400,
-            ["spawn_y"] = 400,
-            ["target_map"] = "assets/maps/level1/area1.lua",
-            ["type"] = "gameclear"
-          }
-        },
-        {
           id = 33,
           name = "",
           type = "",
@@ -489,10 +471,10 @@ return {
           rotation = 0,
           visible = true,
           properties = {
-            ["spawn_x"] = 400,
-            ["spawn_y"] = 400,
-            ["target_map"] = "assets/maps/level1/area1.lua",
-            ["type"] = "gameclear"
+            ["spawn_x"] = 200,
+            ["spawn_y"] = 1500,
+            ["target_map"] = "assets/maps/level1/area3.lua",
+            ["type"] = "portal"
           }
         }
       }

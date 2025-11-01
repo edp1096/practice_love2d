@@ -4,6 +4,7 @@
 local sti = require "vendor.sti"
 local windfield = require "vendor.windfield"
 local effects = require "systems.effects"
+local game_mode = require "systems.game_mode"
 
 local world = {}
 world.__index = world
@@ -17,7 +18,22 @@ function world:new(map_path)
     end
 
     instance.map = sti(map_path)
-    instance.physicsWorld = windfield.newWorld(0, 0, true)
+
+    -- Read game mode from map properties
+    local mode = "topdown" -- default
+    if instance.map.properties and instance.map.properties.game_mode then
+        mode = instance.map.properties.game_mode
+    end
+
+    -- Set game mode
+    game_mode:set(mode)
+    instance.game_mode = mode
+
+    -- Get gravity based on game mode
+    local gx, gy = game_mode:getGravity()
+    instance.physicsWorld = windfield.newWorld(gx, gy, true)
+
+    print("World created with mode: " .. mode .. " (gravity: " .. gx .. ", " .. gy .. ")")
 
     instance.physicsWorld:addCollisionClass("Player")
     instance.physicsWorld:addCollisionClass("PlayerDodging")
@@ -261,11 +277,42 @@ function world:addEntity(entity)
         )
         entity.collider:setFixedRotation(true)
         entity.collider:setCollisionClass("Player")
+
+        -- Platformer grounded detection using PreSolve (called every frame during contact)
+        entity.collider:setPreSolve(function(collider_1, collider_2, contact)
+            if entity.game_mode == "platformer" then
+                local nx, ny = contact:getNormal()
+
+                -- Check both normal directions (collision order is not guaranteed)
+                -- If normal is mostly vertical (player on top or bottom of object)
+                if math.abs(ny) > 0.7 then
+                    local _, vy = entity.collider:getLinearVelocity()
+
+                    -- Player is on ground if:
+                    -- 1. Normal points up (ny < 0) OR
+                    -- 2. Normal points down (ny > 0) AND player is falling (vy > 0)
+                    if ny < 0 or (ny > 0 and vy >= 0) then
+                        entity.is_grounded = true
+                        entity.can_jump = true
+                        entity.is_jumping = false
+                    end
+                end
+            end
+        end)
     end
 end
 
 function world:moveEntity(entity, vx, vy, dt)
-    if entity.collider then entity.collider:setLinearVelocity(vx, vy) end
+    if not entity.collider then return end
+
+    -- In platformer mode, only set horizontal velocity (gravity handles vertical)
+    if entity.game_mode == "platformer" then
+        local current_vx, current_vy = entity.collider:getLinearVelocity()
+        entity.collider:setLinearVelocity(vx, current_vy)
+    else
+        -- Topdown mode: set both velocities
+        entity.collider:setLinearVelocity(vx, vy)
+    end
 end
 
 function world:loadEnemies()
@@ -537,23 +584,22 @@ function world:getInteractableNPC(player_x, player_y)
     return nil
 end
 
-
 function world:loadHealingPoints()
     local healing_point_class = require "entities.healing_point"
-    
+
     if self.map.layers["HealingPoints"] then
         for _, obj in ipairs(self.map.layers["HealingPoints"].objects) do
             if obj.properties.type == "healing_point" or obj.name == "healing_point" then
                 local center_x = obj.x + obj.width / 2
                 local center_y = obj.y + obj.height / 2
-                
+
                 local heal_amount = obj.properties.heal_amount or 50
                 local radius = obj.properties.radius or math.max(obj.width, obj.height) / 2
                 local cooldown = obj.properties.cooldown or 5.0
-                
+
                 local hp = healing_point_class:new(center_x, center_y, heal_amount, radius)
                 hp.cooldown_max = cooldown
-                
+
                 table.insert(self.healing_points, hp)
             end
         end

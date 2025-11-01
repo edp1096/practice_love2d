@@ -58,18 +58,30 @@ function animation.update(player, dt, cam, dialogue_open)
         -- Use aim direction from input system (gamepad right stick or mouse)
         local raw_angle = input:getAimDirection(player.x, player.y, cam)
 
-        if raw_angle > -math.pi / 4 and raw_angle <= math.pi / 4 then
-            player.direction = "right"
-            player.facing_angle = 0
-        elseif raw_angle > math.pi / 4 and raw_angle <= 3 * math.pi / 4 then
-            player.direction = "down"
-            player.facing_angle = math.pi / 2
-        elseif raw_angle > 3 * math.pi / 4 or raw_angle <= -3 * math.pi / 4 then
-            player.direction = "left"
-            player.facing_angle = math.pi
+        -- Platformer mode: only horizontal aiming
+        if player.game_mode == "platformer" then
+            if raw_angle > -math.pi / 2 and raw_angle <= math.pi / 2 then
+                player.direction = "right"
+                player.facing_angle = 0
+            else
+                player.direction = "left"
+                player.facing_angle = math.pi
+            end
         else
-            player.direction = "up"
-            player.facing_angle = -math.pi / 2
+            -- Topdown mode: 4-directional aiming
+            if raw_angle > -math.pi / 4 and raw_angle <= math.pi / 4 then
+                player.direction = "right"
+                player.facing_angle = 0
+            elseif raw_angle > math.pi / 4 and raw_angle <= 3 * math.pi / 4 then
+                player.direction = "down"
+                player.facing_angle = math.pi / 2
+            elseif raw_angle > 3 * math.pi / 4 or raw_angle <= -3 * math.pi / 4 then
+                player.direction = "left"
+                player.facing_angle = math.pi
+            else
+                player.direction = "up"
+                player.facing_angle = -math.pi / 2
+            end
         end
     end
 
@@ -104,19 +116,40 @@ function animation.update(player, dt, cam, dialogue_open)
     if player.state ~= "attacking" and not player.parry_active and not player.dodge_active and not debug:IsHandMarkingActive() then
         local move_direction = nil
 
-        if movement_input then
-            vx = move_x * player.speed
-            vy = move_y * player.speed
-            is_moving = true
+        -- Game mode specific movement
+        if player.game_mode == "platformer" then
+            -- Platformer mode: horizontal movement only, jump handled separately
+            if movement_input then
+                vx = move_x * player.speed
+                vy = 0 -- Gravity handles vertical movement
+                is_moving = math.abs(move_x) > 0.01
 
-            -- Determine direction from movement vector
-            local abs_x = math.abs(move_x)
-            local abs_y = math.abs(move_y)
+                -- Only left/right direction
+                if math.abs(move_x) > 0.01 then
+                    move_direction = move_x > 0 and "right" or "left"
+                end
+            end
 
-            if abs_x > abs_y then
-                move_direction = move_x > 0 and "right" or "left"
-            else
-                move_direction = move_y > 0 and "down" or "up"
+            -- Keep current direction if not moving horizontally
+            if not move_direction then
+                move_direction = player.direction
+            end
+        else
+            -- Topdown mode: 8-directional movement
+            if movement_input then
+                vx = move_x * player.speed
+                vy = move_y * player.speed
+                is_moving = true
+
+                -- Determine direction from movement vector
+                local abs_x = math.abs(move_x)
+                local abs_y = math.abs(move_y)
+
+                if abs_x > abs_y then
+                    move_direction = move_x > 0 and "right" or "left"
+                else
+                    move_direction = move_y > 0 and "down" or "up"
+                end
             end
         end
 

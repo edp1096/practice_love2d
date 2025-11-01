@@ -1,0 +1,254 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+This is a LÖVE2D game project (version 11.5) written in Lua. The game is a 2D action RPG with combat mechanics including attacking, parrying, and dodging. It supports both topdown and platformer game modes, with cross-platform support for desktop (Windows, Linux, macOS) and mobile (Android, iOS).
+
+## Running the Game
+
+### Desktop Development
+- Run the game: `love .` (from the project root directory)
+- The game will automatically create a `config.ini` file on first run
+- Press F11 to toggle fullscreen
+- Press F12 to toggle debug mode
+
+### Platform Detection
+The game automatically detects the platform via `love.system.getOS()` and adjusts behavior accordingly:
+- Desktop: Uses keyboard/mouse and physical gamepad
+- Mobile (Android/iOS): Enables virtual gamepad overlay, uses touch input
+
+## Core Architecture
+
+### Entry Points and Configuration
+- **main.lua**: Game entry point with LÖVE callbacks and error handler
+- **conf.lua**: LÖVE configuration file that reads from config.ini (desktop) or mobile_config.lua (mobile)
+- **GameConfig**: Global configuration table defined in conf.lua
+
+### Scene Management System
+The game uses a simple scene system via `systems/scene_control.lua`:
+- **switch(scene, ...)**: Completely switch to a new scene (calls exit/enter)
+- **push(scene, ...)**: Push a scene on top (like pause menu, keeps previous scene)
+- **pop()**: Return to previous scene (calls resume)
+
+Main scenes:
+- `scenes/menu.lua`: Main menu
+- `scenes/play.lua`: Main gameplay scene (loads map, player, enemies, NPCs)
+- `scenes/pause.lua`: Pause menu
+- `scenes/settings.lua`: Settings/options menu
+- `scenes/saveslot.lua`: Save slot selection
+- `scenes/gameover.lua`: Game over/game clear screen
+
+### Entity-Component Architecture
+
+#### Player Entity (entities/player/)
+The player is split into specialized modules:
+- **init.lua**: Main coordinator that delegates to subsystems
+- **animation.lua**: Animation state machine and sprite handling
+- **combat.lua**: Health, damage, parry, dodge, invincibility mechanics
+- **render.lua**: Drawing logic
+- **sound.lua**: Player sound effects
+
+#### Enemy Entity (entities/enemy/)
+Enemies follow a similar modular pattern:
+- **init.lua**: Main enemy coordinator
+- **ai.lua**: AI state machine (idle, patrol, chase, attack, stunned, dead)
+- **render.lua**: Drawing and health bars
+- **sound.lua**: Enemy sound effects
+- **types/**: Enemy type definitions (slime.lua, etc.)
+
+#### Weapon Entity (entities/weapon/)
+- **init.lua**: Main weapon coordinator
+- **combat.lua**: Hit detection and damage dealing
+- **render.lua**: Weapon drawing and swing animations
+- **config/**: Configuration files for hand anchors, handle anchors, swing configs
+- **types/**: Weapon definitions (sword.lua, etc.)
+
+### Systems
+
+#### World System (systems/world.lua)
+Central hub for physics and game world:
+- Uses **Windfield** (Box2D wrapper) for physics
+- Manages collision classes: Player, PlayerDodging, Wall, Portals, Enemy, Item
+- Loads and manages map layers from Tiled maps (.tmx files)
+- Manages entity collections: enemies, NPCs, save points, healing points
+- Handles Y-sorted rendering for proper depth
+- Loads map objects: walls, transitions/portals, enemies, NPCs, save points, healing points
+- Supports two game modes: "topdown" (no gravity) and "platformer" (with gravity)
+
+#### Input System (systems/input/)
+Unified input system that abstracts different input sources:
+- **input_coordinator.lua**: Coordinates between multiple input sources
+- **sources/**: Individual input source handlers
+  - **keyboard_input.lua**: Keyboard handling
+  - **mouse_input.lua**: Mouse input for aiming
+  - **physical_gamepad_input.lua**: Physical controller support
+  - **virtual_gamepad_input.lua**: Touch-based virtual buttons for mobile
+- **virtual_gamepad.lua**: On-screen gamepad UI for mobile
+- Configuration: `data/input_config.lua` defines all input mappings
+
+Key input features:
+- Multi-source input (keyboard, mouse, gamepad, virtual gamepad)
+- Action-based mapping system (wasPressed, isDown)
+- Analog stick aiming with deadzone support
+- Vibration/haptic feedback
+- Platform-specific input prompts
+
+#### Camera System (systems/camera.lua)
+- Camera shake effects
+- Slow-motion time scaling for dramatic effects (used during parries)
+- Uses **hump.camera** library for camera management
+
+#### Sound System (systems/sound.lua)
+- BGM (background music) and SFX (sound effects) management
+- Separate volume controls for master, BGM, and SFX
+- Lazy loading of sound assets
+- Memory monitoring to prevent leaks
+- Configuration in `data/sounds.lua`
+
+#### Effects System (systems/effects.lua)
+- Particle effects for hits, deaths, etc.
+- Manages transient visual effects
+
+#### Dialogue System (systems/dialogue.lua)
+- Uses **Talkies** library for NPC conversations
+- Multi-message support
+
+#### HUD System (systems/hud.lua)
+- Health bars
+- Cooldown indicators
+- Debug information display
+- Inventory UI
+- Parry success feedback
+- Slow-motion vignette effect
+
+#### Save/Load System
+- **systems/save.lua**: Save game state to slots
+- **systems/load.lua**: Load game state from slots
+- Saves: player HP, position, inventory, map location
+- Multiple save slots supported
+
+#### Inventory System (systems/inventory.lua)
+- Slot-based inventory with quick-select (1-5 keys)
+- Item types defined in `entities/item/types/`
+- Items can be used from inventory (Q key / L1 button)
+- Cycle through items (Tab / R1 button)
+
+#### Game Mode System (systems/game_mode.lua)
+- Supports switching between "topdown" and "platformer" modes
+- Reads game_mode from Tiled map properties
+- Controls gravity settings for physics world
+
+#### Parallax System (systems/parallax.lua)
+- Parallax scrolling backgrounds
+- Reads configuration from Tiled map properties
+
+### Libraries and Dependencies (vendor/)
+- **STI** (Simple Tiled Implementation): Tiled map loader (.tmx files)
+- **Windfield**: Box2D physics wrapper
+- **anim8**: Sprite animation library
+- **hump**: Utility collection (camera, gamestate, timer, vector)
+- **Talkies**: Dialogue/text box system
+
+### Map Files
+Maps are created in **Tiled Map Editor** (.tmx format) and converted to Lua (.lua format):
+- Location: `assets/maps/level1/`
+- Layers used:
+  - **Ground**: Bottom terrain layer
+  - **Trees**: Top decoration layer (drawn after entities)
+  - **Walls**: Collision objects (rectangles, polygons, polylines, ellipses)
+  - **Portals**: Transition zones (type: "portal" or "gameclear")
+  - **SavePoints**: Save point locations
+  - **Enemies**: Enemy spawn points with properties (type, patrol_points)
+  - **NPCs**: NPC locations with properties (type, id)
+  - **HealingPoints**: Healing areas with properties (heal_amount, radius, cooldown)
+
+Map properties:
+- **game_mode**: "topdown" or "platformer"
+- Parallax properties for background layers
+
+### Configuration Files
+- **config.ini**: Desktop window and sound settings (auto-generated)
+- **data/input_config.lua**: All input mappings and controller settings
+- **data/sounds.lua**: Sound asset definitions
+- **locker.lua**: Process locking for single instance (Lua 5.1 only, desktop)
+
+### Mobile Support
+- Virtual gamepad automatically enabled on Android/iOS
+- Touch input handling in main.lua (touchpressed, touchreleased, touchmoved)
+- Separate mobile_config.lua for mobile-specific settings
+- Debug button in top-right corner on mobile for F12 toggle
+
+### Combat Mechanics
+- **Attack**: Primary weapon swing (mouse1 / A button / virtual A)
+- **Parry**: Block and counter enemy attacks (mouse2 / X button / virtual X)
+  - Perfect parry: Press at exact moment of enemy attack (triggers slow-motion)
+  - Normal parry: Active parry window
+- **Dodge**: Invincibility frames and faster movement (Space / B button / virtual B)
+  - Changes collision class to PlayerDodging (ignores Enemy collisions)
+  - Cooldown system prevents spam
+- **Jump**: Platformer mode only (Space / A button)
+
+Combat feedback:
+- Camera shake on hits
+- Slow-motion on parries
+- Vibration/haptic feedback
+- Hit particles and visual effects
+- Enemy stun on successful parry
+
+### Debug System (systems/debug.lua)
+Toggle with F12, provides:
+- FPS counter
+- Debug visualization (colliders, hitboxes, patrol paths)
+- Player/enemy state information
+- Memory usage
+- Helpful command overlay
+
+### Constants (systems/constants.lua)
+Centralized game constants for:
+- Vibration patterns
+- Input timings
+- Game balance values
+
+## Development Workflow
+
+### Adding a New Enemy Type
+1. Create `entities/enemy/types/your_enemy.lua` with stats and sprite info
+2. Add enemy object to Tiled map in "Enemies" layer
+3. Set object property "type" to your enemy name
+4. Optionally add patrol_points property for patrol behavior
+
+### Creating a New Map
+1. Create .tmx file in Tiled with required layers (Ground, Trees, Walls, Portals, Enemies, NPCs)
+2. Export to Lua format (.lua file)
+3. Set map properties: game_mode ("topdown" or "platformer")
+4. Add portal objects with properties: target_map, spawn_x, spawn_y
+
+### Adding Input Actions
+1. Define action in `data/input_config.lua` under appropriate category
+2. Access via `input:wasPressed("action_name")` or `input:isDown("action_name")`
+3. Add to all relevant sources (keyboard, mouse, gamepad)
+
+### Adding Sound Effects
+1. Place audio file in `assets/sounds/`
+2. Define in `data/sounds.lua` under appropriate category (ui, player, enemy)
+3. Play via `sound:playSFX("category", "name")`
+
+## Code Style Notes
+- Lua 5.1 compatible (LÖVE default)
+- Use `local` for all variables and functions unless explicitly global
+- Module pattern: return a table from each file
+- Object-oriented via metatables (`setmetatable({}, class)`)
+- Entities use `entity:new()` factory pattern
+- All file paths use forward slashes (cross-platform)
+- Physics coordinates match sprite coordinates (center-based for most entities)
+
+## Common Pitfalls
+- **Collision class changes**: Player changes between "Player" and "PlayerDodging" during dodge - ensure dodge collision ignores are set correctly
+- **Y-sorting**: Entities are depth-sorted by Y position in world:drawEntitiesYSorted()
+- **Time scaling**: Camera system can slow down time (dt scaling) - use camera_sys:get_scaled_dt(dt)
+- **Map coordinates**: Tiled uses top-left origin for objects; sprites often use center origin
+- **Mobile input**: Always check if virtual_gamepad is enabled before processing mouse events
+- **Save slots**: Current save slot is tracked in play scene, passed to save system
+- **Death checks**: Player death must be checked in multiple places in update loop due to combat timing

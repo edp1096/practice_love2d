@@ -15,6 +15,15 @@ function player:new(sprite_sheet, x, y)
     instance.y = y or 200
     instance.speed = 300
 
+    -- Game mode (will be set by play scene)
+    instance.game_mode = "topdown"
+
+    -- Platformer specific variables
+    instance.jump_power = -600
+    instance.is_jumping = false
+    instance.is_grounded = true  -- Assume starting on ground
+    instance.can_jump = true
+
     animation.initialize(instance, sprite_sheet)
 
     combat.initialize(instance)
@@ -39,6 +48,26 @@ function player:attack() return combat.attack(self) end
 function player:startParry() return combat.startParry(self) end
 
 function player:startDodge() return combat.startDodge(self) end
+
+function player:jump()
+    print("DEBUG player:jump() called:")
+    print("  game_mode = " .. tostring(self.game_mode))
+    print("  can_jump = " .. tostring(self.can_jump))
+    print("  is_grounded = " .. tostring(self.is_grounded))
+    print("  collider = " .. tostring(self.collider))
+
+    if self.game_mode == "platformer" and self.can_jump and self.is_grounded and self.collider then
+        local vx, vy = self.collider:getLinearVelocity()
+        print("  Current velocity: vx=" .. vx .. ", vy=" .. vy)
+        self.collider:setLinearVelocity(vx, self.jump_power)
+        self.is_jumping = true
+        self.can_jump = false
+        print("  JUMP EXECUTED!")
+        return true
+    end
+    print("  JUMP FAILED - conditions not met")
+    return false
+end
 
 function player:checkParry(damage) return combat.checkParry(self, damage) end
 

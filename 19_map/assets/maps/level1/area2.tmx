@@ -112,20 +112,12 @@
     <property name="type" value="portal"/>
    </properties>
   </object>
-  <object id="32" x="1344" y="1856" width="192" height="64">
-   <properties>
-    <property name="spawn_x" type="float" value="400"/>
-    <property name="spawn_y" type="float" value="400"/>
-    <property name="target_map" value="assets/maps/level1/area1.lua"/>
-    <property name="type" value="gameclear"/>
-   </properties>
-  </object>
   <object id="33" x="1856" y="960" width="64" height="320">
    <properties>
-    <property name="spawn_x" type="float" value="400"/>
-    <property name="spawn_y" type="float" value="400"/>
-    <property name="target_map" value="assets/maps/level1/area1.lua"/>
-    <property name="type" value="gameclear"/>
+    <property name="spawn_x" type="float" value="200"/>
+    <property name="spawn_y" type="float" value="1500"/>
+    <property name="target_map" value="assets/maps/level1/area3.lua"/>
+    <property name="type" value="portal"/>
    </properties>
   </object>
  </objectgroup>
