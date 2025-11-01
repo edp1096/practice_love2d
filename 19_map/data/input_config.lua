@@ -1,8 +1,10 @@
 -- data/input_config.lua
 -- Centralized input mapping configuration for easy customization
+-- Supports mode-specific input mappings for topdown and platformer modes
 
 return {
     -- Movement controls (analog or digital)
+    -- Mode-specific overrides defined below
     movement = {
         move_left = {
             keyboard = { "a", "left" },
@@ -48,7 +50,7 @@ return {
             gamepad = "b" -- Circle button (DualSense)
         },
         jump = {
-            keyboard = { "space" }, -- Space for jump (platformer mode)
+            keyboard = { "space" }, -- Space for jump (platformer mode) or dodge (topdown mode)
             gamepad = "a"           -- Cross button for jump in platformer mode
         },
         interact = {
@@ -154,5 +156,24 @@ return {
         -- Mouse
         mouse_1 = "[LMB]",
         mouse_2 = "[RMB]"
+    },
+
+    -- Game mode specific input overrides
+    mode_overrides = {
+        -- Topdown mode uses default settings
+        topdown = {
+            -- W/A/S/D for 4-directional movement
+            -- Space = dodge (via jump action in play.lua)
+            movement_enabled = { up = true, down = true, left = true, right = true }
+        },
+
+        -- Platformer mode overrides
+        platformer = {
+            -- W/Up = jump, A/D for horizontal movement, S/Down disabled
+            movement_enabled = { up = false, down = false, left = true, right = true },
+
+            -- W/Up keys are reassigned to jump in platformer mode
+            jump_keys = { "w", "up", "space" }  -- W, Up arrow, and Space work as jump
+        }
     }
 }

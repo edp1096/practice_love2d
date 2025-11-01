@@ -206,6 +206,11 @@ function combat.startDodge(player)
     -- Get dodge direction from input system (supports gamepad)
     local dir_x, dir_y = input:getMovement()
 
+    -- Platformer mode: only horizontal dodge
+    if player.game_mode == "platformer" then
+        dir_y = 0
+    end
+
     if dir_x == 0 and dir_y == 0 then
         -- Use current facing direction if no input
         if player.direction == "right" then
@@ -225,10 +230,15 @@ function combat.startDodge(player)
         dir_y = dir_y / length
     end
 
-    if math.abs(dir_x) > math.abs(dir_y) then
-        player.direction = dir_x > 0 and "right" or "left"
+    -- Platformer mode: always horizontal direction
+    if player.game_mode == "platformer" then
+        player.direction = dir_x >= 0 and "right" or "left"
     else
-        player.direction = dir_y > 0 and "down" or "up"
+        if math.abs(dir_x) > math.abs(dir_y) then
+            player.direction = dir_x > 0 and "right" or "left"
+        else
+            player.direction = dir_y > 0 and "down" or "up"
+        end
     end
 
     player.dodge_active = true

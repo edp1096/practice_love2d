@@ -24,27 +24,32 @@ function ai.update(enemy, dt, player_x, player_y)
     -- Calculate movement
     local vx, vy = 0, 0
     if (enemy.state == "patrol" or enemy.state == "chase") and enemy.target_x and enemy.target_y then
+        -- Check if we're in platformer mode
+        local is_platformer = enemy.world and enemy.world.game_mode == "platformer"
+
         local dx = enemy.target_x - enemy.x
-        local dy = enemy.target_y - enemy.y
+        local dy = is_platformer and 0 or (enemy.target_y - enemy.y) -- Ignore Y in platformer mode
         local distance = math.sqrt(dx * dx + dy * dy)
 
         if distance > 5 then
             vx = (dx / distance) * enemy.speed
-            vy = (dy / distance) * enemy.speed
+            vy = is_platformer and 0 or ((dy / distance) * enemy.speed) -- No Y movement in platformer
 
             -- Update direction based on movement vector
             if enemy.is_humanoid then
-                -- 4-direction movement for humanoid
+                -- 4-direction movement for humanoid (topdown) or 2-direction (platformer)
                 local abs_dx = math.abs(dx)
                 local abs_dy = math.abs(dy)
 
-                if abs_dx > abs_dy then
+                if is_platformer or abs_dx > abs_dy then
+                    -- In platformer mode, always use left/right
                     if dx > 0 then
                         enemy.direction = "right"
                     else
                         enemy.direction = "left"
                     end
                 else
+                    -- In topdown mode, can use up/down
                     if dy > 0 then
                         enemy.direction = "down"
                     else
@@ -71,7 +76,16 @@ function ai.updateIdle(enemy, dt, player_x, player_y)
     enemy.anim = enemy.animations["idle_" .. enemy.direction]
 
     -- Check for player detection
-    local distance = enemy:getDistanceToPoint(player_x, player_y)
+    local is_platformer = enemy.world and enemy.world.game_mode == "platformer"
+    local distance
+    if is_platformer then
+        -- Platformer: only horizontal distance
+        local dx = player_x - (enemy.x + enemy.collider_offset_x)
+        distance = math.abs(dx)
+    else
+        distance = enemy:getDistanceToPoint(player_x, player_y)
+    end
+
     if distance < enemy.detection_range then
         local collider_center_x = enemy.x + enemy.collider_offset_x
         local collider_center_y = enemy.y + enemy.collider_offset_y
@@ -97,7 +111,16 @@ function ai.updatePatrol(enemy, dt, player_x, player_y)
     enemy.anim = enemy.animations["walk_" .. enemy.direction]
 
     -- Check for player detection
-    local distance = enemy:getDistanceToPoint(player_x, player_y)
+    local is_platformer = enemy.world and enemy.world.game_mode == "platformer"
+    local distance
+    if is_platformer then
+        -- Platformer: only horizontal distance
+        local dx = player_x - (enemy.x + enemy.collider_offset_x)
+        distance = math.abs(dx)
+    else
+        distance = enemy:getDistanceToPoint(player_x, player_y)
+    end
+
     if distance < enemy.detection_range then
         local collider_center_x = enemy.x + enemy.collider_offset_x
         local collider_center_y = enemy.y + enemy.collider_offset_y
@@ -112,9 +135,10 @@ function ai.updatePatrol(enemy, dt, player_x, player_y)
 
     -- Follow patrol points
     if #enemy.patrol_points > 0 then
+        local is_platformer = enemy.world and enemy.world.game_mode == "platformer"
         local patrol_point = enemy.patrol_points[enemy.current_patrol_index]
         enemy.target_x = patrol_point.x
-        enemy.target_y = patrol_point.y
+        enemy.target_y = is_platformer and enemy.y or patrol_point.y -- Keep current Y in platformer mode
 
         local dist_to_point = enemy:getDistanceToPoint(enemy.target_x, enemy.target_y)
         if dist_to_point < 10 then
@@ -130,7 +154,17 @@ end
 function ai.updateChase(enemy, dt, player_x, player_y)
     enemy.anim = enemy.animations["walk_" .. enemy.direction]
 
-    local distance = enemy:getDistanceToPoint(player_x, player_y)
+    -- Check if platformer mode
+    local is_platformer = enemy.world and enemy.world.game_mode == "platformer"
+
+    -- In platformer mode, only check horizontal distance
+    local distance
+    if is_platformer then
+        local dx = player_x - (enemy.x + enemy.collider_offset_x)
+        distance = math.abs(dx)
+    else
+        distance = enemy:getDistanceToPoint(player_x, player_y)
+    end
 
     -- Calculate edge-to-edge distance for attack range check
     local effective_attack_range = enemy.attack_range
@@ -143,11 +177,14 @@ function ai.updateChase(enemy, dt, player_x, player_y)
 
         -- Calculate edge-to-edge distance by subtracting collider radii
         local edge_distance = distance
-        if abs_dy > abs_dx then
-            -- Vertical: subtract height radii (enemy: 40, player: ~50)
+        if is_platformer then
+            -- Platformer: horizontal only, subtract width radii
+            edge_distance = distance - 45
+        elseif abs_dy > abs_dx then
+            -- Topdown vertical: subtract height radii (enemy: 40, player: ~50)
             edge_distance = distance - 90
         else
-            -- Horizontal: subtract width radii (enemy: 20, player: ~25)
+            -- Topdown horizontal: subtract width radii (enemy: 20, player: ~25)
             edge_distance = distance - 45
         end
 
@@ -157,8 +194,14 @@ function ai.updateChase(enemy, dt, player_x, player_y)
             return
         end
     else
-        -- Slime uses simple center-to-center distance
-        if distance < effective_attack_range then
+        -- Slime uses simple distance check
+        -- In platformer, subtract collider widths
+        local attack_distance = distance
+        if is_platformer then
+            attack_distance = distance - 40  -- Subtract approximate widths (slime + player)
+        end
+
+        if attack_distance < effective_attack_range then
             ai.setState(enemy, "attack")
             return
         end
@@ -179,8 +222,9 @@ function ai.updateChase(enemy, dt, player_x, player_y)
     end
 
     -- Chase player
+    local is_platformer = enemy.world and enemy.world.game_mode == "platformer"
     enemy.target_x = player_x
-    enemy.target_y = player_y
+    enemy.target_y = is_platformer and enemy.y or player_y -- Keep current Y in platformer mode
 end
 
 function ai.updateAttack(enemy, dt, player_x, player_y)

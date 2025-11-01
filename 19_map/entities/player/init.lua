@@ -23,6 +23,7 @@ function player:new(sprite_sheet, x, y)
     instance.is_jumping = false
     instance.is_grounded = true  -- Assume starting on ground
     instance.can_jump = true
+    instance.last_input_x = 0  -- Store last horizontal input for jump
 
     animation.initialize(instance, sprite_sheet)
 
@@ -57,9 +58,14 @@ function player:jump()
     print("  collider = " .. tostring(self.collider))
 
     if self.game_mode == "platformer" and self.can_jump and self.is_grounded and self.collider then
-        local vx, vy = self.collider:getLinearVelocity()
-        print("  Current velocity: vx=" .. vx .. ", vy=" .. vy)
-        self.collider:setLinearVelocity(vx, self.jump_power)
+        -- Use input direction instead of current velocity for horizontal component
+        -- This allows jumping even when pushing against a wall
+        local input_vx = (self.last_input_x or 0) * self.speed
+
+        print("  Current input: last_input_x=" .. tostring(self.last_input_x))
+        print("  Calculated vx=" .. input_vx)
+
+        self.collider:setLinearVelocity(input_vx, self.jump_power)
         self.is_jumping = true
         self.can_jump = false
         print("  JUMP EXECUTED!")

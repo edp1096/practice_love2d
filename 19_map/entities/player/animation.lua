@@ -111,6 +111,12 @@ function animation.update(player, dt, cam, dialogue_open)
 
     -- Check for movement input (keyboard or gamepad)
     local move_x, move_y = input:getMovement()
+
+    -- In platformer mode, ignore vertical input (W/S keys used for jump/crouch)
+    if player.game_mode == "platformer" then
+        move_y = 0
+    end
+
     movement_input = (math.abs(move_x) > 0.01 or math.abs(move_y) > 0.01)
 
     if player.state ~= "attacking" and not player.parry_active and not player.dodge_active and not debug:IsHandMarkingActive() then
@@ -124,10 +130,15 @@ function animation.update(player, dt, cam, dialogue_open)
                 vy = 0 -- Gravity handles vertical movement
                 is_moving = math.abs(move_x) > 0.01
 
+                -- Store input direction for jump
+                player.last_input_x = move_x
+
                 -- Only left/right direction
                 if math.abs(move_x) > 0.01 then
                     move_direction = move_x > 0 and "right" or "left"
                 end
+            else
+                player.last_input_x = 0
             end
 
             -- Keep current direction if not moving horizontally

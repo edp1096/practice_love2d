@@ -212,7 +212,17 @@ function play:update(dt)
             local enemy_center_y = enemy.y + enemy.collider_offset_y
             local dx = enemy_center_x - self.player.x
             local dy = enemy_center_y - self.player.y
-            local distance = math.sqrt(dx * dx + dy * dy)
+
+            -- Check if platformer mode
+            local is_platformer = self.world.game_mode == "platformer"
+
+            -- In platformer mode, only use horizontal distance
+            local distance
+            if is_platformer then
+                distance = math.abs(dx)
+            else
+                distance = math.sqrt(dx * dx + dy * dy)
+            end
 
             local in_attack_range = false
 
@@ -222,18 +232,27 @@ function play:update(dt)
                 local abs_dy = math.abs(dy)
 
                 local edge_distance = distance
-                if abs_dy > abs_dx then
-                    -- Vertical: subtract height radii (enemy: 40, player: 50)
+                if is_platformer then
+                    -- Platformer: horizontal only, subtract width radii
+                    edge_distance = distance - 45
+                elseif abs_dy > abs_dx then
+                    -- Topdown vertical: subtract height radii (enemy: 40, player: 50)
                     edge_distance = distance - 90
                 else
-                    -- Horizontal: subtract width radii (enemy: 20, player: 25)
+                    -- Topdown horizontal: subtract width radii (enemy: 20, player: 25)
                     edge_distance = distance - 45
                 end
 
                 in_attack_range = (edge_distance < (enemy.attack_range or 60))
             else
-                -- Slime uses simple center-to-center distance
-                in_attack_range = (distance < (enemy.attack_range or 60))
+                -- Slime uses simple distance check
+                local attack_distance = distance
+                if is_platformer then
+                    -- Platformer: subtract collider widths (slime 16 + player 25 = ~40)
+                    attack_distance = distance - 40
+                end
+
+                in_attack_range = (attack_distance < (enemy.attack_range or 60))
             end
 
             if in_attack_range then
@@ -276,6 +295,46 @@ function play:update(dt)
 
     self.player.x = self.player.collider:getX()
     self.player.y = self.player.collider:getY()
+
+    -- Additional ground check for platformer using raycasts
+    -- This helps detect ground even at platform edges
+    if self.player.game_mode == "platformer" then
+        local ground_detected = false
+        local px, py = self.player.x, self.player.y
+        local half_width = self.player.width / 2
+        local half_height = self.player.height / 2
+        local ray_length = 5  -- Check 5 pixels below player
+
+        -- Cast 3 rays: left edge, center, right edge
+        local ray_points = {
+            { x = px - half_width + 5, y = py + half_height },   -- left
+            { x = px, y = py + half_height },                     -- center
+            { x = px + half_width - 5, y = py + half_height }    -- right
+        }
+
+        for _, point in ipairs(ray_points) do
+            local items = self.world.physicsWorld:queryLine(
+                point.x, point.y,
+                point.x, point.y + ray_length,
+                {"Wall"}  -- Only query Wall collision class
+            )
+
+            -- If we hit a wall, check velocity
+            if #items > 0 then
+                local _, vy = self.player.collider:getLinearVelocity()
+                if vy >= -50 then  -- Small threshold for rounding errors
+                    ground_detected = true
+                    break
+                end
+            end
+        end
+
+        if ground_detected then
+            self.player.is_grounded = true
+            self.player.can_jump = true
+            self.player.is_jumping = false
+        end
+    end
 
     if self.player.weapon.is_attacking then
         local hits = self.world:checkWeaponCollisions(self.player.weapon)
@@ -447,6 +506,17 @@ function play:resize(w, h)
     self.cam:zoomTo(cam_scale)
 end
 
+-- Helper function to check if a key is a jump key in current mode
+function play:isJumpKey(key)
+    if self.player.game_mode == "platformer" then
+        -- In platformer mode, W, Up arrow, and Space are jump keys
+        return key == "w" or key == "up" or key == "space"
+    else
+        -- In topdown mode, only Space is used (for dodge)
+        return false
+    end
+end
+
 function play:keypressed(key)
     -- Toggle debug with F12
 
@@ -478,17 +548,19 @@ function play:keypressed(key)
         -- Dodge (lshift) - works in both modes
         print("DEBUG: Dodge key detected")
         self.player:startDodge()
-    elseif input:wasPressed("jump", "keyboard", key) then
-        print("DEBUG: Jump key detected! game_mode=" .. tostring(self.player.game_mode))
-        -- Jump/Dodge - mode dependent
+    elseif input:wasPressed("jump", "keyboard", key) or self:isJumpKey(key) then
+        print("DEBUG: Jump/Action key detected! game_mode=" .. tostring(self.player.game_mode))
+        -- Mode-dependent behavior
         if self.player.game_mode == "platformer" then
-            -- Platformer: space = jump
+            -- Platformer: space/w/up = jump
             print("DEBUG: Calling player:jump()")
             local jump_result = self.player:jump()
             print("DEBUG: Jump result = " .. tostring(jump_result))
         else
-            -- Topdown: space = dodge (for convenience)
-            self.player:startDodge()
+            -- Topdown: space = dodge (W/Up is for movement)
+            if key == "space" then
+                self.player:startDodge()
+            end
         end
     elseif input:wasPressed("use_item", "keyboard", key) then
         -- Use selected item from inventory

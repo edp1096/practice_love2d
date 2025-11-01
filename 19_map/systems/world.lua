@@ -152,6 +152,7 @@ function world:loadWalls()
         if wall then
             wall:setType("static")
             wall:setCollisionClass("Wall")
+            wall:setFriction(0.0)  -- No friction for smooth platformer movement
             table.insert(self.walls, wall)
             wall_count = wall_count + 1
         end
@@ -278,6 +279,9 @@ function world:addEntity(entity)
         entity.collider:setFixedRotation(true)
         entity.collider:setCollisionClass("Player")
 
+        -- Reduce friction for better platformer feel
+        entity.collider:setFriction(0.0)  -- No friction to prevent wall sliding issues
+
         -- Platformer grounded detection using PreSolve (called every frame during contact)
         entity.collider:setPreSolve(function(collider_1, collider_2, contact)
             if entity.game_mode == "platformer" then
@@ -308,7 +312,28 @@ function world:moveEntity(entity, vx, vy, dt)
     -- In platformer mode, only set horizontal velocity (gravity handles vertical)
     if entity.game_mode == "platformer" then
         local current_vx, current_vy = entity.collider:getLinearVelocity()
-        entity.collider:setLinearVelocity(vx, current_vy)
+
+        -- Dodge: direct velocity setting for responsive dodge movement (ignores gravity temporarily)
+        if entity.dodge_active then
+            entity.collider:setLinearVelocity(vx, current_vy)
+        -- Air control: use smoother velocity change when in air
+        elseif not entity.is_grounded then
+            -- Apply horizontal force instead of directly setting velocity for better air control
+            local target_vx = vx
+            local force_x = (target_vx - current_vx) * entity.collider:getMass() * 15 -- Air control multiplier
+            entity.collider:applyLinearImpulse(force_x * dt, 0)
+
+            -- Clamp horizontal velocity to prevent excessive speed
+            local new_vx, new_vy = entity.collider:getLinearVelocity()
+            local max_air_speed = entity.speed * 1.2  -- Allow slightly faster air movement
+            if math.abs(new_vx) > max_air_speed then
+                local sign = new_vx >= 0 and 1 or -1
+                entity.collider:setLinearVelocity(sign * max_air_speed, new_vy)
+            end
+        else
+            -- Ground control: direct velocity setting for responsive ground movement
+            entity.collider:setLinearVelocity(vx, current_vy)
+        end
     else
         -- Topdown mode: set both velocities
         entity.collider:setLinearVelocity(vx, vy)

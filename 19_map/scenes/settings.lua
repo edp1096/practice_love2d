@@ -101,6 +101,9 @@ function settings:enter(previous, ...)
     if not is_mobile then
         self.current_resolution_index = self:findCurrentResolution()
         self.current_monitor_index = GameConfig.monitor or 1
+    else
+        -- Set default monitor index for mobile (always 1)
+        self.current_monitor_index = 1
     end
 
     -- Volume presets (0%, 25%, 50%, 75%, 100%)
@@ -267,11 +270,11 @@ function settings:getOptionValue(index)
     local option = self.options[index]
 
     if option.name == "Resolution" then
-        return self.resolutions[self.current_resolution_index].name
+        return self.resolutions and self.resolutions[self.current_resolution_index] and self.resolutions[self.current_resolution_index].name or "N/A"
     elseif option.name == "Fullscreen" then
         return GameConfig.fullscreen and "On" or "Off"
     elseif option.name == "Monitor" then
-        return self.monitors[self.current_monitor_index].name
+        return self.monitors and self.monitors[self.current_monitor_index] and self.monitors[self.current_monitor_index].name or "N/A"
     elseif option.name == "Master Volume" then
         return string.format("%.0f%%", self.volume_levels[self.current_master_volume_index] * 100)
     elseif option.name == "BGM Volume" then
@@ -299,6 +302,8 @@ function settings:changeOption(direction)
     local option = self.options[self.selected]
 
     if option.name == "Resolution" then
+        if not self.resolutions or #self.resolutions == 0 then return end
+
         self.current_resolution_index = self.current_resolution_index + direction
         if self.current_resolution_index < 1 then
             self.current_resolution_index = #self.resolutions
@@ -351,6 +356,8 @@ function settings:changeOption(direction)
         -- Play navigate sound
         sound:playSFX("menu", "navigate")
     elseif option.name == "Monitor" then
+        if not self.monitors or #self.monitors == 0 then return end
+
         self.current_monitor_index = self.current_monitor_index + direction
         if self.current_monitor_index < 1 then
             self.current_monitor_index = #self.monitors

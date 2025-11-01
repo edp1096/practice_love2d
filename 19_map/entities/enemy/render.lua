@@ -54,9 +54,10 @@ function render.draw(enemy)
     local sprite_draw_x = collider_center_x + enemy.sprite_draw_offset_x + enemy.hit_shake_x
     local sprite_draw_y = collider_center_y + enemy.sprite_draw_offset_y + enemy.hit_shake_y
 
-    -- Shadow
+    -- Shadow (positioned at bottom of collider)
+    local shadow_y = collider_center_y + (enemy.collider_height / 2) - 2
     love.graphics.setColor(0, 0, 0, 0.4)
-    love.graphics.ellipse("fill", collider_center_x, collider_center_y + 30, 18, 8)
+    love.graphics.ellipse("fill", collider_center_x, shadow_y, 18, 8)
     love.graphics.setColor(1, 1, 1, 1)
 
     -- Draw weapon behind sprite for left/up directions (humanoid only)

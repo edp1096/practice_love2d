@@ -45,8 +45,14 @@ Main scenes:
 #### Player Entity (entities/player/)
 The player is split into specialized modules:
 - **init.lua**: Main coordinator that delegates to subsystems
+  - Jump logic: Uses last_input_x for horizontal velocity (enables wall jumps)
+  - Game mode tracking: player.game_mode set from world
+  - Platformer-specific: is_jumping, is_grounded, can_jump, jump_power
 - **animation.lua**: Animation state machine and sprite handling
+  - Mode-aware: Filters vertical input in platformer mode
+  - Stores last_input_x for jump direction
 - **combat.lua**: Health, damage, parry, dodge, invincibility mechanics
+  - Dodge: Horizontal-only in platformer, 8-directional in topdown
 - **render.lua**: Drawing logic
 - **sound.lua**: Player sound effects
 
@@ -54,9 +60,15 @@ The player is split into specialized modules:
 Enemies follow a similar modular pattern:
 - **init.lua**: Main enemy coordinator
 - **ai.lua**: AI state machine (idle, patrol, chase, attack, stunned, dead)
+  - Mode-aware: Uses horizontal-only distance in platformer mode
+  - Target position handling: Keeps current Y in platformer, tracks player Y in topdown
 - **render.lua**: Drawing and health bars
+  - Shadow positioned at collider bottom (dynamically calculated)
+  - Sprite offset adjustable per enemy type
 - **sound.lua**: Enemy sound effects
-- **types/**: Enemy type definitions (slime.lua, etc.)
+- **types/**: Enemy type definitions (slime.lua, humanoid.lua, etc.)
+  - Slime: 32x32 collider, sprite offset adjusted for proper alignment
+  - Humanoid: Variable collider sizes, weapon support
 
 #### Weapon Entity (entities/weapon/)
 - **init.lua**: Main weapon coordinator
@@ -77,8 +89,17 @@ Central hub for physics and game world:
 - Loads map objects: walls, transitions/portals, enemies, NPCs, save points, healing points
 - Supports two game modes: "topdown" (no gravity) and "platformer" (with gravity)
 
+Physics mode handling:
+- **Topdown mode**: No gravity (gx=0, gy=0), entities move freely in 2D
+- **Platformer mode**: Gravity enabled (gx=0, gy=1000), special movement logic:
+  - Ground detection via raycasts (3 rays: left, center, right) for stable edge detection
+  - Air control: impulse-based movement for smooth mid-air control
+  - Ground control: direct velocity setting for responsive ground movement
+  - Dodge: direct velocity override for responsive dodge movement
+  - Zero friction on player and walls for smooth platformer feel
+
 #### Input System (systems/input/)
-Unified input system that abstracts different input sources:
+Unified input system that abstracts different input sources with **game mode-specific input handling**:
 - **input_coordinator.lua**: Coordinates between multiple input sources
 - **sources/**: Individual input source handlers
   - **keyboard_input.lua**: Keyboard handling
@@ -86,7 +107,7 @@ Unified input system that abstracts different input sources:
   - **physical_gamepad_input.lua**: Physical controller support
   - **virtual_gamepad_input.lua**: Touch-based virtual buttons for mobile
 - **virtual_gamepad.lua**: On-screen gamepad UI for mobile
-- Configuration: `data/input_config.lua` defines all input mappings
+- Configuration: `data/input_config.lua` defines all input mappings with mode-specific overrides
 
 Key input features:
 - Multi-source input (keyboard, mouse, gamepad, virtual gamepad)
@@ -94,6 +115,12 @@ Key input features:
 - Analog stick aiming with deadzone support
 - Vibration/haptic feedback
 - Platform-specific input prompts
+- **Mode-specific input handling**: Different key behaviors for topdown vs platformer modes
+
+Input mode separation (data/input_config.lua):
+- **mode_overrides** section defines behavior per game mode
+- Topdown: W/A/S/D for 4-directional movement, Space for dodge
+- Platformer: W/Up/Space for jump, A/D for horizontal movement, S/Down disabled
 
 #### Camera System (systems/camera.lua)
 - Camera shake effects
@@ -185,10 +212,14 @@ Map properties:
 - **Parry**: Block and counter enemy attacks (mouse2 / X button / virtual X)
   - Perfect parry: Press at exact moment of enemy attack (triggers slow-motion)
   - Normal parry: Active parry window
-- **Dodge**: Invincibility frames and faster movement (Space / B button / virtual B)
+- **Dodge**: Invincibility frames and faster movement (LShift / B button / virtual B)
   - Changes collision class to PlayerDodging (ignores Enemy collisions)
   - Cooldown system prevents spam
-- **Jump**: Platformer mode only (Space / A button)
+  - Platformer: horizontal dodge only, works in air
+  - Topdown: 8-directional dodge
+- **Jump**: Platformer mode only (W / Up / Space keys, A button on gamepad)
+  - Uses input direction for horizontal velocity (wall-jumping support)
+  - Can jump from platform edges (raycast-based ground detection)
 
 Combat feedback:
 - Camera shake on hits
@@ -244,6 +275,59 @@ Centralized game constants for:
 - All file paths use forward slashes (cross-platform)
 - Physics coordinates match sprite coordinates (center-based for most entities)
 
+## Game Mode Differences (Topdown vs Platformer)
+
+### Movement and Physics
+**Topdown Mode**:
+- No gravity, free 2D movement
+- W/A/S/D for 4-directional movement
+- Space or LShift for dodge
+- Movement uses direct velocity setting
+
+**Platformer Mode**:
+- Gravity enabled (gy = 1000)
+- A/D for horizontal movement only
+- W/Up/Space for jump
+- LShift for horizontal dodge
+- Air control uses impulse-based physics
+- Ground detection via 3 raycasts (left, center, right)
+- Friction set to 0 on all entities and walls
+
+### Enemy AI Behavior
+**Topdown Mode**:
+- Distance calculation uses full 2D distance (Pythagorean theorem)
+- Enemies move in 8 directions toward player
+- Chase/attack ranges use center-to-center distance
+
+**Platformer Mode**:
+- Distance calculation uses **horizontal distance only** (math.abs(dx))
+- Enemies move left/right only (Y position maintained)
+- Target Y position set to enemy's current Y, not player Y
+- Chase/attack ranges subtract collider widths for edge-to-edge distance
+- Detection and attack ranges ignore vertical separation
+
+### Input Processing
+The game uses a mode-aware input system:
+1. **data/input_config.lua**: Defines `mode_overrides` for each game mode
+2. **scenes/play.lua**: `isJumpKey()` helper checks if a key is jump in current mode
+3. **entities/player/animation.lua**: Filters out vertical input in platformer mode
+4. **Key overlap handling**: W/Up keys work as jump in platformer, movement in topdown
+
+Implementation details:
+- Vertical input (move_y) is zeroed out in platformer mode before movement calculation
+- Jump keys (W/Up/Space) are checked separately from movement in play.lua:keypressed()
+- Mode check happens before processing to route input correctly
+
+### Combat Differences
+**Topdown**:
+- Dodge direction based on movement input or facing direction
+- Attack hit detection uses 2D distance
+
+**Platformer**:
+- Dodge direction horizontal only (Y component zeroed)
+- Attack hit detection uses horizontal distance only
+- Jump includes horizontal velocity from input (enables wall jumps)
+
 ## Common Pitfalls
 - **Collision class changes**: Player changes between "Player" and "PlayerDodging" during dodge - ensure dodge collision ignores are set correctly
 - **Y-sorting**: Entities are depth-sorted by Y position in world:drawEntitiesYSorted()
@@ -252,3 +336,7 @@ Centralized game constants for:
 - **Mobile input**: Always check if virtual_gamepad is enabled before processing mouse events
 - **Save slots**: Current save slot is tracked in play scene, passed to save system
 - **Death checks**: Player death must be checked in multiple places in update loop due to combat timing
+- **Mode-specific input**: Always check game_mode before processing input that differs between modes
+- **Distance calculations**: Use horizontal-only distance in platformer for AI detection/attacks
+- **Ground detection**: Platformer uses raycasts, not collision callbacks, for reliable edge detection
+- **Friction**: Set to 0 in platformer mode to prevent wall sliding and sticky collisions

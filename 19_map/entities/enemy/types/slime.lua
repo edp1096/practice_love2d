@@ -23,7 +23,7 @@ slime.ENEMY_TYPES = {
         collider_offset_y = 0,
 
         sprite_draw_offset_x = -32,
-        sprite_draw_offset_y = -96,
+        sprite_draw_offset_y = -112,  -- Adjusted: moved sprite up to align with collider
 
         sprite_origin_x = 0,
         sprite_origin_y = 0,
@@ -50,7 +50,7 @@ slime.ENEMY_TYPES = {
         collider_offset_y = 0,
 
         sprite_draw_offset_x = -32,
-        sprite_draw_offset_y = -96,
+        sprite_draw_offset_y = -112,  -- Adjusted: moved sprite up to align with collider
 
         sprite_origin_x = 0,
         sprite_origin_y = 0,
@@ -77,7 +77,7 @@ slime.ENEMY_TYPES = {
         collider_offset_y = 10,
 
         sprite_draw_offset_x = -32,
-        sprite_draw_offset_y = -96,
+        sprite_draw_offset_y = -108,  -- Adjusted: moved sprite up to align with collider
 
         sprite_origin_x = 0,
         sprite_origin_y = 0,
@@ -104,7 +104,7 @@ slime.ENEMY_TYPES = {
         collider_offset_y = 10,
 
         sprite_draw_offset_x = -32,
-        sprite_draw_offset_y = -96,
+        sprite_draw_offset_y = -108,  -- Adjusted: moved sprite up to align with collider
 
         sprite_origin_x = 0,
         sprite_origin_y = 0,
