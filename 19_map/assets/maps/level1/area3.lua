@@ -10,7 +10,7 @@ return {
   tilewidth = 64,
   tileheight = 64,
   nextlayerid = 9,
-  nextobjectid = 50,
+  nextobjectid = 52,
   properties = {
     ["game_mode"] = "platformer"
   },
@@ -260,7 +260,7 @@ return {
           x = 0,
           y = 0,
           width = 64,
-          height = 1600,
+          height = 1408,
           rotation = 0,
           visible = true,
           properties = {}
@@ -353,7 +353,12 @@ return {
       offsety = 0,
       parallaxx = 1,
       parallaxy = 1,
-      properties = {},
+      properties = {
+        ["spawn_x"] = 400,
+        ["spawn_y"] = 400,
+        ["target_map"] = "assets/maps/level1/area1.lua",
+        ["type"] = "portal"
+      },
       objects = {
         {
           id = 48,
@@ -371,6 +376,24 @@ return {
             ["spawn_y"] = 400,
             ["target_map"] = "assets/maps/level1/area1.lua",
             ["type"] = "gameclear"
+          }
+        },
+        {
+          id = 50,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 0,
+          y = 1408,
+          width = 64,
+          height = 192,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["spawn_x"] = 200,
+            ["spawn_y"] = 200,
+            ["target_map"] = "assets/maps/level1/area1.lua",
+            ["type"] = "portal"
           }
         }
       }

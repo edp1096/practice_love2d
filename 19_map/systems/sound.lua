@@ -246,15 +246,17 @@ function sound:createPool(category, name, path, size, pitch_variation)
     return true
 end
 
-function sound:playBGM(name, fade_time)
+function sound:playBGM(name, fade_time, rewind)
     fade_time = fade_time or 1.0
-
-    if self.current_bgm_name == name and self.current_bgm and self.current_bgm:isPlaying() then
-        return
-    end
+    rewind = rewind == nil and false or rewind
 
     if not self.bgm[name] then
         print("WARNING: BGM not found: " .. name)
+        return
+    end
+
+    -- If same BGM is playing and rewind is not requested, don't restart
+    if self.current_bgm_name == name and self.current_bgm and self.current_bgm:isPlaying() and not rewind then
         return
     end
 
@@ -265,11 +267,14 @@ function sound:playBGM(name, fade_time)
     self.current_bgm = self.bgm[name]
     self.current_bgm_name = name
 
+    -- Rewind to beginning
+    self.current_bgm:seek(0)
+
     if not self.settings.muted then
         self.current_bgm:play()
     end
 
-    print("Playing BGM: " .. name)
+    print("Playing BGM: " .. name .. (rewind and " (rewound)" or ""))
 end
 
 function sound:stopBGM(fade_time)

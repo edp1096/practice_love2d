@@ -28,7 +28,8 @@ function menu:enter(previous, ...)
     self.fonts = scene_ui.createMenuFonts()
     self.layout = scene_ui.createMenuLayout(vh)
 
-    sound:playBGM("menu")
+    -- Play menu BGM from beginning
+    sound:playBGM("menu", 1.0, true)
 end
 
 function menu:update(dt)

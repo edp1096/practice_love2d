@@ -9,9 +9,32 @@ function render.draw(player)
     local draw_x = player.x + player.hit_shake_x
     local draw_y = player.y + player.hit_shake_y
 
-    -- Shadow
-    love.graphics.setColor(0, 0, 0, 0.4)
-    love.graphics.ellipse("fill", draw_x, draw_y + 50, 28, 8)
+    -- Shadow (stays on ground in platformer mode with dynamic scaling)
+    local shadow_y = draw_y + 50  -- Topdown: shadow below player
+    local shadow_scale = 1.0
+    local shadow_alpha = 0.4
+
+    if player.game_mode == "platformer" and player.ground_y then
+        -- In platformer mode, shadow stays at ground level
+        -- ground_y is the Y coordinate of the ground surface from raycast
+        -- We want shadow ON the ground, not below it
+        shadow_y = player.ground_y
+
+        -- Calculate height difference (distance from player's feet to ground)
+        -- Player's feet are at: player.y + (player.height / 2)
+        local player_feet_y = player.y + (player.height / 2)
+        local height_diff = player.ground_y - player_feet_y
+
+        -- Scale shadow based on height (gets smaller when higher)
+        -- At height 0: scale = 1.0, at height 200: scale = 0.3
+        shadow_scale = math.max(0.3, 1.0 - (height_diff / 300))
+
+        -- Fade shadow based on height (gets more transparent when higher)
+        shadow_alpha = math.max(0.1, 0.4 - (height_diff / 500))
+    end
+
+    love.graphics.setColor(0, 0, 0, shadow_alpha)
+    love.graphics.ellipse("fill", draw_x, shadow_y, 28 * shadow_scale, 8 * shadow_scale)
     love.graphics.setColor(1, 1, 1, 1)
 
     -- Parry shield

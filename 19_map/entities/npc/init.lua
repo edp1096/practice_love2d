@@ -85,9 +85,11 @@ end
 function npc:update(dt, player_x, player_y)
     self.anim:update(dt)
 
-    -- Check if player is in interaction range
-    local dx = player_x - self.x
-    local dy = player_y - self.y
+    -- Check if player is in interaction range (using collider center)
+    local collider_center_x = self.x + self.collider_offset_x
+    local collider_center_y = self.y + self.collider_offset_y
+    local dx = player_x - collider_center_x
+    local dy = player_y - collider_center_y
     local distance = math.sqrt(dx * dx + dy * dy)
 
     self.can_interact = (distance < self.interaction_range)
@@ -132,50 +134,59 @@ function npc:interact()
 end
 
 function npc:draw()
-    local draw_x = self.x
-    local draw_y = self.y
+    -- Use collider center as reference point (like Enemy does)
+    local collider_center_x = self.x + self.collider_offset_x
+    local collider_center_y = self.y + self.collider_offset_y
 
-    -- Shadow
+    -- Sprite position = collider center + sprite offset
+    local sprite_draw_x = collider_center_x + self.sprite_draw_offset_x
+    local sprite_draw_y = collider_center_y + self.sprite_draw_offset_y
+
+    -- Shadow (at bottom of collider)
+    local shadow_y = collider_center_y + (self.collider_height / 2) - 2
     love.graphics.setColor(0, 0, 0, 0.4)
-    love.graphics.ellipse("fill", draw_x, draw_y + 50, 28, 8)
+    love.graphics.ellipse("fill", collider_center_x, shadow_y, 28, 8)
     love.graphics.setColor(1, 1, 1, 1)
 
     -- NPC sprite
     love.graphics.setColor(1, 1, 1, 1)
     self.anim:draw(
         self.spriteSheet,
-        draw_x,
-        draw_y,
+        sprite_draw_x,
+        sprite_draw_y,
         0,
         self.sprite_scale,
         self.sprite_scale,
-        24,
-        24
+        0,  -- origin x = 0 (top-left), offset handled by sprite_draw_offset
+        0   -- origin y = 0 (top-left), offset handled by sprite_draw_offset
     )
 
-    -- Draw interaction indicator
+    -- Draw interaction indicator (using collider center)
     if self.can_interact then
         love.graphics.setColor(1, 1, 0, 1)
-        love.graphics.circle("line", self.x, self.y - 60, 20)
-        love.graphics.print("F", self.x - 5, self.y - 65)
+        love.graphics.circle("line", collider_center_x, collider_center_y - 60, 20)
+        love.graphics.print("F", collider_center_x - 5, collider_center_y - 65)
     end
 
     love.graphics.setColor(1, 1, 1, 1)
 end
 
 function npc:drawDebug()
-    -- Draw interaction range
+    local collider_center_x = self.x + self.collider_offset_x
+    local collider_center_y = self.y + self.collider_offset_y
+
+    -- Draw interaction range (using collider center)
     love.graphics.setColor(0, 1, 1, 0.3)
-    love.graphics.circle("line", self.x, self.y, self.interaction_range)
+    love.graphics.circle("line", collider_center_x, collider_center_y, self.interaction_range)
 
     -- Draw collider bounds
     local bounds = self:getColliderBounds()
     love.graphics.setColor(0, 1, 1, 1)
     love.graphics.rectangle("line", bounds.x - (bounds.width / 2), bounds.y - (bounds.height / 2), bounds.width, bounds.height)
 
-    -- Draw name
+    -- Draw name (using collider center)
     love.graphics.setColor(0, 1, 1, 1)
-    love.graphics.print(self.name, self.x - 20, self.y - 70)
+    love.graphics.print(self.name, collider_center_x - 20, collider_center_y - 70)
 
     love.graphics.setColor(1, 1, 1, 1)
 end

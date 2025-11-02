@@ -10,7 +10,7 @@ return {
   tilewidth = 64,
   tileheight = 64,
   nextlayerid = 8,
-  nextobjectid = 39,
+  nextobjectid = 40,
   properties = {},
   tilesets = {
     {
@@ -415,9 +415,9 @@ return {
           type = "",
           shape = "rectangle",
           x = 320,
-          y = 1024,
+          y = 1088,
           width = 64,
-          height = 128,
+          height = 64,
           rotation = 0,
           visible = true,
           properties = {
@@ -453,8 +453,8 @@ return {
           rotation = 0,
           visible = true,
           properties = {
-            ["spawn_x"] = 400,
-            ["spawn_y"] = 400,
+            ["spawn_x"] = 200,
+            ["spawn_y"] = 200,
             ["target_map"] = "assets/maps/level1/area1.lua",
             ["type"] = "portal"
           }
@@ -468,6 +468,24 @@ return {
           y = 960,
           width = 64,
           height = 320,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["spawn_x"] = 200,
+            ["spawn_y"] = 1500,
+            ["target_map"] = "assets/maps/level1/area3.lua",
+            ["type"] = "portal"
+          }
+        },
+        {
+          id = 39,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 1344,
+          y = 1856,
+          width = 192,
+          height = 64,
           rotation = 0,
           visible = true,
           properties = {

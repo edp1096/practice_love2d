@@ -14,12 +14,12 @@ function gameover:enter(previous, is_clear, ...)
 
     if self.is_clear then
         self.options = { "Main Menu" }
-        -- Play victory BGM
-        sound:playBGM("victory")
+        -- Play victory BGM from beginning
+        sound:playBGM("victory", 1.0, true)
     else
         self.options = { "Restart", "Main Menu" }
-        -- Play game over BGM
-        sound:playBGM("gameover")
+        -- Play game over BGM from beginning
+        sound:playBGM("gameover", 1.0, true)
     end
 
     self.selected = 1

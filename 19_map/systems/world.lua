@@ -299,6 +299,14 @@ function world:addEntity(entity)
                         entity.is_grounded = true
                         entity.can_jump = true
                         entity.is_jumping = false
+
+                        -- Store contact surface Y position for shadow rendering
+                        -- Get contact point world coordinates
+                        local points = {contact:getPositions()}
+                        if #points >= 2 then
+                            -- Use first contact point's Y coordinate
+                            entity.contact_surface_y = points[2]
+                        end
                     end
                 end
             end
@@ -375,6 +383,18 @@ function world:loadEnemies()
             new_enemy.collider:setCollisionClass("Enemy")
             new_enemy.collider:setObject(new_enemy)
 
+            -- Platformer mode: remove air resistance for faster falling
+            if self.game_mode == "platformer" then
+                new_enemy.collider:setLinearDamping(0)
+                -- Also set gravity scale to ensure full gravity effect
+                new_enemy.collider:setGravityScale(1)
+                -- Get the underlying Box2D body and set damping there too
+                local body = new_enemy.collider.body
+                if body then
+                    body:setLinearDamping(0)
+                end
+            end
+
             table.insert(self.enemies, new_enemy)
         end
     end
@@ -393,7 +413,7 @@ function world:loadNPCs()
 
             local bounds = new_npc:getColliderBounds()
             new_npc.collider = self.physicsWorld:newBSGRectangleCollider(
-                bounds.x - (bounds.width / 2), bounds.y - (bounds.height / 2),
+                bounds.x, bounds.y,
                 bounds.width, bounds.height,
                 8
             )
@@ -401,6 +421,10 @@ function world:loadNPCs()
             new_npc.collider:setType("static")
             new_npc.collider:setCollisionClass("Wall")
             new_npc.collider:setObject(new_npc)
+
+            -- Update NPC position to match Enemy pattern (x,y = reference point)
+            new_npc.x = new_npc.collider:getX() - new_npc.collider_offset_x
+            new_npc.y = new_npc.collider:getY() - new_npc.collider_offset_y
 
             table.insert(self.npcs, new_npc)
         end
@@ -429,6 +453,16 @@ function world:addEnemy(enemy)
     enemy.collider:setFixedRotation(true)
     enemy.collider:setCollisionClass("Enemy")
     enemy.collider:setObject(enemy)
+
+    -- Platformer mode: remove air resistance for faster falling
+    if self.game_mode == "platformer" then
+        enemy.collider:setLinearDamping(0)
+        enemy.collider:setGravityScale(1)
+        local body = enemy.collider.body
+        if body then
+            body:setLinearDamping(0)
+        end
+    end
 
     table.insert(self.enemies, enemy)
 end
@@ -483,7 +517,13 @@ function world:updateEnemies(dt, player_x, player_y)
             local vx, vy = enemy:update(dt, player_x, player_y)
 
             if enemy.collider then
+                -- In platformer mode, preserve vertical velocity (gravity)
+                -- Only set horizontal velocity from AI
+                if self.game_mode == "platformer" then
+                    _, vy = enemy.collider:getLinearVelocity()
+                end
                 enemy.collider:setLinearVelocity(vx, vy)
+
                 enemy.x = enemy.collider:getX() - enemy.collider_offset_x
                 enemy.y = enemy.collider:getY() - enemy.collider_offset_y
             end

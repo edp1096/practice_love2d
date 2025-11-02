@@ -28,7 +28,6 @@ local pb = { x = 0, y = 0, w = 960, h = 540 }
 -- Check if on mobile OS
 local is_mobile = (love.system.getOS() == "Android" or love.system.getOS() == "iOS")
 
--- function play:enter(previous, mapPath, spawn_x, spawn_y, save_slot)
 function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     mapPath = mapPath or "assets/maps/level1/area1.lua"
     spawn_x = spawn_x or 400
@@ -100,7 +99,8 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     local level = mapPath:match("level(%d+)")
     if not level then level = "1" end
     level = "level" .. level
-    sound:playBGM(level)
+    -- Always rewind BGM on enter (restart/new game)
+    sound:playBGM(level, 1.0, true)
 end
 
 function play:exit()
@@ -167,12 +167,6 @@ function play:update(dt)
 
     local vx, vy = self.player:update(scaled_dt, self.cam, is_dialogue_open)
 
-    -- Update healing points
-    self.world:updateHealingPoints(scaled_dt, self.player)
-    -- Update healing points
-    self.world:updateHealingPoints(scaled_dt, self.player)
-    -- Update healing points
-    self.world:updateHealingPoints(scaled_dt, self.player)
     -- Update healing points
     self.world:updateHealingPoints(scaled_dt, self.player)
 
@@ -280,7 +274,6 @@ function play:update(dt)
     if self.player.health <= 0 then
         print("Player died after enemy attack! Switching to game over...")
         local gameover = require "scenes.gameover"
-        -- scene_control.switch(gameover, self, false)
         scene_control.switch(gameover, false)
         return
     end
@@ -299,40 +292,52 @@ function play:update(dt)
     -- Additional ground check for platformer using raycasts
     -- This helps detect ground even at platform edges
     if self.player.game_mode == "platformer" then
-        local ground_detected = false
         local px, py = self.player.x, self.player.y
-        local half_width = self.player.width / 2
         local half_height = self.player.height / 2
-        local ray_length = 5  -- Check 5 pixels below player
 
-        -- Cast 3 rays: left edge, center, right edge
-        local ray_points = {
-            { x = px - half_width + 5, y = py + half_height },   -- left
-            { x = px, y = py + half_height },                     -- center
-            { x = px + half_width - 5, y = py + half_height }    -- right
-        }
+        -- If player is grounded (from PreSolve), use contact surface for shadow
+        if self.player.is_grounded and self.player.contact_surface_y then
+            self.player.ground_y = self.player.contact_surface_y
+        else
+            -- Player is in air - use raycast to find ground below for shadow
+            local half_width = self.player.width / 2
+            local ray_length = 1000
+            local closest_ground_y = nil
 
-        for _, point in ipairs(ray_points) do
-            local items = self.world.physicsWorld:queryLine(
-                point.x, point.y,
-                point.x, point.y + ray_length,
-                {"Wall"}  -- Only query Wall collision class
-            )
+            -- Cast 3 rays: left edge, center, right edge
+            local ray_points = {
+                { x = px - half_width + 5, y = py + half_height },
+                { x = px, y = py + half_height },
+                { x = px + half_width - 5, y = py + half_height }
+            }
 
-            -- If we hit a wall, check velocity
-            if #items > 0 then
-                local _, vy = self.player.collider:getLinearVelocity()
-                if vy >= -50 then  -- Small threshold for rounding errors
-                    ground_detected = true
-                    break
+            for _, point in ipairs(ray_points) do
+                self.world.physicsWorld.box2d_world:rayCast(
+                    point.x, point.y,
+                    point.x, point.y + ray_length,
+                    function(fixture, x, y, xn, yn, fraction)
+                        local collider = fixture:getUserData()
+                        if collider and (collider.collision_class == "Wall" or
+                                         collider.collision_class == "Enemy" or
+                                         collider.collision_class == "NPC") then
+                            if not closest_ground_y or y < closest_ground_y then
+                                closest_ground_y = y
+                            end
+                            return 0
+                        end
+                        return 1
+                    end
+                )
+            end
+
+            if closest_ground_y then
+                self.player.ground_y = closest_ground_y
+            else
+                -- No ground detected, default to player's feet
+                if not self.player.ground_y then
+                    self.player.ground_y = py + half_height
                 end
             end
-        end
-
-        if ground_detected then
-            self.player.is_grounded = true
-            self.player.can_jump = true
-            self.player.is_jumping = false
         end
     end
 
@@ -370,7 +375,6 @@ function play:update(dt)
         if transition then
             if transition.transition_type == "gameclear" then
                 local gameover = require "scenes.gameover"
-                -- scene_control.switch(gameover, self, true)
                 scene_control.switch(gameover, true)
                 return
             else
@@ -518,13 +522,6 @@ function play:isJumpKey(key)
 end
 
 function play:keypressed(key)
-    -- Toggle debug with F12
-
-    -- DEBUG: Log all key presses in platformer mode
-    if self.player.game_mode == "platformer" then
-        print("=== KEY PRESSED: " .. tostring(key) .. " ===")
-    end
-
     if dialogue:isOpen() then
         if input:wasPressed("interact", "keyboard", key) or
             input:wasPressed("menu_select", "keyboard", key) then
@@ -546,16 +543,12 @@ function play:keypressed(key)
         scene_control.push(inventory_ui, self.inventory, self.player)
     elseif input:wasPressed("dodge", "keyboard", key) then
         -- Dodge (lshift) - works in both modes
-        print("DEBUG: Dodge key detected")
         self.player:startDodge()
     elseif input:wasPressed("jump", "keyboard", key) or self:isJumpKey(key) then
-        print("DEBUG: Jump/Action key detected! game_mode=" .. tostring(self.player.game_mode))
         -- Mode-dependent behavior
         if self.player.game_mode == "platformer" then
             -- Platformer: space/w/up = jump
-            print("DEBUG: Calling player:jump()")
-            local jump_result = self.player:jump()
-            print("DEBUG: Jump result = " .. tostring(jump_result))
+            self.player:jump()
         else
             -- Topdown: space = dodge (W/Up is for movement)
             if key == "space" then

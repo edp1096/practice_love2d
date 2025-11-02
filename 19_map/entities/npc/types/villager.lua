@@ -18,11 +18,11 @@ villager.NPC_TYPES = {
 
         collider_width = 32,
         collider_height = 32,
-        collider_offset_x = 0,
-        collider_offset_y = 8,
+        collider_offset_x = 32,  -- Tiled object center X (64/2)
+        collider_offset_y = 32,  -- Adjusted -32 from 64 (total -80 from 112)
 
         sprite_draw_offset_x = -72,
-        sprite_draw_offset_y = -144,
+        sprite_draw_offset_y = -128,  -- Align sprite feet with collider bottom
 
         idle_down = "1-4",
         idle_left = "1-4",
@@ -48,11 +48,11 @@ villager.NPC_TYPES = {
 
         collider_width = 32,
         collider_height = 32,
-        collider_offset_x = 0,
-        collider_offset_y = 8,
+        collider_offset_x = 32,  -- Tiled object center X (64/2)
+        collider_offset_y = 32,  -- Adjusted -32 from 64 (total -80 from 112)
 
-        sprite_draw_offset_x = -72,
-        sprite_draw_offset_y = -144,
+        sprite_draw_offset_x = -72,  -- Center sprite horizontally (144/2)
+        sprite_draw_offset_y = -104,  -- Sprite adjusted +24 from -128
 
         idle_down = "1-4",
         idle_left = "1-4",
@@ -79,11 +79,11 @@ villager.NPC_TYPES = {
 
         collider_width = 32,
         collider_height = 32,
-        collider_offset_x = 0,
-        collider_offset_y = 8,
+        collider_offset_x = 32,  -- Tiled object center X (64/2)
+        collider_offset_y = 32,  -- Adjusted -32 from 64 (total -80 from 112)
 
-        sprite_draw_offset_x = -72,
-        sprite_draw_offset_y = -144,
+        sprite_draw_offset_x = -72,  -- Center sprite horizontally (144/2)
+        sprite_draw_offset_y = -104,  -- Sprite adjusted +24 from -128
 
         idle_down = "1-4",
         idle_left = "1-4",
@@ -109,11 +109,11 @@ villager.NPC_TYPES = {
 
         collider_width = 32,
         collider_height = 32,
-        collider_offset_x = 0,
-        collider_offset_y = 8,
+        collider_offset_x = 32,  -- Tiled object center X (64/2)
+        collider_offset_y = 32,  -- Adjusted -32 from 64 (total -80 from 112)
 
-        sprite_draw_offset_x = -72,
-        sprite_draw_offset_y = -144,
+        sprite_draw_offset_x = -72,  -- Center sprite horizontally (144/2)
+        sprite_draw_offset_y = -104,  -- Sprite adjusted +24 from -128
 
         idle_down = "1-4",
         idle_left = "1-4",

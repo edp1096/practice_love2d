@@ -34,6 +34,16 @@ function spawner:spawnEnemy(world, enemy_type, x, y, patrol_points)
     new_enemy.collider:setCollisionClass("Enemy")
     new_enemy.collider:setObject(new_enemy)
 
+    -- Platformer mode: remove air resistance for faster falling
+    if world.game_mode == "platformer" then
+        new_enemy.collider:setLinearDamping(0)
+        new_enemy.collider:setGravityScale(1)
+        local body = new_enemy.collider.body
+        if body then
+            body:setLinearDamping(0)
+        end
+    end
+
     -- Add to world's enemy list
     table.insert(world.enemies, new_enemy)
 
