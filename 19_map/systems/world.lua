@@ -33,8 +33,6 @@ function world:new(map_path)
     local gx, gy = game_mode:getGravity()
     instance.physicsWorld = windfield.newWorld(gx, gy, true)
 
-    print("World created with mode: " .. mode .. " (gravity: " .. gx .. ", " .. gy .. ")")
-
     instance.physicsWorld:addCollisionClass("Player")
     instance.physicsWorld:addCollisionClass("PlayerDodging")
     instance.physicsWorld:addCollisionClass("Wall")
@@ -94,19 +92,11 @@ function world:loadWalls()
             wall = self.physicsWorld:newRectangleCollider(obj.x, obj.y, obj.width, obj.height)
             rect_count = rect_count + 1
         elseif obj.shape == "polygon" and obj.polygon then
-            print(string.format("Loading polygon #%d at obj pos (%.1f, %.1f)", i, obj.x, obj.y))
-            print(string.format("  Polygon has %d points", #obj.polygon))
-
             local vertices = {}
             for pi, point in ipairs(obj.polygon) do
                 table.insert(vertices, point.x)
                 table.insert(vertices, point.y)
-                if pi <= 3 then
-                    print(string.format("  Point %d: world(%.1f,%.1f)", pi, point.x, point.y))
-                end
             end
-
-            print(string.format("  Total vertices array length: %d", #vertices))
 
             success, wall = pcall(self.physicsWorld.newPolygonCollider, self.physicsWorld, vertices, {
                 body_type = 'static',
@@ -116,7 +106,6 @@ function world:loadWalls()
             if success then
                 polygon_count = polygon_count + 1
             else
-                print("Error creating polygon collider #" .. i .. ": " .. tostring(wall))
                 failed_count = failed_count + 1
                 wall = nil
             end
@@ -135,7 +124,6 @@ function world:loadWalls()
             if success then
                 polyline_count = polyline_count + 1
             else
-                print("Error creating polyline collider #" .. i .. ": " .. tostring(wall))
                 failed_count = failed_count + 1
                 wall = nil
             end
@@ -158,14 +146,7 @@ function world:loadWalls()
         end
     end
 
-    local status = string.format("Loaded %d wall colliders: %d rect, %d polygon, %d polyline, %d ellipse",
-        wall_count, rect_count, polygon_count, polyline_count, ellipse_count)
-
-    if failed_count > 0 then
-        status = status .. string.format(" (%d FAILED)", failed_count)
-    end
-
-    print(status)
+    -- Wall loading complete (silent)
 end
 
 function world:loadTransitions()
@@ -223,7 +204,6 @@ function world:loadSavePoints()
                 })
             end
         end
-        print("Loaded " .. #self.savepoints .. " save points")
     end
 end
 
@@ -428,8 +408,6 @@ function world:loadNPCs()
 
             table.insert(self.npcs, new_npc)
         end
-
-        print("Loaded " .. #self.npcs .. " NPCs")
     end
 end
 
@@ -668,9 +646,6 @@ function world:loadHealingPoints()
                 table.insert(self.healing_points, hp)
             end
         end
-        print("Loaded " .. #self.healing_points .. " healing points from map")
-    else
-        print("No HealingPoints layer found in map")
     end
 end
 

@@ -23,8 +23,6 @@ function npc:new(x, y, npc_type, npc_id)
     instance.type = npc_type
     instance.id = npc_id or ("npc_" .. math.random(10000))
 
-    print("Creating NPC: " .. npc_type .. " at (" .. x .. ", " .. y .. ") id=" .. instance.id)
-
     -- Properties from config
     instance.name = config.name
     instance.interaction_range = config.interaction_range or 80
@@ -128,8 +126,6 @@ function npc:update(dt, player_x, player_y)
 end
 
 function npc:interact()
-    print("Interacting with " .. self.name .. " (id=" .. self.id .. ")")
-    -- TODO: Trigger dialogue system here
     return self.dialogue
 end
 

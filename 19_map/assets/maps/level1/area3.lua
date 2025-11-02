@@ -356,7 +356,7 @@ return {
       properties = {
         ["spawn_x"] = 400,
         ["spawn_y"] = 400,
-        ["target_map"] = "assets/maps/level1/area1.lua",
+        ["target_map"] = "assets/maps/level1/area2.lua",
         ["type"] = "portal"
       },
       objects = {
@@ -374,7 +374,6 @@ return {
           properties = {
             ["spawn_x"] = 400,
             ["spawn_y"] = 400,
-            ["target_map"] = "assets/maps/level1/area1.lua",
             ["type"] = "gameclear"
           }
         },
@@ -392,7 +391,7 @@ return {
           properties = {
             ["spawn_x"] = 200,
             ["spawn_y"] = 200,
-            ["target_map"] = "assets/maps/level1/area1.lua",
+            ["target_map"] = "assets/maps/level1/area2.lua",
             ["type"] = "portal"
           }
         }

@@ -49,7 +49,6 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
 
     -- Set player game mode based on world
     self.player.game_mode = self.world.game_mode
-    print("=== PLAYER GAME MODE SET TO: " .. tostring(self.player.game_mode) .. " ===")
 
     -- Initialize parallax backgrounds
     self.parallax = parallax_sys:new()
@@ -61,9 +60,6 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     if save_data and save_data.hp then
         self.player.health = save_data.hp
         self.player.max_health = save_data.max_hp
-        print("Loaded from save slot " .. save_slot)
-    else
-        print("Starting new game in slot " .. save_slot)
     end
 
     self.world:addEntity(self.player)
@@ -157,7 +153,6 @@ function play:update(dt)
 
     -- CRITICAL: Check player death at the start
     if self.player.health <= 0 then
-        print("Player died! Switching to game over...")
         local gameover = require "scenes.gameover"
         scene_control.switch(gameover, self, false)
         return
@@ -255,7 +250,6 @@ function play:update(dt)
                 enemy.has_attacked = true
 
                 if parried then
-                    print(is_perfect and "PERFECT PARRY!" or "PARRY!")
                     enemy:stun(nil, is_perfect)
 
                     if is_perfect then
@@ -272,7 +266,6 @@ function play:update(dt)
 
     -- CRITICAL: Check player death again after enemy attacks
     if self.player.health <= 0 then
-        print("Player died after enemy attack! Switching to game over...")
         local gameover = require "scenes.gameover"
         scene_control.switch(gameover, false)
         return
@@ -557,48 +550,22 @@ function play:keypressed(key)
         end
     elseif input:wasPressed("use_item", "keyboard", key) then
         -- Use selected item from inventory
-        if self.inventory and self.inventory:useSelectedItem(self.player) then
-            print("Used item!")
-        end
+        self.inventory:useSelectedItem(self.player)
     elseif input:wasPressed("next_item", "keyboard", key) then
         -- Select next item in inventory
         if self.inventory then
             self.inventory:selectNext()
-            local item = self.inventory:getSelectedItem()
-            if item then
-                print("Selected: " .. item.name)
-            end
         end
     elseif input:wasPressed("slot_1", "keyboard", key) then
-        if self.inventory then
-            self.inventory:selectSlot(1)
-            local item = self.inventory:getSelectedItem()
-            if item then print("Selected slot 1: " .. item.name) end
-        end
+        if self.inventory then self.inventory:selectSlot(1) end
     elseif input:wasPressed("slot_2", "keyboard", key) then
-        if self.inventory then
-            self.inventory:selectSlot(2)
-            local item = self.inventory:getSelectedItem()
-            if item then print("Selected slot 2: " .. item.name) end
-        end
+        if self.inventory then self.inventory:selectSlot(2) end
     elseif input:wasPressed("slot_3", "keyboard", key) then
-        if self.inventory then
-            self.inventory:selectSlot(3)
-            local item = self.inventory:getSelectedItem()
-            if item then print("Selected slot 3: " .. item.name) end
-        end
+        if self.inventory then self.inventory:selectSlot(3) end
     elseif input:wasPressed("slot_4", "keyboard", key) then
-        if self.inventory then
-            self.inventory:selectSlot(4)
-            local item = self.inventory:getSelectedItem()
-            if item then print("Selected slot 4: " .. item.name) end
-        end
+        if self.inventory then self.inventory:selectSlot(4) end
     elseif input:wasPressed("slot_5", "keyboard", key) then
-        if self.inventory then
-            self.inventory:selectSlot(5)
-            local item = self.inventory:getSelectedItem()
-            if item then print("Selected slot 5: " .. item.name) end
-        end
+        if self.inventory then self.inventory:selectSlot(5) end
     elseif input:wasPressed("interact", "keyboard", key) then
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
@@ -613,12 +580,10 @@ function play:keypressed(key)
             local saveslot = require "scenes.saveslot"
             scene_control.push(saveslot, function(slot)
                 self:saveGame(slot)
-                print("Game saved to slot " .. slot .. " at savepoint: " .. savepoint.id)
             end)
         end
     elseif input:wasPressed("manual_save", "keyboard", key) then
         self:saveGame()
-        print("Manual save triggered (F9)")
     else
         debug:handleInput(key, {
             player = self.player,
@@ -644,7 +609,7 @@ function play:mousepressed(x, y, button)
     if input:wasPressed("attack", "mouse", button) then
         self.player:attack()
     elseif input:wasPressed("parry", "mouse", button) then
-        if self.player:startParry() then print("Parry stance activated!") end
+        self.player:startParry()
     end
 end
 
@@ -674,16 +639,14 @@ function play:gamepadpressed(joystick, button)
     elseif input:wasPressed("attack", "gamepad", button) or input:wasPressed("jump", "gamepad", button) then
         -- A button: attack in topdown, jump in platformer
         if self.player.game_mode == "platformer" then
-            if self.player:jump() then
-                print("Jump!")
-            end
+            self.player:jump()
         else
             self.player:attack()
         end
     elseif input:wasPressed("parry", "gamepad", button) then
-        if self.player:startParry() then print("Parry activated!") end
+        self.player:startParry()
     elseif input:wasPressed("dodge", "gamepad", button) then
-        if self.player:startDodge() then print("Dodge!") end
+        self.player:startDodge()
     elseif input:wasPressed("interact", "gamepad", button) then
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
@@ -698,22 +661,15 @@ function play:gamepadpressed(joystick, button)
             local saveslot = require "scenes.saveslot"
             scene_control.push(saveslot, function(slot)
                 self:saveGame(slot)
-                print("Game saved to slot " .. slot .. " at savepoint: " .. savepoint.id)
             end)
         end
     elseif input:wasPressed("use_item", "gamepad", button) then
         -- Use selected item from inventory
-        if self.inventory and self.inventory:useSelectedItem(self.player) then
-            print("Used item! [L1]")
-        end
+        self.inventory:useSelectedItem(self.player)
     elseif input:wasPressed("next_item", "gamepad", button) then
         -- Select next item in inventory
         if self.inventory then
             self.inventory:selectNext()
-            local item = self.inventory:getSelectedItem()
-            if item then
-                print("Selected: " .. item.name .. " [R1]")
-            end
         end
     end
 end
@@ -740,7 +696,6 @@ function play:switchMap(new_map_path, spawn_x, spawn_y)
 
     -- CRITICAL: Update player game mode when switching maps
     self.player.game_mode = self.world.game_mode
-    print("=== MAP SWITCHED: player.game_mode = " .. tostring(self.player.game_mode) .. " ===")
 
     -- Reload parallax backgrounds for new map
     if self.parallax then

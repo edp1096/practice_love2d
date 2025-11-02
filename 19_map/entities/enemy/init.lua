@@ -60,11 +60,6 @@ function enemy:new(x, y, enemy_type)
     instance.y = y or 100
     instance.type = enemy_type
 
-    print("Creating enemy: " .. enemy_type .. " at (" .. x .. ", " .. y .. ")")
-    if config.target_color then
-        print("  - Color swap enabled: RGB(" .. config.target_color[1] .. ", " .. config.target_color[2] .. ", " .. config.target_color[3] .. ")")
-    end
-
     -- Stats from config
     instance.speed = config.speed
     instance.health = config.health

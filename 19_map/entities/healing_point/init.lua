@@ -1,6 +1,8 @@
 -- entities/healing_point/init.lua
 -- Healing point entity that restores player health
 
+local constants = require "systems.constants"
+
 local healing_point = {}
 healing_point.__index = healing_point
 
@@ -9,15 +11,15 @@ function healing_point:new(x, y, heal_amount, radius)
 
     instance.x = x
     instance.y = y
-    instance.heal_amount = heal_amount or 50
-    instance.radius = radius or 40
+    instance.heal_amount = heal_amount or constants.HEALING_POINT.DEFAULT_HEAL_AMOUNT
+    instance.radius = radius or constants.HEALING_POINT.DEFAULT_RADIUS
     instance.cooldown = 0
-    instance.cooldown_max = 5.0
+    instance.cooldown_max = constants.HEALING_POINT.DEFAULT_COOLDOWN
     instance.active = true
 
     -- Visual effects
     instance.pulse_timer = 0
-    instance.pulse_speed = 2
+    instance.pulse_speed = constants.HEALING_POINT.PULSE_SPEED
     instance.particles = {}
 
     -- Collision
@@ -34,7 +36,6 @@ function healing_point:update(dt, player)
         self.cooldown = self.cooldown - dt
         if self.cooldown <= 0 then
             self.active = true
-            print("Healing point recharged!")
         end
     end
 
@@ -73,8 +74,6 @@ function healing_point:healPlayer(player)
 
     local healed = player.health - old_health
     if healed > 0 then
-        print(string.format("Healing point restored %d HP!", healed))
-
         self.active = false
         self.cooldown = self.cooldown_max
 
@@ -95,10 +94,11 @@ function healing_point:spawnParticle()
     local angle = love.math.random() * math.pi * 2
     local dist = love.math.random() * self.radius * 0.5
 
+    local speed_range = constants.HEALING_POINT.PARTICLE_MAX_SPEED - constants.HEALING_POINT.PARTICLE_MIN_SPEED
     table.insert(self.particles, {
         x = self.x + math.cos(angle) * dist,
         y = self.y + math.sin(angle) * dist,
-        speed = 20 + love.math.random() * 30,
+        speed = constants.HEALING_POINT.PARTICLE_MIN_SPEED + love.math.random() * speed_range,
         life = 1.0 + love.math.random() * 0.5,
         max_life = 1.5,
         alpha = 1.0

@@ -37,6 +37,13 @@ constants.PLAYER = {
     DEFAULT_HEIGHT = 100,
     DEFAULT_X = 400,
     DEFAULT_Y = 200,
+    JUMP_POWER = -600,
+
+    -- Ground detection (platformer mode)
+    RAYCAST_LENGTH = 1000,
+    RAYCAST_LEFT_OFFSET = -5,
+    RAYCAST_RIGHT_OFFSET = 5,
+    GROUND_MARGIN = 5,
 }
 
 -- File Paths
@@ -60,6 +67,16 @@ constants.VIRTUAL_GAMEPAD = {
     BUTTON_RADIUS = 35,
     OPACITY = 0.5,
     STICK_DEADZONE = 0.2,
+}
+
+-- Healing Points
+constants.HEALING_POINT = {
+    DEFAULT_HEAL_AMOUNT = 50,
+    DEFAULT_RADIUS = 40,
+    DEFAULT_COOLDOWN = 5.0,
+    PULSE_SPEED = 2,
+    PARTICLE_MIN_SPEED = 20,
+    PARTICLE_MAX_SPEED = 50,
 }
 
 return constants

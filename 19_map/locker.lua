@@ -86,7 +86,6 @@ function locker:ProcInit()
         return false
     end
 
-    -- print("Single instance lock acquired successfully")
     return true
 end
 

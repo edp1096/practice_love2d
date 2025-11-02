@@ -4,6 +4,7 @@
 local combat = require "entities.player.combat"
 local render = require "entities.player.render"
 local animation = require "entities.player.animation"
+local constants = require "systems.constants"
 
 local player = {}
 player.__index = player
@@ -11,15 +12,15 @@ player.__index = player
 function player:new(sprite_sheet, x, y)
     local instance = setmetatable({}, player)
 
-    instance.x = x or 400
-    instance.y = y or 200
-    instance.speed = 300
+    instance.x = x or constants.PLAYER.DEFAULT_X
+    instance.y = y or constants.PLAYER.DEFAULT_Y
+    instance.speed = constants.PLAYER.DEFAULT_SPEED
 
     -- Game mode (will be set by play scene)
     instance.game_mode = "topdown"
 
     -- Platformer specific variables
-    instance.jump_power = -600
+    instance.jump_power = constants.PLAYER.JUMP_POWER
     instance.is_jumping = false
     instance.is_grounded = true  -- Assume starting on ground
     instance.can_jump = true
@@ -30,8 +31,8 @@ function player:new(sprite_sheet, x, y)
     combat.initialize(instance)
 
     instance.collider = nil
-    instance.width = 50
-    instance.height = 100
+    instance.width = constants.PLAYER.DEFAULT_WIDTH
+    instance.height = constants.PLAYER.DEFAULT_HEIGHT
 
     return instance
 end
@@ -51,27 +52,16 @@ function player:startParry() return combat.startParry(self) end
 function player:startDodge() return combat.startDodge(self) end
 
 function player:jump()
-    print("DEBUG player:jump() called:")
-    print("  game_mode = " .. tostring(self.game_mode))
-    print("  can_jump = " .. tostring(self.can_jump))
-    print("  is_grounded = " .. tostring(self.is_grounded))
-    print("  collider = " .. tostring(self.collider))
-
     if self.game_mode == "platformer" and self.can_jump and self.is_grounded and self.collider then
         -- Use input direction instead of current velocity for horizontal component
         -- This allows jumping even when pushing against a wall
         local input_vx = (self.last_input_x or 0) * self.speed
 
-        print("  Current input: last_input_x=" .. tostring(self.last_input_x))
-        print("  Calculated vx=" .. input_vx)
-
         self.collider:setLinearVelocity(input_vx, self.jump_power)
         self.is_jumping = true
         self.can_jump = false
-        print("  JUMP EXECUTED!")
         return true
     end
-    print("  JUMP FAILED - conditions not met")
     return false
 end
 
