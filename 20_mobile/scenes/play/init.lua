@@ -98,11 +98,23 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     level = "level" .. level
     -- Always rewind BGM on enter (restart/new game)
     sound:playBGM(level, 1.0, true)
+
+    -- Show virtual gamepad for mobile gameplay
+    if is_mobile then
+        local virtual_gamepad = require "systems.input.virtual_gamepad"
+        virtual_gamepad:show()
+    end
 end
 
 function play:exit()
     if self.world then self.world:destroy() end
     sound:stopBGM()
+
+    -- Hide virtual gamepad when leaving gameplay
+    if is_mobile then
+        local virtual_gamepad = require "systems.input.virtual_gamepad"
+        virtual_gamepad:hide()
+    end
 end
 
 function play:saveGame(slot)
@@ -197,9 +209,13 @@ function play:handleDebugButtonTouch(x, y, id, is_press)
 end
 
 function play:touchpressed(id, x, y, dx, dy, pressure)
+    -- Handle debug button first
     if self:handleDebugButtonTouch(x, y, id, true) then
         return
     end
+
+    -- Delegate to input module for dialogue and other touch handling
+    return input_module.touchpressed(id, x, y, dx, dy, pressure)
 end
 
 -- Delegate to sub-modules

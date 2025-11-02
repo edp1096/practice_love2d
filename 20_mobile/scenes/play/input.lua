@@ -41,16 +41,16 @@ function input_handler.keypressed(self, key)
         sound:playSFX("ui", "pause")
         sound:pauseBGM()
     elseif input:wasPressed("open_inventory", "keyboard", key) then
-        -- Open inventory UI
+        -- Open inventory UI (I key or R2 on gamepad)
         local inventory_ui = require "scenes.inventory_ui"
         scene_control.push(inventory_ui, self.inventory, self.player)
     elseif input:wasPressed("dodge", "keyboard", key) then
-        -- Dodge (lshift) - works in both modes
+        -- Dodge (lshift key or R1 on gamepad) - works in both modes
         self.player:startDodge()
     elseif input:wasPressed("jump", "keyboard", key) or input_handler.isJumpKey(self, key) then
         -- Mode-dependent behavior
         if self.player.game_mode == "platformer" then
-            -- Platformer: space/w/up = jump
+            -- Platformer: space/w/up = jump (B button on gamepad)
             self.player:jump()
         else
             -- Topdown: space = dodge (W/Up is for movement)
@@ -59,10 +59,10 @@ function input_handler.keypressed(self, key)
             end
         end
     elseif input:wasPressed("use_item", "keyboard", key) then
-        -- Use selected item from inventory
+        -- Use selected item from inventory (Q key or L1 on gamepad)
         self.inventory:useSelectedItem(self.player)
     elseif input:wasPressed("next_item", "keyboard", key) then
-        -- Select next item in inventory
+        -- Select next item in inventory (Tab key or L2 on gamepad)
         if self.inventory then
             self.inventory:selectNext()
         end
@@ -77,6 +77,7 @@ function input_handler.keypressed(self, key)
     elseif input:wasPressed("slot_5", "keyboard", key) then
         if self.inventory then self.inventory:selectSlot(5) end
     elseif input:wasPressed("interact", "keyboard", key) then
+        -- F key: Interact with NPC or Save Point (A button on gamepad uses context logic)
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
             local messages = npc:interact()
@@ -135,37 +136,26 @@ end
 -- Gamepad input handler
 function input_handler.gamepadpressed(self, joystick, button)
     if dialogue:isOpen() then
-        if input:wasPressed("interact", "gamepad", button) or
-            input:wasPressed("menu_select", "gamepad", button) then
+        if button == "a" or button == "y" then
             dialogue:onAction()
         end
-
         return
     end
 
-    if input:wasPressed("pause", "gamepad", button) then
+    if button == "start" then
+        -- Start/Menu button: pause
         local pause = require "scenes.pause"
         scene_control.push(pause)
-
         sound:playSFX("ui", "pause")
         sound:pauseBGM()
-    elseif input:wasPressed("attack", "gamepad", button) or input:wasPressed("jump", "gamepad", button) then
-        -- A button: attack in topdown, jump in platformer
-        if self.player.game_mode == "platformer" then
-            self.player:jump()
-        else
-            self.player:attack()
-        end
-    elseif input:wasPressed("parry", "gamepad", button) then
-        self.player:startParry()
-    elseif input:wasPressed("dodge", "gamepad", button) then
-        self.player:startDodge()
-    elseif input:wasPressed("interact", "gamepad", button) then
+
+    elseif button == "a" then
+        -- A button: context-based (interact priority, then attack)
+        -- Check for interactable objects first
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
             local messages = npc:interact()
             dialogue:showMultiple(npc.name, messages)
-
             return
         end
 
@@ -175,19 +165,58 @@ function input_handler.gamepadpressed(self, joystick, button)
             scene_control.push(saveslot, function(slot)
                 self:saveGame(slot)
             end)
+            return
         end
-    elseif input:wasPressed("use_item", "gamepad", button) then
-        -- Use selected item from inventory
+
+        -- No interaction available, perform attack
+        self.player:attack()
+
+    elseif button == "b" then
+        -- B button: jump (platformer only)
+        if self.player.game_mode == "platformer" then
+            self.player:jump()
+        end
+
+    elseif button == "x" then
+        -- X button: parry
+        self.player:startParry()
+
+    elseif button == "y" then
+        -- Y button: reserved for future use
+        -- Currently does nothing
+
+    elseif button == "leftshoulder" then
+        -- L1 button: use item
         self.inventory:useSelectedItem(self.player)
-    elseif input:wasPressed("next_item", "gamepad", button) then
-        -- Select next item in inventory
+
+    elseif button == "lefttrigger" then
+        -- L2 button: next item
         if self.inventory then
             self.inventory:selectNext()
         end
+
+    elseif button == "rightshoulder" then
+        -- R1 button: dodge
+        self.player:startDodge()
+
+    elseif button == "righttrigger" then
+        -- R2 button: open inventory
+        local inventory_ui = require "scenes.inventory_ui"
+        scene_control.push(inventory_ui, self.inventory, self.player)
     end
 end
 
 -- Touch input handler
+function input_handler.touchpressed(id, x, y, dx, dy, pressure)
+    -- Dialogue takes priority for touch input
+    if dialogue:isOpen() then
+        dialogue:onAction()
+        return true -- Block virtual gamepad
+    end
+
+    return false -- Let virtual gamepad handle it
+end
+
 function input_handler.touchreleased(self, id, x, y, dx, dy, pressure)
     -- Handle debug button release
     if self:handleDebugButtonTouch(x, y, id, false) then

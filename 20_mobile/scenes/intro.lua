@@ -208,6 +208,13 @@ function intro:mousepressed(x, y, button)
     end
 end
 
+function intro:touchpressed(id, x, y, dx, dy, pressure)
+    -- Touch to advance dialogue
+    Talkies.onAction()
+    -- Return true to block other touch handlers
+    return true
+end
+
 function intro:resize(w, h)
     screen:Resize(w, h)
 

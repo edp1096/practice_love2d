@@ -158,6 +158,7 @@ function love.mousereleased(x, y, button)
 end
 
 function love.touchpressed(id, x, y, dx, dy, pressure)
+    -- 1. Debug button has highest priority
     if scene_control.current and scene_control.current.debug_button then
         local btn = scene_control.current.debug_button
         local in_button = x >= btn.x and x <= btn.x + btn.size and
@@ -170,13 +171,21 @@ function love.touchpressed(id, x, y, dx, dy, pressure)
         end
     end
 
+    -- 2. Scene touchpressed (for overlay scenes like inventory, dialogue, etc.)
+    if scene_control.current and scene_control.current.touchpressed then
+        local handled = scene_control.current:touchpressed(id, x, y, dx, dy, pressure)
+        if handled then
+            return
+        end
+    end
+
+    -- 3. Virtual gamepad (only if scene didn't handle it)
     if virtual_gamepad and virtual_gamepad:touchpressed(id, x, y) then
         return
     end
 
-    if scene_control.current and scene_control.current.touchpressed then
-        scene_control.current:touchpressed(id, x, y, dx, dy, pressure)
-    elseif not is_mobile then
+    -- 4. Fallback to mouse event for desktop testing
+    if not is_mobile then
         love.mousepressed(x, y, 1)
     end
 end

@@ -6,6 +6,7 @@ local virtual_gamepad = {}
 
 -- Configuration
 virtual_gamepad.enabled = false
+virtual_gamepad.visible = false  -- Controls whether gamepad is shown
 virtual_gamepad.alpha = 0.5
 virtual_gamepad.size = 160
 virtual_gamepad.button_size = 80
@@ -47,12 +48,17 @@ virtual_gamepad.dpad = {
 }
 
 virtual_gamepad.buttons = {
-    a = { x = 0, y = 0, pressed = false, label = "A", action = "attack" },
-    b = { x = 0, y = 0, pressed = false, label = "B", action = "dodge" },
-    x = { x = 0, y = 0, pressed = false, label = "X", action = "parry" },
-    y = { x = 0, y = 0, pressed = false, label = "Y", action = "interact" },
-    l1 = { x = 0, y = 0, pressed = false, label = "L1", action = "use_item" },
-    r1 = { x = 0, y = 0, pressed = false, label = "R1", action = "next_item" },
+    -- Face buttons (diamond layout)
+    a = { x = 0, y = 0, pressed = false, label = "A", action = "attack_or_interact" },  -- Attack / Interact (context)
+    b = { x = 0, y = 0, pressed = false, label = "B", action = "jump" },                -- Jump (platformer only)
+    x = { x = 0, y = 0, pressed = false, label = "X", action = "parry" },               -- Parry
+    y = { x = 0, y = 0, pressed = false, label = "Y", action = "reserved" },            -- Reserved for future use
+
+    -- Shoulder/Trigger buttons
+    l1 = { x = 0, y = 0, pressed = false, label = "L1", action = "use_item" },          -- Use item
+    l2 = { x = 0, y = 0, pressed = false, label = "L2", action = "next_item" },         -- Next item
+    r1 = { x = 0, y = 0, pressed = false, label = "R1", action = "dodge" },             -- Dodge
+    r2 = { x = 0, y = 0, pressed = false, label = "R2", action = "open_inventory" },    -- Open inventory
 }
 
 virtual_gamepad.menu_button = {
@@ -104,7 +110,7 @@ function virtual_gamepad:calculatePositions()
     -- All controls at same bottom level
     local bottom_y = h - 120
 
-    -- D-pad on bottom left (ORIGINAL)
+    -- D-pad on bottom left
     self.dpad.x = 120
     self.dpad.y = bottom_y
 
@@ -112,33 +118,44 @@ function virtual_gamepad:calculatePositions()
     self.aim_stick.x = w * 0.70 -- 70% from left (center-right)
     self.aim_stick.y = bottom_y -- Same level as D-pad
 
-    -- Action buttons on bottom right (ORIGINAL)
+    -- Face buttons on bottom right (diamond pattern)
     local button_base_x = w - 120
     local button_base_y = bottom_y
+    local button_spacing = 70
 
-    -- Button layout (diamond pattern with larger spacing)
+    -- Diamond layout: A (bottom), B (right), X (left), Y (top)
     self.buttons.a.x = button_base_x
-    self.buttons.a.y = button_base_y + 70
+    self.buttons.a.y = button_base_y + button_spacing  -- Bottom
 
-    self.buttons.b.x = button_base_x + 70
-    self.buttons.b.y = button_base_y
+    self.buttons.b.x = button_base_x + button_spacing
+    self.buttons.b.y = button_base_y                   -- Right
 
-    self.buttons.x.x = button_base_x - 70
-    self.buttons.x.y = button_base_y
+    self.buttons.x.x = button_base_x - button_spacing
+    self.buttons.x.y = button_base_y                   -- Left
 
     self.buttons.y.x = button_base_x
-    self.buttons.y.y = button_base_y - 70
+    self.buttons.y.y = button_base_y - button_spacing  -- Top
 
-    -- L1 button on top left (above D-pad)
-    self.buttons.l1.x = 120
-    self.buttons.l1.y = 120
+    -- Shoulder buttons (L1/L2 on left, R1/R2 on right)
+    local shoulder_y_top = 80
+    local shoulder_y_bottom = 140
 
-    -- R1 button on top right (above action buttons)
-    self.buttons.r1.x = w - 120
-    self.buttons.r1.y = 120
+    -- Left shoulder buttons
+    self.buttons.l1.x = 100
+    self.buttons.l1.y = shoulder_y_top
 
-    -- Menu button on top center-right
-    self.menu_button.x = w - 60
+    self.buttons.l2.x = 100
+    self.buttons.l2.y = shoulder_y_bottom
+
+    -- Right shoulder buttons
+    self.buttons.r1.x = w - 100
+    self.buttons.r1.y = shoulder_y_top
+
+    self.buttons.r2.x = w - 100
+    self.buttons.r2.y = shoulder_y_bottom
+
+    -- Menu button on top center
+    self.menu_button.x = w / 2
     self.menu_button.y = 60
 end
 
@@ -157,7 +174,8 @@ function virtual_gamepad:update(dt)
 end
 
 function virtual_gamepad:touchpressed(id, x, y)
-    if not self.enabled then return end
+    if not self.enabled then return false end
+    if not self.visible then return false end
 
     self.touches[id] = { x = x, y = y, start_x = x, start_y = y }
 
@@ -236,6 +254,7 @@ end
 
 function virtual_gamepad:touchreleased(id, x, y)
     if not self.enabled then return false end
+    if not self.visible then return false end
 
     local touch = self.touches[id]
     if not touch then return false end
@@ -282,7 +301,8 @@ function virtual_gamepad:touchreleased(id, x, y)
 end
 
 function virtual_gamepad:touchmoved(id, x, y)
-    if not self.enabled then return end
+    if not self.enabled then return false end
+    if not self.visible then return false end
 
     local touch = self.touches[id]
     if not touch then return false end
@@ -398,42 +418,43 @@ function virtual_gamepad:resetAimStick()
 end
 
 function virtual_gamepad:triggerButtonPress(button_name)
-    local input = require "systems.input"
     local button = self.buttons[button_name]
-
     if not button then return end
 
-    -- Simulate gamepad button press
-    if button.action == "attack" then
-        local scene_control = require "systems.scene_control"
-        if scene_control.current and scene_control.current.gamepadpressed then
-            scene_control.current:gamepadpressed(nil, "a")
-        end
-    elseif button.action == "dodge" then
-        local scene_control = require "systems.scene_control"
-        if scene_control.current and scene_control.current.gamepadpressed then
-            scene_control.current:gamepadpressed(nil, "b")
-        end
-    elseif button.action == "parry" then
-        local scene_control = require "systems.scene_control"
-        if scene_control.current and scene_control.current.gamepadpressed then
-            scene_control.current:gamepadpressed(nil, "x")
-        end
-    elseif button.action == "interact" then
-        local scene_control = require "systems.scene_control"
-        if scene_control.current and scene_control.current.gamepadpressed then
-            scene_control.current:gamepadpressed(nil, "y")
-        end
-    elseif button.action == "use_item" then
-        local scene_control = require "systems.scene_control"
-        if scene_control.current and scene_control.current.gamepadpressed then
-            scene_control.current:gamepadpressed(nil, "leftshoulder")
-        end
-    elseif button.action == "next_item" then
-        local scene_control = require "systems.scene_control"
-        if scene_control.current and scene_control.current.gamepadpressed then
-            scene_control.current:gamepadpressed(nil, "rightshoulder")
-        end
+    local scene_control = require "systems.scene_control"
+    if not scene_control.current or not scene_control.current.gamepadpressed then
+        return
+    end
+
+    -- Map virtual button to gamepad button action
+    -- New layout: A=attack/interact, B=jump, X=parry, Y=reserved
+    --             L1=use_item, L2=next_item, R1=dodge, R2=inventory
+    local action = button.action
+
+    if action == "attack_or_interact" then
+        -- A button: context-based (handled in play scene)
+        scene_control.current:gamepadpressed(nil, "a")
+    elseif action == "jump" then
+        -- B button: jump
+        scene_control.current:gamepadpressed(nil, "b")
+    elseif action == "parry" then
+        -- X button: parry
+        scene_control.current:gamepadpressed(nil, "x")
+    elseif action == "reserved" then
+        -- Y button: reserved for future use
+        scene_control.current:gamepadpressed(nil, "y")
+    elseif action == "use_item" then
+        -- L1 button: use item
+        scene_control.current:gamepadpressed(nil, "leftshoulder")
+    elseif action == "next_item" then
+        -- L2 button: next item
+        scene_control.current:gamepadpressed(nil, "lefttrigger")
+    elseif action == "dodge" then
+        -- R1 button: dodge
+        scene_control.current:gamepadpressed(nil, "rightshoulder")
+    elseif action == "open_inventory" then
+        -- R2 button: open inventory
+        scene_control.current:gamepadpressed(nil, "righttrigger")
     end
 end
 
@@ -443,16 +464,25 @@ function virtual_gamepad:triggerButtonRelease(button_name)
 
     -- Simulate gamepad button release
     local scene_control = require "systems.scene_control"
-    if scene_control.current and scene_control.current.gamepadreleased then
-        local button_map = {
-            a = "a",
-            b = "b",
-            x = "x",
-            y = "y",
-            l1 = "leftshoulder",
-            r1 = "rightshoulder"
-        }
-        scene_control.current:gamepadreleased(nil, button_map[button_name])
+    if not scene_control.current or not scene_control.current.gamepadreleased then
+        return
+    end
+
+    -- Map virtual buttons to gamepad buttons
+    local button_map = {
+        a = "a",
+        b = "b",
+        x = "x",
+        y = "y",
+        l1 = "leftshoulder",
+        l2 = "lefttrigger",
+        r1 = "rightshoulder",
+        r2 = "righttrigger"
+    }
+
+    local gamepad_button = button_map[button_name]
+    if gamepad_button then
+        scene_control.current:gamepadreleased(nil, gamepad_button)
     end
 end
 
@@ -539,7 +569,7 @@ end
 
 -- Draw virtual gamepad overlay
 function virtual_gamepad:draw()
-    if not self.enabled then return end
+    if not self.enabled or not self.visible then return end
 
     -- Draw D-pad
     self:drawDPad()
@@ -840,6 +870,30 @@ function virtual_gamepad:hasActiveTouches()
     end
 
     return false
+end
+
+-- Show virtual gamepad (for gameplay scenes)
+function virtual_gamepad:show()
+    if not self.enabled then return end
+    self.visible = true
+end
+
+-- Hide virtual gamepad (for menu scenes)
+function virtual_gamepad:hide()
+    if not self.enabled then return end
+    self.visible = false
+    -- Reset all touch states when hiding
+    self:resetDPad()
+    self:resetAimStick()
+    self.touches = {}
+    for _, button in pairs(self.buttons) do
+        button.pressed = false
+    end
+    self.menu_button.pressed = false
+    if self.aim_touch.active then
+        self.aim_touch.active = false
+        self.aim_touch.id = nil
+    end
 end
 
 return virtual_gamepad

@@ -213,20 +213,78 @@ Map properties:
 - Touch input handling in main.lua (touchpressed, touchreleased, touchmoved)
 - Separate mobile_config.lua for mobile-specific settings
 - Debug button in top-right corner on mobile for F12 toggle
+- Virtual gamepad visible during gameplay, allows touch-through for UI overlays
+
+#### Touch Input Priority System
+Touch events are processed in the following order (main.lua):
+1. **Debug button** (highest priority)
+2. **Scene touchpressed** (inventory UI, dialogue, menus)
+   - If scene returns `true`: touch consumed, stop processing
+   - If scene returns `false`: continue to next handler
+3. **Virtual gamepad** (if scene didn't handle touch)
+4. **Fallback** (desktop mouse events)
+
+**Scene Touch Handling:**
+- **Inventory UI**: Checks if touch is in virtual gamepad area first
+  - In gamepad area → `return false` (let gamepad handle R2/buttons)
+  - In UI area → handle click → `return true` (block gamepad)
+- **Play scene (dialogue)**: `return true` when dialogue open (block gamepad)
+- **Intro/Cutscene**: `return true` for dialogue advancement
+
+#### Virtual Gamepad Layout (DualSense-style)
+The virtual gamepad follows a DualSense controller layout:
+
+**Left Side:**
+- **D-pad**: Movement (8-directional analog stick)
+- **L1**: Use item (selected inventory item)
+- **L2**: Next item (cycle through inventory)
+
+**Center:**
+- **Aim Stick**: Aiming/attack direction
+- **Menu (☰)**: Pause menu
+
+**Right Side:**
+- **Face Buttons (Diamond layout):**
+  - **A (✕)**: Attack / Interact (context-based - interact takes priority)
+  - **B (○)**: Jump (platformer only)
+  - **X (□)**: Parry
+  - **Y (△)**: Reserved for future use
+- **R1**: Dodge
+- **R2**: Open/Close inventory (toggle)
+
+**Virtual Gamepad Visibility:**
+- Always visible during gameplay (play scene)
+- Visible but touch-through during inventory/menu overlays
+- `visible` property controls drawing and touch handling
+- `isInVirtualPadArea(x, y)`: Checks if touch is in gamepad control area
+
+**Context-based A button:**
+- When near NPC/SavePoint: Interact
+- Otherwise: Attack
+
+**Inventory Controls:**
+- **Open**: Keyboard `I` / Gamepad `R2` (virtual/physical)
+- **Close**: Keyboard `I`/`ESC` / Gamepad `B`/`Start`/`R2`
+- **Use Item**: `L1` button
+- **Cycle Items**: `L2` button
+- **Touch**: X button, item slots (uses `screen:ToVirtualCoords()` for accurate conversion)
 
 ### Combat Mechanics
-- **Attack**: Primary weapon swing (mouse1 / A button / virtual A)
-- **Parry**: Block and counter enemy attacks (mouse2 / X button / virtual X)
+- **Attack**: Primary weapon swing (mouse1 / A button on virtual/physical gamepad)
+- **Parry**: Block and counter enemy attacks (mouse2 / X button on virtual/physical gamepad)
   - Perfect parry: Press at exact moment of enemy attack (triggers slow-motion)
   - Normal parry: Active parry window
-- **Dodge**: Invincibility frames and faster movement (LShift / B button / virtual B)
+- **Dodge**: Invincibility frames and faster movement (LShift / R1 on virtual gamepad)
   - Changes collision class to PlayerDodging (ignores Enemy collisions)
   - Cooldown system prevents spam
   - Platformer: horizontal dodge only, works in air
   - Topdown: 8-directional dodge
-- **Jump**: Platformer mode only (W / Up / Space keys, A button on gamepad)
+- **Jump**: Platformer mode only (W / Up / Space keys, B button on virtual gamepad)
   - Uses input direction for horizontal velocity (wall-jumping support)
   - Can jump from platform edges (raycast-based ground detection)
+- **Interact**: Context-based on A button (virtual gamepad) or F key (keyboard)
+  - NPC dialogue, save points
+  - Priority over attack when in range
 
 Combat feedback:
 - Camera shake on hits
@@ -487,6 +545,36 @@ sprite_draw_offset_y = -104  -- Align feet with collider bottom
   - Large files (>500 lines) should have clear section comments for navigation
 
 ### Recent Maintenance
+
+**2025-11-03 (Mobile Input & Virtual Gamepad)**:
+- **Virtual gamepad layout redesign** - DualSense-style button mapping:
+  - Face buttons: A=attack/interact (context), B=jump, X=parry, Y=reserved
+  - Shoulder/Triggers: L1=use item, L2=next item, R1=dodge, R2=inventory toggle
+  - Added L2, R1, R2 buttons to virtual gamepad
+  - Repositioned buttons for better ergonomics
+- **Context-based A button** - Interaction priority over attack:
+  - Checks for NPC/SavePoint in range before attacking
+  - Single button for context-aware actions
+- **Touch input priority system** - Proper event handling order:
+  - Scene touchpressed returns true/false to control event propagation
+  - Virtual gamepad only handles touch if scene doesn't consume it
+  - Inventory UI checks `isInVirtualPadArea()` to allow R2 button through
+- **Inventory UI improvements**:
+  - R2 toggle: Open and close inventory with same button
+  - B button to close inventory
+  - Touch input using `screen:ToVirtualCoords()` for accurate coordinate conversion
+  - X button touch working correctly on mobile
+- **Dialogue touch input** - Added touch advancement for dialogues:
+  - Play scene dialogue: touch to advance (blocks virtual gamepad)
+  - Intro/cutscene: touch to advance
+- **Virtual gamepad visibility management**:
+  - `show()`/`hide()` functions control visibility
+  - Play scene shows gamepad on enter, hides on exit
+  - `visible` property gates touch/draw handlers
+- **Input handling refactoring**:
+  - Unified gamepad input in play/input.lua (all buttons mapped)
+  - Removed old input system dependencies
+  - Clear separation between keyboard, physical gamepad, virtual gamepad
 
 **2025-11-02 (Session 2)**:
 - **Fixed F11 fullscreen toggle crash** - Changed `camera:setScale()` to `camera:zoomTo()` (hump.camera doesn't have setScale method)

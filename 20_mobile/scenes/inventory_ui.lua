@@ -47,6 +47,7 @@ end
 
 function inventory_ui:keypressed(key)
     if key == "i" or key == "escape" or input:wasPressed("pause", "keyboard", key) then
+        -- I key or ESC to close (toggle behavior)
         local scene_control = require "systems.scene_control"
         scene_control.pop()
     elseif key == "up" or key == "w" then
@@ -67,47 +68,88 @@ function inventory_ui:keypressed(key)
     end
 end
 
+function inventory_ui:gamepadpressed(joystick, button)
+    if button == "b" or button == "start" then
+        -- B button or Start to close inventory
+        local scene_control = require "systems.scene_control"
+        scene_control.pop()
+    elseif button == "righttrigger" then
+        -- R2 to close inventory (toggle behavior)
+        local scene_control = require "systems.scene_control"
+        scene_control.pop()
+    elseif button == "dpup" then
+        self:moveSelection(-1)
+    elseif button == "dpdown" then
+        self:moveSelection(1)
+    elseif button == "a" or button == "x" then
+        self:useSelectedItem()
+    elseif button == "leftshoulder" then
+        -- L1 to use item
+        self:useSelectedItem()
+    end
+end
+
 function inventory_ui:mousepressed(x, y, button)
     if button == 1 then
-        local vw, vh = screen:GetVirtualDimensions()
-        local sw, sh = screen:GetScreenDimensions()
-
-        -- Convert screen coordinates to virtual coordinates
-        local mouse_vx = (x / sw) * vw
-        local mouse_vy = (y / sh) * vh
-
-        -- Check if clicked on close button
-        if self.close_button_bounds then
-            local cb = self.close_button_bounds
-            if mouse_vx >= cb.x and mouse_vx <= cb.x + cb.size and
-                mouse_vy >= cb.y and mouse_vy <= cb.y + cb.size then
-                local scene_control = require "systems.scene_control"
-                scene_control.pop()
-                return
-            end
-        end
-
-        -- Check if clicked on a slot
-        local start_x = (vw - (self.slot_size + self.slot_spacing) * math.min(#self.inventory.items, 5)) / 2
-        local start_y = 150
-
-        for i, item in ipairs(self.inventory.items) do
-            local row = math.floor((i - 1) / 5)
-            local col = (i - 1) % 5
-            local slot_x = start_x + col * (self.slot_size + self.slot_spacing)
-            local slot_y = start_y + row * (self.slot_size + self.slot_spacing)
-
-            if mouse_vx >= slot_x and mouse_vx <= slot_x + self.slot_size and
-                mouse_vy >= slot_y and mouse_vy <= slot_y + self.slot_size then
-                self.selected_slot = i
-                self.inventory.selected_slot = i
-                play_sound("ui", "select")
-                break
-            end
-        end
+        self:handleClick(x, y)
     elseif button == 2 then
         -- Right click to use item
         self:useSelectedItem()
+    end
+end
+
+function inventory_ui:touchpressed(id, x, y, dx, dy, pressure)
+    -- Check if touch is in virtual gamepad area (let it handle R2)
+    local is_mobile = (love.system.getOS() == "Android" or love.system.getOS() == "iOS")
+    if is_mobile then
+        local virtual_gamepad = require "systems.input.virtual_gamepad"
+        if virtual_gamepad and virtual_gamepad:isInVirtualPadArea(x, y) then
+            -- Let virtual gamepad handle it (R2 button, etc.)
+            return false
+        end
+    end
+
+    -- Handle touch as mouse click for inventory UI
+    self:handleClick(x, y)
+    -- Block other handlers
+    return true
+end
+
+function inventory_ui:handleClick(x, y)
+    -- Convert screen coordinates to virtual coordinates using screen module
+    local vx, vy = screen:ToVirtualCoords(x, y)
+
+    -- Check if clicked on close button
+    if self.close_button_bounds then
+        local cb = self.close_button_bounds
+        if vx >= cb.x and vx <= cb.x + cb.size and
+            vy >= cb.y and vy <= cb.y + cb.size then
+            local scene_control = require "systems.scene_control"
+            scene_control.pop()
+            return
+        end
+    end
+
+    -- Get virtual dimensions for slot calculation
+    local vw, vh = screen:GetVirtualDimensions()
+
+    -- Check if clicked on a slot
+    local start_x = (vw - (self.slot_size + self.slot_spacing) * math.min(#self.inventory.items, 5)) / 2
+    local start_y = 150
+
+    for i, item in ipairs(self.inventory.items) do
+        local row = math.floor((i - 1) / 5)
+        local col = (i - 1) % 5
+        local slot_x = start_x + col * (self.slot_size + self.slot_spacing)
+        local slot_y = start_y + row * (self.slot_size + self.slot_spacing)
+
+        if vx >= slot_x and vx <= slot_x + self.slot_size and
+            vy >= slot_y and vy <= slot_y + self.slot_size then
+            self.selected_slot = i
+            self.inventory.selected_slot = i
+            play_sound("ui", "select")
+            break
+        end
     end
 end
 
