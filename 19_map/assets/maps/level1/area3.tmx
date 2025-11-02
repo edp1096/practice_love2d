@@ -82,9 +82,11 @@
   </properties>
   <object id="48" x="2432" y="704" width="64" height="128">
    <properties>
-    <property name="spawn_x" type="float" value="400"/>
-    <property name="spawn_y" type="float" value="400"/>
-    <property name="type" value="gameclear"/>
+    <property name="intro_id" value="level2"/>
+    <property name="spawn_x" type="float" value="960"/>
+    <property name="spawn_y" type="float" value="300"/>
+    <property name="target_map" value="assets/maps/level2/area1.lua"/>
+    <property name="type" value="intro"/>
    </properties>
   </object>
   <object id="50" x="0" y="640" width="64" height="192">

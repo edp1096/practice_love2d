@@ -83,7 +83,7 @@ function loaders.loadTransitions(self)
 
     if self.map.layers["Portals"] then
         for _, obj in ipairs(self.map.layers["Portals"].objects) do
-            if obj.properties.type == "portal" or obj.properties.type == "gameclear" then
+            if obj.properties.type == "portal" or obj.properties.type == "gameclear" or obj.properties.type == "intro" or obj.properties.type == "ending" then
                 local min_x, min_y, max_x, max_y = obj.x, obj.y, obj.x, obj.y
 
                 if obj.shape == "polygon" and obj.polygon then
@@ -106,7 +106,8 @@ function loaders.loadTransitions(self)
                     transition_type = obj.properties.type,
                     target_map = obj.properties.target_map,
                     spawn_x = obj.properties.spawn_x or 100,
-                    spawn_y = obj.properties.spawn_y or 100
+                    spawn_y = obj.properties.spawn_y or 100,
+                    intro_id = obj.properties.intro_id
                 })
             end
         end

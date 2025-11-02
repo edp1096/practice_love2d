@@ -125,8 +125,12 @@ function menu:executeOption(option_index)
 
         local slot = empty_slot or 1
 
-        local play = require "scenes.play"
-        scene_control.switch(play,
+        -- Start with level1 intro
+        print("=== Menu: Starting New Game with Level1 Intro ===")
+        print("Slot:", slot)
+        local intro = require "scenes.intro"
+        scene_control.switch(intro,
+            "level1",
             constants.GAME_START.DEFAULT_MAP,
             constants.GAME_START.DEFAULT_SPAWN_X,
             constants.GAME_START.DEFAULT_SPAWN_Y,

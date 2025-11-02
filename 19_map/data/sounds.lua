@@ -26,10 +26,13 @@ return {
     bgm = {
         menu = { path = "assets/bgm/menu.ogg", volume = 0.7, loop = true },
         level1 = { path = "assets/bgm/level1.ogg", volume = 0.7, loop = true },
-        level2 = { path = "assets/bgm/level2.ogg", volume = 0.7, loop = true },
+        level2 = { path = "assets/bgm/level2.mp3", volume = 0.7, loop = true },
         boss = { path = "assets/bgm/boss.ogg", volume = 0.8, loop = true },
         victory = { path = "assets/bgm/victory.mp3", volume = 0.8, loop = true },
         gameover = { path = "assets/bgm/gameover.ogg", volume = 0.8, loop = true },
+        intro_level1 = { path = "assets/bgm/intro_level1.ogg", volume = 0.7, loop = true },
+        intro_level2 = { path = "assets/bgm/intro_level2.ogg", volume = 0.7, loop = true },
+        ending = { path = "assets/bgm/ending.mp3", volume = 0.8, loop = false },
     },
 
     sfx = {

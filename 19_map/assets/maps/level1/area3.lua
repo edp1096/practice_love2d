@@ -342,9 +342,11 @@ return {
           rotation = 0,
           visible = true,
           properties = {
-            ["spawn_x"] = 400,
-            ["spawn_y"] = 400,
-            ["type"] = "gameclear"
+            ["intro_id"] = "level2",
+            ["spawn_x"] = 960,
+            ["spawn_y"] = 300,
+            ["target_map"] = "assets/maps/level2/area1.lua",
+            ["type"] = "intro"
           }
         },
         {

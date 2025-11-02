@@ -471,7 +471,7 @@ return {
           rotation = 0,
           visible = true,
           properties = {
-            ["spawn_x"] = 100,
+            ["spawn_x"] = 50,
             ["spawn_y"] = 700,
             ["target_map"] = "assets/maps/level1/area3.lua",
             ["type"] = "portal"
@@ -489,7 +489,7 @@ return {
           rotation = 0,
           visible = true,
           properties = {
-            ["spawn_x"] = 100,
+            ["spawn_x"] = 50,
             ["spawn_y"] = 700,
             ["target_map"] = "assets/maps/level1/area3.lua",
             ["type"] = "portal"

@@ -181,6 +181,14 @@ function update.checkTransitions(self, scaled_dt)
         if transition.transition_type == "gameclear" then
             local gameover = require "scenes.gameover"
             scene_control.switch(gameover, true)
+        elseif transition.transition_type == "intro" then
+            local intro = require "scenes.intro"
+            local intro_id = transition.intro_id or "level1"
+            scene_control.switch(intro, intro_id, transition.target_map, transition.spawn_x, transition.spawn_y)
+        elseif transition.transition_type == "ending" then
+            local intro = require "scenes.intro"
+            local intro_id = transition.intro_id or "ending"
+            scene_control.switch(intro, intro_id, nil, nil, nil)
         else
             self:switchMap(transition.target_map, transition.spawn_x, transition.spawn_y)
         end

@@ -180,8 +180,17 @@ function newgame:selectSlot(slot_index)
         local menu = require "scenes.menu"
         scene_control.switch(menu)
     else
-        local play = require "scenes.play"
-        scene_control.switch(play,
+        -- Start with level1 intro, passing slot info to intro scene
+        print("=== New Game: Starting Level1 Intro ===")
+        print("Slot:", slot.slot)
+        print("Default map:", constants.GAME_START.DEFAULT_MAP)
+        print("Default spawn:", constants.GAME_START.DEFAULT_SPAWN_X, constants.GAME_START.DEFAULT_SPAWN_Y)
+
+        local intro = require "scenes.intro"
+        print("Intro module loaded:", intro ~= nil)
+
+        scene_control.switch(intro,
+            "level1",
             constants.GAME_START.DEFAULT_MAP,
             constants.GAME_START.DEFAULT_SPAWN_X,
             constants.GAME_START.DEFAULT_SPAWN_Y,
