@@ -7,6 +7,7 @@ local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
 local save_sys = require "systems.save"
 local input = require "systems.input"
+local constants = require "systems.constants"
 
 function newgame:enter(previous, ...)
     self.previous = previous
@@ -180,7 +181,11 @@ function newgame:selectSlot(slot_index)
         scene_control.switch(menu)
     else
         local play = require "scenes.play"
-        scene_control.switch(play, "assets/maps/level1/area1.lua", 400, 250, slot.slot)
+        scene_control.switch(play,
+            constants.GAME_START.DEFAULT_MAP,
+            constants.GAME_START.DEFAULT_SPAWN_X,
+            constants.GAME_START.DEFAULT_SPAWN_Y,
+            slot.slot)
     end
 end
 

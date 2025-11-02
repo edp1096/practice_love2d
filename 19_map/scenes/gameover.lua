@@ -7,6 +7,7 @@ local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
 local input = require "systems.input"
 local sound = require "systems.sound"
+local restart_util = require "utils.restart"
 
 function gameover:enter(previous, is_clear, ...)
     self.previous = previous
@@ -17,7 +18,7 @@ function gameover:enter(previous, is_clear, ...)
         -- Play victory BGM from beginning
         sound:playBGM("victory", 1.0, true)
     else
-        self.options = { "Restart", "Main Menu" }
+        self.options = { "Restart from Here", "Load Last Save", "Main Menu" }
         -- Play game over BGM from beginning
         sound:playBGM("gameover", 1.0, true)
     end
@@ -198,10 +199,15 @@ function gameover:executeOption(option_index)
             scene_control.switch(menu)
         end
     else
-        if option_index == 1 then
+        if option_index == 1 then -- Restart from Here
             local play = require "scenes.play"
-            scene_control.switch(play, "assets/maps/level1/area1.lua", 400, 250)
-        elseif option_index == 2 then
+            local map, x, y, slot = restart_util:fromCurrentMap(self.previous)
+            scene_control.switch(play, map, x, y, slot)
+        elseif option_index == 2 then -- Load Last Save
+            local play = require "scenes.play"
+            local map, x, y, slot = restart_util:fromLastSave(self.previous)
+            scene_control.switch(play, map, x, y, slot)
+        elseif option_index == 3 then -- Main Menu
             local menu = require "scenes.menu"
             scene_control.switch(menu)
         end

@@ -13,11 +13,7 @@ function large_potion.use(player)
         return false
     end
 
-    local old_health = player.health
     player.health = math.min(player.max_health, player.health + large_potion.heal_amount)
-
-    local healed = player.health - old_health
-    print(string.format("Used Large Potion! Healed %d HP", healed))
 
     -- Play heal sound effect if available
     local sound = require("systems.sound")

@@ -7,10 +7,11 @@ local screen = require "lib.screen"
 local sound = require "systems.sound"
 local input = require "systems.input"
 local scene_ui = require "utils.scene_ui"
+local restart_util = require "utils.restart"
 
 function pause:enter(previous, ...)
     self.previous = previous
-    self.options = { "Resume", "Restart", "Settings", "Quit to Menu" }
+    self.options = { "Resume", "Restart from Here", "Load Last Save", "Settings", "Quit to Menu" }
     self.selected = 1
     self.mouse_over = 0
 
@@ -126,14 +127,18 @@ function pause:executeOption(option_index)
         sound:playSFX("ui", "unpause")
         sound:resumeBGM()
         scene_control.pop()
-    elseif option_index == 2 then -- Restart
-        local current_slot = self.previous.current_save_slot or 1
+    elseif option_index == 2 then -- Restart from Here
         local play = require "scenes.play"
-        scene_control.switch(play, "assets/maps/level1/area1.lua", 400, 250, current_slot)
-    elseif option_index == 3 then -- Settings
+        local map, x, y, slot = restart_util:fromCurrentMap(self.previous)
+        scene_control.switch(play, map, x, y, slot)
+    elseif option_index == 3 then -- Load Last Save
+        local play = require "scenes.play"
+        local map, x, y, slot = restart_util:fromLastSave(self.previous)
+        scene_control.switch(play, map, x, y, slot)
+    elseif option_index == 4 then -- Settings
         local settings = require "scenes.settings"
         scene_control.push(settings)
-    elseif option_index == 4 then -- Quit to Menu
+    elseif option_index == 5 then -- Quit to Menu
         sound:playSFX("menu", "back")
         local menu = require "scenes.menu"
         scene_control.switch(menu)

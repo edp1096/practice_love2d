@@ -53,6 +53,13 @@ constants.PATHS = {
     IDENTITY = "hello_love2d",
 }
 
+-- Game Start Defaults
+constants.GAME_START = {
+    DEFAULT_MAP = "assets/maps/level1/area1.lua",
+    DEFAULT_SPAWN_X = 400,
+    DEFAULT_SPAWN_Y = 250,
+}
+
 -- Debug
 constants.DEBUG = {
     BUTTON_SIZE = 60,

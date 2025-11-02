@@ -9,6 +9,7 @@ local input = require "systems.input"
 local save_sys = require "systems.save"
 local sound = require "systems.sound"
 local scene_ui = require "utils.scene_ui"
+local constants = require "systems.constants"
 
 function menu:enter(previous, ...)
     self.title = GameConfig.title
@@ -123,10 +124,13 @@ function menu:executeOption(option_index)
         end
 
         local slot = empty_slot or 1
-        print("Starting new game in slot " .. slot)
 
         local play = require "scenes.play"
-        scene_control.switch(play, "assets/maps/level1/area1.lua", 400, 250, slot)
+        scene_control.switch(play,
+            constants.GAME_START.DEFAULT_MAP,
+            constants.GAME_START.DEFAULT_SPAWN_X,
+            constants.GAME_START.DEFAULT_SPAWN_Y,
+            slot)
     elseif option_name == "Load Game" then
         local load = require "systems.load"
         scene_control.switch(load)

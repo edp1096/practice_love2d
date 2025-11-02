@@ -74,7 +74,7 @@
 43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,44,0,0,42,43,43,43
 </data>
  </layer>
- <objectgroup id="3" name="Walls" visible="0">
+ <objectgroup id="3" name="Walls">
   <object id="3" x="384" y="0" width="320" height="128"/>
   <object id="4" x="386" y="448" width="318" height="192"/>
   <object id="5" x="0" y="0" width="155" height="1920"/>
@@ -116,7 +116,7 @@
   </object>
  </objectgroup>
  <objectgroup id="4" name="Portals">
-  <object id="35" x="1536" y="1856" width="128" height="64">
+  <object id="35" x="1408" y="1856" width="384" height="64">
    <properties>
     <property name="spawn_x" type="float" value="400"/>
     <property name="spawn_y" type="float" value="400"/>

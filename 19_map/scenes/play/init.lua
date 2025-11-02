@@ -14,6 +14,7 @@ local dialogue = require "systems.dialogue"
 local sound = require "systems.sound"
 local parallax_sys = require "systems.parallax"
 local util = require "utils.util"
+local constants = require "systems.constants"
 
 -- Import sub-modules
 local update_module = require "scenes.play.update"
@@ -24,9 +25,9 @@ local render_module = require "scenes.play.render"
 local is_mobile = (love.system.getOS() == "Android" or love.system.getOS() == "iOS")
 
 function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
-    mapPath = mapPath or "assets/maps/level1/area1.lua"
-    spawn_x = spawn_x or 400
-    spawn_y = spawn_y or 250
+    mapPath = mapPath or constants.GAME_START.DEFAULT_MAP
+    spawn_x = spawn_x or constants.GAME_START.DEFAULT_SPAWN_X
+    spawn_y = spawn_y or constants.GAME_START.DEFAULT_SPAWN_Y
     save_slot = save_slot or 1
 
     self.current_map_path = mapPath
@@ -208,7 +209,7 @@ function play:resize(w, h)
     local scale_y = sh / vh
     local cam_scale = math.min(scale_x, scale_y)
 
-    self.cam:setScale(cam_scale)
+    self.cam:zoomTo(cam_scale)
 end
 
 -- Input handlers delegate to input module

@@ -306,7 +306,6 @@ function combat.takeDamage(player, damage, shake_callback)
     end
 
     if player.dodge_invincible_timer > 0 then
-        print("Dodged attack!")
         return false, false, false
     end
 
@@ -330,10 +329,6 @@ function combat.takeDamage(player, damage, shake_callback)
 
     if shake_callback then
         shake_callback(12, 0.3)
-    end
-
-    if player.health <= 0 then
-        print("Player died!")
     end
 
     return true, false, false

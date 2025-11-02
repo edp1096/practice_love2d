@@ -27,13 +27,10 @@ function inventory:addItem(item_type, quantity)
                 -- Create new stack if overflow
                 if #self.items < self.max_slots then
                     table.insert(self.items, item_class:new(item_type, overflow))
-                    print(string.format("Added %s x%d (new stack)", item.name, overflow))
                 else
-                    print("Inventory full!")
                     return false
                 end
             end
-            print(string.format("Added %s x%d", item.name, quantity - overflow))
             return true
         end
     end
@@ -41,10 +38,8 @@ function inventory:addItem(item_type, quantity)
     -- Add new item
     if #self.items < self.max_slots then
         table.insert(self.items, item_class:new(item_type, quantity))
-        print(string.format("Added new item: %s x%d", item_class:new(item_type, 1).name, quantity))
         return true
     else
-        print("Inventory full!")
         return false
     end
 end
@@ -83,7 +78,6 @@ function inventory:useSelectedItem(player)
     end
 
     if not item:canUse(player) then
-        print("Cannot use item right now!")
         return false
     end
 

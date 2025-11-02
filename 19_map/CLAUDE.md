@@ -486,7 +486,25 @@ sprite_draw_offset_y = -104  -- Align feet with collider bottom
   - scenes/play.lua is approaching 800 lines - consider refactoring into smaller modules if it grows further
   - Large files (>500 lines) should have clear section comments for navigation
 
-### Recent Maintenance (2025-11-02)
+### Recent Maintenance
+
+**2025-11-02 (Session 2)**:
+- **Fixed F11 fullscreen toggle crash** - Changed `camera:setScale()` to `camera:zoomTo()` (hump.camera doesn't have setScale method)
+- **Improved restart system** - Added two restart options in pause and gameover menus:
+  - "Restart from Here": Restarts current map from last save position
+  - "Load Last Save": Loads from most recent save point (may be different map)
+- **Code refactoring**:
+  - Created `utils/restart.lua` to centralize restart logic (removed ~50 lines of duplication)
+  - Removed unnecessary debug print statements from:
+    - `scenes/menu.lua`, `scenes/inventory_ui.lua`, `scenes/pause.lua`, `scenes/gameover.lua`
+    - `entities/item/types/small_potion.lua`, `entities/item/types/large_potion.lua`
+    - `entities/player/combat.lua`
+    - `systems/inventory.lua`
+  - **Eliminated magic numbers**: Added game start constants to `systems/constants.lua`
+    - `GAME_START.DEFAULT_MAP`, `DEFAULT_SPAWN_X`, `DEFAULT_SPAWN_Y`
+    - Updated 5 files to use constants instead of hardcoded values (400, 250, "assets/maps/level1/area1.lua")
+
+**2025-11-02 (Session 1)**:
 - Removed 3 duplicate calls to `world:updateHealingPoints()` in scenes/play.lua (was called 4 times per frame)
 - Removed debug print statements from keyboard input handling
 - Cleaned up commented-out old function signatures and scene_control.switch calls

@@ -128,7 +128,6 @@ end
 function inventory_ui:useSelectedItem()
     if self.inventory:useSelectedItem(self.player) then
         play_sound("ui", "use")
-        print("Used item!")
 
         -- Update selected slot if item was consumed
         if self.selected_slot > #self.inventory.items and self.selected_slot > 1 then
