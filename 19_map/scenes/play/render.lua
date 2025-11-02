@@ -116,6 +116,11 @@ function render.draw(self)
     -- Draw inventory
     hud:draw_inventory(self.inventory, vw, vh)
 
+    -- Draw minimap
+    if self.minimap then
+        self.minimap:draw(vw, vh, self.player.x, self.player.y, self.world.enemies, self.world.npcs)
+    end
+
     dialogue:draw()
 
     if debug.enabled then debug:drawHelp(vw - 250, 10) end

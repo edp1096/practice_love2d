@@ -15,6 +15,7 @@ local sound = require "systems.sound"
 local parallax_sys = require "systems.parallax"
 local util = require "utils.util"
 local constants = require "systems.constants"
+local minimap_class = require "systems.minimap"
 
 -- Import sub-modules
 local update_module = require "scenes.play.update"
@@ -59,6 +60,10 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     end
 
     self.world:addEntity(self.player)
+
+    -- Initialize minimap
+    self.minimap = minimap_class:new()
+    self.minimap:setMap(self.world)
 
     -- Initialize inventory
     self.inventory = inventory_class:new()
@@ -148,6 +153,11 @@ function play:switchMap(new_map_path, spawn_x, spawn_y)
         self.parallax:loadFromMap(self.world.map)
     end
 
+    -- Update minimap for new map
+    if self.minimap then
+        self.minimap:setMap(self.world)
+    end
+
     self.transition_cooldown = 0.5
 
     self.cam:lookAt(self.player.x, self.player.y)
@@ -210,6 +220,11 @@ function play:resize(w, h)
     local cam_scale = math.min(scale_x, scale_y)
 
     self.cam:zoomTo(cam_scale)
+
+    -- Recreate minimap canvas after resize
+    if self.minimap then
+        self.minimap:setMap(self.world)
+    end
 end
 
 -- Input handlers delegate to input module
