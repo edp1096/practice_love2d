@@ -199,6 +199,8 @@ Maps are created in **Tiled Map Editor** (.tmx format) and converted to Lua (.lu
   - **Enemies**: Enemy spawn points with properties (type, patrol_points)
   - **NPCs**: NPC locations with properties (type, id)
   - **HealingPoints**: Healing areas with properties (heal_amount, radius, cooldown)
+  - **DeathZones**: Instant death areas (pits, lava, void)
+  - **DamageZones**: Continuous damage areas with properties (damage, cooldown)
 
 Map properties:
 - **game_mode**: "topdown" or "platformer"
@@ -349,6 +351,41 @@ Centralized game constants for:
 1. Place audio file in `assets/sounds/`
 2. Define in `data/sounds.lua` under appropriate category (ui, player, enemy)
 3. Play via `sound:playSFX("category", "name")`
+
+### Adding Hazard Zones
+
+#### Death Zones (Instant Death)
+Use for pits, voids, lava, or areas that should kill the player instantly:
+1. Create "DeathZones" object layer in Tiled map
+2. Add objects (rectangle, polygon, ellipse) where players should die
+3. No properties needed - any object in this layer causes instant death
+4. Supports all Tiled shape types (rectangle, polygon, ellipse)
+
+**Example use cases:**
+- Bottomless pits in platformer levels
+- Holes in the floor (topdown mode)
+- Lava pools
+- Out-of-bounds areas
+
+#### Damage Zones (Continuous Damage)
+Use for traps, hazards, or dangerous areas that deal periodic damage:
+1. Create "DamageZones" object layer in Tiled map
+2. Add objects (rectangle, polygon, ellipse) for hazard areas
+3. Set object properties:
+   - `damage` (number): Damage per hit (default: 10)
+   - `cooldown` (number): Seconds between damage ticks (default: 1.0)
+
+**Example configurations:**
+- Spike trap: `damage=20, cooldown=1.0` (high damage, slow)
+- Fire area: `damage=5, cooldown=0.5` (low damage, fast)
+- Poison gas: `damage=3, cooldown=0.3` (very low damage, very fast)
+
+**Implementation details:**
+- Both zones use sensor colliders (no physical collision)
+- Player can move through zones freely but takes damage
+- DamageZone cooldowns are per-zone (player tracks cooldown for each zone separately)
+- Parry/dodge does NOT prevent zone damage
+- Works in both topdown and platformer modes
 
 ## Code Style Notes
 - Lua 5.1 compatible (LÖVE default)

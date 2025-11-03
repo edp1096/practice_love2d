@@ -43,6 +43,8 @@ function world:new(map_path)
     instance.physicsWorld:addCollisionClass("Portals")
     instance.physicsWorld:addCollisionClass("Enemy")
     instance.physicsWorld:addCollisionClass("Item")
+    instance.physicsWorld:addCollisionClass("DeathZone")
+    instance.physicsWorld:addCollisionClass("DamageZone")
 
     instance.physicsWorld.collision_classes.PlayerDodging.ignores = { "Enemy" }
 
@@ -64,6 +66,12 @@ function world:new(map_path)
 
     instance.healing_points = {}
     loaders.loadHealingPoints(instance)
+
+    instance.death_zones = {}
+    loaders.loadDeathZones(instance)
+
+    instance.damage_zones = {}
+    loaders.loadDamageZones(instance)
 
     return instance
 end
@@ -98,6 +106,8 @@ world.loadSavePoints = loaders.loadSavePoints
 world.loadEnemies = loaders.loadEnemies
 world.loadNPCs = loaders.loadNPCs
 world.loadHealingPoints = loaders.loadHealingPoints
+world.loadDeathZones = loaders.loadDeathZones
+world.loadDamageZones = loaders.loadDamageZones
 
 -- Delegate entity management functions
 world.addEntity = entities.addEntity

@@ -242,4 +242,97 @@ function loaders.loadHealingPoints(self)
     end
 end
 
+function loaders.loadDeathZones(self)
+    if not self.map.layers["DeathZones"] then return end
+
+    for _, obj in ipairs(self.map.layers["DeathZones"].objects) do
+        local zone
+
+        if obj.shape == "rectangle" then
+            zone = self.physicsWorld:newRectangleCollider(obj.x, obj.y, obj.width, obj.height)
+        elseif obj.shape == "polygon" and obj.polygon then
+            local vertices = {}
+            for _, point in ipairs(obj.polygon) do
+                table.insert(vertices, point.x)
+                table.insert(vertices, point.y)
+            end
+
+            local success
+            success, zone = pcall(self.physicsWorld.newPolygonCollider, self.physicsWorld, vertices, {
+                body_type = 'static',
+                collision_class = 'DeathZone'
+            })
+
+            if not success then
+                zone = nil
+            end
+        elseif obj.shape == "ellipse" then
+            local radius = math.min(obj.width, obj.height) / 2
+            zone = self.physicsWorld:newCircleCollider(
+                obj.x + obj.width / 2,
+                obj.y + obj.height / 2,
+                radius
+            )
+        end
+
+        if zone then
+            zone:setType("static")
+            zone:setCollisionClass("DeathZone")
+            zone:setSensor(true)  -- Sensor = no physical collision, only detection
+            table.insert(self.death_zones, zone)
+        end
+    end
+end
+
+function loaders.loadDamageZones(self)
+    if not self.map.layers["DamageZones"] then return end
+
+    for _, obj in ipairs(self.map.layers["DamageZones"].objects) do
+        local zone
+
+        if obj.shape == "rectangle" then
+            zone = self.physicsWorld:newRectangleCollider(obj.x, obj.y, obj.width, obj.height)
+        elseif obj.shape == "polygon" and obj.polygon then
+            local vertices = {}
+            for _, point in ipairs(obj.polygon) do
+                table.insert(vertices, point.x)
+                table.insert(vertices, point.y)
+            end
+
+            local success
+            success, zone = pcall(self.physicsWorld.newPolygonCollider, self.physicsWorld, vertices, {
+                body_type = 'static',
+                collision_class = 'DamageZone'
+            })
+
+            if not success then
+                zone = nil
+            end
+        elseif obj.shape == "ellipse" then
+            local radius = math.min(obj.width, obj.height) / 2
+            zone = self.physicsWorld:newCircleCollider(
+                obj.x + obj.width / 2,
+                obj.y + obj.height / 2,
+                radius
+            )
+        end
+
+        if zone then
+            zone:setType("static")
+            zone:setCollisionClass("DamageZone")
+            zone:setSensor(true)  -- Sensor = no physical collision, only detection
+
+            -- Store zone properties
+            zone.damage = obj.properties.damage or 10
+            zone.damage_cooldown = obj.properties.cooldown or 1.0  -- Damage interval (seconds)
+
+            table.insert(self.damage_zones, {
+                collider = zone,
+                damage = zone.damage,
+                damage_cooldown = zone.damage_cooldown
+            })
+        end
+    end
+end
+
 return loaders

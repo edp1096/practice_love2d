@@ -195,6 +195,65 @@ function update.checkTransitions(self, scaled_dt)
     end
 end
 
+-- Check for death zones (instant death)
+function update.checkDeathZones(self)
+    if not self.player.collider then return false end
+
+    local colliders = self.player.collider:getEnterCollisionData("DeathZone")
+    if colliders and #colliders > 0 then
+        -- Player touched death zone - instant death
+        self.player.health = 0
+        return true
+    end
+
+    return false
+end
+
+-- Check for damage zones (continuous damage)
+function update.checkDamageZones(self, scaled_dt, shake_callback)
+    if not self.player.collider then return end
+
+    -- Initialize damage zone cooldowns if not exists
+    if not self.player.damage_zone_cooldowns then
+        self.player.damage_zone_cooldowns = {}
+    end
+
+    -- Update all cooldowns
+    for zone_id, cooldown in pairs(self.player.damage_zone_cooldowns) do
+        if cooldown > 0 then
+            self.player.damage_zone_cooldowns[zone_id] = cooldown - scaled_dt
+        end
+    end
+
+    -- Check each damage zone
+    for i, zone_data in ipairs(self.world.damage_zones) do
+        local zone = zone_data.collider
+
+        -- Check if player is in this damage zone
+        if self.player.collider:isEntering("DamageZone") then
+            local colliders = self.player.collider:getEnterCollisionData("DamageZone")
+
+            for _, collider in ipairs(colliders) do
+                if collider == zone then
+                    -- Found the zone - check cooldown
+                    local zone_id = "zone_" .. i
+                    local cooldown = self.player.damage_zone_cooldowns[zone_id] or 0
+
+                    if cooldown <= 0 then
+                        -- Apply damage
+                        local damaged = self.player:takeDamage(zone_data.damage, shake_callback)
+
+                        if damaged then
+                            -- Reset cooldown
+                            self.player.damage_zone_cooldowns[zone_id] = zone_data.damage_cooldown
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
 -- Main update function
 function update.update(self, dt)
     camera_sys:update(dt)
@@ -275,6 +334,25 @@ function update.update(self, dt)
     update.updateGroundDetection(self)
     update.handleWeaponCollisions(self)
     update.updateCamera(self)
+
+    -- Check hazard zones
+    local death_zone_hit = update.checkDeathZones(self)
+    if death_zone_hit then
+        -- Player died from death zone
+        local gameover = require "scenes.gameover"
+        scene_control.switch(gameover, false)
+        return
+    end
+
+    update.checkDamageZones(self, scaled_dt, shake_callback)
+
+    -- CRITICAL: Check player death again after damage zones
+    if self.player.health <= 0 then
+        local gameover = require "scenes.gameover"
+        scene_control.switch(gameover, false)
+        return
+    end
+
     update.checkTransitions(self, scaled_dt)
 end
 

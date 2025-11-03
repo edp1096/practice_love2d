@@ -17,6 +17,18 @@
 
 ---
 
+### 🗺️ **MAP_GUIDE.md** - 맵 제작 가이드
+- Tiled 맵 에디터 사용법
+- 필수/선택 레이어 설명
+- 오브젝트 레이어 (적, NPC, 포탈, 세이브 포인트 등)
+- DeathZone & DamageZone (위험 영역)
+- 맵 속성 설정
+- 예제 및 문제 해결
+
+**대상:** 맵 디자이너, 새로운 맵 제작이 필요한 경우
+
+---
+
 ### 🎵 **BGM_GUIDE.md** - 배경음악(BGM) 시스템 가이드
 - BGM 추가 방법 (자동/수동)
 - 맵 속성을 통한 BGM 지정
@@ -71,6 +83,7 @@
 docs/
 ├── README.md                    (이 파일)
 ├── MEMO.md                      프로젝트 구조 참조
+├── MAP_GUIDE.md                 맵 제작 가이드
 ├── BGM_GUIDE.md                 BGM 시스템 가이드
 ├── HEALTH_RECOVERY_README.md    체력 회복 시스템
 ├── SUMMARY.md                   기능 요약
@@ -85,6 +98,15 @@ docs/
 
 **Q: 프로젝트 전체 구조가 궁금해요**
 → `MEMO.md` 참조
+
+**Q: 새로운 맵을 만들고 싶어요**
+→ `MAP_GUIDE.md` 참조
+
+**Q: 맵에 적, NPC, 포탈을 추가하고 싶어요**
+→ `MAP_GUIDE.md` 참조
+
+**Q: 떨어지면 죽는 구멍이나 함정을 만들고 싶어요**
+→ `MAP_GUIDE.md` → "DeathZones & DamageZones" 섹션
 
 **Q: BGM을 추가하거나 변경하고 싶어요**
 → `BGM_GUIDE.md` 참조
