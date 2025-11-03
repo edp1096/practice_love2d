@@ -135,6 +135,7 @@ end
 
 -- Gamepad input handler
 function input_handler.gamepadpressed(self, joystick, button)
+    -- Dialogue takes priority
     if dialogue:isOpen() then
         if button == "a" or button == "y" then
             dialogue:onAction()
@@ -142,16 +143,45 @@ function input_handler.gamepadpressed(self, joystick, button)
         return
     end
 
-    if button == "start" then
-        -- Start/Menu button: pause
+    -- Let input coordinator handle button mapping and context
+    local action, context_data = input:handleGamepadPressed(joystick, button)
+
+    if not action then
+        return
+    end
+
+    -- Handle high-level actions
+    if action == "pause" then
         local pause = require "scenes.pause"
         scene_control.push(pause)
         sound:playSFX("ui", "pause")
         sound:pauseBGM()
 
-    elseif button == "a" then
-        -- A button: context-based (interact priority, then attack)
-        -- Check for interactable objects first
+    elseif action == "interact_npc" then
+        -- context_data is the NPC
+        local messages = context_data:interact()
+        dialogue:showMultiple(context_data.name, messages)
+
+    elseif action == "interact_savepoint" then
+        -- context_data is the savepoint
+        local saveslot = require "scenes.saveslot"
+        scene_control.push(saveslot, function(slot)
+            self:saveGame(slot)
+        end)
+
+    elseif action == "attack" then
+        self.player:attack()
+
+    elseif action == "jump" then
+        if self.player.game_mode == "platformer" then
+            self.player:jump()
+        end
+
+    elseif action == "parry" then
+        self.player:startParry()
+
+    elseif action == "interact" then
+        -- Direct interact (Y button)
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
             local messages = npc:interact()
@@ -165,42 +195,20 @@ function input_handler.gamepadpressed(self, joystick, button)
             scene_control.push(saveslot, function(slot)
                 self:saveGame(slot)
             end)
-            return
         end
 
-        -- No interaction available, perform attack
-        self.player:attack()
-
-    elseif button == "b" then
-        -- B button: jump (platformer only)
-        if self.player.game_mode == "platformer" then
-            self.player:jump()
-        end
-
-    elseif button == "x" then
-        -- X button: parry
-        self.player:startParry()
-
-    elseif button == "y" then
-        -- Y button: reserved for future use
-        -- Currently does nothing
-
-    elseif button == "leftshoulder" then
-        -- L1 button: use item
+    elseif action == "use_item" then
         self.inventory:useSelectedItem(self.player)
 
-    elseif button == "lefttrigger" then
-        -- L2 button: next item
+    elseif action == "next_item" then
         if self.inventory then
             self.inventory:selectNext()
         end
 
-    elseif button == "rightshoulder" then
-        -- R1 button: dodge
+    elseif action == "dodge" then
         self.player:startDodge()
 
-    elseif button == "righttrigger" then
-        -- R2 button: open inventory
+    elseif action == "open_inventory" then
         local inventory_ui = require "scenes.inventory_ui"
         scene_control.push(inventory_ui, self.inventory, self.player)
     end

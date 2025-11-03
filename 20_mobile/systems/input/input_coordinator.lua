@@ -17,6 +17,9 @@ function input_coordinator:init(joystick, virtual_gamepad, settings)
     self.active_input = "keyboard_mouse" -- Track last used input device type
     self.settings = settings or {}       -- Store settings for access in vibrate method
 
+    -- Game context (set by play scene)
+    self.game_context = nil
+
     -- Create input sources
     self.keyboard = keyboard_input:new()
     self.mouse = mouse_input:new()
@@ -31,6 +34,11 @@ function input_coordinator:init(joystick, virtual_gamepad, settings)
 
     -- Register sources in priority order
     self:registerSources()
+end
+
+-- Set game context for context-based actions
+function input_coordinator:setGameContext(context)
+    self.game_context = context
 end
 
 -- Register all input sources in priority order
@@ -249,6 +257,61 @@ function input_coordinator:setVirtualGamepad(vgp)
             self.virtual_gamepad.enabled = false
         end
     end
+end
+
+-- Handle gamepad button pressed event
+-- Returns action name(s) to be handled by scene, or nil if handled internally
+function input_coordinator:handleGamepadPressed(joystick, button)
+    local input_config = require "data.input_config"
+
+    -- Check context action first (A button)
+    if button == "a" and self.game_context then
+        -- Check if we can interact with something
+        local can_interact = false
+
+        if self.game_context.world and self.game_context.player then
+            local npc = self.game_context.world:getInteractableNPC(
+                self.game_context.player.x,
+                self.game_context.player.y
+            )
+            if npc then
+                can_interact = true
+                return "interact_npc", npc
+            end
+
+            local savepoint = self.game_context.world:getInteractableSavePoint()
+            if savepoint then
+                can_interact = true
+                return "interact_savepoint", savepoint
+            end
+        end
+
+        -- No interaction available, perform attack
+        if not can_interact then
+            return "attack"
+        end
+    end
+
+    -- Map other buttons to actions
+    if button == "start" then
+        return "pause"
+    elseif button == "b" then
+        return "jump"
+    elseif button == "x" then
+        return "parry"
+    elseif button == "y" then
+        return "interact" -- Direct interact (not context-based)
+    elseif button == "leftshoulder" then
+        return "use_item"
+    elseif button == "lefttrigger" then
+        return "next_item"
+    elseif button == "rightshoulder" then
+        return "dodge"
+    elseif button == "righttrigger" then
+        return "open_inventory"
+    end
+
+    return nil
 end
 
 -- Get debug information

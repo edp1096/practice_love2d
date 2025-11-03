@@ -109,6 +109,13 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
         virtual_gamepad:show()
         print("Virtual gamepad status - enabled:", virtual_gamepad.enabled, "visible:", virtual_gamepad.visible)
     end
+
+    -- Set game context for input coordinator (for context-based actions)
+    local input = require "systems.input"
+    input:setGameContext({
+        player = self.player,
+        world = self.world
+    })
 end
 
 function play:exit()

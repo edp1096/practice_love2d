@@ -47,11 +47,11 @@ return {
         },
         dodge = {
             keyboard = { "lshift" }, -- Left Shift for dodge
-            gamepad = "b" -- Circle button (DualSense)
+            gamepad = "rightshoulder" -- R1 button (DualSense)
         },
         jump = {
             keyboard = { "space" }, -- Space for jump (platformer mode) or dodge (topdown mode)
-            gamepad = "a"           -- Cross button for jump in platformer mode
+            gamepad = "b"           -- Circle button (B) for jump in platformer mode
         },
         interact = {
             keyboard = { "f" },
@@ -63,14 +63,15 @@ return {
         },
         next_item = {
             keyboard = { "tab" },
-            gamepad = "rightshoulder" -- R1 button (DualSense)
+            gamepad = "lefttrigger" -- L2 button (DualSense)
         }
     },
 
     -- Inventory controls
     inventory = {
         open_inventory = {
-            keyboard = { "i" }
+            keyboard = { "i" },
+            gamepad = "righttrigger" -- R2 button (DualSense)
         },
         slot_1 = {
             keyboard = { "1" }
@@ -86,6 +87,16 @@ return {
         },
         slot_5 = {
             keyboard = { "5" }
+        }
+    },
+
+    -- Context-based actions (action depends on game state)
+    context = {
+        -- A button (gamepad): Interact with NPC/SavePoint if in range, otherwise attack
+        context_action = {
+            gamepad = "a", -- Cross button (DualSense) - context-based
+            primary = "interact", -- Primary action (if context available)
+            fallback = "attack" -- Fallback action (if no context)
         }
     },
 

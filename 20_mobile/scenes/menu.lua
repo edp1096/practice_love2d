@@ -141,7 +141,7 @@ function menu:executeOption(option_index)
             constants.GAME_START.DEFAULT_SPAWN_Y,
             slot)
     elseif option_name == "Load Game" then
-        local load = require "systems.load"
+        local load = require "scenes.load"
         scene_control.switch(load)
     elseif option_name == "Settings" then
         local settings = require "scenes.settings"

@@ -34,11 +34,13 @@ The game uses a simple scene system via `systems/scene_control.lua`:
 
 Main scenes:
 - `scenes/menu.lua`: Main menu
-- `scenes/play.lua`: Main gameplay scene (loads map, player, enemies, NPCs)
+- `scenes/play/`: Main gameplay scene (modular: init.lua, input.lua, update.lua, render.lua)
 - `scenes/pause.lua`: Pause menu
-- `scenes/settings.lua`: Settings/options menu
+- `scenes/settings/`: Settings/options menu (modular structure)
+- `scenes/load/`: Load game scene (modular: init.lua, slot_renderer.lua, input.lua)
 - `scenes/saveslot.lua`: Save slot selection
 - `scenes/gameover.lua`: Game over/game clear screen
+- `scenes/intro.lua`: Game intro/cutscene
 
 ### Entity-Component Architecture
 
@@ -159,7 +161,7 @@ BGM playback behavior:
 
 #### Save/Load System
 - **systems/save.lua**: Save game state to slots
-- **systems/load.lua**: Load game state from slots
+- **scenes/load/**: Load game scene (modular: init.lua, slot_renderer.lua, input.lua)
 - Saves: player HP, position, inventory, map location
 - Multiple save slots supported
 

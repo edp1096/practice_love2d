@@ -147,6 +147,21 @@ function input:setAimAngle(angle, source)
     end
 end
 
+-- Set game context for context-based actions
+function input:setGameContext(context)
+    if self.coordinator then
+        self.coordinator:setGameContext(context)
+    end
+end
+
+-- Handle gamepad button pressed event
+function input:handleGamepadPressed(joystick, button)
+    if self.coordinator then
+        return self.coordinator:handleGamepadPressed(joystick, button)
+    end
+    return nil
+end
+
 -- Vibration
 function input:vibrate(duration, left_strength, right_strength)
     if self.coordinator then

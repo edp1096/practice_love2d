@@ -108,11 +108,6 @@ function virtual_gamepad:init()
 end
 
 function virtual_gamepad:calculatePositions()
-    -- Ensure screen module is loaded
-    if not self.screen then
-        self.screen = require "lib.screen"
-    end
-
     -- Use VIRTUAL resolution (960x540) for consistent sizing across devices
     local vw, vh = self.screen:GetVirtualDimensions()
 
@@ -190,11 +185,6 @@ function virtual_gamepad:touchpressed(id, x, y)
     if not self.enabled then return false end
     if not self.visible then return false end
 
-    -- Ensure screen module is loaded
-    if not self.screen then
-        self.screen = require "lib.screen"
-    end
-
     -- Convert physical touch coordinates to virtual coordinates
     local vx, vy = self.screen:ToVirtualCoords(x, y)
 
@@ -205,13 +195,7 @@ function virtual_gamepad:touchpressed(id, x, y)
         self.touches[id].type = "dpad"
         self:updateDPad(vx, vy)
         -- Deactivate aim when touching D-pad
-        if self.aim_touch.active then
-            self.aim_touch.active = false
-            self.aim_touch.id = nil
-        end
-        if self.aim_stick.active then
-            self:resetAimStick()
-        end
+        self:deactivateAllAim()
         return true
     end
 
@@ -223,13 +207,7 @@ function virtual_gamepad:touchpressed(id, x, y)
             self.touches[id].button = name
             self:triggerButtonPress(name)
             -- Deactivate aim when pressing buttons
-            if self.aim_touch.active then
-                self.aim_touch.active = false
-                self.aim_touch.id = nil
-            end
-            if self.aim_stick.active then
-                self:resetAimStick()
-            end
+            self:deactivateAllAim()
             return true
         end
     end
@@ -240,13 +218,7 @@ function virtual_gamepad:touchpressed(id, x, y)
         self.touches[id].type = "menu"
         self:triggerMenuPress()
         -- Deactivate aim when pressing menu
-        if self.aim_touch.active then
-            self.aim_touch.active = false
-            self.aim_touch.id = nil
-        end
-        if self.aim_stick.active then
-            self:resetAimStick()
-        end
+        self:deactivateAllAim()
         return true
     end
 
@@ -327,11 +299,6 @@ function virtual_gamepad:touchmoved(id, x, y)
 
     local touch = self.touches[id]
     if not touch then return false end
-
-    -- Ensure screen module is loaded
-    if not self.screen then
-        self.screen = require "lib.screen"
-    end
 
     -- Convert physical touch coordinates to virtual coordinates
     local vx, vy = self.screen:ToVirtualCoords(x, y)
@@ -446,6 +413,19 @@ function virtual_gamepad:resetAimStick()
     self.aim_stick.magnitude = 0
 end
 
+-- Helper: Deactivate all aim systems (stick and direct touch)
+function virtual_gamepad:deactivateAllAim()
+    -- Deactivate direct aim touch
+    if self.aim_touch.active then
+        self.aim_touch.active = false
+        self.aim_touch.id = nil
+    end
+    -- Deactivate aim stick
+    if self.aim_stick.active then
+        self:resetAimStick()
+    end
+end
+
 function virtual_gamepad:triggerButtonPress(button_name)
     local button = self.buttons[button_name]
     if not button then return end
@@ -459,11 +439,6 @@ function virtual_gamepad:triggerButtonPress(button_name)
     -- New layout: A=attack/interact, B=jump, X=parry, Y=reserved
     --             L1=use_item, L2=next_item, R1=dodge, R2=inventory
     local action = button.action
-
-    -- Debug: log R2 button press
-    if action == "open_inventory" then
-        print("Virtual gamepad: R2 pressed, current scene:", tostring(scene_control.current))
-    end
 
     if action == "attack_or_interact" then
         -- A button: context-based (handled in play scene)
@@ -603,22 +578,12 @@ end
 
 -- Helper function to convert virtual to physical coordinates
 function virtual_gamepad:toPhysical(vx, vy)
-    -- Ensure screen module is loaded
-    if not self.screen then
-        self.screen = require "lib.screen"
-    end
-    -- Use ToScreenCoords (physical coordinates)
     return self.screen:ToScreenCoords(vx, vy)
 end
 
 -- Draw virtual gamepad overlay
 function virtual_gamepad:draw()
     if not self.enabled or not self.visible then return end
-
-    -- Ensure screen module is loaded
-    if not self.screen then
-        self.screen = require "lib.screen"
-    end
 
     -- Cache scale for drawing
     self.draw_scale = self.screen:GetScale()
@@ -886,9 +851,6 @@ function virtual_gamepad:isInVirtualPadArea(x, y)
     if not self.enabled then return false end
 
     -- Convert physical coordinates to virtual coordinates
-    if not self.screen then
-        self.screen = require "lib.screen"
-    end
     local vx, vy = self.screen:ToVirtualCoords(x, y)
 
     -- Check D-pad
