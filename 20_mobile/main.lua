@@ -103,6 +103,7 @@ end
 function love.draw()
     scene_control.draw()
 
+    -- Draw virtual gamepad
     if virtual_gamepad and virtual_gamepad.enabled then
         virtual_gamepad:draw()
     end

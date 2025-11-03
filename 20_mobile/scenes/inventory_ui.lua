@@ -99,16 +99,21 @@ function inventory_ui:mousepressed(x, y, button)
 end
 
 function inventory_ui:touchpressed(id, x, y, dx, dy, pressure)
-    -- Check if touch is in virtual gamepad area (let it handle R2)
+    -- Check if touch is in virtual gamepad area FIRST (let it handle R2)
     local is_mobile = (love.system.getOS() == "Android" or love.system.getOS() == "iOS")
     if is_mobile then
         local virtual_gamepad = require "systems.input.virtual_gamepad"
         if virtual_gamepad and virtual_gamepad:isInVirtualPadArea(x, y) then
             -- Let virtual gamepad handle it (R2 button, etc.)
+            -- Return false immediately without processing the touch
             return false
         end
     end
 
+    -- Convert to virtual coords for UI check
+    local vx, vy = screen:ToVirtualCoords(x, y)
+
+    -- Only handle touch if it's in the UI area (not gamepad area)
     -- Handle touch as mouse click for inventory UI
     self:handleClick(x, y)
     -- Block other handlers

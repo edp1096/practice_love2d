@@ -102,7 +102,12 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     -- Show virtual gamepad for mobile gameplay
     if is_mobile then
         local virtual_gamepad = require "systems.input.virtual_gamepad"
+        -- Force init if not initialized
+        if not virtual_gamepad.enabled then
+            virtual_gamepad:init()
+        end
         virtual_gamepad:show()
+        print("Virtual gamepad status - enabled:", virtual_gamepad.enabled, "visible:", virtual_gamepad.visible)
     end
 end
 

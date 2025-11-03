@@ -96,6 +96,9 @@ function virtual_gamepad:init()
         return
     end
 
+    -- Get screen module for coordinate conversion
+    self.screen = require "lib.screen"
+
     self:calculatePositions()
     if debug.debug_mode then
         print("Virtual gamepad initialized (DEBUG MODE)")
@@ -105,21 +108,27 @@ function virtual_gamepad:init()
 end
 
 function virtual_gamepad:calculatePositions()
-    local w, h = love.graphics.getDimensions()
+    -- Ensure screen module is loaded
+    if not self.screen then
+        self.screen = require "lib.screen"
+    end
 
-    -- All controls at same bottom level
-    local bottom_y = h - 120
+    -- Use VIRTUAL resolution (960x540) for consistent sizing across devices
+    local vw, vh = self.screen:GetVirtualDimensions()
+
+    -- All controls at same bottom level (virtual coordinates)
+    local bottom_y = vh - 80  -- 80 pixels from bottom in virtual space
 
     -- D-pad on bottom left
-    self.dpad.x = 120
+    self.dpad.x = 100
     self.dpad.y = bottom_y
 
     -- Aim stick in center-right (between D-pad and buttons)
-    self.aim_stick.x = w * 0.70 -- 70% from left (center-right)
-    self.aim_stick.y = bottom_y -- Same level as D-pad
+    self.aim_stick.x = vw * 0.70 -- 70% from left
+    self.aim_stick.y = bottom_y
 
     -- Face buttons on bottom right (diamond pattern)
-    local button_base_x = w - 120
+    local button_base_x = vw - 100
     local button_base_y = bottom_y
     local button_spacing = 70
 
@@ -138,26 +147,29 @@ function virtual_gamepad:calculatePositions()
 
     -- Shoulder buttons (L1/L2 on left, R1/R2 on right)
     -- Changed to horizontal layout to reduce overlap with Y button
-    local shoulder_y = 100
+    -- Positioned above D-pad (left) and Y button (right) with small gap
     local shoulder_spacing = 60
+    local gap_from_controls = 20  -- Gap between shoulder buttons and controls below
 
-    -- Left shoulder buttons (horizontal)
-    self.buttons.l1.x = 80
-    self.buttons.l1.y = shoulder_y
+    -- Left shoulder buttons (horizontal) - above D-pad
+    local left_shoulder_y = self.dpad.y - self.dpad.radius - gap_from_controls - (self.button_size / 2)
+    self.buttons.l1.x = 60
+    self.buttons.l1.y = left_shoulder_y
 
-    self.buttons.l2.x = 80 + shoulder_spacing
-    self.buttons.l2.y = shoulder_y
+    self.buttons.l2.x = 60 + shoulder_spacing
+    self.buttons.l2.y = left_shoulder_y
 
-    -- Right shoulder buttons (horizontal)
-    self.buttons.r2.x = w - 80
-    self.buttons.r2.y = shoulder_y
+    -- Right shoulder buttons (horizontal) - above Y button
+    local right_shoulder_y = self.buttons.y.y - button_spacing - gap_from_controls - (self.button_size / 2)
+    self.buttons.r2.x = vw - 60
+    self.buttons.r2.y = right_shoulder_y
 
-    self.buttons.r1.x = w - 80 - shoulder_spacing
-    self.buttons.r1.y = shoulder_y
+    self.buttons.r1.x = vw - 60 - shoulder_spacing
+    self.buttons.r1.y = right_shoulder_y
 
     -- Menu button on top center
-    self.menu_button.x = w / 2
-    self.menu_button.y = 60
+    self.menu_button.x = vw / 2
+    self.menu_button.y = 40
 end
 
 function virtual_gamepad:resize(w, h)
@@ -178,12 +190,20 @@ function virtual_gamepad:touchpressed(id, x, y)
     if not self.enabled then return false end
     if not self.visible then return false end
 
-    self.touches[id] = { x = x, y = y, start_x = x, start_y = y }
+    -- Ensure screen module is loaded
+    if not self.screen then
+        self.screen = require "lib.screen"
+    end
+
+    -- Convert physical touch coordinates to virtual coordinates
+    local vx, vy = self.screen:ToVirtualCoords(x, y)
+
+    self.touches[id] = { x = vx, y = vy, start_x = vx, start_y = vy }
 
     -- Check D-pad (movement)
-    if self:isInDPad(x, y) then
+    if self:isInDPad(vx, vy) then
         self.touches[id].type = "dpad"
-        self:updateDPad(x, y)
+        self:updateDPad(vx, vy)
         -- Deactivate aim when touching D-pad
         if self.aim_touch.active then
             self.aim_touch.active = false
@@ -197,7 +217,7 @@ function virtual_gamepad:touchpressed(id, x, y)
 
     -- Check action buttons
     for name, button in pairs(self.buttons) do
-        if self:isInButton(x, y, button) then
+        if self:isInButton(vx, vy, button) then
             button.pressed = true
             self.touches[id].type = "button"
             self.touches[id].button = name
@@ -215,7 +235,7 @@ function virtual_gamepad:touchpressed(id, x, y)
     end
 
     -- Check menu button
-    if self:isInButton(x, y, self.menu_button) then
+    if self:isInButton(vx, vy, self.menu_button) then
         self.menu_button.pressed = true
         self.touches[id].type = "menu"
         self:triggerMenuPress()
@@ -231,11 +251,11 @@ function virtual_gamepad:touchpressed(id, x, y)
     end
 
     -- NEW: Check aim stick
-    if self:isInAimStick(x, y) then
+    if self:isInAimStick(vx, vy) then
         self.touches[id].type = "aim_stick"
         self.aim_stick.active = true
         self.aim_stick.touch_id = id
-        self:updateAimStick(x, y)
+        self:updateAimStick(vx, vy)
         -- Deactivate direct aim
         if self.aim_touch.active then
             self.aim_touch.active = false
@@ -248,8 +268,8 @@ function virtual_gamepad:touchpressed(id, x, y)
     self.touches[id].type = "aim"
     self.aim_touch.active = true
     self.aim_touch.id = id
-    self.aim_touch.x = x
-    self.aim_touch.y = y
+    self.aim_touch.x = vx
+    self.aim_touch.y = vy
     return true
 end
 
@@ -308,20 +328,28 @@ function virtual_gamepad:touchmoved(id, x, y)
     local touch = self.touches[id]
     if not touch then return false end
 
-    touch.x = x
-    touch.y = y
+    -- Ensure screen module is loaded
+    if not self.screen then
+        self.screen = require "lib.screen"
+    end
+
+    -- Convert physical touch coordinates to virtual coordinates
+    local vx, vy = self.screen:ToVirtualCoords(x, y)
+
+    touch.x = vx
+    touch.y = vy
 
     if touch.type == "dpad" then
-        self:updateDPad(x, y)
+        self:updateDPad(vx, vy)
         return true
     elseif touch.type == "aim_stick" then
         -- NEW: Update aim stick
-        self:updateAimStick(x, y)
+        self:updateAimStick(vx, vy)
         return true
     elseif touch.type == "aim" then
         -- Update direct aim position
-        self.aim_touch.x = x
-        self.aim_touch.y = y
+        self.aim_touch.x = vx
+        self.aim_touch.y = vy
         return true
     end
 
@@ -431,6 +459,11 @@ function virtual_gamepad:triggerButtonPress(button_name)
     -- New layout: A=attack/interact, B=jump, X=parry, Y=reserved
     --             L1=use_item, L2=next_item, R1=dodge, R2=inventory
     local action = button.action
+
+    -- Debug: log R2 button press
+    if action == "open_inventory" then
+        print("Virtual gamepad: R2 pressed, current scene:", tostring(scene_control.current))
+    end
 
     if action == "attack_or_interact" then
         -- A button: context-based (handled in play scene)
@@ -568,10 +601,29 @@ function virtual_gamepad:isDirectionPressed(direction)
     return self.dpad_direction[direction] or false
 end
 
+-- Helper function to convert virtual to physical coordinates
+function virtual_gamepad:toPhysical(vx, vy)
+    -- Ensure screen module is loaded
+    if not self.screen then
+        self.screen = require "lib.screen"
+    end
+    -- Use ToScreenCoords (physical coordinates)
+    return self.screen:ToScreenCoords(vx, vy)
+end
+
 -- Draw virtual gamepad overlay
 function virtual_gamepad:draw()
     if not self.enabled or not self.visible then return end
 
+    -- Ensure screen module is loaded
+    if not self.screen then
+        self.screen = require "lib.screen"
+    end
+
+    -- Cache scale for drawing
+    self.draw_scale = self.screen:GetScale()
+
+    -- No push/pop/origin needed - we draw in physical space after screen:Detach()
     -- Draw D-pad
     self:drawDPad()
 
@@ -591,16 +643,17 @@ function virtual_gamepad:draw()
 end
 
 function virtual_gamepad:drawDPad()
-    local x = self.dpad.x
-    local y = self.dpad.y
-    local r = self.dpad.radius
+    -- Convert virtual coordinates to physical coordinates
+    local px, py = self:toPhysical(self.dpad.x, self.dpad.y)
+    local scale = self.draw_scale or 1
+    local r = self.dpad.radius * scale
 
     -- Outer circle
     love.graphics.setColor(0.2, 0.2, 0.2, self.alpha)
-    love.graphics.circle("fill", x, y, r)
+    love.graphics.circle("fill", px, py, r)
     love.graphics.setColor(0.5, 0.5, 0.5, self.alpha * 1.5)
-    love.graphics.setLineWidth(3)
-    love.graphics.circle("line", x, y, r)
+    love.graphics.setLineWidth(3 * scale)
+    love.graphics.circle("line", px, py, r)
 
     -- Directional indicators
     love.graphics.setColor(0.4, 0.4, 0.4, self.alpha)
@@ -610,9 +663,9 @@ function virtual_gamepad:drawDPad()
         love.graphics.setColor(0.8, 0.8, 1.0, self.alpha * 2)
     end
     love.graphics.polygon("fill",
-        x, y - r + 20,
-        x - 18, y - r + 45,
-        x + 18, y - r + 45
+        px, py - r + 20 * scale,
+        px - 18 * scale, py - r + 45 * scale,
+        px + 18 * scale, py - r + 45 * scale
     )
 
     -- Down arrow
@@ -621,9 +674,9 @@ function virtual_gamepad:drawDPad()
         love.graphics.setColor(0.8, 0.8, 1.0, self.alpha * 2)
     end
     love.graphics.polygon("fill",
-        x, y + r - 20,
-        x - 18, y + r - 45,
-        x + 18, y + r - 45
+        px, py + r - 20 * scale,
+        px - 18 * scale, py + r - 45 * scale,
+        px + 18 * scale, py + r - 45 * scale
     )
 
     -- Left arrow
@@ -632,9 +685,9 @@ function virtual_gamepad:drawDPad()
         love.graphics.setColor(0.8, 0.8, 1.0, self.alpha * 2)
     end
     love.graphics.polygon("fill",
-        x - r + 20, y,
-        x - r + 45, y - 18,
-        x - r + 45, y + 18
+        px - r + 20 * scale, py,
+        px - r + 45 * scale, py - 18 * scale,
+        px - r + 45 * scale, py + 18 * scale
     )
 
     -- Right arrow
@@ -643,20 +696,20 @@ function virtual_gamepad:drawDPad()
         love.graphics.setColor(0.8, 0.8, 1.0, self.alpha * 2)
     end
     love.graphics.polygon("fill",
-        x + r - 20, y,
-        x + r - 45, y - 18,
-        x + r - 45, y + 18
+        px + r - 20 * scale, py,
+        px + r - 45 * scale, py - 18 * scale,
+        px + r - 45 * scale, py + 18 * scale
     )
 
     -- Center knob
-    local knob_x = x + (self.stick_x * (r - 30))
-    local knob_y = y + (self.stick_y * (r - 30))
+    local knob_x = px + (self.stick_x * (r - 30 * scale))
+    local knob_y = py + (self.stick_y * (r - 30 * scale))
 
     love.graphics.setColor(0.3, 0.3, 0.3, self.alpha * 1.2)
-    love.graphics.circle("fill", knob_x, knob_y, self.dpad.center_radius)
+    love.graphics.circle("fill", knob_x, knob_y, self.dpad.center_radius * scale)
     love.graphics.setColor(0.6, 0.6, 0.6, self.alpha * 1.5)
-    love.graphics.setLineWidth(2)
-    love.graphics.circle("line", knob_x, knob_y, self.dpad.center_radius)
+    love.graphics.setLineWidth(2 * scale)
+    love.graphics.circle("line", knob_x, knob_y, self.dpad.center_radius * scale)
 
     love.graphics.setLineWidth(1)
     love.graphics.setColor(1, 1, 1, 1)
@@ -665,33 +718,33 @@ end
 -- NEW: Draw aim stick
 function virtual_gamepad:drawAimStick()
     local stick = self.aim_stick
-    local x = stick.x
-    local y = stick.y
-    local r = stick.radius
+    local px, py = self:toPhysical(stick.x, stick.y)
+    local scale = self.draw_scale or 1
+    local r = stick.radius * scale
 
     -- Outer circle (base)
     love.graphics.setColor(0.2, 0.2, 0.2, self.alpha * 0.7)
-    love.graphics.circle("fill", x, y, r)
+    love.graphics.circle("fill", px, py, r)
     love.graphics.setColor(0.5, 0.5, 0.5, self.alpha * 1.2)
-    love.graphics.setLineWidth(3)
-    love.graphics.circle("line", x, y, r)
+    love.graphics.setLineWidth(3 * scale)
+    love.graphics.circle("line", px, py, r)
 
     -- Center crosshair indicator
     love.graphics.setColor(0.6, 0.6, 0.6, self.alpha * 0.8)
-    love.graphics.setLineWidth(2)
-    local cross_size = 12
-    love.graphics.line(x - cross_size, y, x + cross_size, y)
-    love.graphics.line(x, y - cross_size, x, y + cross_size)
+    love.graphics.setLineWidth(2 * scale)
+    local cross_size = 12 * scale
+    love.graphics.line(px - cross_size, py, px + cross_size, py)
+    love.graphics.line(px, py - cross_size, px, py + cross_size)
 
     -- Inner stick position
-    local stick_x = x + stick.offset_x
-    local stick_y = y + stick.offset_y
+    local stick_px = px + stick.offset_x * scale
+    local stick_py = py + stick.offset_y * scale
 
     -- Direction line (if active)
     if stick.active and stick.magnitude > stick.deadzone then
         love.graphics.setColor(1, 1, 0, self.alpha * 1.2)
-        love.graphics.setLineWidth(3)
-        love.graphics.line(x, y, stick_x, stick_y)
+        love.graphics.setLineWidth(3 * scale)
+        love.graphics.line(px, py, stick_px, stick_py)
     end
 
     -- Stick knob
@@ -702,7 +755,7 @@ function virtual_gamepad:drawAimStick()
         -- Inactive - gray
         love.graphics.setColor(0.3, 0.3, 0.3, self.alpha * 1.2)
     end
-    love.graphics.circle("fill", stick_x, stick_y, stick.center_radius)
+    love.graphics.circle("fill", stick_px, stick_py, stick.center_radius * scale)
 
     -- Stick outline
     if stick.active then
@@ -710,20 +763,23 @@ function virtual_gamepad:drawAimStick()
     else
         love.graphics.setColor(0.6, 0.6, 0.6, self.alpha * 1.5)
     end
-    love.graphics.setLineWidth(2)
-    love.graphics.circle("line", stick_x, stick_y, stick.center_radius)
+    love.graphics.setLineWidth(2 * scale)
+    love.graphics.circle("line", stick_px, stick_py, stick.center_radius * scale)
 
     -- Label
     love.graphics.setColor(1, 1, 1, self.alpha * 1.5)
-    love.graphics.print("AIM", x - 15, y + r + 10)
+    love.graphics.print("AIM", px - 15 * scale, py + r + 10 * scale)
 
     love.graphics.setLineWidth(1)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
 function virtual_gamepad:drawActionButtons()
+    local scale = self.draw_scale or 1
+
     for name, button in pairs(self.buttons) do
-        local radius = self.button_size / 2
+        local px, py = self:toPhysical(button.x, button.y)
+        local radius = (self.button_size / 2) * scale
 
         -- Button circle
         if button.pressed then
@@ -731,7 +787,7 @@ function virtual_gamepad:drawActionButtons()
         else
             love.graphics.setColor(0.2, 0.2, 0.2, self.alpha)
         end
-        love.graphics.circle("fill", button.x, button.y, radius)
+        love.graphics.circle("fill", px, py, radius)
 
         -- Button outline
         if button.pressed then
@@ -739,15 +795,15 @@ function virtual_gamepad:drawActionButtons()
         else
             love.graphics.setColor(0.5, 0.5, 0.5, self.alpha * 1.5)
         end
-        love.graphics.setLineWidth(3)
-        love.graphics.circle("line", button.x, button.y, radius)
+        love.graphics.setLineWidth(3 * scale)
+        love.graphics.circle("line", px, py, radius)
 
         -- Button label
         love.graphics.setColor(1, 1, 1, self.alpha * 2)
         local font = love.graphics.getFont()
         local text_w = font:getWidth(button.label)
         local text_h = font:getHeight()
-        love.graphics.print(button.label, button.x - text_w / 2, button.y - text_h / 2)
+        love.graphics.print(button.label, px - text_w / 2, py - text_h / 2)
     end
 
     love.graphics.setLineWidth(1)
@@ -756,7 +812,9 @@ end
 
 function virtual_gamepad:drawMenuButton()
     local button = self.menu_button
-    local radius = button.radius
+    local px, py = self:toPhysical(button.x, button.y)
+    local scale = self.draw_scale or 1
+    local radius = button.radius * scale
 
     -- Button circle
     if button.pressed then
@@ -764,7 +822,7 @@ function virtual_gamepad:drawMenuButton()
     else
         love.graphics.setColor(0.2, 0.2, 0.2, self.alpha)
     end
-    love.graphics.circle("fill", button.x, button.y, radius)
+    love.graphics.circle("fill", px, py, radius)
 
     -- Button outline
     if button.pressed then
@@ -772,15 +830,15 @@ function virtual_gamepad:drawMenuButton()
     else
         love.graphics.setColor(0.5, 0.5, 0.5, self.alpha * 1.5)
     end
-    love.graphics.setLineWidth(3)
-    love.graphics.circle("line", button.x, button.y, radius)
+    love.graphics.setLineWidth(3 * scale)
+    love.graphics.circle("line", px, py, radius)
 
     -- Button label
     love.graphics.setColor(1, 1, 1, self.alpha * 2)
     local font = love.graphics.getFont()
     local text_w = font:getWidth(button.label)
     local text_h = font:getHeight()
-    love.graphics.print(button.label, button.x - text_w / 2, button.y - text_h / 2)
+    love.graphics.print(button.label, px - text_w / 2, py - text_h / 2)
 
     love.graphics.setLineWidth(1)
     love.graphics.setColor(1, 1, 1, 1)
@@ -789,24 +847,24 @@ end
 function virtual_gamepad:drawAimIndicator()
     if not self.aim_touch.active then return end
 
-    -- Draw crosshair at touch position
-    local x = self.aim_touch.x
-    local y = self.aim_touch.y
-    local size = 20
+    -- Draw crosshair at touch position (already in virtual coords, convert to physical)
+    local px, py = self:toPhysical(self.aim_touch.x, self.aim_touch.y)
+    local scale = self.draw_scale or 1
+    local size = 20 * scale
 
     love.graphics.setColor(1, 0, 0, self.alpha * 2)
-    love.graphics.setLineWidth(3)
+    love.graphics.setLineWidth(3 * scale)
 
     -- Horizontal line
-    love.graphics.line(x - size, y, x + size, y)
+    love.graphics.line(px - size, py, px + size, py)
     -- Vertical line
-    love.graphics.line(x, y - size, x, y + size)
+    love.graphics.line(px, py - size, px, py + size)
 
     -- Outer circle
-    love.graphics.circle("line", x, y, size + 5)
+    love.graphics.circle("line", px, py, size + 5 * scale)
 
     -- Inner dot
-    love.graphics.circle("fill", x, y, 4)
+    love.graphics.circle("fill", px, py, 4 * scale)
 
     love.graphics.setLineWidth(1)
     love.graphics.setColor(1, 1, 1, 1)
@@ -823,28 +881,35 @@ function virtual_gamepad:setAlpha(alpha)
 end
 
 -- Check if coordinates are in any virtual gamepad control area
+-- NOTE: x, y are physical coordinates from touch input
 function virtual_gamepad:isInVirtualPadArea(x, y)
     if not self.enabled then return false end
 
+    -- Convert physical coordinates to virtual coordinates
+    if not self.screen then
+        self.screen = require "lib.screen"
+    end
+    local vx, vy = self.screen:ToVirtualCoords(x, y)
+
     -- Check D-pad
-    if self:isInDPad(x, y) then
+    if self:isInDPad(vx, vy) then
         return true
     end
 
     -- NEW: Check aim stick
-    if self:isInAimStick(x, y) then
+    if self:isInAimStick(vx, vy) then
         return true
     end
 
     -- Check action buttons
     for _, button in pairs(self.buttons) do
-        if self:isInButton(x, y, button) then
+        if self:isInButton(vx, vy, button) then
             return true
         end
     end
 
     -- Check menu button
-    if self:isInButton(x, y, self.menu_button) then
+    if self:isInButton(vx, vy, self.menu_button) then
         return true
     end
 
