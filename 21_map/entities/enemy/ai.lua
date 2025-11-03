@@ -13,6 +13,8 @@ function ai.update(enemy, dt, player_x, player_y)
         ai.updatePatrol(enemy, dt, player_x, player_y)
     elseif enemy.state == "chase" then
         ai.updateChase(enemy, dt, player_x, player_y)
+    elseif enemy.state == "attack_windup" then
+        ai.updateAttackWindup(enemy, dt, player_x, player_y)
     elseif enemy.state == "attack" then
         ai.updateAttack(enemy, dt, player_x, player_y)
     elseif enemy.state == "hit" then
@@ -190,7 +192,7 @@ function ai.updateChase(enemy, dt, player_x, player_y)
 
         -- Check edge-to-edge distance instead of center-to-center
         if edge_distance < effective_attack_range then
-            ai.setState(enemy, "attack")
+            ai.setState(enemy, "attack_windup")
             return
         end
     else
@@ -202,7 +204,7 @@ function ai.updateChase(enemy, dt, player_x, player_y)
         end
 
         if attack_distance < effective_attack_range then
-            ai.setState(enemy, "attack")
+            ai.setState(enemy, "attack_windup")
             return
         end
     end
@@ -225,6 +227,39 @@ function ai.updateChase(enemy, dt, player_x, player_y)
     local is_platformer = enemy.world and enemy.world.game_mode == "platformer"
     enemy.target_x = player_x
     enemy.target_y = is_platformer and enemy.y or player_y -- Keep current Y in platformer mode
+end
+
+function ai.updateAttackWindup(enemy, dt, player_x, player_y)
+    -- Windup phase - enemy prepares to attack
+    -- Update direction to face player during windup
+    if enemy.is_humanoid then
+        local dx = player_x - enemy.x
+        local dy = player_y - enemy.y
+        local abs_dx = math.abs(dx)
+        local abs_dy = math.abs(dy)
+
+        if abs_dx > abs_dy then
+            if dx > 0 then
+                enemy.direction = "right"
+            else
+                enemy.direction = "left"
+            end
+        else
+            if dy > 0 then
+                enemy.direction = "down"
+            else
+                enemy.direction = "up"
+            end
+        end
+    end
+
+    -- Use idle animation during windup (could use a specific windup animation if available)
+    enemy.anim = enemy.animations["idle_" .. enemy.direction]
+
+    -- Transition to actual attack after windup time
+    if enemy.state_timer <= 0 then
+        ai.setState(enemy, "attack")
+    end
 end
 
 function ai.updateAttack(enemy, dt, player_x, player_y)
@@ -282,6 +317,8 @@ function ai.setState(enemy, new_state)
 
     if new_state == "idle" then
         enemy.state_timer = math.random(1, 3)
+    elseif new_state == "attack_windup" then
+        enemy.state_timer = 0.15  -- Windup duration (telegraph)
     elseif new_state == "attack" then
         enemy.state_timer = 0.5
         enemy.has_attacked = false

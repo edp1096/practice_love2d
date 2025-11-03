@@ -285,7 +285,12 @@ function loaders.loadDeathZones(self)
 end
 
 function loaders.loadDamageZones(self)
-    if not self.map.layers["DamageZones"] then return end
+    if not self.map.layers["DamageZones"] then
+        print("DamageZones layer not found!")
+        return
+    end
+
+    print("Loading DamageZones:", #self.map.layers["DamageZones"].objects, "zones found")
 
     for _, obj in ipairs(self.map.layers["DamageZones"].objects) do
         local zone
@@ -331,8 +336,11 @@ function loaders.loadDamageZones(self)
                 damage = zone.damage,
                 damage_cooldown = zone.damage_cooldown
             })
+            print("DamageZone added:", zone.damage, "damage,", zone.damage_cooldown, "cooldown")
         end
     end
+
+    print("Total DamageZones loaded:", #self.damage_zones)
 end
 
 return loaders

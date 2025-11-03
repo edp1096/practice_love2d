@@ -50,6 +50,7 @@ local utils = require "utils.util"
 local scene_control = require "systems.scene_control"
 local input = require "systems.input"
 local sound = require "systems.sound"
+local fonts = require "utils.fonts"
 local menu = require "scenes.menu"
 
 local virtual_gamepad
@@ -80,6 +81,7 @@ function love.load()
     end
 
     input:init()
+    fonts:init()
 
     if virtual_gamepad then
         virtual_gamepad:init()

@@ -12,7 +12,6 @@ local save_sys = require "systems.save"
 local inventory_class = require "systems.inventory"
 local dialogue = require "systems.dialogue"
 local sound = require "systems.sound"
-local parallax_sys = require "systems.parallax"
 local util = require "utils.util"
 local constants = require "systems.constants"
 local minimap_class = require "systems.minimap"
@@ -46,10 +45,6 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
 
     -- Set player game mode based on world
     self.player.game_mode = self.world.game_mode
-
-    -- Initialize parallax backgrounds
-    self.parallax = parallax_sys:new()
-    self.parallax:loadFromMap(self.world.map)
 
     self.current_save_slot = save_slot
 
@@ -107,7 +102,6 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
             virtual_gamepad:init()
         end
         virtual_gamepad:show()
-        print("Virtual gamepad status - enabled:", virtual_gamepad.enabled, "visible:", virtual_gamepad.visible)
     end
 
     -- Set game context for input coordinator (for context-based actions)
@@ -170,12 +164,6 @@ function play:switchMap(new_map_path, spawn_x, spawn_y)
 
     -- CRITICAL: Update player game mode when switching maps
     self.player.game_mode = self.world.game_mode
-
-    -- Reload parallax backgrounds for new map
-    if self.parallax then
-        self.parallax:clear()
-        self.parallax:loadFromMap(self.world.map)
-    end
 
     -- Update minimap for new map
     if self.minimap then

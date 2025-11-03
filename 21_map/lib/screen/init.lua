@@ -1,4 +1,21 @@
 -- lib/screen.lua (Android-compatible version)
+-- Virtual screen system with scaling, letterboxing, and multi-platform support
+--
+-- PUBLIC API (frequently used):
+--   GetVirtualDimensions() - Get virtual resolution (960x540)
+--   GetScreenDimensions() - Get physical screen size
+--   Attach() / Detach() - Begin/end virtual coordinate rendering
+--   ToVirtualCoords(x, y) - Convert screen coords to virtual coords
+--   GetVirtualMousePosition() - Get mouse/touch position in virtual coords
+--   ToggleFullScreen() - Toggle fullscreen (desktop only)
+--   Resize(w, h) - Handle window resize events
+--
+-- INTERNAL API (used by module or debug only):
+--   GetAllTouches() - Get all touch points (mobile debug)
+--   ShowDebugInfo() / ShowVirtualMouse() - Debug overlays
+--   GetOffset() / GetScale() - Internal coordinate transform data
+--   SetScaleMode(mode) - Internal use during initialization
+--   GetVisibleVirtualBounds() - Internal coordinate calculations
 
 local screen = {
     is_fullscreen = false,
@@ -249,7 +266,6 @@ function screen:GetAspectRatioName()
 end
 
 function screen:Attach()
-    -- self:DrawLetterbox(0, 0, 0, 0.5)
     self:DrawLetterbox()
     love.graphics.push()
     love.graphics.translate(self.offset_x, self.offset_y)
@@ -337,14 +353,6 @@ function screen:GetAllTouches()
     return touches
 end
 
-function screen:IsPointInVirtualBounds(x, y)
-    return x >= 0 and x <= self.render_wh.w and y >= 0 and y <= self.render_wh.h
-end
-
-function screen:IsPointInScreenBounds(x, y)
-    return x >= 0 and x <= self.screen_wh.w and y >= 0 and y <= self.screen_wh.h
-end
-
 function screen:Resize(w, h)
     self:CalculateScale()
 end
@@ -406,7 +414,6 @@ function screen:ShowDebugInfo()
         love.graphics.print("Touches: " .. #touches, 10, 190)
     else
         love.graphics.print("F11: Toggle Fullscreen", 10, 170)
-        love.graphics.print("1: Fit  2: Stretch  3: Fill", 10, 190)
     end
 
     love.graphics.print("F3: Debug  F1: Info", 10, 210)
@@ -440,7 +447,11 @@ function screen:ShowVirtualMouse()
 
     local vmx, vmy, mx, my = self:GetVirtualMousePosition()
 
-    if self:IsPointInVirtualBounds(vmx, vmy) or self:IsPointInScreenBounds(mx, my) then
+    -- Check if point is in virtual bounds OR screen bounds
+    local in_virtual_bounds = (vmx >= 0 and vmx <= self.render_wh.w and vmy >= 0 and vmy <= self.render_wh.h)
+    local in_screen_bounds = (mx >= 0 and mx <= self.screen_wh.w and my >= 0 and my <= self.screen_wh.h)
+
+    if in_virtual_bounds or in_screen_bounds then
         love.graphics.setColor(0, 0, 0, 0.3)
         love.graphics.circle("fill", mx, my, 16)
 

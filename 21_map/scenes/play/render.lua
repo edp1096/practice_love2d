@@ -8,6 +8,7 @@ local effects = require "systems.effects"
 local debug = require "systems.debug"
 local camera_sys = require "systems.camera"
 local input = require "systems.input"
+local fonts = require "utils.fonts"
 
 local render = {}
 
@@ -18,12 +19,8 @@ function render.draw(self)
 
     self.cam:attach()
 
-    -- Draw parallax backgrounds
-    if self.parallax then
-        local cam_x, cam_y = self.cam:position()
-        local vw, vh = screen:GetVirtualDimensions()
-        self.parallax:draw(cam_x, cam_y, vw, vh)
-    end
+    -- Draw background layer (no parallax)
+    self.world:drawLayer("Background_Near")
 
     self.world:drawLayer("Ground")
     self.world:drawEntitiesYSorted(self.player)
@@ -32,7 +29,7 @@ function render.draw(self)
         self.player:drawDebug()
     end
 
-    self.world:drawLayer("Trees")
+    self.world:drawLayer("Trees", self.cam)
 
     -- Draw healing points
     self.world:drawHealingPoints()
@@ -98,7 +95,9 @@ function render.draw(self)
 
     if self.save_notification.active then
         local alpha = math.min(1, self.save_notification.timer / 0.5)
-        local font = love.graphics.newFont(28)
+        local font = fonts.subtitle
+        if not font then return end  -- Safety check
+
         love.graphics.setFont(font)
 
         local text = self.save_notification.text

@@ -6,6 +6,7 @@ local settings = {}
 local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
 local input = require "systems.input"
+local fonts = require "utils.fonts"
 
 -- Import modules
 local options_module = require "scenes.settings.options"
@@ -27,11 +28,11 @@ function settings:enter(previous, ...)
         input.virtual_gamepad:hide()
     end
 
-    -- Create fonts (slightly smaller for more items)
-    self.titleFont = love.graphics.newFont(32)
-    self.labelFont = love.graphics.newFont(20)
-    self.valueFont = love.graphics.newFont(20)
-    self.hintFont = love.graphics.newFont(14)
+    -- Use centralized fonts
+    self.titleFont = fonts.title
+    self.labelFont = fonts.option
+    self.valueFont = fonts.option
+    self.hintFont = fonts.hint
 
     -- Detect mobile platform
     local is_mobile = (love._os == "Android" or love._os == "iOS")

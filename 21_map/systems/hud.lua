@@ -1,10 +1,14 @@
 -- systems/hud.lua
 -- HUD and UI elements with unified debug system
 
+local fonts = require "utils.fonts"
+
 local hud = {}
 
 hud.small_font = love.graphics.newFont(11)
 hud.tiny_font = love.graphics.newFont(10)
+hud.parry_font = love.graphics.newFont(24)
+hud.perfect_parry_font = love.graphics.newFont(32)
 
 function hud:draw_health_bar(x, y, w, h, hp, max_hp)
     love.graphics.setColor(0, 0, 0, 0.7)
@@ -60,8 +64,7 @@ function hud:draw_parry_success(player, screen_w, screen_h)
     if player.parry_success_timer <= 0 then return end
 
     local text = player.parry_perfect and "PERFECT PARRY!" or "PARRY!"
-    local font_size = player.parry_perfect and 32 or 24
-    local font = love.graphics.newFont(font_size)
+    local font = player.parry_perfect and hud.perfect_parry_font or hud.parry_font
     love.graphics.setFont(font)
 
     local alpha = player.parry_success_timer / 0.5

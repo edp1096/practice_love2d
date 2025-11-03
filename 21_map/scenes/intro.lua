@@ -9,14 +9,9 @@ local screen = require "lib.screen"
 local Talkies = require "vendor.talkies"
 local intro_configs = require "data.intro_configs"
 local sound = require "systems.sound"
+local fonts = require "utils.fonts"
 
 function intro:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot)
-    print("=== Intro Scene Enter ===")
-    print("intro_id:", intro_id)
-    print("target_map:", target_map)
-    print("spawn_x:", spawn_x)
-    print("spawn_y:", spawn_y)
-    print("slot:", slot)
 
     -- Hide virtual gamepad during intro/cutscene
     local input = require "systems.input"
@@ -174,7 +169,7 @@ function intro:draw()
 
     -- Draw skip hint
     if not self.dialogue_finished then
-        love.graphics.setFont(love.graphics.newFont(12))
+        love.graphics.setFont(fonts.small)
         love.graphics.setColor(0.7, 0.7, 0.7, 0.8)
         love.graphics.printf("Press ESC to skip", 10, self.virtual_height - 20, self.virtual_width - 20, "right")
     end

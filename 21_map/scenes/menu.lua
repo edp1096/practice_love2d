@@ -73,18 +73,15 @@ end
 function menu:resize(w, h) screen:Resize(w, h) end
 
 function menu:keypressed(key)
-    if key == "escape" then
-        love.event.quit()
-        return
-    end
-
     local nav_result = scene_ui.handleKeyboardNav(key, self.selected, #self.options)
 
-    if type(nav_result) == "number" then
-        self.selected = nav_result
-    elseif nav_result == "select" then
+    if nav_result.action == "navigate" then
+        self.selected = nav_result.new_selection
+    elseif nav_result.action == "select" then
         self:executeOption(self.selected)
-    else
+    elseif nav_result.action == "back" then
+        love.event.quit()
+    elseif nav_result.action == "none" then
         debug:handleInput(key, {})
     end
 end
@@ -92,11 +89,11 @@ end
 function menu:gamepadpressed(joystick, button)
     local nav_result = scene_ui.handleGamepadNav(button, self.selected, #self.options)
 
-    if type(nav_result) == "number" then
-        self.selected = nav_result
-    elseif nav_result == "select" then
+    if nav_result.action == "navigate" then
+        self.selected = nav_result.new_selection
+    elseif nav_result.action == "select" then
         self:executeOption(self.selected)
-    elseif nav_result == "back" then
+    elseif nav_result.action == "back" then
         love.event.quit()
     end
 end
@@ -131,8 +128,6 @@ function menu:executeOption(option_index)
         local slot = empty_slot or 1
 
         -- Start with level1 intro
-        print("=== Menu: Starting New Game with Level1 Intro ===")
-        print("Slot:", slot)
         local intro = require "scenes.intro"
         scene_control.switch(intro,
             "level1",

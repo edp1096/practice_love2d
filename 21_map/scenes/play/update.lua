@@ -25,10 +25,16 @@ function update.handleEnemyAttacks(self, scaled_dt, shake_callback)
             -- Check if platformer mode
             local is_platformer = self.world.game_mode == "platformer"
 
-            -- In platformer mode, only use horizontal distance
+            -- In platformer mode, check both horizontal AND vertical distance
             local distance
             if is_platformer then
                 distance = math.abs(dx)
+                -- CRITICAL: Also check Y distance in platformer to prevent air attacks
+                local vertical_distance = math.abs(dy)
+                -- If Y distance is too large (player jumping/falling), skip attack
+                if vertical_distance > 50 then
+                    goto continue_enemy_loop
+                end
             else
                 distance = math.sqrt(dx * dx + dy * dy)
             end
@@ -82,6 +88,8 @@ function update.handleEnemyAttacks(self, scaled_dt, shake_callback)
                 end
             end
         end
+
+        ::continue_enemy_loop::
     end
 end
 
@@ -199,11 +207,26 @@ end
 function update.checkDeathZones(self)
     if not self.player.collider then return false end
 
-    local colliders = self.player.collider:getEnterCollisionData("DeathZone")
-    if colliders and #colliders > 0 then
-        -- Player touched death zone - instant death
-        self.player.health = 0
-        return true
+    -- Check each death zone (Box2D testPoint for accurate polygon collision)
+    for _, zone in ipairs(self.world.death_zones) do
+        -- Get player foot position (shadow position for topdown)
+        local px, py = self.player.collider:getPosition()
+
+        -- In topdown mode, check foot position (center Y + half height)
+        -- This represents where the shadow/feet are touching the ground
+        if self.player.game_mode == "topdown" then
+            py = py + self.player.height / 2
+        end
+
+        -- Use Box2D's testPoint to check if player foot is inside the zone
+        -- This works accurately for any polygon shape
+        local is_in_zone = zone.fixture:testPoint(px, py)
+
+        if is_in_zone then
+            -- Player is in death zone - instant death
+            self.player.health = 0
+            return true
+        end
     end
 
     return false
@@ -225,29 +248,35 @@ function update.checkDamageZones(self, scaled_dt, shake_callback)
         end
     end
 
-    -- Check each damage zone
+    -- Check each damage zone (Box2D testPoint for accurate polygon collision)
     for i, zone_data in ipairs(self.world.damage_zones) do
         local zone = zone_data.collider
 
-        -- Check if player is in this damage zone
-        if self.player.collider:isEntering("DamageZone") then
-            local colliders = self.player.collider:getEnterCollisionData("DamageZone")
+        -- Get player foot position (shadow position for topdown)
+        local px, py = self.player.collider:getPosition()
 
-            for _, collider in ipairs(colliders) do
-                if collider == zone then
-                    -- Found the zone - check cooldown
-                    local zone_id = "zone_" .. i
-                    local cooldown = self.player.damage_zone_cooldowns[zone_id] or 0
+        -- In topdown mode, check foot position (center Y + half height)
+        -- This represents where the shadow/feet are touching the ground
+        if self.player.game_mode == "topdown" then
+            py = py + self.player.height / 2
+        end
 
-                    if cooldown <= 0 then
-                        -- Apply damage
-                        local damaged = self.player:takeDamage(zone_data.damage, shake_callback)
+        -- Use Box2D's testPoint to check if player foot is inside the zone
+        -- This works accurately for any polygon shape
+        local is_in_zone = zone.fixture:testPoint(px, py)
 
-                        if damaged then
-                            -- Reset cooldown
-                            self.player.damage_zone_cooldowns[zone_id] = zone_data.damage_cooldown
-                        end
-                    end
+        if is_in_zone then
+            -- Player is in damage zone - check cooldown
+            local zone_id = "zone_" .. i
+            local cooldown = self.player.damage_zone_cooldowns[zone_id] or 0
+
+            if cooldown <= 0 then
+                -- Apply damage
+                local damaged = self.player:takeDamage(zone_data.damage, shake_callback)
+
+                if damaged then
+                    -- Reset cooldown
+                    self.player.damage_zone_cooldowns[zone_id] = zone_data.damage_cooldown
                 end
             end
         end

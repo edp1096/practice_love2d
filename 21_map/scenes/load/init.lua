@@ -7,6 +7,7 @@ local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
 local save_sys = require "systems.save"
 local input = require "systems.input"
+local fonts = require "utils.fonts"
 
 local slot_renderer = require "scenes.load.slot_renderer"
 local input_handler = require "scenes.load.input"
@@ -24,11 +25,11 @@ function load:enter(previous, ...)
     self.virtual_width = vw
     self.virtual_height = vh
 
-    self.titleFont = love.graphics.newFont(36)
-    self.slotFont = love.graphics.newFont(24)
-    self.infoFont = love.graphics.newFont(16)
-    self.hintFont = love.graphics.newFont(14)
-    self.confirmFont = love.graphics.newFont(20)
+    self.titleFont = fonts.title_large
+    self.slotFont = fonts.option
+    self.infoFont = fonts.info
+    self.hintFont = fonts.info
+    self.confirmFont = fonts.option
 
     self.slots = save_sys:getAllSlotsInfo()
 

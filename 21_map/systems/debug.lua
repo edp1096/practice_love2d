@@ -24,6 +24,9 @@ debug.hand_marking_active = false
 debug.manual_frame = 1
 debug.actual_hand_positions = {}
 
+-- === Shared Resources ===
+debug.help_font = nil  -- Lazy-loaded help font
+
 -- === Master Toggle ===
 function debug:toggle()
     self.enabled = not self.enabled
@@ -279,8 +282,10 @@ end
 function debug:drawHelp(x, y)
     if not self.enabled then return end
 
-    local help_font = love.graphics.newFont(12)
-    love.graphics.setFont(help_font)
+    if not self.help_font then
+        self.help_font = love.graphics.newFont(12)
+    end
+    love.graphics.setFont(self.help_font)
 
     love.graphics.setColor(0, 0, 0, 0.7)
     love.graphics.rectangle("fill", x - 5, y - 5, 240, 120)

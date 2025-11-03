@@ -11,7 +11,9 @@ end
 
 function rendering.drawLayer(self, layer_name)
     local layer = self.map.layers[layer_name]
-    if layer then self.map:drawLayer(layer) end
+    if not layer then return end
+
+    self.map:drawLayer(layer)
 end
 
 function rendering.drawEntitiesYSorted(self, player)

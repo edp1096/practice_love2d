@@ -4,8 +4,14 @@
 local screen = require "lib.screen"
 local input = require "systems.input"
 local sound = require "systems.sound"
+local fonts = require "utils.fonts"
 
 local scene_ui = {}
+
+-- Fallback fonts for confirmation dialogs (lazy-loaded)
+scene_ui.fallback_title_font = nil
+scene_ui.fallback_hint_font = nil
+scene_ui.fallback_option_font = nil
 
 -- Create standard menu layout configuration
 function scene_ui.createMenuLayout(vh)
@@ -18,13 +24,14 @@ function scene_ui.createMenuLayout(vh)
 end
 
 -- Create standard fonts for menu scenes
+-- Returns references to centralized font manager
 function scene_ui.createMenuFonts()
     return {
-        title = love.graphics.newFont(44),
-        option = love.graphics.newFont(26),
-        hint = love.graphics.newFont(14),
-        label = love.graphics.newFont(22),
-        info = love.graphics.newFont(16)
+        title = fonts.title_large,
+        option = fonts.option,
+        hint = fonts.hint,
+        label = fonts.option,
+        info = fonts.info
     }
 end
 
@@ -93,47 +100,49 @@ function scene_ui.drawControlHints(font, layout, width, custom_text)
     love.graphics.printf(hint_text, 0, layout.hint_y - 10, width, "center")
 end
 
--- Handle keyboard navigation (returns new selection or nil if no change)
+-- Handle keyboard navigation (returns result table with action and new_selection)
 function scene_ui.handleKeyboardNav(key, current_selection, option_count)
     if input:wasPressed("menu_up", "keyboard", key) then
         local new_sel = current_selection - 1
         if new_sel < 1 then new_sel = option_count end
         sound:playSFX("menu", "navigate")
-        return new_sel
+        return { action = "navigate", new_selection = new_sel }
     elseif input:wasPressed("menu_down", "keyboard", key) then
         local new_sel = current_selection + 1
         if new_sel > option_count then new_sel = 1 end
         sound:playSFX("menu", "navigate")
-        return new_sel
+        return { action = "navigate", new_selection = new_sel }
     elseif input:wasPressed("menu_select", "keyboard", key) then
         sound:playSFX("menu", "select")
-        return "select"
+        return { action = "select" }
+    elseif key == "escape" then
+        return { action = "back" }
     end
 
-    return nil
+    return { action = "none" }
 end
 
--- Handle gamepad navigation
+-- Handle gamepad navigation (returns result table with action and new_selection)
 function scene_ui.handleGamepadNav(button, current_selection, option_count)
     if input:wasPressed("menu_up", "gamepad", button) then
         local new_sel = current_selection - 1
         if new_sel < 1 then new_sel = option_count end
         sound:playSFX("menu", "navigate")
-        return new_sel
+        return { action = "navigate", new_selection = new_sel }
     elseif input:wasPressed("menu_down", "gamepad", button) then
         local new_sel = current_selection + 1
         if new_sel > option_count then new_sel = 1 end
         sound:playSFX("menu", "navigate")
-        return new_sel
+        return { action = "navigate", new_selection = new_sel }
     elseif input:wasPressed("menu_select", "gamepad", button) then
         sound:playSFX("menu", "select")
-        return "select"
+        return { action = "select" }
     elseif input:wasPressed("menu_back", "gamepad", button) then
         sound:playSFX("menu", "back")
-        return "back"
+        return { action = "back" }
     end
 
-    return nil
+    return { action = "none" }
 end
 
 -- Handle mouse selection (returns selected index or nil)
@@ -161,13 +170,27 @@ function scene_ui.drawConfirmDialog(title, subtitle, button_labels, selected, mo
     love.graphics.rectangle("fill", 0, 0, width, height)
 
     -- Title
-    love.graphics.setFont(fonts.title or love.graphics.newFont(20))
+    local title_font = fonts.title
+    if not title_font then
+        if not scene_ui.fallback_title_font then
+            scene_ui.fallback_title_font = love.graphics.newFont(20)
+        end
+        title_font = scene_ui.fallback_title_font
+    end
+    love.graphics.setFont(title_font)
     love.graphics.setColor(1, 0.3, 0.3, 1)
     love.graphics.printf(title, 0, height / 2 - 60, width, "center")
 
     -- Subtitle
     if subtitle then
-        love.graphics.setFont(fonts.hint or love.graphics.newFont(14))
+        local hint_font = fonts.hint
+        if not hint_font then
+            if not scene_ui.fallback_hint_font then
+                scene_ui.fallback_hint_font = love.graphics.newFont(14)
+            end
+            hint_font = scene_ui.fallback_hint_font
+        end
+        love.graphics.setFont(hint_font)
         love.graphics.setColor(0.9, 0.9, 0.9, 1)
         love.graphics.printf(subtitle, 0, height / 2 - 20, width, "center")
     end
@@ -202,7 +225,14 @@ function scene_ui.drawConfirmDialog(title, subtitle, button_labels, selected, mo
         love.graphics.rectangle("line", button_x, button_y, button_width, button_height)
 
         -- Button text
-        love.graphics.setFont(fonts.option or love.graphics.newFont(24))
+        local option_font = fonts.option
+        if not option_font then
+            if not scene_ui.fallback_option_font then
+                scene_ui.fallback_option_font = love.graphics.newFont(24)
+            end
+            option_font = scene_ui.fallback_option_font
+        end
+        love.graphics.setFont(option_font)
         love.graphics.setColor(is_selected and 1 or 0.9, is_selected and 1 or 0.9, is_selected and 1 or 0.9, 1)
         love.graphics.printf(button_labels[i], button_x, button_y + 12, button_width, "center")
     end

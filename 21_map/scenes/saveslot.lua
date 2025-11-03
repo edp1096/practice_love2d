@@ -7,6 +7,7 @@ local scene_control = require "systems.scene_control"
 local screen = require "lib.screen"
 local save_sys = require "systems.save"
 local input = require "systems.input"
+local fonts = require "utils.fonts"
 
 function saveslot:enter(previous, save_callback, ...)
     self.previous = previous
@@ -17,10 +18,10 @@ function saveslot:enter(previous, save_callback, ...)
     self.virtual_width = vw
     self.virtual_height = vh
 
-    self.titleFont = love.graphics.newFont(32)
-    self.slotFont = love.graphics.newFont(22)
-    self.infoFont = love.graphics.newFont(14)
-    self.hintFont = love.graphics.newFont(13)
+    self.titleFont = fonts.title
+    self.slotFont = fonts.option
+    self.infoFont = fonts.info
+    self.hintFont = fonts.hint
 
     self.slots = save_sys:getAllSlotsInfo()
 

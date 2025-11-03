@@ -8,6 +8,7 @@ local screen = require "lib.screen"
 local save_sys = require "systems.save"
 local input = require "systems.input"
 local constants = require "systems.constants"
+local fonts = require "utils.fonts"
 
 function newgame:enter(previous, ...)
     self.previous = previous
@@ -17,10 +18,10 @@ function newgame:enter(previous, ...)
     self.virtual_width = vw
     self.virtual_height = vh
 
-    self.titleFont = love.graphics.newFont(32)
-    self.slotFont = love.graphics.newFont(22)
-    self.infoFont = love.graphics.newFont(14)
-    self.hintFont = love.graphics.newFont(13)
+    self.titleFont = fonts.title
+    self.slotFont = fonts.option
+    self.infoFont = fonts.info
+    self.hintFont = fonts.hint
 
     self.slots = save_sys:getAllSlotsInfo()
 
@@ -181,14 +182,7 @@ function newgame:selectSlot(slot_index)
         scene_control.switch(menu)
     else
         -- Start with level1 intro, passing slot info to intro scene
-        print("=== New Game: Starting Level1 Intro ===")
-        print("Slot:", slot.slot)
-        print("Default map:", constants.GAME_START.DEFAULT_MAP)
-        print("Default spawn:", constants.GAME_START.DEFAULT_SPAWN_X, constants.GAME_START.DEFAULT_SPAWN_Y)
-
         local intro = require "scenes.intro"
-        print("Intro module loaded:", intro ~= nil)
-
         scene_control.switch(intro,
             "level1",
             constants.GAME_START.DEFAULT_MAP,

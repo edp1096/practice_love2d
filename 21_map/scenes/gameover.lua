@@ -8,6 +8,8 @@ local screen = require "lib.screen"
 local input = require "systems.input"
 local sound = require "systems.sound"
 local restart_util = require "utils.restart"
+local fonts = require "utils.fonts"
+local scene_ui = require "utils.scene_ui"
 
 function gameover:enter(previous, is_clear, ...)
     self.previous = previous
@@ -34,10 +36,10 @@ function gameover:enter(previous, is_clear, ...)
     self.virtual_width = vw
     self.virtual_height = vh
 
-    self.titleFont = love.graphics.newFont(44)
-    self.subtitleFont = love.graphics.newFont(28)
-    self.optionFont = love.graphics.newFont(22)
-    self.hintFont = love.graphics.newFont(13)
+    self.titleFont = fonts.title_large
+    self.subtitleFont = fonts.subtitle
+    self.optionFont = fonts.option
+    self.hintFont = fonts.hint
 
     self.layout = {
         title_y = vh * 0.24,
@@ -72,25 +74,8 @@ function gameover:update(dt)
         self.flash_alpha = math.max(0, self.flash_alpha - self.flash_speed * dt)
     end
 
-    local vmx, vmy = screen:GetVirtualMousePosition()
-
-    self.mouse_over = 0
-    love.graphics.setFont(self.optionFont)
-
-    for i, option in ipairs(self.options) do
-        local y = self.layout.options_start_y + (i - 1) * self.layout.option_spacing
-        local text_width = self.optionFont:getWidth(option)
-        local text_height = self.optionFont:getHeight()
-
-        local x = (self.virtual_width - text_width) / 2
-        local padding = 20
-
-        if vmx >= x - padding and vmx <= x + text_width + padding and
-            vmy >= y - padding and vmy <= y + text_height + padding then
-            self.mouse_over = i
-            break
-        end
-    end
+    -- Use scene_ui helper for mouse-over detection
+    self.mouse_over = scene_ui.updateMouseOver(self.options, self.layout, self.virtual_width, self.optionFont)
 end
 
 function gameover:draw()
@@ -131,18 +116,9 @@ function gameover:draw()
         love.graphics.printf(subtitle, 0, self.layout.subtitle_y, self.virtual_width, "center")
     end
 
-    love.graphics.setFont(self.optionFont)
-    for i, option in ipairs(self.options) do
-        local y = self.layout.options_start_y + (i - 1) * self.layout.option_spacing
-
-        if i == self.selected or i == self.mouse_over then
-            love.graphics.setColor(1, 1, 0, 1)
-            love.graphics.printf("> " .. option, 0, y, self.virtual_width, "center")
-        else
-            love.graphics.setColor(1, 1, 1, 1)
-            love.graphics.printf(option, 0, y, self.virtual_width, "center")
-        end
-    end
+    -- Use scene_ui helper for option rendering
+    scene_ui.drawOptions(self.options, self.selected, self.mouse_over, self.optionFont,
+        self.layout, self.virtual_width)
 
     love.graphics.setFont(self.hintFont)
     love.graphics.setColor(0.7, 0.7, 0.7, 1)
@@ -168,30 +144,26 @@ function gameover:resize(w, h)
 end
 
 function gameover:keypressed(key)
-    if key == "up" or key == "w" then
-        self.selected = self.selected - 1
-        if self.selected < 1 then self.selected = #self.options end
-    elseif key == "down" or key == "s" then
-        self.selected = self.selected + 1
-        if self.selected > #self.options then self.selected = 1 end
-    elseif key == "return" or key == "space" then
+    local nav_result = scene_ui.handleKeyboardNav(key, self.selected, #self.options)
+
+    if nav_result.action == "navigate" then
+        self.selected = nav_result.new_selection
+    elseif nav_result.action == "select" then
         self:executeOption(self.selected)
-    elseif key == "escape" then
+    elseif nav_result.action == "back" then
         local menu = require "scenes.menu"
         scene_control.switch(menu)
     end
 end
 
 function gameover:gamepadpressed(joystick, button)
-    if input:wasPressed("menu_up", "gamepad", button) then
-        self.selected = self.selected - 1
-        if self.selected < 1 then self.selected = #self.options end
-    elseif input:wasPressed("menu_down", "gamepad", button) then
-        self.selected = self.selected + 1
-        if self.selected > #self.options then self.selected = 1 end
-    elseif input:wasPressed("menu_select", "gamepad", button) then
+    local nav_result = scene_ui.handleGamepadNav(button, self.selected, #self.options)
+
+    if nav_result.action == "navigate" then
+        self.selected = nav_result.new_selection
+    elseif nav_result.action == "select" then
         self:executeOption(self.selected)
-    elseif input:wasPressed("menu_back", "gamepad", button) then
+    elseif nav_result.action == "back" then
         local menu = require "scenes.menu"
         scene_control.switch(menu)
     end

@@ -8,6 +8,9 @@ local render = {}
 -- Color swap shader (shared across all enemies)
 local color_swap_shader = nil
 
+-- Shared font for attack indicator (create once, reuse for all enemies)
+local attack_indicator_font = nil
+
 function render.initialize_shader()
     if not color_swap_shader then
         local shader_code = [[
@@ -136,6 +139,25 @@ function render.draw(enemy)
             love.graphics.setColor(1, 1, 1, 1)
             love.graphics.circle("line", star_x, star_y, star_size)
         end
+    end
+
+    -- Attack windup indicator (!)
+    if enemy.state == "attack_windup" then
+        if not attack_indicator_font then
+            attack_indicator_font = love.graphics.newFont(24)
+        end
+
+        local indicator_y = collider_center_y - 60
+        local pulse = 0.5 + math.sin(love.timer.getTime() * 15) * 0.5
+
+        -- Exclamation mark background
+        love.graphics.setColor(0, 0, 0, 0.7)
+        love.graphics.circle("fill", collider_center_x, indicator_y, 12)
+
+        -- Exclamation mark with pulse effect
+        love.graphics.setColor(1, 0.2, 0.2, pulse)
+        love.graphics.setFont(attack_indicator_font)
+        love.graphics.printf("!", collider_center_x - 15, indicator_y - 12, 30, "center")
     end
 
     love.graphics.setShader()

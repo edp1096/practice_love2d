@@ -19,11 +19,7 @@ function pause:enter(previous, ...)
     local vw, vh = screen:GetVirtualDimensions()
     self.virtual_width = vw
     self.virtual_height = vh
-    self.fonts = {
-        title = love.graphics.newFont(30),
-        option = love.graphics.newFont(22),
-        hint = love.graphics.newFont(14)
-    }
+    self.fonts = scene_ui.createMenuFonts()
     self.layout = {
         title_y = vh * 0.18,
         options_start_y = vh * 0.32,
@@ -95,9 +91,9 @@ function pause:keypressed(key)
     -- Handle navigation
     local nav_result = scene_ui.handleKeyboardNav(key, self.selected, #self.options)
 
-    if type(nav_result) == "number" then
-        self.selected = nav_result
-    elseif nav_result == "select" then
+    if nav_result.action == "navigate" then
+        self.selected = nav_result.new_selection
+    elseif nav_result.action == "select" then
         self:executeOption(self.selected)
     end
 end
@@ -115,9 +111,9 @@ function pause:gamepadpressed(joystick, button)
     -- Handle navigation
     local nav_result = scene_ui.handleGamepadNav(button, self.selected, #self.options)
 
-    if type(nav_result) == "number" then
-        self.selected = nav_result
-    elseif nav_result == "select" then
+    if nav_result.action == "navigate" then
+        self.selected = nav_result.new_selection
+    elseif nav_result.action == "select" then
         self:executeOption(self.selected)
     end
 end

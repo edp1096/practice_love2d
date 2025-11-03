@@ -100,11 +100,6 @@ function virtual_gamepad:init()
     self.screen = require "lib.screen"
 
     self:calculatePositions()
-    if debug.debug_mode then
-        print("Virtual gamepad initialized (DEBUG MODE)")
-    else
-        print("Virtual gamepad initialized for " .. os)
-    end
 end
 
 function virtual_gamepad:calculatePositions()

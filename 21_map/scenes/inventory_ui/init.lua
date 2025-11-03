@@ -7,6 +7,7 @@ local screen = require "lib.screen"
 local sound = require "systems.sound"
 local slot_renderer = require "scenes.inventory_ui.slot_renderer"
 local input_handler = require "scenes.inventory_ui.input"
+local fonts = require "utils.fonts"
 
 -- Safe sound wrapper
 local function play_sound(category, name)
@@ -27,9 +28,9 @@ function inventory_ui:enter(previous, player_inventory, player)
     self.slot_spacing = 10
     self.padding = 40
 
-    self.title_font = love.graphics.newFont(24)
-    self.item_font = love.graphics.newFont(16)
-    self.desc_font = love.graphics.newFont(14)
+    self.title_font = fonts.option or love.graphics.getFont()
+    self.item_font = fonts.info or love.graphics.getFont()
+    self.desc_font = fonts.info or love.graphics.getFont()
 
     -- Close button settings
     self.close_button_size = 30
