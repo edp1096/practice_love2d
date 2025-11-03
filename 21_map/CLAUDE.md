@@ -176,10 +176,6 @@ BGM playback behavior:
 - Reads game_mode from Tiled map properties
 - Controls gravity settings for physics world
 
-#### Parallax System (systems/parallax.lua)
-- Parallax scrolling backgrounds
-- Reads configuration from Tiled map properties
-
 ### Libraries and Dependencies (vendor/)
 - **STI** (Simple Tiled Implementation): Tiled map loader (.tmx files)
 - **Windfield**: Box2D physics wrapper
@@ -203,8 +199,8 @@ Maps are created in **Tiled Map Editor** (.tmx format) and converted to Lua (.lu
   - **DamageZones**: Continuous damage areas with properties (damage, cooldown)
 
 Map properties:
-- **game_mode**: "topdown" or "platformer"
-- Parallax properties for background layers
+- **game_mode**: "topdown" or "platformer" (required)
+- **bgm**: BGM name from data/sounds.lua (optional - if not set, uses level-based BGM)
 
 ### Configuration Files
 - **config.ini**: Desktop window and sound settings (auto-generated)

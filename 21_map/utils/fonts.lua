@@ -1,14 +1,6 @@
 -- utils/fonts.lua
 -- Centralized font manager to avoid duplication across scenes
 
----@class FontManager
----@field title_large love.Font
----@field title love.Font
----@field subtitle love.Font
----@field option love.Font
----@field info love.Font
----@field hint love.Font
----@field small love.Font
 local fonts = {
     title_large = nil,
     title = nil,
