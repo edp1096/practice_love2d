@@ -182,6 +182,20 @@ function play:switchMap(new_map_path, spawn_x, spawn_y)
         self.minimap:setMap(self.world)
     end
 
+    -- Handle BGM based on map properties
+    local map_bgm = self.world.map.properties and self.world.map.properties.bgm
+
+    if map_bgm then
+        -- Map has custom BGM property, use it
+        sound:playBGM(map_bgm, 1.0, false)  -- rewind=false for smooth transition
+    else
+        -- No custom BGM, use level-based BGM (default behavior)
+        local level = new_map_path:match("level(%d+)")
+        if not level then level = "1" end
+        level = "level" .. level
+        sound:playBGM(level, 1.0, false)  -- rewind=false to continue if same BGM
+    end
+
     self.transition_cooldown = 0.5
 
     self.cam:lookAt(self.player.x, self.player.y)

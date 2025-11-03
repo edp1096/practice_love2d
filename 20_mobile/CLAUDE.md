@@ -320,8 +320,25 @@ Centralized game constants for:
 ### Creating a New Map
 1. Create .tmx file in Tiled with required layers (Ground, Trees, Walls, Portals, Enemies, NPCs)
 2. Export to Lua format (.lua file)
-3. Set map properties: game_mode ("topdown" or "platformer")
+3. Set map properties:
+   - `game_mode`: "topdown" or "platformer" (required)
+   - `bgm`: BGM name from data/sounds.lua (optional - if not set, uses level-based BGM)
 4. Add portal objects with properties: target_map, spawn_x, spawn_y
+
+### Adding Background Music (BGM)
+1. Place audio file in `assets/bgm/` (supports .ogg, .mp3)
+2. Register in `data/sounds.lua` bgm section:
+   ```lua
+   bgm = {
+       level3 = { path = "assets/bgm/level3.ogg", volume = 0.7, loop = true },
+   }
+   ```
+3. **Auto-play by folder name:** Maps in `assets/maps/level3/` automatically play "level3" BGM
+4. **Custom BGM per map:** Set Tiled map property `bgm = "boss"` to override
+5. **BGM transition behavior:**
+   - Same BGM → Continues playing (no restart)
+   - Different BGM → Smooth transition to new track
+   - Portal/area transitions preserve BGM if same track
 
 ### Adding Input Actions
 1. Define action in `data/input_config.lua` under appropriate category
@@ -548,7 +565,25 @@ sprite_draw_offset_y = -104  -- Align feet with collider bottom
 
 ### Recent Maintenance
 
-**2025-11-03 (Mobile Input & Virtual Gamepad)**:
+**2025-11-03 (Session 3 - Scene Refactoring & BGM System)**:
+- **Scene Refactoring** - Modularized large scenes into focused files:
+  - `scenes/settings.lua` (592 lines) → `scenes/settings/` (4 files: init, options, render, input)
+  - `systems/load.lua` (501 lines) → `scenes/load/` (3 files: init, slot_renderer, input) + moved to correct category
+  - `scenes/inventory_ui.lua` (351 lines) → `scenes/inventory_ui/` (3 files: init, slot_renderer, input)
+  - Benefits: 60% complexity reduction, single responsibility per file, easier maintenance
+- **BGM Map Property System** - Added map-based BGM control:
+  - Maps can now specify custom BGM via Tiled map property `bgm = "boss"`
+  - Auto-play: Maps in `level3/` folder automatically play "level3" BGM
+  - Smooth transitions: Same BGM continues without restart, different BGM transitions smoothly
+  - Updated `scenes/play/init.lua` switchMap() to check map.properties.bgm
+  - Created `docs/BGM_GUIDE.md` with examples and debugging guide
+- **Documentation Organization**:
+  - Moved `MEMO.md` to `docs/` folder
+  - Created `docs/README.md` as documentation index
+  - Added Documentation section to CLAUDE.md with quick links
+- **Updated menu.lua** - Changed `require "systems.load"` → `require "scenes.load"`
+
+**2025-11-03 (Session 2 - Mobile Input & Virtual Gamepad)**:
 - **Virtual gamepad layout redesign** - DualSense-style button mapping:
   - Face buttons: A=attack/interact (context), B=jump, X=parry, Y=reserved
   - Shoulder/Triggers: L1=use item, L2=next item, R1=dodge, R2=inventory toggle
@@ -601,3 +636,36 @@ sprite_draw_offset_y = -104  -- Align feet with collider bottom
 - **Fixed NPC coordinate system** to match Enemy pattern (collider_center based rendering)
 - **Fixed NPC collider positioning** - was using incorrect offset calculation causing misalignment
 - **Updated NPC to use collider_center** for all rendering (shadow, sprite, F indicator, interaction range, debug visualization)
+
+---
+
+## 📚 Documentation
+
+### Main Documentation
+- **CLAUDE.md** (this file) - Primary developer guide for Claude Code AI
+  - Project overview and architecture
+  - Development workflows
+  - Code style guidelines
+  - Common pitfalls and solutions
+
+### Additional Documentation (docs/ folder)
+- **docs/README.md** - Documentation index and finder guide
+- **docs/MEMO.md** - Complete project structure reference
+  - Folder/file tree with descriptions
+  - File count and line statistics
+  - Architecture patterns
+  - Recent refactoring history
+- **docs/BGM_GUIDE.md** - Background music system guide
+  - How to add/change BGM
+  - Map property-based BGM assignment
+  - Intro/Ending special BGM handling
+  - Examples and debugging
+- **docs/HEALTH_RECOVERY_README.md** - Health recovery system
+  - Healing Point implementation
+  - Map configuration guide
+- **docs/SUMMARY.md** - Feature summary
+
+**Quick Links:**
+- Need project structure overview? → `docs/MEMO.md`
+- Need to add/change BGM? → `docs/BGM_GUIDE.md`
+- Need to understand a system? → This file (CLAUDE.md)
