@@ -20,6 +20,11 @@ function settings:enter(previous, ...)
     self.virtual_width = vw
     self.virtual_height = vh
 
+    -- Hide virtual gamepad in settings menu
+    if input.virtual_gamepad then
+        input.virtual_gamepad:hide()
+    end
+
     -- Create fonts (slightly smaller for more items)
     self.titleFont = love.graphics.newFont(32)
     self.labelFont = love.graphics.newFont(20)

@@ -12,6 +12,11 @@ function load:enter(previous, ...)
     self.previous = previous
     self.selected = 1
 
+    -- Hide virtual gamepad in load menu
+    if input.virtual_gamepad then
+        input.virtual_gamepad:hide()
+    end
+
     local vw, vh = screen:GetVirtualDimensions()
     self.virtual_width = vw
     self.virtual_height = vh

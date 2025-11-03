@@ -18,6 +18,12 @@ function intro:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot)
     print("spawn_y:", spawn_y)
     print("slot:", slot)
 
+    -- Hide virtual gamepad during intro/cutscene
+    local input = require "systems.input"
+    if input.virtual_gamepad then
+        input.virtual_gamepad:hide()
+    end
+
     self.intro_id = intro_id
     self.target_map = target_map
     self.spawn_x = spawn_x

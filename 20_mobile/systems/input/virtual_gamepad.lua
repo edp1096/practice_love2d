@@ -137,22 +137,23 @@ function virtual_gamepad:calculatePositions()
     self.buttons.y.y = button_base_y - button_spacing  -- Top
 
     -- Shoulder buttons (L1/L2 on left, R1/R2 on right)
-    local shoulder_y_top = 80
-    local shoulder_y_bottom = 140
+    -- Changed to horizontal layout to reduce overlap with Y button
+    local shoulder_y = 100
+    local shoulder_spacing = 60
 
-    -- Left shoulder buttons
-    self.buttons.l1.x = 100
-    self.buttons.l1.y = shoulder_y_top
+    -- Left shoulder buttons (horizontal)
+    self.buttons.l1.x = 80
+    self.buttons.l1.y = shoulder_y
 
-    self.buttons.l2.x = 100
-    self.buttons.l2.y = shoulder_y_bottom
+    self.buttons.l2.x = 80 + shoulder_spacing
+    self.buttons.l2.y = shoulder_y
 
-    -- Right shoulder buttons
-    self.buttons.r1.x = w - 100
-    self.buttons.r1.y = shoulder_y_top
+    -- Right shoulder buttons (horizontal)
+    self.buttons.r2.x = w - 80
+    self.buttons.r2.y = shoulder_y
 
-    self.buttons.r2.x = w - 100
-    self.buttons.r2.y = shoulder_y_bottom
+    self.buttons.r1.x = w - 80 - shoulder_spacing
+    self.buttons.r1.y = shoulder_y
 
     -- Menu button on top center
     self.menu_button.x = w / 2

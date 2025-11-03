@@ -29,6 +29,11 @@ function menu:enter(previous, ...)
     self.fonts = scene_ui.createMenuFonts()
     self.layout = scene_ui.createMenuLayout(vh)
 
+    -- Hide virtual gamepad in menu
+    if input.virtual_gamepad then
+        input.virtual_gamepad:hide()
+    end
+
     -- Play menu BGM from beginning
     sound:playBGM("menu", 1.0, true)
 end

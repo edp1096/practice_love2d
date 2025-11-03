@@ -13,6 +13,11 @@ function gameover:enter(previous, is_clear, ...)
     self.previous = previous
     self.is_clear = is_clear or false
 
+    -- Hide virtual gamepad in gameover menu
+    if input.virtual_gamepad then
+        input.virtual_gamepad:hide()
+    end
+
     if self.is_clear then
         self.options = { "Main Menu" }
         -- Play victory BGM from beginning
