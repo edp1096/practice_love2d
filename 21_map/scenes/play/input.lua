@@ -144,7 +144,7 @@ function input_handler.gamepadpressed(self, joystick, button)
     end
 
     -- Let input coordinator handle button mapping and context
-    local action, context_data = input:handleGamepadPressed(joystick, button)
+    local action, ctx = input:handleGamepadPressed(joystick, button)
 
     if not action then
         return
@@ -158,12 +158,14 @@ function input_handler.gamepadpressed(self, joystick, button)
         sound:pauseBGM()
 
     elseif action == "interact_npc" then
-        -- context_data is the NPC
-        local messages = context_data:interact()
-        dialogue:showMultiple(context_data.name, messages)
+        -- ctx is the NPC
+        if ctx then
+            local messages = ctx:interact()
+            dialogue:showMultiple(ctx.name, messages)
+        end
 
     elseif action == "interact_savepoint" then
-        -- context_data is the savepoint
+        -- ctx is the savepoint
         local saveslot = require "scenes.saveslot"
         scene_control.push(saveslot, function(slot)
             self:saveGame(slot)
