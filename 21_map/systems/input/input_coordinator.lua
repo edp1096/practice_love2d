@@ -20,6 +20,13 @@ function input_coordinator:init(joystick, virtual_gamepad, settings)
     -- Game context (set by play scene)
     self.game_context = nil
 
+    -- Trigger axis tracking (for Xbox controllers)
+    self.trigger_state = {
+        left = { pressed = false, last_value = 0 },
+        right = { pressed = false, last_value = 0 }
+    }
+    self.trigger_threshold = 0.5 -- Threshold for trigger press
+
     -- Create input sources
     self.keyboard = keyboard_input:new()
     self.mouse = mouse_input:new()
@@ -309,6 +316,36 @@ function input_coordinator:handleGamepadPressed(joystick, button)
         return "dodge"
     elseif button == "righttrigger" then
         return "open_inventory"
+    end
+
+    return nil
+end
+
+-- Handle gamepad axis movement (for trigger buttons on Xbox controllers)
+-- Returns action name if trigger crossed threshold, or nil otherwise
+function input_coordinator:handleGamepadAxis(joystick, axis, value)
+    -- Only handle trigger axes
+    if axis ~= "triggerleft" and axis ~= "triggerright" then
+        return nil
+    end
+
+    local trigger_side = (axis == "triggerleft") and "left" or "right"
+    local trigger = self.trigger_state[trigger_side]
+    local was_pressed = trigger.pressed
+    local is_pressed = value > self.trigger_threshold
+
+    -- Update state
+    trigger.last_value = value
+    trigger.pressed = is_pressed
+
+    -- Detect trigger press (crossing threshold)
+    if is_pressed and not was_pressed then
+        -- Trigger was just pressed
+        if axis == "triggerleft" then
+            return "next_item"
+        elseif axis == "triggerright" then
+            return "open_inventory"
+        end
     end
 
     return nil

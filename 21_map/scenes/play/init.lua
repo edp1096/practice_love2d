@@ -274,6 +274,10 @@ function play:gamepadpressed(joystick, button)
     return input_module.gamepadpressed(self, joystick, button)
 end
 
+function play:gamepadaxis(joystick, axis, value)
+    return input_module.gamepadaxis(self, joystick, axis, value)
+end
+
 function play:touchreleased(id, x, y, dx, dy, pressure)
     return input_module.touchreleased(self, id, x, y, dx, dy, pressure)
 end

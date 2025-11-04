@@ -162,6 +162,14 @@ function input:handleGamepadPressed(joystick, button)
     return nil
 end
 
+-- Handle gamepad axis event (for triggers on Xbox controllers)
+function input:handleGamepadAxis(joystick, axis, value)
+    if self.coordinator then
+        return self.coordinator:handleGamepadAxis(joystick, axis, value)
+    end
+    return nil
+end
+
 -- Vibration
 function input:vibrate(duration, left_strength, right_strength)
     if self.coordinator then

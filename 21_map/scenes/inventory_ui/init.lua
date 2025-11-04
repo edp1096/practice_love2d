@@ -56,6 +56,10 @@ function inventory_ui:gamepadpressed(joystick, button)
     input_handler.gamepadpressed(self, joystick, button)
 end
 
+function inventory_ui:gamepadaxis(joystick, axis, value)
+    input_handler.gamepadaxis(self, joystick, axis, value)
+end
+
 function inventory_ui:mousepressed(x, y, button)
     input_handler.mousepressed(self, x, y, button)
 end

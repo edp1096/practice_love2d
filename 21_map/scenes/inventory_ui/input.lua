@@ -20,9 +20,9 @@ function input_handler.keypressed(self, key)
         -- I key or ESC to close (toggle behavior)
         local scene_control = require "systems.scene_control"
         scene_control.pop()
-    elseif key == "up" or key == "w" then
+    elseif key == "left" or key == "a" then
         input_handler.moveSelection(self, -1)
-    elseif key == "down" or key == "s" then
+    elseif key == "right" or key == "d" then
         input_handler.moveSelection(self, 1)
     elseif key == "return" or key == "space" or key == "e" then
         input_handler.useSelectedItem(self)
@@ -48,15 +48,31 @@ function input_handler.gamepadpressed(self, joystick, button)
         -- R2 to close inventory (toggle behavior)
         local scene_control = require "systems.scene_control"
         scene_control.pop()
-    elseif button == "dpup" then
+    elseif button == "dpleft" then
         input_handler.moveSelection(self, -1)
-    elseif button == "dpdown" then
+    elseif button == "dpright" then
         input_handler.moveSelection(self, 1)
     elseif button == "a" or button == "x" then
         input_handler.useSelectedItem(self)
     elseif button == "leftshoulder" then
         -- L1 to use item
         input_handler.useSelectedItem(self)
+    end
+end
+
+-- Handle gamepad axis (for Xbox controller triggers)
+function input_handler.gamepadaxis(self, joystick, axis, value)
+    -- Use input coordinator to handle trigger-to-button conversion
+    local input_sys = require "systems.input"
+    local action = input_sys:handleGamepadAxis(joystick, axis, value)
+
+    if action == "open_inventory" then
+        -- RT trigger pressed - close inventory (toggle behavior)
+        local scene_control = require "systems.scene_control"
+        scene_control.pop()
+    elseif action == "next_item" then
+        -- LT trigger pressed - move selection
+        input_handler.moveSelection(self, 1)
     end
 end
 

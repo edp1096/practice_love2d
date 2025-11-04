@@ -214,6 +214,35 @@ function input_handler.gamepadpressed(self, joystick, button)
     end
 end
 
+-- Gamepad axis handler (for triggers on Xbox controllers)
+function input_handler.gamepadaxis(self, joystick, axis, value)
+    -- Dialogue takes priority
+    if dialogue:isOpen() then
+        return
+    end
+
+    -- Let input coordinator handle trigger axis to button conversion
+    local action = input:handleGamepadAxis(joystick, axis, value)
+
+    if not action then
+        return
+    end
+
+    -- Handle the action (same as gamepadpressed)
+    if action == "use_item" then
+        self.inventory:useSelectedItem(self.player)
+
+    elseif action == "next_item" then
+        if self.inventory then
+            self.inventory:selectNext()
+        end
+
+    elseif action == "open_inventory" then
+        local inventory_ui = require "scenes.inventory_ui"
+        scene_control.push(inventory_ui, self.inventory, self.player)
+    end
+end
+
 -- Touch input handler
 function input_handler.touchpressed(id, x, y, dx, dy, pressure)
     -- Dialogue takes priority for touch input

@@ -662,6 +662,23 @@ sprite_draw_offset_y = -104  -- Align feet with collider bottom
     - `GAME_START.DEFAULT_MAP`, `DEFAULT_SPAWN_X`, `DEFAULT_SPAWN_Y`
     - Updated 5 files to use constants instead of hardcoded values (400, 250, "assets/maps/level1/area1.lua")
 
+**2025-11-04 (Session 1 - Xbox Controller Trigger Support)**:
+- **Fixed RT trigger not working on Xbox controllers** - Added trigger axis support:
+  - Xbox controllers use analog axes (`triggerleft`/`triggerright`) instead of buttons
+  - Added trigger state tracking to `systems/input/input_coordinator.lua`
+  - Implemented `handleGamepadAxis()` function with threshold detection (0.5)
+  - Added `gamepadaxis` event forwarding in:
+    - `systems/input/init.lua` - wrapper function
+    - `scenes/play/init.lua` and `scenes/play/input.lua` - gameplay scene
+    - `scenes/inventory_ui/init.lua` and `scenes/inventory_ui/input.lua` - inventory UI
+  - RT trigger now toggles inventory open/close (matching DualSense R2 behavior)
+  - LT trigger cycles through inventory items
+  - Compatible with both DualSense (button-based) and Xbox (axis-based) controllers
+- **Improved inventory UX** - Changed selection controls:
+  - Keyboard: Left/Right arrows or A/D (was Up/Down or W/S)
+  - Gamepad: D-pad Left/Right (was D-pad Up/Down)
+  - More intuitive for horizontal inventory layout
+
 **2025-11-02 (Session 1)**:
 - Removed 3 duplicate calls to `world:updateHealingPoints()` in scenes/play.lua (was called 4 times per frame)
 - Removed debug print statements from keyboard input handling
