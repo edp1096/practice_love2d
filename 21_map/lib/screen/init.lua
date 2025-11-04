@@ -186,11 +186,6 @@ function screen:ToggleFullScreen()
     end
 end
 
-function screen:SetScaleMode(mode)
-    self.scale_mode = mode
-    self:CalculateScale()
-end
-
 function screen:GetScale()
     return self.scale
 end
@@ -239,30 +234,6 @@ function screen:CalculateScale()
     end
 
     self.physical_bounds = self:GetVisibleVirtualBounds()
-end
-
-function screen:GetCurrentAspectRatio()
-    return self.screen_wh.w / self.screen_wh.h
-end
-
-function screen:GetAspectRatioName()
-    local current_ratio = self:GetCurrentAspectRatio()
-    local closest_name = "Custom"
-    local closest_diff = math.huge
-
-    for name, ratio in pairs(self.aspect_ratios) do
-        local diff = math.abs(current_ratio - ratio)
-        if diff < closest_diff then
-            closest_diff = diff
-            closest_name = name
-        end
-    end
-
-    if closest_diff < 0.1 then
-        return closest_name
-    else
-        return "Custom (" .. string.format("%.2f", current_ratio) .. ":1)"
-    end
 end
 
 function screen:Attach()

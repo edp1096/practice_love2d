@@ -44,13 +44,4 @@ function game_mode:getGravity()
     end
 end
 
--- Get allowed movement directions based on mode
-function game_mode:getAllowedDirections()
-    if self.current == self.PLATFORMER then
-        return { "left", "right" }             -- only horizontal movement
-    else
-        return { "up", "down", "left", "right" } -- all directions
-    end
-end
-
 return game_mode

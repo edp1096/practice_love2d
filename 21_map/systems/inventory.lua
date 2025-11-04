@@ -109,17 +109,6 @@ function inventory:selectNext()
     end
 end
 
-function inventory:selectPrevious()
-    if #self.items == 0 then
-        return
-    end
-
-    self.selected_slot = self.selected_slot - 1
-    if self.selected_slot < 1 then
-        self.selected_slot = #self.items
-    end
-end
-
 function inventory:save()
     local save_data = {}
     for i, item in ipairs(self.items) do

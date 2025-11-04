@@ -94,12 +94,6 @@ function scene_control.keypressed(key)
     end
 end
 
-function scene_control.keyreleased(key)
-    if scene_control.current and scene_control.current.keyreleased then
-        scene_control.current:keyreleased(key)
-    end
-end
-
 function scene_control.mousepressed(x, y, button)
     if scene_control.current and scene_control.current.mousepressed then
         scene_control.current:mousepressed(x, y, button)

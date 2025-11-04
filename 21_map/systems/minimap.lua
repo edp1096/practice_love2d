@@ -158,12 +158,4 @@ function minimap:draw(screen_width, screen_height, player_x, player_y, enemies, 
     love.graphics.rectangle("line", x, y, self.canvas_width, self.canvas_height)
 end
 
-function minimap:toggle()
-    self.enabled = not self.enabled
-end
-
-function minimap:setEnabled(enabled)
-    self.enabled = enabled
-end
-
 return minimap

@@ -165,12 +165,6 @@ function effects:spawn(effect_type, x, y, angle, particle_count)
     end
 end
 
--- Spawn directional effect (for weapon hits)
-function effects:spawnDirectional(effect_type, x, y, direction_x, direction_y, particle_count)
-    local angle = math.atan2(direction_y, direction_x)
-    self:spawn(effect_type, x, y, angle, particle_count)
-end
-
 -- Update all active effects
 function effects:update(dt)
     for i = #self.active_effects, 1, -1 do

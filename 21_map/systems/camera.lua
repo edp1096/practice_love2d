@@ -64,8 +64,4 @@ function camera_sys:get_shake_offset()
     return self.shake_x, self.shake_y
 end
 
-function camera_sys:is_slow_motion()
-    return self.time_scale < 0.9
-end
-
 return camera_sys
