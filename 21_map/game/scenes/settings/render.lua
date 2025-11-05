@@ -81,7 +81,7 @@ function render:draw(state)
 
     screen:Detach()
 
-    screen:ShowDebugInfo()
+    -- Debug info now drawn in app_lifecycle (main.lua)
     screen:ShowVirtualMouse()
 end
 

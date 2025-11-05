@@ -299,6 +299,116 @@ function debug:IsHandMarkingActive()
     return self.hand_marking_active
 end
 
+-- === Debug Info Panel ===
+function debug:drawInfo(screen, player, current_save_slot)
+    if not self.enabled then return end
+
+    local sw, sh = screen:GetScreenDimensions()
+    local vw, vh = screen:GetVirtualDimensions()
+    local scale = screen:GetScale()
+    local offset_x, offset_y = screen:GetOffset()
+    local vmx, vmy = screen:GetVirtualMousePosition()
+
+    -- Get effects and input info (if available)
+    local effects_count = 0
+    local has_effects = pcall(function()
+        local effects = require "engine.effects"
+        effects_count = effects:getCount()
+    end)
+
+    local gamepad_info = nil
+    local has_gamepad = pcall(function()
+        local input = require "engine.input"
+        if input:hasGamepad() then
+            gamepad_info = input:getDebugInfo()
+        end
+    end)
+
+    -- Calculate panel height based on content
+    local base_height = 185
+    local mobile_extra = screen.is_mobile and 60 or 0
+    local player_extra = player and 120 or 0
+    local effects_extra = has_effects and 20 or 0
+    local gamepad_extra = gamepad_info and 40 or 0
+    local panel_height = base_height + mobile_extra + player_extra + effects_extra + gamepad_extra
+
+    -- Unified debug panel background
+    love.graphics.setColor(0, 0, 0, 0.5)
+    love.graphics.rectangle("fill", 0, 0, 250, panel_height)
+
+    love.graphics.setColor(1, 1, 1, 1)
+
+    -- FPS (most important, show first)
+    love.graphics.print("FPS: " .. love.timer.getFPS(), 10, 10)
+
+    -- Player info (if available)
+    local y_offset = 30
+    if player then
+        love.graphics.print(string.format("Player: %.1f, %.1f", player.x, player.y), 10, y_offset)
+        y_offset = y_offset + 20
+        love.graphics.print("Health: " .. player.health, 10, y_offset)
+        y_offset = y_offset + 20
+        love.graphics.print("State: " .. (player.state or "unknown"), 10, y_offset)
+        y_offset = y_offset + 20
+
+        if current_save_slot then
+            love.graphics.print("Current Slot: " .. current_save_slot, 10, y_offset)
+            y_offset = y_offset + 20
+        end
+
+        if player.game_mode then
+            love.graphics.print("Mode: " .. player.game_mode, 10, y_offset)
+            y_offset = y_offset + 20
+        end
+
+        y_offset = y_offset + 10  -- Extra spacing before screen info
+    end
+
+    -- Screen/Scale info
+    love.graphics.print("Screen: " .. sw .. "x" .. sh, 10, y_offset)
+    y_offset = y_offset + 20
+    love.graphics.print("Virtual: " .. vw .. "x" .. vh, 10, y_offset)
+    y_offset = y_offset + 20
+    love.graphics.print("Scale: " .. string.format("%.2f", scale), 10, y_offset)
+    y_offset = y_offset + 20
+    love.graphics.print("Offset: " .. string.format("%.1f", offset_x) .. ", " .. string.format("%.1f", offset_y), 10, y_offset)
+    y_offset = y_offset + 20
+    love.graphics.print("Mode: " .. screen.scale_mode, 10, y_offset)
+    y_offset = y_offset + 20
+    love.graphics.print("Virtual Mouse: " .. string.format("%.1f", vmx) .. ", " .. string.format("%.1f", vmy), 10, y_offset)
+    y_offset = y_offset + 20
+
+    -- Platform-specific info
+    if screen.is_mobile then
+        y_offset = y_offset + 10
+        love.graphics.print("Platform: " .. love.system.getOS(), 10, y_offset)
+        y_offset = y_offset + 20
+        love.graphics.print("DPI Scale: " .. string.format("%.2f", screen.dpi_scale), 10, y_offset)
+        y_offset = y_offset + 20
+
+        local touches = screen:GetAllTouches()
+        love.graphics.print("Touches: " .. #touches, 10, y_offset)
+        y_offset = y_offset + 20
+    else
+        y_offset = y_offset + 10
+        love.graphics.print("F11: Toggle Fullscreen", 10, y_offset)
+        y_offset = y_offset + 20
+    end
+
+    -- Effects info (if available)
+    if has_effects then
+        love.graphics.print("Active Effects: " .. effects_count, 10, y_offset)
+        y_offset = y_offset + 20
+    end
+
+    -- Gamepad info (if connected)
+    if gamepad_info then
+        love.graphics.print(gamepad_info, 10, y_offset)
+    end
+
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
 -- === Help Display ===
 function debug:drawHelp(x, y)
     if not self.enabled then return end

@@ -66,7 +66,8 @@ function menu:draw()
     if debug.enabled then debug:drawHelp(self.virtual_width - 250, 10) end
 
     screen:Detach()
-    screen:ShowDebugInfo()
+
+    -- Debug info now drawn in app_lifecycle (main.lua)
     screen:ShowVirtualMouse()
 end
 

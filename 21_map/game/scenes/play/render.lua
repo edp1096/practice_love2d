@@ -75,7 +75,7 @@ function render.draw(self)
 
     love.graphics.setColor(1, 1, 1, 1)
 
-    -- All debug info is now shown in main.lua via screen:ShowDebugInfo()
+    -- All debug info is now shown in app_lifecycle (main.lua) via debug:drawInfo()
     -- (includes FPS, player state, screen info, effects, gamepad)
 
     hud:draw_parry_success(self.player, vw, vh)

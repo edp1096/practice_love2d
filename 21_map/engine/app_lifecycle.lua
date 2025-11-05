@@ -88,13 +88,15 @@ function app_lifecycle:draw()
 
     -- Draw debug visualizations (if debug mode enabled)
     if self.screen then
+        local debug = require "engine.debug"
+
         self.screen:ShowGridVisualization() -- F2: Grid visualization
 
         -- F1: Unified debug info window
         local current_scene = self.scene_control.current
         local player = current_scene and current_scene.player
         local save_slot = current_scene and current_scene.current_save_slot
-        self.screen:ShowDebugInfo(player, save_slot)
+        debug:drawInfo(self.screen, player, save_slot)
 
         self.screen:ShowVirtualMouse() -- F3: Virtual mouse cursor
     end
