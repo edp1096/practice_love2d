@@ -27,6 +27,41 @@ function scene:draw() end                -- 렌더링 시 호출
 
 ---
 
+## 🔄 애플리케이션 생명주기
+
+### `engine/app_lifecycle.lua`
+애플리케이션 생명주기(초기화, 업데이트, 렌더링, 리사이즈, 종료)를 관리합니다.
+모든 엔진 시스템을 오케스트레이션하고 scene_control에 위임합니다.
+
+**주요 함수:**
+```lua
+app_lifecycle:initialize(initial_scene)  -- 모든 시스템 초기화 및 첫 씬 시작
+app_lifecycle:update(dt)                 -- 입력, 가상 게임패드, 현재 씬 업데이트
+app_lifecycle:draw()                     -- 씬, 가상 게임패드, 디버그 오버레이 그리기
+app_lifecycle:resize(w, h)               -- 윈도우 리사이즈 처리
+app_lifecycle:quit()                     -- 정리 및 설정 저장
+```
+
+**설정 (main.lua):**
+```lua
+-- 의존성 설정
+app_lifecycle.screen = screen
+app_lifecycle.input = input
+app_lifecycle.scene_control = scene_control
+-- ... (기타 의존성)
+
+-- 애플리케이션 초기화
+app_lifecycle:initialize(menu)
+```
+
+**목적:**
+- main.lua의 복잡한 초기화 로직을 캡슐화
+- 여러 엔진 시스템 조정 (input, screen, fonts, sound)
+- LÖVE 콜백과 비즈니스 로직 간의 깔끔한 분리 제공
+- 시스템 초기화 에러 처리 중앙화
+
+---
+
 ## 📷 카메라 시스템
 
 ### `engine/camera.lua`
@@ -112,6 +147,32 @@ actions = {
 **플랫폼 지원:**
 - 데스크톱: 키보드 + 마우스 + 물리 게임패드
 - 모바일: 가상 온스크린 게임패드 + 터치 입력
+
+**입력 이벤트 디스패처 (`engine/input/dispatcher.lua`):**
+우선순위 시스템으로 LÖVE 입력 이벤트를 적절한 핸들러로 라우팅:
+```lua
+-- 터치 이벤트 우선순위 순서:
+-- 1. 디버그 버튼 (최우선)
+-- 2. 씬 touchpressed (인벤토리, 대화 오버레이)
+-- 3. 가상 게임패드 (씬이 처리하지 않은 경우)
+-- 4. 마우스 이벤트로 폴백 (데스크톱 테스트용)
+
+-- 설정 (main.lua)
+input_dispatcher.scene_control = scene_control
+input_dispatcher.virtual_gamepad = virtual_gamepad
+input_dispatcher.input = input
+
+-- LÖVE 콜백에서 사용
+function love.touchpressed(id, x, y, dx, dy, pressure)
+    input_dispatcher:touchpressed(id, x, y, dx, dy, pressure)
+end
+```
+
+**목적:**
+- main.lua의 복잡한 입력 라우팅 로직을 캡슐화
+- 터치 입력 우선순위 시스템 관리
+- 가상 게임패드, 씬 입력, 마우스 폴백 간 조정
+- 모든 LÖVE 입력 콜백 처리 (키보드, 마우스, 터치, 게임패드)
 
 ---
 

@@ -59,6 +59,8 @@ local screen = require "lib.screen"
 local utils = require "engine.utils.util"
 local scene_control = require "engine.scene_control"
 local input = require "engine.input"
+local input_dispatcher = require "engine.input.dispatcher"
+local app_lifecycle = require "engine.app_lifecycle"
 local sound = require "engine.sound"
 local fonts = require "engine.utils.fonts"
 local menu = require "game.scenes.menu"
@@ -68,227 +70,80 @@ if is_mobile then
     virtual_gamepad = require "engine.input.virtual_gamepad"
 end
 
+-- === Application Lifecycle ===
+
 function love.load()
-    if locker then
-        local success, err = pcall(locker.ProcInit, locker)
-        if not success then
-            print("Warning: Locker init failed: " .. tostring(err))
-        end
-    end
+    -- Setup input dispatcher
+    input_dispatcher.scene_control = scene_control
+    input_dispatcher.virtual_gamepad = virtual_gamepad
+    input_dispatcher.input = input
+    input_dispatcher.is_mobile = is_mobile
 
-    local success, err = pcall(screen.Initialize, screen, GameConfig)
-    if not success then
-        print("ERROR: Screen initialization failed: " .. tostring(err))
-        screen.screen_wh = { w = 0, h = 0 }
-        screen.render_wh = { w = 960, h = 540 }
-        screen.screen_wh.w, screen.screen_wh.h = love.graphics.getDimensions()
-        screen.scale = math.min(
-            screen.screen_wh.w / screen.render_wh.w,
-            screen.screen_wh.h / screen.render_wh.h
-        )
-        screen.offset_x = (screen.screen_wh.w - screen.render_wh.w * screen.scale) / 2
-        screen.offset_y = (screen.screen_wh.h - screen.render_wh.h * screen.scale) / 2
-    end
+    -- Setup app lifecycle
+    app_lifecycle.locker = locker
+    app_lifecycle.screen = screen
+    app_lifecycle.input = input
+    app_lifecycle.virtual_gamepad = virtual_gamepad
+    app_lifecycle.fonts = fonts
+    app_lifecycle.scene_control = scene_control
+    app_lifecycle.utils = utils
+    app_lifecycle.sound = sound
+    app_lifecycle.GameConfig = GameConfig
+    app_lifecycle.is_mobile = is_mobile
 
-    input:init()
-    fonts:init()
-
-    if virtual_gamepad then
-        virtual_gamepad:init()
-        input:setVirtualGamepad(virtual_gamepad)
-        dprint("Virtual gamepad enabled for mobile OS")
-    end
-
-    scene_control.switch(menu)
+    -- Initialize application
+    app_lifecycle:initialize(menu)
 end
 
 function love.update(dt)
-    input:update(dt)
-
-    if virtual_gamepad then
-        virtual_gamepad:update(dt)
-    end
-
-    scene_control.update(dt)
+    app_lifecycle:update(dt)
 end
 
 function love.draw()
-    scene_control.draw()
-
-    -- Draw virtual gamepad
-    if virtual_gamepad and virtual_gamepad.enabled then
-        virtual_gamepad:draw()
-    end
-
-    if screen then
-        screen:ShowGridVisualization() -- F2: Grid visualization (sky blue + purple lines)
-
-        -- F1: Unified info window (left top)
-        -- Try to get player and save slot from current scene if available
-        local current_scene = scene_control.current
-        local player = current_scene and current_scene.player
-        local save_slot = current_scene and current_scene.current_save_slot
-        screen:ShowDebugInfo(player, save_slot)
-
-        screen:ShowVirtualMouse() -- F3: Virtual mouse cursor
-    end
+    app_lifecycle:draw()
 end
 
 function love.resize(w, h)
-    GameConfig.width = w
-    GameConfig.height = h
-
-    pcall(utils.SaveConfig, utils, GameConfig, sound.settings)
-
-    pcall(screen.CalculateScale, screen)
-    scene_control.resize(w, h)
-
-    if virtual_gamepad then
-        virtual_gamepad:resize(w, h)
-    end
+    app_lifecycle:resize(w, h)
 end
 
+-- === Input Event Handlers ===
+
 function love.keypressed(key)
+    -- Handle system-level hotkeys (F11, F1)
     if key == "f11" and not is_mobile then
         screen:ToggleFullScreen()
         GameConfig.fullscreen = screen.is_fullscreen
-        if not is_mobile then
-            pcall(utils.SaveConfig, utils, GameConfig, sound.settings)
-        end
+        pcall(utils.SaveConfig, utils, GameConfig, sound.settings)
         scene_control.resize(love.graphics.getWidth(), love.graphics.getHeight())
+        return
     elseif key == "f1" then
         debug:toggle()
         return
     end
 
-    scene_control.keypressed(key)
+    -- Delegate all other input to dispatcher
+    input_dispatcher:keypressed(key)
 end
 
-function love.mousepressed(x, y, button)
-    if virtual_gamepad and virtual_gamepad.enabled then
-        return
-    end
-    scene_control.mousepressed(x, y, button)
-end
+function love.mousepressed(x, y, button) input_dispatcher:mousepressed(x, y, button) end
 
-function love.mousereleased(x, y, button)
-    if virtual_gamepad and virtual_gamepad.enabled then
-        return
-    end
-    scene_control.mousereleased(x, y, button)
-end
+function love.mousereleased(x, y, button) input_dispatcher:mousereleased(x, y, button) end
 
-function love.touchpressed(id, x, y, dx, dy, pressure)
-    -- 1. Debug button has highest priority
-    if scene_control.current and scene_control.current.debug_button then
-        local btn = scene_control.current.debug_button
-        local in_button = x >= btn.x and x <= btn.x + btn.size and
-            y >= btn.y and y <= btn.y + btn.size
-        if in_button then
-            if scene_control.current.touchpressed then
-                scene_control.current:touchpressed(id, x, y, dx, dy, pressure)
-            end
-            return
-        end
-    end
+function love.touchpressed(id, x, y, dx, dy, pressure) input_dispatcher:touchpressed(id, x, y, dx, dy, pressure) end
 
-    -- 2. Scene touchpressed (for overlay scenes like inventory, dialogue, etc.)
-    if scene_control.current and scene_control.current.touchpressed then
-        local handled = scene_control.current:touchpressed(id, x, y, dx, dy, pressure)
-        if handled then
-            return
-        end
-    end
+function love.touchreleased(id, x, y, dx, dy, pressure) input_dispatcher:touchreleased(id, x, y, dx, dy, pressure) end
 
-    -- 3. Virtual gamepad (only if scene didn't handle it)
-    if virtual_gamepad and virtual_gamepad:touchpressed(id, x, y) then
-        return
-    end
+function love.touchmoved(id, x, y, dx, dy, pressure) input_dispatcher:touchmoved(id, x, y, dx, dy, pressure) end
 
-    -- 4. Fallback to mouse event for desktop testing
-    if not is_mobile then
-        love.mousepressed(x, y, 1)
-    end
-end
+function love.joystickadded(joystick) input_dispatcher:joystickadded(joystick) end
 
-function love.touchreleased(id, x, y, dx, dy, pressure)
-    if scene_control.current and scene_control.current.debug_button then
-        local btn = scene_control.current.debug_button
-        local in_button = x >= btn.x and x <= btn.x + btn.size and
-            y >= btn.y and y <= btn.y + btn.size
-        if in_button or btn.touch_id == id then
-            if scene_control.current.touchreleased then
-                scene_control.current:touchreleased(id, x, y, dx, dy, pressure)
-            end
-            return
-        end
-    end
+function love.joystickremoved(joystick) input_dispatcher:joystickremoved(joystick) end
 
-    if virtual_gamepad then
-        local handled = virtual_gamepad:touchreleased(id, x, y)
-        if handled then
-            return
-        else
-            if scene_control.current and scene_control.current.mousereleased then
-                scene_control.current:mousereleased(x, y, 1)
-                return
-            end
-        end
-    end
+function love.gamepadpressed(joystick, button) input_dispatcher:gamepadpressed(joystick, button) end
 
-    if scene_control.current and scene_control.current.touchreleased then
-        scene_control.current:touchreleased(id, x, y, dx, dy, pressure)
-    elseif not is_mobile then
-        love.mousereleased(x, y, 1)
-    end
-end
+function love.gamepadreleased(joystick, button) input_dispatcher:gamepadreleased(joystick, button) end
 
-function love.touchmoved(id, x, y, dx, dy, pressure)
-    if virtual_gamepad and virtual_gamepad:touchmoved(id, x, y) then
-        return
-    end
+function love.gamepadaxis(joystick, axis, value) input_dispatcher:gamepadaxis(joystick, axis, value) end
 
-    if scene_control.current and scene_control.current.touchmoved then
-        scene_control.current:touchmoved(id, x, y, dx, dy, pressure)
-    end
-end
-
-function love.joystickadded(joystick)
-    input:joystickAdded(joystick)
-end
-
-function love.joystickremoved(joystick)
-    input:joystickRemoved(joystick)
-end
-
-function love.gamepadpressed(joystick, button)
-    if scene_control.current and scene_control.current.gamepadpressed then
-        scene_control.current:gamepadpressed(joystick, button)
-    end
-end
-
-function love.gamepadreleased(joystick, button)
-    if scene_control.current and scene_control.current.gamepadreleased then
-        scene_control.current:gamepadreleased(joystick, button)
-    end
-end
-
-function love.gamepadaxis(joystick, axis, value)
-    if scene_control.current and scene_control.current.gamepadaxis then
-        scene_control.current:gamepadaxis(joystick, axis, value)
-    end
-end
-
-function love.quit()
-    local current_w, current_h, current_flags = love.window.getMode()
-    if not is_mobile and not screen.is_fullscreen then
-        GameConfig.width = current_w
-        GameConfig.height = current_h
-        GameConfig.monitor = current_flags.display
-    end
-    pcall(utils.SaveConfig, utils, GameConfig, sound.settings)
-
-    if locker then
-        pcall(locker.ProcQuit, locker)
-    end
-end
+function love.quit() app_lifecycle:quit() end

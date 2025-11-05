@@ -75,19 +75,8 @@ function render.draw(self)
 
     love.graphics.setColor(1, 1, 1, 1)
 
-    -- Unified debug info is now shown in main.lua via screen:ShowDebugInfo()
-    -- Extra debug info (effects, gamepad)
-    if debug.enabled then
-        love.graphics.setFont(hud.tiny_font)
-        love.graphics.setColor(1, 1, 0, 1)
-        love.graphics.print("Active Effects: " .. effects:getCount(), 8, 150)
-
-        if input:hasGamepad() then
-            love.graphics.print(input:getDebugInfo(), 8, 168)
-        end
-
-        love.graphics.setColor(1, 1, 1, 1)
-    end
+    -- All debug info is now shown in main.lua via screen:ShowDebugInfo()
+    -- (includes FPS, player state, screen info, effects, gamepad)
 
     hud:draw_parry_success(self.player, vw, vh)
     hud:draw_slow_motion_vignette(camera_sys.time_scale, vw, vh)

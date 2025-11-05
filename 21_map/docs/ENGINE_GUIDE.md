@@ -27,6 +27,41 @@ function scene:draw() end                -- Called for rendering
 
 ---
 
+## 🔄 Application Lifecycle
+
+### `engine/app_lifecycle.lua`
+Manages application lifecycle (initialization, update, draw, resize, quit).
+Orchestrates all engine systems and delegates to scene_control.
+
+**Key Functions:**
+```lua
+app_lifecycle:initialize(initial_scene)  -- Initialize all systems and start first scene
+app_lifecycle:update(dt)                 -- Update input, virtual gamepad, current scene
+app_lifecycle:draw()                     -- Draw scene, virtual gamepad, debug overlays
+app_lifecycle:resize(w, h)               -- Handle window resize
+app_lifecycle:quit()                     -- Clean up and save config
+```
+
+**Setup (in main.lua):**
+```lua
+-- Configure dependencies
+app_lifecycle.screen = screen
+app_lifecycle.input = input
+app_lifecycle.scene_control = scene_control
+-- ... (other dependencies)
+
+-- Initialize application
+app_lifecycle:initialize(menu)
+```
+
+**Purpose:**
+- Encapsulates complex initialization logic from main.lua
+- Coordinates multiple engine systems (input, screen, fonts, sound)
+- Provides clean separation between LÖVE callbacks and business logic
+- Centralizes error handling for system initialization
+
+---
+
 ## 📷 Camera System
 
 ### `engine/camera.lua`
@@ -112,6 +147,32 @@ actions = {
 **Platform Support:**
 - Desktop: Keyboard + Mouse + Physical Gamepad
 - Mobile: Virtual on-screen gamepad + Touch input
+
+**Input Event Dispatcher (`engine/input/dispatcher.lua`):**
+Routes LÖVE input events to appropriate handlers with priority system:
+```lua
+-- Priority order for touch events:
+-- 1. Debug button (highest priority)
+-- 2. Scene touchpressed (inventory, dialogue overlays)
+-- 3. Virtual gamepad (if scene didn't handle it)
+-- 4. Fallback to mouse events (desktop testing)
+
+-- Setup (in main.lua)
+input_dispatcher.scene_control = scene_control
+input_dispatcher.virtual_gamepad = virtual_gamepad
+input_dispatcher.input = input
+
+-- Usage in LÖVE callbacks
+function love.touchpressed(id, x, y, dx, dy, pressure)
+    input_dispatcher:touchpressed(id, x, y, dx, dy, pressure)
+end
+```
+
+**Purpose:**
+- Encapsulates complex input routing logic from main.lua
+- Manages touch input priority system
+- Coordinates between virtual gamepad, scene input, and mouse fallback
+- Handles all LÖVE input callbacks (keyboard, mouse, touch, gamepad)
 
 ---
 

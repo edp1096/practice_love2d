@@ -107,11 +107,6 @@ function screen:Initialize(config)
         print("DPI scale: " .. self.dpi_scale)
     end
 
-    -- Scale mode is handled by CalculateScale
-    -- if config.scale_mode then
-    --     self:SetScaleMode(config.scale_mode)
-    -- end
-
     self:CalculateScale()
 end
 
@@ -356,15 +351,32 @@ function screen:ShowDebugInfo(player, current_save_slot)
     local offset_x, offset_y = self:GetOffset()
     local vmx, vmy, mx, my = self:GetVirtualMousePosition()
 
+    -- Get effects and input info (if available)
+    local effects_count = 0
+    local has_effects = pcall(function()
+        local effects = require "engine.effects"
+        effects_count = effects:getCount()
+    end)
+
+    local gamepad_info = nil
+    local has_gamepad = pcall(function()
+        local input = require "engine.input"
+        if input:hasGamepad() then
+            gamepad_info = input:getDebugInfo()
+        end
+    end)
+
     -- Calculate panel height based on content
-    local base_height = 280
+    local base_height = 185
     local mobile_extra = self.is_mobile and 60 or 0
     local player_extra = player and 120 or 0
-    local panel_height = base_height + mobile_extra + player_extra
+    local effects_extra = has_effects and 20 or 0
+    local gamepad_extra = gamepad_info and 40 or 0
+    local panel_height = base_height + mobile_extra + player_extra + effects_extra + gamepad_extra
 
     -- Unified debug panel background
     love.graphics.setColor(0, 0, 0, 0.5)
-    love.graphics.rectangle("fill", 0, 0, 300, panel_height)
+    love.graphics.rectangle("fill", 0, 0, 250, panel_height)
 
     love.graphics.setColor(1, 1, 1, 1)
 
@@ -418,9 +430,22 @@ function screen:ShowDebugInfo(player, current_save_slot)
 
         local touches = self:GetAllTouches()
         love.graphics.print("Touches: " .. #touches, 10, y_offset)
+        y_offset = y_offset + 20
     else
         y_offset = y_offset + 10
         love.graphics.print("F11: Toggle Fullscreen", 10, y_offset)
+        y_offset = y_offset + 20
+    end
+
+    -- Effects info (if available)
+    if has_effects then
+        love.graphics.print("Active Effects: " .. effects_count, 10, y_offset)
+        y_offset = y_offset + 20
+    end
+
+    -- Gamepad info (if connected)
+    if gamepad_info then
+        love.graphics.print(gamepad_info, 10, y_offset)
     end
 
     love.graphics.setColor(1, 1, 1, 1)
@@ -434,7 +459,7 @@ function screen:ShowGridVisualization()
     local vw, vh = self:GetVirtualDimensions()
 
     -- Draw sky blue background in center area
-    love.graphics.setColor(0.2, 0.6, 1, 0.3)
+    love.graphics.setColor(0.2, 0.6, 1, 0.2)
     local margin = 100
     local grid_x, grid_y = self:ToScreenCoords(margin, margin)
     local grid_x2, grid_y2 = self:ToScreenCoords(vw - margin, vh - margin)
@@ -443,7 +468,7 @@ function screen:ShowGridVisualization()
     love.graphics.rectangle("fill", grid_x, grid_y, grid_width, grid_height)
 
     -- Draw purple grid lines
-    love.graphics.setColor(1, 0, 1, 0.3)
+    love.graphics.setColor(1, 0, 1, 0.25)
     love.graphics.setLineWidth(1)
 
     -- Vertical lines (every 100 virtual pixels)
