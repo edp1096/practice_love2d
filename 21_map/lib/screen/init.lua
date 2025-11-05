@@ -47,16 +47,6 @@ local screen = {
     scale = 1,
     offset_x = 0,
     offset_y = 0,
-    aspect_ratios = {
-        ["1:1"] = 1 / 1,
-        ["3:4"] = 3 / 4,
-        ["4:3"] = 4 / 3,
-        ["9:16"] = 9 / 16,
-        ["16:9"] = 16 / 9,
-        ["21:9"] = 21 / 9,
-        ["9:21"] = 9 / 21,
-        ["9:32"] = 9 / 32
-    },
     -- Android/Mobile detection
     is_mobile = false,
     is_android = false,
@@ -117,9 +107,10 @@ function screen:Initialize(config)
         print("DPI scale: " .. self.dpi_scale)
     end
 
-    if config.scale_mode then
-        self:SetScaleMode(config.scale_mode)
-    end
+    -- Scale mode is handled by CalculateScale
+    -- if config.scale_mode then
+    --     self:SetScaleMode(config.scale_mode)
+    -- end
 
     self:CalculateScale()
 end
@@ -355,9 +346,9 @@ function screen:GetVisibleVirtualBounds()
     end
 end
 
-function screen:ShowDebugInfo()
-    local debug = require "systems.debug"
-    if not debug.show_screen_info then return end
+function screen:ShowDebugInfo(player, current_save_slot)
+    local debug = require "engine.debug"
+    if not debug.enabled then return end
 
     local sw, sh = self:GetScreenDimensions()
     local vw, vh = self:GetVirtualDimensions()
@@ -365,55 +356,115 @@ function screen:ShowDebugInfo()
     local offset_x, offset_y = self:GetOffset()
     local vmx, vmy, mx, my = self:GetVirtualMousePosition()
 
+    -- Calculate panel height based on content
+    local base_height = 280
+    local mobile_extra = self.is_mobile and 60 or 0
+    local player_extra = player and 120 or 0
+    local panel_height = base_height + mobile_extra + player_extra
+
+    -- Unified debug panel background
     love.graphics.setColor(0, 0, 0, 0.5)
-    love.graphics.rectangle("fill", 0, 0, 280, 280)
+    love.graphics.rectangle("fill", 0, 0, 300, panel_height)
 
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.print("Screen: " .. sw .. "x" .. sh, 10, 10)
-    love.graphics.print("Virtual: " .. vw .. "x" .. vh, 10, 30)
-    love.graphics.print("Scale: " .. string.format("%.2f", scale), 10, 50)
-    love.graphics.print("Aspect: " .. self:GetAspectRatioName(), 10, 70)
-    love.graphics.print("Offset: " .. string.format("%.1f", offset_x) .. ", " .. string.format("%.1f", offset_y), 10, 90)
-    love.graphics.print("Mode: " .. self.scale_mode, 10, 110)
-    love.graphics.print("Virtual Mouse: " .. string.format("%.1f", vmx) .. ", " .. string.format("%.1f", vmy), 10, 130)
 
+    -- FPS (most important, show first)
+    love.graphics.print("FPS: " .. love.timer.getFPS(), 10, 10)
+
+    -- Player info (if available)
+    local y_offset = 30
+    if player then
+        love.graphics.print(string.format("Player: %.1f, %.1f", player.x, player.y), 10, y_offset)
+        y_offset = y_offset + 20
+        love.graphics.print("Health: " .. player.health, 10, y_offset)
+        y_offset = y_offset + 20
+        love.graphics.print("State: " .. (player.state or "unknown"), 10, y_offset)
+        y_offset = y_offset + 20
+
+        if current_save_slot then
+            love.graphics.print("Current Slot: " .. current_save_slot, 10, y_offset)
+            y_offset = y_offset + 20
+        end
+
+        if player.game_mode then
+            love.graphics.print("Mode: " .. player.game_mode, 10, y_offset)
+            y_offset = y_offset + 20
+        end
+
+        y_offset = y_offset + 10  -- Extra spacing before screen info
+    end
+
+    -- Screen/Scale info
+    love.graphics.print("Screen: " .. sw .. "x" .. sh, 10, y_offset)
+    y_offset = y_offset + 20
+    love.graphics.print("Virtual: " .. vw .. "x" .. vh, 10, y_offset)
+    y_offset = y_offset + 20
+    love.graphics.print("Scale: " .. string.format("%.2f", scale), 10, y_offset)
+    y_offset = y_offset + 20
+    love.graphics.print("Offset: " .. string.format("%.1f", offset_x) .. ", " .. string.format("%.1f", offset_y), 10, y_offset)
+    y_offset = y_offset + 20
+    love.graphics.print("Mode: " .. self.scale_mode, 10, y_offset)
+    y_offset = y_offset + 20
+    love.graphics.print("Virtual Mouse: " .. string.format("%.1f", vmx) .. ", " .. string.format("%.1f", vmy), 10, y_offset)
+    y_offset = y_offset + 20
+
+    -- Platform-specific info
     if self.is_mobile then
-        love.graphics.print("Platform: " .. love.system.getOS(), 10, 150)
-        love.graphics.print("DPI Scale: " .. string.format("%.2f", self.dpi_scale), 10, 170)
+        y_offset = y_offset + 10
+        love.graphics.print("Platform: " .. love.system.getOS(), 10, y_offset)
+        y_offset = y_offset + 20
+        love.graphics.print("DPI Scale: " .. string.format("%.2f", self.dpi_scale), 10, y_offset)
+        y_offset = y_offset + 20
 
         local touches = self:GetAllTouches()
-        love.graphics.print("Touches: " .. #touches, 10, 190)
+        love.graphics.print("Touches: " .. #touches, 10, y_offset)
     else
-        love.graphics.print("F11: Toggle Fullscreen", 10, 170)
+        y_offset = y_offset + 10
+        love.graphics.print("F11: Toggle Fullscreen", 10, y_offset)
     end
 
-    love.graphics.print("F3: Debug  F1: Info", 10, 210)
-    love.graphics.print("FPS: " .. love.timer.getFPS(), 10, 230)
+    love.graphics.setColor(1, 1, 1, 1)
+end
 
-    -- Visual coordinate space indicator
+function screen:ShowGridVisualization()
+    local debug = require "engine.debug"
+    if not debug.show_colliders then return end
+
+    -- Get virtual dimensions
+    local vw, vh = self:GetVirtualDimensions()
+
+    -- Draw sky blue background in center area
     love.graphics.setColor(0.2, 0.6, 1, 0.3)
-    local x0, y0 = self:ToScreenCoords(100, 100)
-    local x1, y1 = self:ToScreenCoords(vw - 100, vh - 100)
-    x1, y1 = x1 - x0, y1 - y0
-    love.graphics.rectangle("fill", x0, y0, x1, y1)
+    local margin = 100
+    local grid_x, grid_y = self:ToScreenCoords(margin, margin)
+    local grid_x2, grid_y2 = self:ToScreenCoords(vw - margin, vh - margin)
+    local grid_width = grid_x2 - grid_x
+    local grid_height = grid_y2 - grid_y
+    love.graphics.rectangle("fill", grid_x, grid_y, grid_width, grid_height)
 
+    -- Draw purple grid lines
     love.graphics.setColor(1, 0, 1, 0.3)
-    for x = 100, vw - 100, 100 do
-        local gx, gy = self:ToScreenCoords(x, 100)
-        local gw, gh = self:ToScreenCoords(x, vh - 100)
-        love.graphics.line(gx, gy, gx, gh)
+    love.graphics.setLineWidth(1)
+
+    -- Vertical lines (every 100 virtual pixels)
+    for x = margin, vw - margin, 100 do
+        local sx, sy = self:ToScreenCoords(x, margin)
+        local _, ey = self:ToScreenCoords(x, vh - margin)
+        love.graphics.line(sx, sy, sx, ey)
     end
-    for y = 100, vh - 100, 100 do
-        local gx, gy = self:ToScreenCoords(100, y)
-        local gw, gh = self:ToScreenCoords(vw - 100, y)
-        love.graphics.line(gx, gy, gw, gy)
+
+    -- Horizontal lines (every 100 virtual pixels)
+    for y = margin, vh - margin, 100 do
+        local sx, sy = self:ToScreenCoords(margin, y)
+        local ex, _ = self:ToScreenCoords(vw - margin, y)
+        love.graphics.line(sx, sy, ex, sy)
     end
 
     love.graphics.setColor(1, 1, 1, 1)
 end
 
 function screen:ShowVirtualMouse()
-    local debug = require "systems.debug"
+    local debug = require "engine.debug"
     if not debug.show_virtual_mouse then return end
 
     local vmx, vmy, mx, my = self:GetVirtualMousePosition()

@@ -1,6 +1,6 @@
 -- conf.lua
 local ini = require "lib.ini"
-local util = require "utils.util"
+local util = require "engine.utils.util"
 
 -- Detect platform early
 local is_android = love._os == "Android"

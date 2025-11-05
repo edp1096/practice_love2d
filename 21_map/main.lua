@@ -44,18 +44,18 @@ if not is_mobile and _VERSION == "Lua 5.1" then
     end
 end
 
-local debug = require "systems.debug"
+local debug = require "engine.debug"
 local screen = require "lib.screen"
-local utils = require "utils.util"
-local scene_control = require "systems.scene_control"
-local input = require "systems.input"
-local sound = require "systems.sound"
-local fonts = require "utils.fonts"
-local menu = require "scenes.menu"
+local utils = require "engine.utils.util"
+local scene_control = require "engine.scene_control"
+local input = require "engine.input"
+local sound = require "engine.sound"
+local fonts = require "engine.utils.fonts"
+local menu = require "game.scenes.menu"
 
 local virtual_gamepad
 if is_mobile then
-    virtual_gamepad = require "systems.input.virtual_gamepad"
+    virtual_gamepad = require "engine.input.virtual_gamepad"
 end
 
 function love.load()
@@ -111,8 +111,16 @@ function love.draw()
     end
 
     if screen then
-        screen:ShowDebugInfo()
-        screen:ShowVirtualMouse()
+        screen:ShowGridVisualization() -- F2: Grid visualization (sky blue + purple lines)
+
+        -- F1: Unified info window (left top)
+        -- Try to get player and save slot from current scene if available
+        local current_scene = scene_control.current
+        local player = current_scene and current_scene.player
+        local save_slot = current_scene and current_scene.current_save_slot
+        screen:ShowDebugInfo(player, save_slot)
+
+        screen:ShowVirtualMouse() -- F3: Virtual mouse cursor
     end
 end
 
@@ -138,7 +146,7 @@ function love.keypressed(key)
             pcall(utils.SaveConfig, utils, GameConfig, sound.settings)
         end
         scene_control.resize(love.graphics.getWidth(), love.graphics.getHeight())
-    elseif key == "f12" then
+    elseif key == "f1" then
         debug:toggle()
         return
     end
