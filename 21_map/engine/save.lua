@@ -10,7 +10,7 @@ save.RECENT_SLOT_FILE = "recent_slot.txt"
 function save:init()
     local success = love.filesystem.createDirectory(self.SAVE_DIRECTORY)
     if success then
-        print("Save system initialized: " .. love.filesystem.getSaveDirectory())
+        dprint("Save system initialized: " .. love.filesystem.getSaveDirectory())
     else
         print("Warning: Could not create save directory")
     end
@@ -40,7 +40,7 @@ end
 function save:saveRecentSlot(slot)
     local success = love.filesystem.write(self.RECENT_SLOT_FILE, tostring(slot))
     if success then
-        print("Recent slot saved: " .. slot)
+        dprint("Recent slot saved: " .. slot)
     end
 end
 
@@ -186,7 +186,7 @@ function save:saveGame(slot, data)
     local success, message = love.filesystem.write(filepath, serialized)
 
     if success then
-        print("Game saved to slot " .. slot)
+        dprint("Game saved to slot " .. slot)
         self:saveRecentSlot(slot)
         return true
     else
@@ -204,7 +204,7 @@ function save:loadGame(slot)
     local filepath = self:getSlotPath(slot)
 
     if not love.filesystem.getInfo(filepath) then
-        print("No save file found for slot " .. slot)
+        dprint("No save file found for slot " .. slot)
         return nil
     end
 
@@ -220,7 +220,7 @@ function save:loadGame(slot)
         return nil
     end
 
-    print("Game loaded from slot " .. slot)
+    dprint("Game loaded from slot " .. slot)
     self:saveRecentSlot(slot)
     return data
 end
@@ -271,10 +271,10 @@ function save:deleteSlot(slot)
     local success = love.filesystem.remove(filepath)
 
     if success then
-        print("Deleted save slot " .. slot)
+        dprint("Deleted save slot " .. slot)
         return true
     else
-        print("Failed to delete save slot " .. slot)
+        dprint("Failed to delete save slot " .. slot)
         return false
     end
 end
@@ -290,7 +290,7 @@ function save:deleteAllSlots()
 
     love.filesystem.remove(self.RECENT_SLOT_FILE)
 
-    print("Deleted " .. deleted_count .. " save files")
+    dprint("Deleted " .. deleted_count .. " save files")
     return deleted_count
 end
 
@@ -309,27 +309,27 @@ function save:openSaveFolder()
     elseif os_name == "OS X" then
         os.execute('open "' .. save_dir .. '"')
     else
-        print("Cannot open folder on this OS: " .. os_name)
-        print("Save directory: " .. save_dir)
+        dprint("Cannot open folder on this OS: " .. os_name)
+        dprint("Save directory: " .. save_dir)
     end
 end
 
 function save:printStatus()
-    print("=== Save System Status ===")
-    print("Directory: " .. love.filesystem.getSaveDirectory())
-    print("Has saves: " .. tostring(self:hasSaveFiles()))
-    print("Recent slot: " .. tostring(self:loadRecentSlot()))
+    dprint("=== Save System Status ===")
+    dprint("Directory: " .. love.filesystem.getSaveDirectory())
+    dprint("Has saves: " .. tostring(self:hasSaveFiles()))
+    dprint("Recent slot: " .. tostring(self:loadRecentSlot()))
 
     for i = 1, self.MAX_SLOTS do
         local info = self:getSlotInfo(i)
         if info.exists then
-            print(string.format("Slot %d: %s (HP: %d/%d)",
+            dprint(string.format("Slot %d: %s (HP: %d/%d)",
                 i, info.map_display, info.hp, info.max_hp))
         else
-            print(string.format("Slot %d: Empty", i))
+            dprint(string.format("Slot %d: Empty", i))
         end
     end
-    print("========================")
+    dprint("========================")
 end
 
 save:init()

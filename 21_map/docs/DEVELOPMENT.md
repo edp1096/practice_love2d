@@ -258,13 +258,26 @@ end
 - Visualizes hitboxes and collision areas
 
 ### Print Debugging
-```lua
--- Use print() for quick debugging
-print("Player HP:", player.health)
 
--- Format complex tables
+**Conditional Debug Print (dprint):**
+```lua
+-- Use dprint() for debug messages (only prints when F1 debug mode is enabled)
+dprint("Player HP:", player.health)
+dprint("Enemy spawned at:", x, y)
+
+-- Use print() for critical errors/warnings (always prints)
+print("ERROR: Failed to load map")
+print("Warning: Missing texture")
+```
+
+**When to use each:**
+- `dprint()`: Debug info, state changes, verbose logging
+- `print()`: Errors, warnings, critical messages
+
+**Format complex tables:**
+```lua
 local inspect = require "vendor.inspect"  -- (if available)
-print(inspect(player))
+dprint(inspect(player))
 ```
 
 ### Error Handling

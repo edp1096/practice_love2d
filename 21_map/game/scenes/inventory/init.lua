@@ -1,7 +1,7 @@
 -- scenes/inventory/init.lua
 -- Main inventory UI coordinator
 
-local inventory_ui = {}
+local inventory = {}
 
 local screen = require "lib.screen"
 local sound = require "engine.sound"
@@ -16,7 +16,7 @@ local function play_sound(category, name)
     end
 end
 
-function inventory_ui:enter(previous, player_inventory, player)
+function inventory:enter(previous, player_inventory, player)
     self.previous_scene = previous
     self.inventory = player_inventory
     self.player = player
@@ -39,36 +39,36 @@ function inventory_ui:enter(previous, player_inventory, player)
     play_sound("ui", "open")
 end
 
-function inventory_ui:exit()
+function inventory:exit()
     play_sound("ui", "close")
 end
 
-function inventory_ui:update(dt)
+function inventory:update(dt)
     -- No gameplay update while in inventory
 end
 
 -- Delegate input handling to input module
-function inventory_ui:keypressed(key)
+function inventory:keypressed(key)
     input_handler.keypressed(self, key)
 end
 
-function inventory_ui:gamepadpressed(joystick, button)
+function inventory:gamepadpressed(joystick, button)
     input_handler.gamepadpressed(self, joystick, button)
 end
 
-function inventory_ui:gamepadaxis(joystick, axis, value)
+function inventory:gamepadaxis(joystick, axis, value)
     input_handler.gamepadaxis(self, joystick, axis, value)
 end
 
-function inventory_ui:mousepressed(x, y, button)
+function inventory:mousepressed(x, y, button)
     input_handler.mousepressed(self, x, y, button)
 end
 
-function inventory_ui:touchpressed(id, x, y, dx, dy, pressure)
+function inventory:touchpressed(id, x, y, dx, dy, pressure)
     return input_handler.touchpressed(self, id, x, y, dx, dy, pressure)
 end
 
-function inventory_ui:draw()
+function inventory:draw()
     -- Draw previous scene (dimmed)
     if self.previous_scene and self.previous_scene.draw then
         self.previous_scene:draw()
@@ -135,4 +135,4 @@ function inventory_ui:draw()
     screen:Detach()
 end
 
-return inventory_ui
+return inventory

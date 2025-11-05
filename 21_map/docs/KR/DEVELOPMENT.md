@@ -258,13 +258,26 @@ end
 - 히트박스와 충돌 영역 시각화
 
 ### Print 디버깅
-```lua
--- 빠른 디버깅을 위해 print() 사용
-print("Player HP:", player.health)
 
--- 복잡한 테이블 포맷
+**조건부 디버그 Print (dprint):**
+```lua
+-- 디버그 메시지는 dprint() 사용 (F1 디버그 모드가 켜져있을 때만 출력)
+dprint("Player HP:", player.health)
+dprint("Enemy spawned at:", x, y)
+
+-- 중요한 에러/경고는 print() 사용 (항상 출력)
+print("ERROR: Failed to load map")
+print("Warning: Missing texture")
+```
+
+**각각 언제 사용할까:**
+- `dprint()`: 디버그 정보, 상태 변화, 상세 로깅
+- `print()`: 에러, 경고, 중요한 메시지
+
+**복잡한 테이블 포맷:**
+```lua
 local inspect = require "vendor.inspect"  -- (사용 가능한 경우)
-print(inspect(player))
+dprint(inspect(player))
 ```
 
 ### 에러 처리

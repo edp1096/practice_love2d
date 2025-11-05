@@ -38,6 +38,14 @@ debug.actual_hand_positions = {}
 -- === Shared Resources ===
 debug.help_font = nil  -- Lazy-loaded help font
 
+-- === Debug Print Function ===
+-- Conditional print that only outputs when debug mode is enabled
+function debug:dprint(...)
+    if self.enabled then
+        print(...)
+    end
+end
+
 -- === Master Toggle ===
 function debug:toggle()
     self.enabled = not self.enabled
@@ -49,9 +57,9 @@ function debug:toggle()
         self.show_player_info = true
         self.show_screen_info = true
         self.show_bounds = true  -- Show hitboxes/collision boxes
-        print("=== DEBUG MODE ENABLED ===")
-        print("F2: Toggle Grid | F3: Virtual Mouse | F4: Effects | F5: Test Effects")
-        print("H: Hand Marking | P: Mark Position | PgUp/PgDn: Frame Nav")
+        dprint("=== DEBUG MODE ENABLED ===")
+        dprint("F2: Toggle Grid | F3: Virtual Mouse | F4: Effects | F5: Test Effects")
+        dprint("H: Hand Marking | P: Mark Position | PgUp/PgDn: Frame Nav")
     else
         -- Disable all debug features
         self.show_fps = false
@@ -61,27 +69,27 @@ function debug:toggle()
         self.show_virtual_mouse = false
         self.show_effects = false
         self.show_bounds = false
-        print("=== DEBUG MODE DISABLED ===")
+        dprint("=== DEBUG MODE DISABLED ===")
     end
 end
 
 -- === Layer-Specific Toggles ===
 function debug:toggleLayer(layer)
     if not self.enabled then
-        print("Enable debug mode first (F12)")
+        dprint("Enable debug mode first (F1)")
         return
     end
 
     if layer == "visualizations" then
         -- F1: Toggle ONLY grid visualization (not hitboxes)
         self.show_colliders = not self.show_colliders
-        print("Grid visualization: " .. tostring(self.show_colliders))
+        dprint("Grid visualization: " .. tostring(self.show_colliders))
     elseif layer == "mouse" then
         self.show_virtual_mouse = not self.show_virtual_mouse
-        print("Virtual mouse: " .. tostring(self.show_virtual_mouse))
+        dprint("Virtual mouse: " .. tostring(self.show_virtual_mouse))
     elseif layer == "effects" then
         self.show_effects = not self.show_effects
-        print("Effects debug: " .. tostring(self.show_effects))
+        dprint("Effects debug: " .. tostring(self.show_effects))
     end
 end
 
@@ -128,16 +136,16 @@ function debug:ToggleHandMarking(player)
     self.hand_marking_active = not self.hand_marking_active
     if self.hand_marking_active then
         self.manual_frame = 1
-        print("=== HAND MARKING MODE ENABLED ===")
-        print("Animation PAUSED")
-        print("PgUp/PgDn: Previous/Next frame")
-        print("P: Mark hand position")
-        print("Ctrl+P: Mark weapon anchor")
+        dprint("=== HAND MARKING MODE ENABLED ===")
+        dprint("Animation PAUSED")
+        dprint("PgUp/PgDn: Previous/Next frame")
+        dprint("P: Mark hand position")
+        dprint("Ctrl+P: Mark weapon anchor")
         local anim_name = player.current_anim_name or "idle_right"
-        print("Current animation: " .. anim_name)
-        print("Current frame: " .. self.manual_frame)
+        dprint("Current animation: " .. anim_name)
+        dprint("Current frame: " .. self.manual_frame)
     else
-        print("=== HAND MARKING MODE DISABLED ===")
+        dprint("=== HAND MARKING MODE DISABLED ===")
     end
 end
 
@@ -150,7 +158,7 @@ function debug:NextFrame(player)
     if self.manual_frame > frame_count then
         self.manual_frame = 1
     end
-    print(anim_name .. " Frame: " .. self.manual_frame .. " / " .. frame_count)
+    dprint(anim_name .. " Frame: " .. self.manual_frame .. " / " .. frame_count)
 end
 
 function debug:PreviousFrame(player)
@@ -162,7 +170,7 @@ function debug:PreviousFrame(player)
     if self.manual_frame < 1 then
         self.manual_frame = frame_count
     end
-    print(anim_name .. " Frame: " .. self.manual_frame .. " / " .. frame_count)
+    dprint(anim_name .. " Frame: " .. self.manual_frame .. " / " .. frame_count)
 end
 
 function debug:MarkHandPosition(player, world_x, world_y)
@@ -189,7 +197,7 @@ function debug:MarkHandPosition(player, world_x, world_y)
 
     local angle_str = self:formatAngle(weapon_angle)
 
-    print(string.format("MARKED: %s[%d] = {x = %d, y = %d, angle = %s},",
+    dprint(string.format("MARKED: %s[%d] = {x = %d, y = %d, angle = %s},",
         anim_name, frame_index, sprite_x, sprite_y, angle_str))
 
     local frame_count = self:getFrameCount(anim_name)
@@ -199,17 +207,17 @@ function debug:MarkHandPosition(player, world_x, world_y)
     end
 
     if marked_count == frame_count then
-        print("=== COMPLETE " .. anim_name .. " ===")
-        print(anim_name .. " = {")
+        dprint("=== COMPLETE " .. anim_name .. " ===")
+        dprint(anim_name .. " = {")
         for i = 1, frame_count do
             local pos = self.actual_hand_positions[anim_name][i]
             if pos then
                 local angle_str = self:formatAngle(pos.angle)
-                print(string.format("    {x = %d, y = %d, angle = %s},",
+                dprint(string.format("    {x = %d, y = %d, angle = %s},",
                     pos.x, pos.y, angle_str))
             end
         end
-        print("},")
+        dprint("},")
     end
 end
 

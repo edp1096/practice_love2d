@@ -21,7 +21,7 @@ function game_mode:set(mode)
     local previous = self.current
     self.current = mode
 
-    print("Game mode changed: " .. previous .. " -> " .. mode)
+    dprint("Game mode changed: " .. previous .. " -> " .. mode)
     return previous
 end
 

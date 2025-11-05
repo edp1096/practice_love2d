@@ -5,9 +5,9 @@ local sound_sys = require "engine.sound"
 local enemy_sound = {}
 
 function enemy_sound.initialize()
-    print("Initializing enemy sounds...")
+    dprint("Initializing enemy sounds...")
     sound_sys:createPool("enemy", "slime_move", "assets/sound/enemy/slime_move.wav", 3, "normal")
-    print("Enemy sounds initialized")
+    dprint("Enemy sounds initialized")
 end
 
 -- All sounds now use automatic pitch variation from config

@@ -29,7 +29,6 @@ function love.errorhandler(msg)
 end
 
 local love_version = (love._version_major .. "." .. love._version_minor)
-print("Running with LOVE " .. love_version .. " and " .. _VERSION)
 
 local is_android = love.system.getOS() == "Android"
 local is_mobile = is_android or love.system.getOS() == "iOS"
@@ -44,7 +43,18 @@ if not is_mobile and _VERSION == "Lua 5.1" then
     end
 end
 
+-- Load debug module first
 local debug = require "engine.debug"
+
+-- Define global dprint BEFORE loading other modules that might use it
+_G.dprint = function(...)
+    debug:dprint(...)
+end
+
+-- Print version info
+dprint("Running with LOVE " .. love_version .. " and " .. _VERSION)
+
+-- Now load other modules (they can safely use dprint)
 local screen = require "lib.screen"
 local utils = require "engine.utils.util"
 local scene_control = require "engine.scene_control"
@@ -86,7 +96,7 @@ function love.load()
     if virtual_gamepad then
         virtual_gamepad:init()
         input:setVirtualGamepad(virtual_gamepad)
-        print("Virtual gamepad enabled for mobile OS")
+        dprint("Virtual gamepad enabled for mobile OS")
     end
 
     scene_control.switch(menu)

@@ -42,8 +42,8 @@ function input_handler.keypressed(self, key)
         sound:pauseBGM()
     elseif input:wasPressed("open_inventory", "keyboard", key) then
         -- Open inventory UI (I key or R2 on gamepad)
-        local inventory_ui = require "game.scenes.inventory"
-        scene_control.push(inventory_ui, self.inventory, self.player)
+        local inventory = require "game.scenes.inventory"
+        scene_control.push(inventory, self.inventory, self.player)
     elseif input:wasPressed("dodge", "keyboard", key) then
         -- Dodge (lshift key or R1 on gamepad) - works in both modes
         self.player:startDodge()
@@ -211,8 +211,8 @@ function input_handler.gamepadpressed(self, joystick, button)
         self.player:startDodge()
 
     elseif action == "open_inventory" then
-        local inventory_ui = require "game.scenes.inventory"
-        scene_control.push(inventory_ui, self.inventory, self.player)
+        local inventory = require "game.scenes.inventory"
+        scene_control.push(inventory, self.inventory, self.player)
     end
 end
 
@@ -240,8 +240,8 @@ function input_handler.gamepadaxis(self, joystick, axis, value)
         end
 
     elseif action == "open_inventory" then
-        local inventory_ui = require "game.scenes.inventory"
-        scene_control.push(inventory_ui, self.inventory, self.player)
+        local inventory = require "game.scenes.inventory"
+        scene_control.push(inventory, self.inventory, self.player)
     end
 end
 

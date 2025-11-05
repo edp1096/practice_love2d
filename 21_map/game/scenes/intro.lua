@@ -27,7 +27,7 @@ function intro:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot)
 
     -- Load configuration for this intro
     self.config = intro_configs[intro_id]
-    print("Config loaded:", self.config ~= nil)
+    dprint("Config loaded:", self.config ~= nil)
 
     if not self.config then
         print("Warning: No intro config found for id: " .. tostring(intro_id))
@@ -44,7 +44,7 @@ function intro:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot)
     -- Play intro BGM if specified
     if self.config.bgm then
         sound:playBGM(self.config.bgm, 1.0, true)
-        print("Playing intro BGM:", self.config.bgm)
+        dprint("Playing intro BGM:", self.config.bgm)
     end
 
     -- Load background image

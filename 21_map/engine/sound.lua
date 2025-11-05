@@ -40,7 +40,7 @@ sound.pitch_variations = sound_data.variations.pitch
 sound.CATEGORY = sound_data.categories
 
 function sound:init()
-    print("Sound system initializing...")
+    dprint("Sound system initializing...")
 
     -- Load settings from GameConfig if available
     if GameConfig and GameConfig.sound then
@@ -48,7 +48,7 @@ function sound:init()
         self.settings.bgm_volume = GameConfig.sound.bgm_volume
         self.settings.sfx_volume = GameConfig.sound.sfx_volume
         self.settings.muted = GameConfig.sound.muted
-        print("Loaded sound settings from config")
+        dprint("Loaded sound settings from config")
     end
 
     for name, config in pairs(sound_data.bgm) do
@@ -68,7 +68,7 @@ function sound:init()
         end
     end
 
-    print("Sound system initialized")
+    dprint("Sound system initialized")
     self:printStatus()
 end
 
@@ -78,7 +78,7 @@ function sound:_loadBGM(name, config)
         self.bgm[name] = love.audio.newSource(config.path, "stream")
         self.bgm[name]:setLooping(config.loop or true)
         self.bgm[name]:setVolume((config.volume or 1.0) * self.settings.bgm_volume * self.settings.master_volume)
-        print("  Loaded BGM: " .. name)
+        dprint("  Loaded BGM: " .. name)
     else
         print("  WARNING: BGM not found: " .. config.path)
     end
@@ -89,7 +89,7 @@ function sound:_loadSFX(category, name, config)
     if info then
         self.sfx[category][name] = love.audio.newSource(config.path, "static")
         self.sfx[category][name]:setVolume((config.volume or 1.0) * self.settings.sfx_volume * self.settings.master_volume)
-        print("  Loaded SFX: " .. category .. "/" .. name)
+        dprint("  Loaded SFX: " .. category .. "/" .. name)
     else
         print("  WARNING: SFX not found: " .. config.path)
     end
@@ -116,7 +116,7 @@ function sound:_createPool(category, name, config)
         table.insert(self.pools[pool_key].sources, source)
     end
 
-    print("  Created pool: " .. pool_key .. " (size: " .. config.size .. ")")
+    dprint("  Created pool: " .. pool_key .. " (size: " .. config.size .. ")")
 end
 
 -- Get pitch value from variation preset name
@@ -225,7 +225,7 @@ function sound:createPool(category, name, path, size, pitch_variation)
     local pool_key = category .. "_" .. name
 
     if self.pools[pool_key] then
-        print("Pool already exists: " .. pool_key)
+        dprint("Pool already exists: " .. pool_key)
         return true
     end
 
@@ -242,7 +242,7 @@ function sound:createPool(category, name, path, size, pitch_variation)
         table.insert(self.pools[pool_key].sources, source)
     end
 
-    print("Created pool: " .. pool_key .. " (size: " .. size .. ")")
+    dprint("Created pool: " .. pool_key .. " (size: " .. size .. ")")
     return true
 end
 
@@ -274,7 +274,7 @@ function sound:playBGM(name, fade_time, rewind)
         self.current_bgm:play()
     end
 
-    print("Playing BGM: " .. name .. (rewind and " (rewound)" or ""))
+    dprint("Playing BGM: " .. name .. (rewind and " (rewound)" or ""))
 end
 
 function sound:stopBGM(fade_time)
@@ -415,21 +415,21 @@ function sound:cleanup()
         bgm:stop()
     end
 
-    print("Sound system cleaned up")
+    dprint("Sound system cleaned up")
 end
 
 function sound:printStatus()
-    print("=== Sound System Status ===")
-    print("Master Volume: " .. string.format("%.0f%%", self.settings.master_volume * 100))
-    print("BGM Volume: " .. string.format("%.0f%%", self.settings.bgm_volume * 100))
-    print("SFX Volume: " .. string.format("%.0f%%", self.settings.sfx_volume * 100))
-    print("Muted: " .. tostring(self.settings.muted))
-    print("Current BGM: " .. tostring(self.current_bgm_name or "None"))
-    print("Active Sources: " .. #self.active_sources .. "/" .. self.max_active_sources)
+    dprint("=== Sound System Status ===")
+    dprint("Master Volume: " .. string.format("%.0f%%", self.settings.master_volume * 100))
+    dprint("BGM Volume: " .. string.format("%.0f%%", self.settings.bgm_volume * 100))
+    dprint("SFX Volume: " .. string.format("%.0f%%", self.settings.sfx_volume * 100))
+    dprint("Muted: " .. tostring(self.settings.muted))
+    dprint("Current BGM: " .. tostring(self.current_bgm_name or "None"))
+    dprint("Active Sources: " .. #self.active_sources .. "/" .. self.max_active_sources)
 
     local mem_kb = collectgarbage("count")
     local mem_mb = mem_kb / 1024
-    print(string.format("Memory Usage: %.2f MB (Peak: %.2f MB)", mem_mb, self.memory_stats.peak_memory))
+    dprint(string.format("Memory Usage: %.2f MB (Peak: %.2f MB)", mem_mb, self.memory_stats.peak_memory))
 
     local bgm_count = 0
     for _ in pairs(self.bgm) do bgm_count = bgm_count + 1 end
@@ -442,10 +442,10 @@ function sound:printStatus()
     local pool_count = 0
     for _ in pairs(self.pools) do pool_count = pool_count + 1 end
 
-    print("Loaded BGM: " .. bgm_count)
-    print("Loaded SFX: " .. sfx_count)
-    print("Sound Pools: " .. pool_count)
-    print("===========================")
+    dprint("Loaded BGM: " .. bgm_count)
+    dprint("Loaded SFX: " .. sfx_count)
+    dprint("Sound Pools: " .. pool_count)
+    dprint("===========================")
 end
 
 -- Get debug info for display

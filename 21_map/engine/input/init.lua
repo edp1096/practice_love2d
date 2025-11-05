@@ -42,11 +42,11 @@ function input:init()
     self.coordinator = input_coordinator
     input_coordinator:init(self.joystick, self.virtual_gamepad, self.settings)
 
-    print("Input system initialized")
+    dprint("Input system initialized")
     if self.joystick then
-        print("  Controller: " .. self.joystick_name)
-        print("  Buttons: " .. self.joystick:getButtonCount())
-        print("  Axes: " .. self.joystick:getAxisCount())
+        dprint("  Controller: " .. self.joystick_name)
+        dprint("  Buttons: " .. self.joystick:getButtonCount())
+        dprint("  Axes: " .. self.joystick:getAxisCount())
     end
 end
 
@@ -75,7 +75,7 @@ function input:joystickAdded(joystick)
     if not self.joystick then
         self.joystick = joystick
         self.joystick_name = joystick:getName()
-        print("Controller connected: " .. self.joystick_name)
+        dprint("Controller connected: " .. self.joystick_name)
 
         if self.coordinator then
             self.coordinator:setJoystick(joystick, self.settings)
@@ -85,7 +85,7 @@ end
 
 function input:joystickRemoved(joystick)
     if self.joystick == joystick then
-        print("Controller disconnected: " .. self.joystick_name)
+        dprint("Controller disconnected: " .. self.joystick_name)
         self.joystick = nil
         self.joystick_name = "No Controller"
 

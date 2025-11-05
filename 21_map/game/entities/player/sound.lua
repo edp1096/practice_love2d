@@ -8,9 +8,9 @@ player_sound.footstep_timer = 0
 player_sound.footstep_interval = 0.4
 
 function player_sound.initialize()
-    print("Initializing player sounds...")
+    dprint("Initializing player sounds...")
     sound_sys:createPool("player", "footstep", "assets/sound/player/footstep.wav", 4, "footstep")
-    print("Player sounds initialized")
+    dprint("Player sounds initialized")
 end
 
 function player_sound.update(dt, player)

@@ -130,7 +130,7 @@ function effects:init()
         dust = self:createDustSystem(),
         slash = self:createSlashSystem()
     }
-    print("Effects system initialized")
+    dprint("Effects system initialized")
 end
 
 -- Spawn an effect at a position
@@ -162,7 +162,7 @@ function effects:spawn(effect_type, x, y, angle, particle_count)
 
     -- Debug logging (check if debug is available)
     if self.debug and self.debug.show_effects then
-        print(string.format("Spawned %s effect at (%.1f, %.1f) with %d particles",
+        dprint(string.format("Spawned %s effect at (%.1f, %.1f) with %d particles",
             effect_type, x, y, particle_count))
     end
 end
@@ -178,7 +178,7 @@ function effects:update(dt)
         if effect.time > effect.lifetime or effect.ps:getCount() == 0 then
             -- Debug logging
             if self.debug and self.debug.show_effects then
-                print(string.format("Removing %s effect (time: %.2f, particles: %d)",
+                dprint(string.format("Removing %s effect (time: %.2f, particles: %d)",
                     effect.type, effect.time, effect.ps:getCount()))
             end
             table.remove(self.active_effects, i)
@@ -208,7 +208,7 @@ end
 -- Clear all effects
 function effects:clear()
     if self.debug and self.debug.show_effects then
-        print("Clearing " .. #self.active_effects .. " effects")
+        dprint("Clearing " .. #self.active_effects .. " effects")
     end
     self.active_effects = {}
 end
@@ -220,18 +220,18 @@ end
 
 -- Test function - spawn effects at position
 function effects:test(x, y)
-    print("Testing all effects at (" .. x .. ", " .. y .. ")")
+    dprint("Testing all effects at (" .. x .. ", " .. y .. ")")
     self:spawn("blood", x, y - 40, 0, 40)
     self:spawn("spark", x, y + 40, math.pi / 4, 40)
     self:spawn("dust", x - 40, y, math.pi / 2, 40)
     self:spawn("slash", x + 40, y, 0, 40)
-    print("Active effects: " .. self:getCount())
+    dprint("Active effects: " .. self:getCount())
 end
 
 -- Preset combinations for common scenarios
 function effects:spawnHitEffect(x, y, target_type, angle)
     if self.debug and self.debug.show_effects then
-        print(string.format("Spawning hit effect for %s at (%.1f, %.1f)", target_type, x, y))
+        dprint(string.format("Spawning hit effect for %s at (%.1f, %.1f)", target_type, x, y))
     end
 
     if target_type == "enemy" or target_type == "player" then
@@ -244,7 +244,7 @@ end
 
 function effects:spawnParryEffect(x, y, angle, is_perfect)
     if self.debug and self.debug.show_effects then
-        print(string.format("Spawning parry effect (%s) at (%.1f, %.1f)",
+        dprint(string.format("Spawning parry effect (%s) at (%.1f, %.1f)",
             is_perfect and "PERFECT" or "normal", x, y))
     end
 
@@ -254,7 +254,7 @@ end
 
 function effects:spawnWeaponTrail(x, y, angle)
     if self.debug and self.debug.show_effects then
-        print(string.format("Spawning weapon trail at (%.1f, %.1f)", x, y))
+        dprint(string.format("Spawning weapon trail at (%.1f, %.1f)", x, y))
     end
 
     self:spawn("slash", x, y, angle, 20)
