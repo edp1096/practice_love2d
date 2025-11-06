@@ -6,11 +6,11 @@ local is_android = love._os == "Android"
 local is_mobile = is_android or love._os == "iOS"
 
 function love.conf(t)
-    t.identity = "move_basic"
+    t.identity = "hello_love2d"
     t.version = "11.5"
     t.console = false
 
-    t.window.title = "Move Basic - LÖVE2D"
+    t.window.title = "Hello Love2D - LÖVE2D"
     t.window.icon = nil
 
     if is_mobile then

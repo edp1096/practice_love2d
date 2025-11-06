@@ -43,13 +43,10 @@ if not is_mobile and _VERSION == "Lua 5.1" then
     end
 end
 
--- Load debug module first
-local debug = require "engine.debug"
 
 -- Define global dprint BEFORE loading other modules that might use it
-_G.dprint = function(...)
-    debug:dprint(...)
-end
+local debug = require "engine.debug"
+_G.dprint = function(...) debug:dprint(...) end
 
 -- Print version info
 dprint("Running with LOVE " .. love_version .. " and " .. _VERSION)
@@ -95,17 +92,11 @@ function love.load()
     app_lifecycle:initialize(menu)
 end
 
-function love.update(dt)
-    app_lifecycle:update(dt)
-end
+function love.update(dt) app_lifecycle:update(dt) end
 
-function love.draw()
-    app_lifecycle:draw()
-end
+function love.draw() app_lifecycle:draw() end
 
-function love.resize(w, h)
-    app_lifecycle:resize(w, h)
-end
+function love.resize(w, h) app_lifecycle:resize(w, h) end
 
 -- === Input Event Handlers ===
 

@@ -1,11 +1,11 @@
 local is_debug = false
 
 local love_version = (love._version_major .. "." .. love._version_minor)
-print("Running with LOVE " .. love_version .. " and Lua " .. _VERSION)
+print("Running with LOVE " .. love_version .. " and " .. _VERSION)
 
 local screen = require "lib.screen"
 
-local logo, player
+local logo
 
 
 function love.load()
@@ -17,32 +17,11 @@ function love.load()
     screen:Initialize(config)
 
     logo = love.graphics.newImage("assets/images/logo.png")
-
-    player = {}
-    player.x = 400
-    player.y = 200
-    player.speed = 5
-end
-
-function love.update(dt)
-    if love.keyboard.isDown("right") then
-        player.x = player.x + player.speed
-    end
-    if love.keyboard.isDown("left") then
-        player.x = player.x - player.speed
-    end
-    if love.keyboard.isDown("down") then
-        player.y = player.y + player.speed
-    end
-    if love.keyboard.isDown("up") then
-        player.y = player.y - player.speed
-    end
 end
 
 function love.draw()
     screen:Attach()
     love.graphics.draw(logo, 0, 0)
-    love.graphics.circle("fill", player.x, player.y, 100)
     screen:Detach()
 
     if is_debug then

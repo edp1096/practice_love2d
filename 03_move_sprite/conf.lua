@@ -1,64 +1,62 @@
-local ini = require "lib.ini"
+-- conf.lua
+-- Configuration file for LÖVE2D
 
-GameConfig = {
-    title = "Hello Love2D",
-    author = "Your Name",
-    version = "11.5",
-
-    width = 1280,
-    height = 720,
-    resizable = true,
-    fullscreen = false,
-    vsync = true,
-
-    min_width = 640,
-    min_height = 360
-}
-
-local file = io.open("config.ini", "r")
-if file then
-    file:close()
-else
-    local data = love.filesystem.read("config.ini")
-    if data then
-        local f = io.open("config.ini", "w")
-        if f then
-            f:write(data)
-            f:close()
-        end
-    end
-end
-
-
-local config, err = ini:Read("config.ini")
-if not err then
-    GameConfig.title = config and config.Title
-    GameConfig.author = config and config.Author
-
-    GameConfig.width = config and config.Window.Width
-    GameConfig.height = config and config.Window.Height
-    GameConfig.resizable = config and config.Window.Resizable
-    GameConfig.fullscreen = config and config.Window.FullScreen
-    GameConfig.monitor = config and config.Window.Monitor
-    GameConfig.scale_mode = config and config.Window.ScaleMode
-    GameConfig.vsync = config and config.Window.Vsync
-end
+-- Detect platform early
+local is_android = love._os == "Android"
+local is_mobile = is_android or love._os == "iOS"
 
 function love.conf(t)
-    t.title = GameConfig.title
-    t.author = GameConfig.author
-    -- t.version = "11.5"
+    t.identity = "move_sprite"
+    t.version = "11.5"
+    t.console = false
 
-    t.window.width = GameConfig.width
-    t.window.height = GameConfig.height
-    t.window.resizable = GameConfig.resizable
-    -- t.window.fullscreen = GameConfig.fullscreen
-    t.window.vsync = GameConfig.vsync
-    t.window.minwidth = GameConfig.min_width
-    t.window.minheight = GameConfig.min_height
+    t.window.title = "Move Sprite - LÖVE2D"
+    t.window.icon = nil
 
-    t.modules.joystick = false
+    if is_mobile then
+        -- Mobile: use device screen size
+        t.window.width = 0
+        t.window.height = 0
+        t.window.borderless = false
+        t.window.resizable = false
+        t.window.fullscreen = false
+        t.window.fullscreentype = "desktop"
+        t.window.vsync = 1
+    else
+        -- Desktop: use config
+        t.window.width = 1280
+        t.window.height = 720
+        t.window.borderless = false
+        t.window.resizable = true
+        t.window.fullscreen = false
+        t.window.fullscreentype = "desktop"
+        t.window.vsync = 1
+        t.window.minwidth = 640
+        t.window.minheight = 360
+    end
+
+    t.window.display = 1
+    t.window.highdpi = false
+    t.window.usedpiscale = true
+    t.window.depth = nil
+    t.window.stencil = nil
+
+    t.modules.audio = true
+    t.modules.data = true
+    t.modules.event = true
+    t.modules.font = true
+    t.modules.graphics = true
+    t.modules.image = true
+    t.modules.joystick = true
+    t.modules.keyboard = true
+    t.modules.math = true
+    t.modules.mouse = true
     t.modules.physics = true
-    t.modules.touch = false
-    t.modules.video = true
+    t.modules.sound = true
+    t.modules.system = true
+    t.modules.thread = true
+    t.modules.timer = true
+    t.modules.touch = true
+    t.modules.video = false
+    t.modules.window = true
 end
