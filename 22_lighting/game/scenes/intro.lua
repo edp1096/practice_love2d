@@ -182,7 +182,7 @@ function intro:keypressed(key)
     end
 
     if key == "return" or key == "space" or key == "z" then
-        dialogue:onAction()
+        dialogue:handleInput("keyboard")
     end
 
     -- Allow skipping intro
@@ -195,7 +195,7 @@ end
 
 function intro:gamepadpressed(joystick, button)
     if button == "a" or button == "b" then
-        dialogue:onAction()
+        dialogue:handleInput("keyboard")
     end
 
     -- Allow skipping with start button
@@ -207,42 +207,27 @@ function intro:gamepadpressed(joystick, button)
 end
 
 function intro:mousepressed(x, y, button)
-    if button == 1 and dialogue:isOpen() then
-        if not dialogue:touchPressed(0, x, y) then
-            -- Click outside buttons advances dialogue
-            dialogue:onAction()
-        end
+    if button == 1 then
+        dialogue:handleInput("mouse", x, y)
     end
 end
 
 function intro:mousereleased(x, y, button)
-    if button == 1 and dialogue:isOpen() then
-        dialogue:touchReleased(0, x, y)
+    if button == 1 then
+        dialogue:handleInput("mouse_release", x, y)
     end
 end
 
 function intro:touchpressed(id, x, y, dx, dy, pressure)
-    -- Priority 1: Dialogue buttons (SKIP/NEXT)
-    if dialogue:touchPressed(id, x, y) then
-        return true  -- Button consumed
-    end
-
-    -- Priority 2: Touch anywhere to advance dialogue
-    dialogue:onAction()
-    return true  -- Block other touch handlers
+    return dialogue:handleInput("touch", id, x, y)
 end
 
 function intro:touchreleased(id, x, y, dx, dy, pressure)
-    -- Handle dialogue button releases (SKIP/NEXT)
-    if dialogue:touchReleased(id, x, y) then
-        return true  -- Button clicked
-    end
-    return false
+    return dialogue:handleInput("touch_release", id, x, y)
 end
 
 function intro:touchmoved(id, x, y, dx, dy, pressure)
-    -- Update dialogue button hover states
-    dialogue:touchMoved(id, x, y)
+    dialogue:handleInput("touch_move", id, x, y)
 end
 
 function intro:resize(w, h)

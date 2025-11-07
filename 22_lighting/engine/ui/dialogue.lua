@@ -123,6 +123,56 @@ function dialogue:clear()
     end
 end
 
+-- Unified input handler for all input types
+-- Returns true if dialogue consumed the input, false otherwise
+function dialogue:handleInput(source, ...)
+    if not self:isOpen() then
+        return false
+    end
+
+    if source == "keyboard" then
+        -- Keyboard: no buttons, just advance dialogue
+        self:onAction()
+        return true
+
+    elseif source == "mouse" then
+        local x, y = ...
+        -- Mouse: check buttons first, then advance
+        if not self:touchPressed(0, x, y) then
+            self:onAction()
+        end
+        return true
+
+    elseif source == "mouse_release" then
+        local x, y = ...
+        -- Mouse release: handle button actions
+        self:touchReleased(0, x, y)
+        return true
+
+    elseif source == "touch" then
+        local id, x, y = ...
+        -- Touch: check buttons first, then advance
+        if self:touchPressed(id, x, y) then
+            return true  -- Button consumed
+        end
+        self:onAction()
+        return true
+
+    elseif source == "touch_release" then
+        local id, x, y = ...
+        -- Touch release: handle button actions
+        return self:touchReleased(id, x, y)
+
+    elseif source == "touch_move" then
+        local id, x, y = ...
+        -- Touch move: update button hover states
+        self:touchMoved(id, x, y)
+        return true
+    end
+
+    return false
+end
+
 -- Handle touch/mouse press on buttons
 function dialogue:touchPressed(id, x, y)
     if not Talkies.isOpen() then

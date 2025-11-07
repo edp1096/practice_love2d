@@ -25,13 +25,12 @@ end
 
 -- Keyboard input handler
 function input_handler.keypressed(self, key)
-    if dialogue:isOpen() then
-        if input:wasPressed("interact", "keyboard", key) or
-            input:wasPressed("menu_select", "keyboard", key) then
-            dialogue:onAction()
+    -- Dialogue takes priority
+    if input:wasPressed("interact", "keyboard", key) or
+        input:wasPressed("menu_select", "keyboard", key) then
+        if dialogue:handleInput("keyboard") then
+            return
         end
-
-        return
     end
 
     if input:wasPressed("pause", "keyboard", key) then
@@ -108,13 +107,10 @@ end
 function input_handler.mousepressed(self, x, y, button)
     if is_mobile then return end
 
-    if dialogue:isOpen() then
-        if input:wasPressed("menu_select", "mouse", button) then
-            if not dialogue:touchPressed(0, x, y) then
-                dialogue:onAction()
-            end
+    if input:wasPressed("menu_select", "mouse", button) then
+        if dialogue:handleInput("mouse", x, y) then
+            return
         end
-        return
     end
 
     if input:wasPressed("attack", "mouse", button) then
@@ -128,8 +124,8 @@ end
 function input_handler.mousereleased(self, x, y, button)
     if is_mobile then return end
 
-    if dialogue:isOpen() and input:wasPressed("menu_select", "mouse", button) then
-        dialogue:touchReleased(0, x, y)
+    if input:wasPressed("menu_select", "mouse", button) then
+        dialogue:handleInput("mouse_release", x, y)
     end
 end
 
@@ -247,38 +243,24 @@ end
 
 -- Touch input handler
 function input_handler.touchpressed(id, x, y, dx, dy, pressure)
-    -- Priority 1: Dialogue buttons (NEXT/SKIP)
-    if dialogue:isOpen() then
-        if dialogue:touchPressed(id, x, y) then
-            return true -- Button consumed (will be handled in touchreleased)
-        end
-        -- If buttons didn't consume, touch anywhere to advance dialogue
-        dialogue:onAction()
-        return true -- Block virtual gamepad
+    if dialogue:handleInput("touch", id, x, y) then
+        return true
     end
-
-    return false -- Let virtual gamepad handle it
+    return false
 end
 
 function input_handler.touchreleased(self, id, x, y, dx, dy, pressure)
-    -- Priority 1: Dialogue buttons (NEXT advances, SKIP clears all)
-    if dialogue:isOpen() then
-        if dialogue:touchReleased(id, x, y) then
-            return true -- Button clicked (NEXT or SKIP)
-        end
+    if dialogue:handleInput("touch_release", id, x, y) then
+        return true
     end
 
-    -- Priority 2: Debug button release
     if self:handleDebugButtonTouch(x, y, id, false) then
         return
     end
 end
 
 function input_handler.touchmoved(self, id, x, y, dx, dy, pressure)
-    -- Update dialogue button hover states (NEXT/SKIP)
-    if dialogue:isOpen() then
-        dialogue:touchMoved(id, x, y)
-    end
+    dialogue:handleInput("touch_move", id, x, y)
 end
 
 return input_handler
