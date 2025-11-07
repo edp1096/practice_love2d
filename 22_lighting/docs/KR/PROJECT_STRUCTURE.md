@@ -47,8 +47,8 @@ engine/
 │       ├── base_input.lua              - 베이스 클래스
 │       ├── keyboard_input.lua          - 키보드 처리
 │       ├── mouse_input.lua             - 마우스/조준 처리
-│       ├── physical_gamepad_input.lua  - 물리 컨트롤러
-│       └── virtual_gamepad_input.lua   - 가상 게임패드 어댑터
+│       ├── gamepad.lua                 - 물리 컨트롤러
+│       └── virtual_pad.lua             - 가상 게임패드 어댑터
 │
 ├── world/                - 물리 & 월드 시스템
 │   ├── init.lua          - 월드 코디네이터 (Windfield 래퍼)

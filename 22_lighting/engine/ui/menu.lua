@@ -289,4 +289,47 @@ function scene.handleConfirmNav(key_or_button, source, current_selection, button
     return nil
 end
 
+-- Handle touch input for menu options
+-- Returns touched option index (1-based) or 0 if no option was touched
+function scene.handleTouchPress(options, layout, width, font, x, y, display_module)
+    local coords = require "engine.coords"
+    local vx, vy = coords:physicalToVirtual(x, y, display_module)
+
+    love.graphics.setFont(font)
+    for i, option in ipairs(options) do
+        local option_y = layout.options_start_y + (i - 1) * layout.option_spacing
+        local text_width = font:getWidth(option)
+        local text_height = font:getHeight()
+        local option_x = (width - text_width) / 2
+        local padding = 15
+
+        if vx >= option_x - padding and vx <= option_x + text_width + padding and
+            vy >= option_y - padding and vy <= option_y + text_height + padding then
+            return i
+        end
+    end
+
+    return 0
+end
+
+-- Handle touch input for slot-based menus (newgame, saveslot, load)
+-- Returns touched slot index (1-based) or 0 if no slot was touched
+function scene.handleSlotTouchPress(slots, layout, width, x, y, display_module)
+    local coords = require "engine.coords"
+    local vx, vy = coords:physicalToVirtual(x, y, display_module)
+
+    for i, slot in ipairs(slots) do
+        local slot_y = layout.slots_start_y + (i - 1) * layout.slot_spacing
+        local slot_height = 75
+        local padding = 8
+
+        if vx >= width * 0.15 and vx <= width * 0.85 and
+            vy >= slot_y - padding and vy <= slot_y + slot_height + padding then
+            return i
+        end
+    end
+
+    return 0
+end
+
 return scene

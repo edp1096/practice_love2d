@@ -473,6 +473,141 @@ end
 
 ---
 
+## 메뉴 UI 시스템
+
+### `engine/ui/menu.lua`
+메뉴 씬의 코드 중복을 제거하기 위한 공통 UI 유틸리티.
+
+**레이아웃 함수:**
+```lua
+ui_scene.createMenuLayout(vh)               -- 표준 메뉴 레이아웃 생성
+ui_scene.createMenuFonts()                  -- 표준 폰트 생성
+```
+
+**그리기 함수:**
+```lua
+ui_scene.drawTitle(text, font, y, width, color)
+ui_scene.drawOptions(options, selected, mouse_over, font, layout, width)
+ui_scene.drawOverlay(width, height, alpha)
+ui_scene.drawControlHints(font, layout, width, custom_text)
+ui_scene.drawConfirmDialog(title, subtitle, button_labels, selected, mouse_over, fonts, width, height)
+```
+
+**입력 처리 함수:**
+```lua
+ui_scene.handleKeyboardNav(key, current_selection, option_count)
+ui_scene.handleGamepadNav(button, current_selection, option_count)
+ui_scene.handleMouseSelection(button, mouse_over)
+
+-- 터치 입력 (신규)
+ui_scene.handleTouchPress(options, layout, width, font, x, y, display)
+ui_scene.handleSlotTouchPress(slots, layout, width, x, y, display)
+```
+
+**마우스 감지 함수:**
+```lua
+ui_scene.updateMouseOver(options, layout, width, font)
+ui_scene.updateConfirmMouseOver(width, height, button_count)
+```
+
+**사용 예시 (메뉴 씬):**
+```lua
+local ui_scene = require "engine.ui.menu"
+local display = require "engine.display"
+local sound = require "engine.sound"
+
+function menu:enter(previous)
+    self.options = {"계속하기", "새 게임", "설정", "종료"}
+    self.selected = 1
+    self.mouse_over = 0
+
+    local vw, vh = display:GetVirtualDimensions()
+    self.virtual_width = vw
+    self.virtual_height = vh
+    self.fonts = ui_scene.createMenuFonts()
+    self.layout = ui_scene.createMenuLayout(vh)
+end
+
+function menu:update(dt)
+    -- 마우스 오버 감지 업데이트
+    self.mouse_over = ui_scene.updateMouseOver(
+        self.options, self.layout, self.virtual_width, self.fonts.option)
+end
+
+function menu:draw()
+    display:Attach()
+    ui_scene.drawTitle("메인 메뉴", self.fonts.title, self.layout.title_y, self.virtual_width)
+    ui_scene.drawOptions(self.options, self.selected, self.mouse_over,
+        self.fonts.option, self.layout, self.virtual_width)
+    ui_scene.drawControlHints(self.fonts.hint, self.layout, self.virtual_width)
+    display:Detach()
+end
+
+function menu:keypressed(key)
+    local nav_result = ui_scene.handleKeyboardNav(key, self.selected, #self.options)
+    if nav_result.action == "navigate" then
+        self.selected = nav_result.new_selection
+    elseif nav_result.action == "select" then
+        self:executeOption(self.selected)
+    end
+end
+
+function menu:mousereleased(x, y, button)
+    if button == 1 and self.mouse_over > 0 then
+        self.selected = self.mouse_over
+        sound:playSFX("menu", "select")
+        self:executeOption(self.selected)
+    end
+end
+
+-- 터치 입력 (모바일 지원)
+function menu:touchpressed(id, x, y, dx, dy, pressure)
+    self.mouse_over = ui_scene.handleTouchPress(
+        self.options, self.layout, self.virtual_width, self.fonts.option, x, y, display)
+    return false
+end
+
+function menu:touchreleased(id, x, y, dx, dy, pressure)
+    local touched = ui_scene.handleTouchPress(
+        self.options, self.layout, self.virtual_width, self.fonts.option, x, y, display)
+    if touched > 0 then
+        self.selected = touched
+        sound:playSFX("menu", "select")
+        self:executeOption(self.selected)
+        return true
+    end
+    return false
+end
+```
+
+**슬롯 기반 메뉴 예시 (저장/로드):**
+```lua
+function saveslot:touchpressed(id, x, y, dx, dy, pressure)
+    self.mouse_over = ui_scene.handleSlotTouchPress(
+        self.slots, self.layout, self.virtual_width, x, y, display)
+    return false
+end
+
+function saveslot:touchreleased(id, x, y, dx, dy, pressure)
+    local touched = ui_scene.handleSlotTouchPress(
+        self.slots, self.layout, self.virtual_width, x, y, display)
+    if touched > 0 then
+        self.selected = touched
+        self:selectSlot(self.selected)
+        return true
+    end
+    return false
+end
+```
+
+**장점:**
+- 메뉴 씬 간 코드 중복 제거
+- 모든 메뉴에서 일관된 UI 동작
+- 모바일 터치 지원 내장
+- 유지보수 및 확장이 용이
+
+---
+
 ## 미니맵 시스템
 
 ### `engine/minimap.lua`

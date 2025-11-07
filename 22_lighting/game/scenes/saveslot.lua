@@ -227,4 +227,23 @@ function saveslot:mousereleased(x, y, button)
     end
 end
 
+function saveslot:touchpressed(id, x, y, dx, dy, pressure)
+    local ui_scene = require "engine.ui.menu"
+    self.mouse_over = ui_scene.handleSlotTouchPress(
+        self.slots, self.layout, self.virtual_width, x, y, display)
+    return false
+end
+
+function saveslot:touchreleased(id, x, y, dx, dy, pressure)
+    local ui_scene = require "engine.ui.menu"
+    local touched = ui_scene.handleSlotTouchPress(
+        self.slots, self.layout, self.virtual_width, x, y, display)
+    if touched > 0 then
+        self.selected = touched
+        self:selectSlot(self.selected)
+        return true
+    end
+    return false
+end
+
 return saveslot

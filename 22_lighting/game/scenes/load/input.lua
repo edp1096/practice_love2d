@@ -187,14 +187,26 @@ function input_handler.mousereleased(load_scene, x, y, button)
     end
 end
 
--- Touch pressed (pass through to mousepressed)
+-- Touch pressed
 function input_handler.touchpressed(load_scene, id, x, y, dx, dy, pressure)
-    input_handler.mousepressed(load_scene, x, y, 1)
+    -- Convert physical touch to virtual coordinates
+    local coords = require "engine.coords"
+    local display = require "engine.display"
+    local vx, vy = coords:physicalToVirtual(x, y, display)
+
+    input_handler.mousepressed(load_scene, vx, vy, 1)
+    return false
 end
 
--- Touch released (pass through to mousereleased)
+-- Touch released
 function input_handler.touchreleased(load_scene, id, x, y, dx, dy, pressure)
-    input_handler.mousereleased(load_scene, x, y, 1)
+    -- Convert physical touch to virtual coordinates
+    local coords = require "engine.coords"
+    local display = require "engine.display"
+    local vx, vy = coords:physicalToVirtual(x, y, display)
+
+    input_handler.mousereleased(load_scene, vx, vy, 1)
+    return true
 end
 
 return input_handler

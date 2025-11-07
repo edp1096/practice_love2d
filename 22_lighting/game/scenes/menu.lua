@@ -165,4 +165,22 @@ function menu:mousereleased(x, y, button)
     end
 end
 
+function menu:touchpressed(id, x, y, dx, dy, pressure)
+    self.mouse_over = ui_scene.handleTouchPress(
+        self.options, self.layout, self.virtual_width, self.fonts.option, x, y, display)
+    return false
+end
+
+function menu:touchreleased(id, x, y, dx, dy, pressure)
+    local touched = ui_scene.handleTouchPress(
+        self.options, self.layout, self.virtual_width, self.fonts.option, x, y, display)
+    if touched > 0 then
+        self.selected = touched
+        sound:playSFX("menu", "select")
+        self:executeOption(self.selected)
+        return true
+    end
+    return false
+end
+
 return menu

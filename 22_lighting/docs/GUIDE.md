@@ -499,6 +499,141 @@ end
 
 ---
 
+## Menu UI System
+
+### `engine/ui/menu.lua`
+Common UI utilities for menu scenes to eliminate code duplication.
+
+**Layout Functions:**
+```lua
+ui_scene.createMenuLayout(vh)               -- Create standard menu layout
+ui_scene.createMenuFonts()                  -- Create standard fonts
+```
+
+**Drawing Functions:**
+```lua
+ui_scene.drawTitle(text, font, y, width, color)
+ui_scene.drawOptions(options, selected, mouse_over, font, layout, width)
+ui_scene.drawOverlay(width, height, alpha)
+ui_scene.drawControlHints(font, layout, width, custom_text)
+ui_scene.drawConfirmDialog(title, subtitle, button_labels, selected, mouse_over, fonts, width, height)
+```
+
+**Input Handling Functions:**
+```lua
+ui_scene.handleKeyboardNav(key, current_selection, option_count)
+ui_scene.handleGamepadNav(button, current_selection, option_count)
+ui_scene.handleMouseSelection(button, mouse_over)
+
+-- Touch input (NEW)
+ui_scene.handleTouchPress(options, layout, width, font, x, y, display)
+ui_scene.handleSlotTouchPress(slots, layout, width, x, y, display)
+```
+
+**Mouse Detection Functions:**
+```lua
+ui_scene.updateMouseOver(options, layout, width, font)
+ui_scene.updateConfirmMouseOver(width, height, button_count)
+```
+
+**Usage Example (Menu Scene):**
+```lua
+local ui_scene = require "engine.ui.menu"
+local display = require "engine.display"
+local sound = require "engine.sound"
+
+function menu:enter(previous)
+    self.options = {"Continue", "New Game", "Settings", "Quit"}
+    self.selected = 1
+    self.mouse_over = 0
+
+    local vw, vh = display:GetVirtualDimensions()
+    self.virtual_width = vw
+    self.virtual_height = vh
+    self.fonts = ui_scene.createMenuFonts()
+    self.layout = ui_scene.createMenuLayout(vh)
+end
+
+function menu:update(dt)
+    -- Update mouse-over detection
+    self.mouse_over = ui_scene.updateMouseOver(
+        self.options, self.layout, self.virtual_width, self.fonts.option)
+end
+
+function menu:draw()
+    display:Attach()
+    ui_scene.drawTitle("Main Menu", self.fonts.title, self.layout.title_y, self.virtual_width)
+    ui_scene.drawOptions(self.options, self.selected, self.mouse_over,
+        self.fonts.option, self.layout, self.virtual_width)
+    ui_scene.drawControlHints(self.fonts.hint, self.layout, self.virtual_width)
+    display:Detach()
+end
+
+function menu:keypressed(key)
+    local nav_result = ui_scene.handleKeyboardNav(key, self.selected, #self.options)
+    if nav_result.action == "navigate" then
+        self.selected = nav_result.new_selection
+    elseif nav_result.action == "select" then
+        self:executeOption(self.selected)
+    end
+end
+
+function menu:mousereleased(x, y, button)
+    if button == 1 and self.mouse_over > 0 then
+        self.selected = self.mouse_over
+        sound:playSFX("menu", "select")
+        self:executeOption(self.selected)
+    end
+end
+
+-- Touch input (mobile support)
+function menu:touchpressed(id, x, y, dx, dy, pressure)
+    self.mouse_over = ui_scene.handleTouchPress(
+        self.options, self.layout, self.virtual_width, self.fonts.option, x, y, display)
+    return false
+end
+
+function menu:touchreleased(id, x, y, dx, dy, pressure)
+    local touched = ui_scene.handleTouchPress(
+        self.options, self.layout, self.virtual_width, self.fonts.option, x, y, display)
+    if touched > 0 then
+        self.selected = touched
+        sound:playSFX("menu", "select")
+        self:executeOption(self.selected)
+        return true
+    end
+    return false
+end
+```
+
+**Slot-Based Menu Example (Save/Load):**
+```lua
+function saveslot:touchpressed(id, x, y, dx, dy, pressure)
+    self.mouse_over = ui_scene.handleSlotTouchPress(
+        self.slots, self.layout, self.virtual_width, x, y, display)
+    return false
+end
+
+function saveslot:touchreleased(id, x, y, dx, dy, pressure)
+    local touched = ui_scene.handleSlotTouchPress(
+        self.slots, self.layout, self.virtual_width, x, y, display)
+    if touched > 0 then
+        self.selected = touched
+        self:selectSlot(self.selected)
+        return true
+    end
+    return false
+end
+```
+
+**Benefits:**
+- Eliminates code duplication across menu scenes
+- Consistent UI behavior across all menus
+- Built-in mobile touch support
+- Easy to maintain and extend
+
+---
+
 ## Minimap System
 
 ### `engine/minimap.lua`

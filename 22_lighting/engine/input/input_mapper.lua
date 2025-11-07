@@ -2,8 +2,8 @@
 -- Coordinates multiple input sources with priority-based selection
 -- This is the clean V2 implementation that replaces complex input logic
 
-local virtual_gamepad_input = require "engine.input.sources.virtual_gamepad_input"
-local physical_gamepad_input = require "engine.input.sources.physical_gamepad_input"
+local virtual_pad = require "engine.input.sources.virtual_pad"
+local gamepad = require "engine.input.sources.gamepad"
 local mouse_input = require "engine.input.sources.mouse_input"
 local keyboard_input = require "engine.input.sources.keyboard_input"
 
@@ -33,11 +33,11 @@ function input_mapper:init(joystick, virtual_gamepad, settings, input_config)
     self.mouse = mouse_input:new()
 
     if joystick then
-        self.physical_gamepad = physical_gamepad_input:new(joystick, settings, input_config)
+        self.gamepad = gamepad:new(joystick, settings, input_config)
     end
 
     if virtual_gamepad then
-        self.virtual_gamepad = virtual_gamepad_input:new(virtual_gamepad)
+        self.virtual_pad = virtual_pad:new(virtual_gamepad)
     end
 
     -- Register sources in priority order
@@ -54,12 +54,12 @@ function input_mapper:registerSources()
     self.sources = {}
 
     -- Add sources (they auto-sort by priority)
-    if self.virtual_gamepad then
-        table.insert(self.sources, self.virtual_gamepad)
+    if self.virtual_pad then
+        table.insert(self.sources, self.virtual_pad)
     end
 
-    if self.physical_gamepad then
-        table.insert(self.sources, self.physical_gamepad)
+    if self.gamepad then
+        table.insert(self.sources, self.gamepad)
     end
 
     table.insert(self.sources, self.keyboard)
@@ -88,7 +88,7 @@ function input_mapper:getMovement()
             local vx, vy, has_input = source:getMovement()
             if has_input then
                 -- Update last input type based on source
-                if source == self.physical_gamepad or source == self.virtual_gamepad then
+                if source == self.gamepad or source == self.virtual_pad then
                     self.active_input = "gamepad"
                 elseif source == self.keyboard then
                     self.active_input = "keyboard_mouse"
@@ -104,23 +104,23 @@ end
 
 -- Get aim direction from highest priority available source
 function input_mapper:getAimDirection(player_x, player_y, cam)
-    -- Special handling: check if virtual gamepad has active touches
-    if self.virtual_gamepad and self.virtual_gamepad:isAvailable() then
-        if self.virtual_gamepad:hasActiveTouches() then
-            local angle, has_aim = self.virtual_gamepad:getAimDirection(player_x, player_y, cam)
+    -- Special handling: check if virtual pad has active touches
+    if self.virtual_pad and self.virtual_pad:isAvailable() then
+        if self.virtual_pad:hasActiveTouches() then
+            local angle, has_aim = self.virtual_pad:getAimDirection(player_x, player_y, cam)
             if has_aim then
                 self.last_aim_angle = angle
-                self.last_aim_source = "virtual_gamepad"
+                self.last_aim_source = "virtual_pad"
                 self.active_input = "gamepad"
                 return angle
             end
             return self.last_aim_angle
         end
 
-        -- Check if mouse is in virtual gamepad area
+        -- Check if mouse is in virtual pad area
         if self.mouse and self.mouse:isAvailable() then
             local mx, my = love.mouse.getPosition()
-            if self.virtual_gamepad:isInPadArea(mx, my) then
+            if self.virtual_pad:isInPadArea(mx, my) then
                 return self.last_aim_angle
             end
         end
@@ -128,12 +128,12 @@ function input_mapper:getAimDirection(player_x, player_y, cam)
 
     -- Use aim source based on active_input
     if self.active_input == "gamepad" then
-        -- Using gamepad, check physical gamepad aim
-        if self.physical_gamepad and self.physical_gamepad:isAvailable() then
-            local angle, has_aim = self.physical_gamepad:getAimDirection(player_x, player_y, cam)
+        -- Using gamepad, check gamepad aim
+        if self.gamepad and self.gamepad:isAvailable() then
+            local angle, has_aim = self.gamepad:getAimDirection(player_x, player_y, cam)
             if has_aim then
                 self.last_aim_angle = angle
-                self.last_aim_source = "physicalgamepad"
+                self.last_aim_source = "gamepad"
                 return angle
             end
         end
@@ -158,7 +158,7 @@ function input_mapper:isActionDown(action_mapping)
     for _, source in ipairs(self.sources) do
         if source:isAvailable() and source:isActionDown(action_mapping) then
             -- Update active_input based on source
-            if source == self.physical_gamepad or source == self.virtual_gamepad then
+            if source == self.gamepad or source == self.virtual_pad then
                 self.active_input = "gamepad"
             elseif source == self.keyboard or source == self.mouse then
                 self.active_input = "keyboard_mouse"
@@ -174,7 +174,7 @@ function input_mapper:wasActionPressed(action_mapping, event_source, value)
     for _, source in ipairs(self.sources) do
         if source:isAvailable() and source:wasActionPressed(action_mapping, event_source, value) then
             -- Update active_input based on source
-            if source == self.physical_gamepad or source == self.virtual_gamepad then
+            if source == self.gamepad or source == self.virtual_pad then
                 self.active_input = "gamepad"
             elseif source == self.keyboard or source == self.mouse then
                 self.active_input = "keyboard_mouse"
@@ -201,11 +201,11 @@ function input_mapper:getAimSource()
     return self.last_aim_source
 end
 
--- Vibrate physical gamepad and/or mobile device if available
+-- Vibrate gamepad and/or mobile device if available
 function input_mapper:vibrate(duration, left_strength, right_strength)
-    -- Vibrate physical gamepad (DualSense, etc.)
-    if self.physical_gamepad and self.physical_gamepad:isAvailable() then
-        self.physical_gamepad:vibrate(duration, left_strength, right_strength)
+    -- Vibrate gamepad (DualSense, etc.)
+    if self.gamepad and self.gamepad:isAvailable() then
+        self.gamepad:vibrate(duration, left_strength, right_strength)
     end
 
     -- Vibrate mobile device (Android/iOS) if enabled in settings
@@ -218,13 +218,13 @@ function input_mapper:vibrate(duration, left_strength, right_strength)
     end
 end
 
--- Check if any gamepad (virtual or physical) is available
+-- Check if any gamepad (virtual pad or gamepad) is available
 function input_mapper:hasGamepad()
-    if self.virtual_gamepad and self.virtual_gamepad:isAvailable() then
+    if self.virtual_pad and self.virtual_pad:isAvailable() then
         return true
     end
 
-    if self.physical_gamepad and self.physical_gamepad:isAvailable() then
+    if self.gamepad and self.gamepad:isAvailable() then
         return true
     end
 
@@ -234,35 +234,35 @@ end
 -- Update joystick reference (when controller connects/disconnects)
 function input_mapper:setJoystick(joystick, settings)
     if joystick then
-        if self.physical_gamepad then
-            self.physical_gamepad.joystick = joystick
-            self.physical_gamepad.enabled = true
+        if self.gamepad then
+            self.gamepad.joystick = joystick
+            self.gamepad.enabled = true
         else
-            self.physical_gamepad = physical_gamepad_input:new(joystick, settings, self.input_config)
+            self.gamepad = gamepad:new(joystick, settings, self.input_config)
             self:registerSources()
         end
     else
-        if self.physical_gamepad then
-            self.physical_gamepad.joystick = nil
-            self.physical_gamepad.enabled = false
+        if self.gamepad then
+            self.gamepad.joystick = nil
+            self.gamepad.enabled = false
         end
     end
 end
 
--- Update virtual gamepad reference
-function input_mapper:setVirtualGamepad(vgp)
-    if vgp then
-        if self.virtual_gamepad then
-            self.virtual_gamepad.virtual_gamepad = vgp
-            self.virtual_gamepad.enabled = true
+-- Update virtual pad reference
+function input_mapper:setVirtualPad(vpad)
+    if vpad then
+        if self.virtual_pad then
+            self.virtual_pad.virtual_gamepad = vpad
+            self.virtual_pad.enabled = true
         else
-            self.virtual_gamepad = virtual_gamepad_input:new(vgp)
+            self.virtual_pad = virtual_pad:new(vpad)
             self:registerSources()
         end
     else
-        if self.virtual_gamepad then
-            self.virtual_gamepad.virtual_gamepad = nil
-            self.virtual_gamepad.enabled = false
+        if self.virtual_pad then
+            self.virtual_pad.virtual_gamepad = nil
+            self.virtual_pad.enabled = false
         end
     end
 end

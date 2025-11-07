@@ -79,7 +79,7 @@ function input_dispatcher:touchpressed(id, x, y, dx, dy, pressure)
 end
 
 function input_dispatcher:touchreleased(id, x, y, dx, dy, pressure)
-    -- Debug button handling
+    -- Priority 1: Debug button (highest priority)
     if self.scene_control.current and self.scene_control.current.debug_button then
         local btn = self.scene_control.current.debug_button
         local in_button = x >= btn.x and x <= btn.x + btn.size and
@@ -92,24 +92,22 @@ function input_dispatcher:touchreleased(id, x, y, dx, dy, pressure)
         end
     end
 
-    -- Virtual gamepad handling
-    if self.virtual_gamepad then
-        local handled = self.virtual_gamepad:touchreleased(id, x, y)
+    -- Priority 2: Scene touchreleased (for overlays like dialogue buttons)
+    if self.scene_control.current and self.scene_control.current.touchreleased then
+        local handled = self.scene_control.current:touchreleased(id, x, y, dx, dy, pressure)
         if handled then
             return
-        else
-            if self.scene_control.current and self.scene_control.current.mousereleased then
-                self.scene_control.current:mousereleased(x, y, 1)
-                return
-            end
         end
     end
 
-    -- Scene touchreleased or fallback to mouse
-    if self.scene_control.current and self.scene_control.current.touchreleased then
-        self.scene_control.current:touchreleased(id, x, y, dx, dy, pressure)
-    elseif not self.is_mobile then
-        love.mousereleased(x, y, 1)
+    -- Priority 3: Virtual gamepad (only if scene didn't handle it)
+    if self.virtual_gamepad and self.virtual_gamepad:touchreleased(id, x, y) then
+        return
+    end
+
+    -- Priority 4: Fallback to mouse event for desktop testing
+    if not self.is_mobile and self.scene_control.current and self.scene_control.current.mousereleased then
+        self.scene_control.current:mousereleased(x, y, 1)
     end
 end
 

@@ -47,8 +47,8 @@ engine/
 │       ├── base_input.lua              - Base class
 │       ├── keyboard_input.lua          - Keyboard handling
 │       ├── mouse_input.lua             - Mouse/aim handling
-│       ├── physical_gamepad_input.lua  - Physical controller
-│       └── virtual_gamepad_input.lua   - Virtual gamepad adapter
+│       ├── gamepad.lua                 - Physical controller
+│       └── virtual_pad.lua             - Virtual gamepad adapter
 │
 ├── world/                - Physics & world system
 │   ├── init.lua          - World coordinator (Windfield wrapper)

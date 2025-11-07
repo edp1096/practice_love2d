@@ -85,7 +85,7 @@ end
 function input:setVirtualGamepad(vgp)
     self.virtual_gamepad = vgp
     if self.mapper then
-        self.mapper:setVirtualGamepad(vgp)
+        self.mapper:setVirtualPad(vgp)
     end
 end
 

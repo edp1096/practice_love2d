@@ -207,4 +207,21 @@ function gameover:mousereleased(x, y, button)
     end
 end
 
+function gameover:touchpressed(id, x, y, dx, dy, pressure)
+    self.mouse_over = ui_scene.handleTouchPress(
+        self.options, self.layout, self.virtual_width, self.optionFont, x, y, display)
+    return false
+end
+
+function gameover:touchreleased(id, x, y, dx, dy, pressure)
+    local touched = ui_scene.handleTouchPress(
+        self.options, self.layout, self.virtual_width, self.optionFont, x, y, display)
+    if touched > 0 then
+        self.selected = touched
+        self:executeOption(self.selected)
+        return true
+    end
+    return false
+end
+
 return gameover
