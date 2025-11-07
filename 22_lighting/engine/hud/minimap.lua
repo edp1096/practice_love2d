@@ -69,14 +69,38 @@ function minimap:updateMinimapCanvas()
     if self.world.walls then
         love.graphics.setColor(self.wall_color)
         for _, wall in ipairs(self.world.walls) do
-            -- Get bounding box from collider
-            if wall.body and wall.body:getFixtures()[1] then
-                local x1, y1, x2, y2 = wall.body:getFixtures()[1]:getBoundingBox()
-                local x = x1 * self.scale
-                local y = y1 * self.scale
-                local w = (x2 - x1) * self.scale
-                local h = (y2 - y1) * self.scale
-                love.graphics.rectangle("fill", x, y, w, h)
+            if wall.body then
+                -- Draw all fixtures (polygon may be split into multiple triangles)
+                local fixtures = wall.body:getFixtures()
+                for _, fixture in ipairs(fixtures) do
+                    local shape = fixture:getShape()
+                    local shape_type = shape:getType()
+
+                    if shape_type == "polygon" or shape_type == "chain" then
+                        -- Get polygon points in local coordinates
+                        local points = {shape:getPoints()}
+                        local scaled_points = {}
+
+                        -- Convert to world coordinates
+                        for i = 1, #points, 2 do
+                            local wx, wy = wall.body:getWorldPoints(points[i], points[i + 1])
+                            table.insert(scaled_points, wx * self.scale)
+                            table.insert(scaled_points, wy * self.scale)
+                        end
+
+                        if #scaled_points >= 6 then  -- Need at least 3 points (6 coordinates)
+                            love.graphics.polygon("fill", scaled_points)
+                        end
+                    else
+                        -- Rectangle or other shapes: use bounding box
+                        local x1, y1, x2, y2 = fixture:getBoundingBox()
+                        local x = x1 * self.scale
+                        local y = y1 * self.scale
+                        local w = (x2 - x1) * self.scale
+                        local h = (y2 - y1) * self.scale
+                        love.graphics.rectangle("fill", x, y, w, h)
+                    end
+                end
             end
         end
     end
