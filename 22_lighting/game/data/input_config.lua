@@ -132,7 +132,7 @@ return {
     -- System controls
     system = {
         pause = {
-            keyboard = { "p", "escape" },
+            keyboard = { "escape" },  -- P key reserved for debug hand marking
             gamepad = "start"
         },
         manual_save = {

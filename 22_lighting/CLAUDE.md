@@ -282,7 +282,7 @@ return mymodule
   - `status.lua` - Health bars, cooldowns, status indicators
   - `minimap.lua` - Minimap rendering
 - `engine/ui/` - Menu UI system
-  - `menu.lua` - Menu UI helpers (layout, navigation, dialogs)
+  - `menu.lua` - Menu UI helpers (layout, navigation, dialogs, touch input)
   - `dialogue.lua` - NPC dialogue system (Talkies wrapper)
 
 ### Data
@@ -290,7 +290,7 @@ return mymodule
 - `engine/inventory.lua` - Item management
 
 ### Debug
-- `engine/debug.lua` - Debug overlay (F1: toggle, F2: grid, F3: mouse)
+- `engine/debug.lua` - Debug overlay (F1: toggle, F2: grid, F3: mouse, H: hand marking)
 - `engine/constants.lua` - Engine constants
 
 ### Subsystems

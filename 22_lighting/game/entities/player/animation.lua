@@ -230,6 +230,10 @@ function animation.update(player, dt, cam, dialogue_open)
 
     if debug:IsHandMarkingActive() then
         current_frame_index = debug.manual_frame
+        -- Actually set player animation frame for hand marking mode
+        if player.anim then
+            player.anim:gotoFrame(debug.manual_frame)
+        end
     elseif player.anim and player.anim.position then
         current_frame_index = math.floor(player.anim.position)
     end
