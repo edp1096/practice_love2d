@@ -424,25 +424,78 @@ return {
 
 ## Dialogue System
 
-### `engine/dialogue.lua`
-NPC dialogue system (Talkies library wrapper).
+### `engine/ui/dialogue.lua`
+NPC dialogue system with mobile UI buttons (Talkies library wrapper).
 
 **Key Functions:**
 ```lua
-dialogue:show(messages, avatar, on_complete)  -- Show dialogue
-dialogue:isActive()                           -- Check if dialogue is active
-dialogue:update(dt)                           -- Update dialogue system
-dialogue:draw()                               -- Draw dialogue box
+dialogue:initialize()                        -- Initialize dialogue system
+dialogue:setDisplay(display)                 -- Set display reference for buttons
+dialogue:showSimple(name, message)           -- Show single message
+dialogue:showMultiple(name, messages)        -- Show multiple messages
+dialogue:isOpen()                            -- Check if dialogue is active
+dialogue:update(dt)                          -- Update dialogue system
+dialogue:draw()                              -- Draw dialogue box and buttons
+dialogue:onAction()                          -- Advance to next message
+dialogue:clear()                             -- Clear all dialogue
+dialogue:handleInput(source, ...)           -- Unified input handler
+```
+
+**Mobile UI:**
+- **NEXT button** (green): Advance to next message
+- **SKIP button** (gray): Close all dialogue immediately
+- Auto-positioned in bottom-right corner
+- Supports both touch and mouse input
+
+**Input Handling:**
+```lua
+-- Keyboard
+if dialogue:handleInput("keyboard") then return end
+
+-- Mouse
+if dialogue:handleInput("mouse", x, y) then return end
+if dialogue:handleInput("mouse_release", x, y) then return end
+
+-- Touch
+if dialogue:handleInput("touch", id, x, y) then return true end
+if dialogue:handleInput("touch_release", id, x, y) then return true end
+if dialogue:handleInput("touch_move", id, x, y) then return true end
 ```
 
 **Usage Example:**
 ```lua
-dialogue:show(
-    {"Hello, traveler!", "Welcome to our village."},
-    npc.avatar,
-    function() print("Dialogue finished") end
-)
+-- Initialize (in scene:enter)
+dialogue:initialize()
+dialogue:setDisplay(display)
+
+-- Show dialogue
+local npc = world:getInteractableNPC(player.x, player.y)
+if npc then
+    local messages = npc:interact()
+    dialogue:showMultiple(npc.name, messages)
+end
+
+-- Handle input (in scene input handlers)
+function scene:keypressed(key)
+    if key == "return" or key == "space" then
+        if dialogue:handleInput("keyboard") then return end
+    end
+end
+
+function scene:mousepressed(x, y, button)
+    if button == 1 then
+        dialogue:handleInput("mouse", x, y)
+    end
+end
+
+function scene:touchpressed(id, x, y, dx, dy, pressure)
+    return dialogue:handleInput("touch", id, x, y)
+end
 ```
+
+**Widgets:**
+- `engine/ui/widgets/skip_button.lua` - SKIP button widget
+- `engine/ui/widgets/next_button.lua` - NEXT button widget
 
 ---
 

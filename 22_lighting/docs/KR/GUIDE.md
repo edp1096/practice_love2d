@@ -398,16 +398,78 @@ inventory:prevItem()                     -- 이전 아이템으로 순환
 
 ## 대화 시스템
 
-### `engine/dialogue.lua`
-NPC 대화 시스템 (Talkies 라이브러리 래퍼).
+### `engine/ui/dialogue.lua`
+모바일 UI 버튼이 포함된 NPC 대화 시스템 (Talkies 라이브러리 래퍼).
 
 **주요 함수:**
 ```lua
-dialogue:show(messages, avatar, on_complete)  -- 대화 표시
-dialogue:isActive()                           -- 대화가 활성화되어 있는지 확인
-dialogue:update(dt)                           -- 대화 시스템 업데이트
-dialogue:draw()                               -- 대화 상자 그리기
+dialogue:initialize()                        -- 대화 시스템 초기화
+dialogue:setDisplay(display)                 -- 버튼용 display 참조 설정
+dialogue:showSimple(name, message)           -- 단일 메시지 표시
+dialogue:showMultiple(name, messages)        -- 여러 메시지 표시
+dialogue:isOpen()                            -- 대화가 활성화되어 있는지 확인
+dialogue:update(dt)                          -- 대화 시스템 업데이트
+dialogue:draw()                              -- 대화 상자와 버튼 그리기
+dialogue:onAction()                          -- 다음 메시지로 진행
+dialogue:clear()                             -- 모든 대화 닫기
+dialogue:handleInput(source, ...)           -- 통합 입력 핸들러
 ```
+
+**모바일 UI:**
+- **NEXT 버튼** (녹색): 다음 메시지로 진행
+- **SKIP 버튼** (회색): 모든 대화 즉시 닫기
+- 우측 하단에 자동 배치
+- 터치 및 마우스 입력 모두 지원
+
+**입력 처리:**
+```lua
+-- 키보드
+if dialogue:handleInput("keyboard") then return end
+
+-- 마우스
+if dialogue:handleInput("mouse", x, y) then return end
+if dialogue:handleInput("mouse_release", x, y) then return end
+
+-- 터치
+if dialogue:handleInput("touch", id, x, y) then return true end
+if dialogue:handleInput("touch_release", id, x, y) then return true end
+if dialogue:handleInput("touch_move", id, x, y) then return true end
+```
+
+**사용 예제:**
+```lua
+-- 초기화 (scene:enter에서)
+dialogue:initialize()
+dialogue:setDisplay(display)
+
+-- 대화 표시
+local npc = world:getInteractableNPC(player.x, player.y)
+if npc then
+    local messages = npc:interact()
+    dialogue:showMultiple(npc.name, messages)
+end
+
+-- 입력 처리 (scene 입력 핸들러에서)
+function scene:keypressed(key)
+    if key == "return" or key == "space" then
+        if dialogue:handleInput("keyboard") then return end
+    end
+end
+
+function scene:mousepressed(x, y, button)
+    if button == 1 then
+        dialogue:handleInput("mouse", x, y)
+    end
+end
+
+function scene:touchpressed(id, x, y, dx, dy, pressure)
+    return dialogue:handleInput("touch", id, x, y)
+end
+```
+
+**위젯:**
+- `engine/ui/widgets/skip_button.lua` - SKIP 버튼 위젯
+- `engine/ui/widgets/next_button.lua` - NEXT 버튼 위젯
 
 ---
 
