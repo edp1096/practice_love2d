@@ -101,7 +101,7 @@ function lighting:update(dt)
     end
 end
 
--- Draw lighting (call after camera:detach(), before screen:Attach())
+-- Draw lighting (call after camera:detach(), before display:Attach())
 function lighting:draw(camera)
     if not self.enabled then
         return

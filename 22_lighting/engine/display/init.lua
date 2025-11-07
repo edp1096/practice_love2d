@@ -17,7 +17,7 @@
 --   SetScaleMode(mode) - Internal use during initialization
 --   GetVisibleVirtualBounds() - Internal coordinate calculations
 
-local screen = {
+local display = {
     is_fullscreen = false,
     scale_mode = "fit",
     render_wh = { w = 960, h = 540 },
@@ -32,7 +32,7 @@ local screen = {
         resizable = true,
         borderless = false,
         centered = true,
-        display = 1,
+        monitor = 1,
         highdpi = false,
         minwidth = 640,
         minheight = 360,
@@ -53,8 +53,21 @@ local screen = {
     dpi_scale = 1
 }
 
+-- Helper: Call love.window.updateMode with proper display field
+-- LÖVE API expects 'display' field, but we use 'monitor' internally
+local function updateMode(w, h, window_table)
+    local flags = {}
+    for k, v in pairs(window_table) do
+        flags[k] = v
+    end
+    -- Map our 'monitor' field to LÖVE's 'display' field
+    flags.display = flags.monitor
+    flags.monitor = nil
+    return pcall(love.window.updateMode, w, h, flags)
+end
+
 -- Detect platform
-function screen:DetectPlatform()
+function display:DetectPlatform()
     local os_name = love.system.getOS()
     self.is_android = (os_name == "Android")
     self.is_mobile = (os_name == "Android" or os_name == "iOS")
@@ -68,7 +81,7 @@ function screen:DetectPlatform()
     end
 end
 
-function screen:Initialize(config)
+function display:Initialize(config)
     self:DetectPlatform()
 
     love.graphics.setDefaultFilter(self.filter.min, self.filter.mag, self.filter.anisotropy)
@@ -79,9 +92,9 @@ function screen:Initialize(config)
 
     if not self.is_mobile then
         -- Desktop: normal window handling
-        self.window.display = config.monitor or 1
+        self.window.monitor = config.monitor or 1
 
-        local success, dx, dy = pcall(love.window.getDesktopDimensions, self.window.display)
+        local success, dx, dy = pcall(love.window.getDesktopDimensions, self.window.monitor)
         if success and dx and dy then
             self.window.x = dx / 2 - self.render_wh.w / 2
             self.window.y = dy / 2 - self.render_wh.h / 2
@@ -92,8 +105,8 @@ function screen:Initialize(config)
             self.previous_xy.x, self.previous_xy.y = x, y
         end
 
-        if self.window.display ~= 1 then
-            pcall(love.window.updateMode, self.screen_wh.w, self.screen_wh.h, self.window)
+        if self.window.monitor ~= 1 then
+            updateMode(self.screen_wh.w, self.screen_wh.h, self.window)
         end
 
         if config.fullscreen then
@@ -110,7 +123,7 @@ function screen:Initialize(config)
     self:CalculateScale()
 end
 
-function screen:EnableFullScreen()
+function display:EnableFullScreen()
     if self.is_mobile then return end -- Already fullscreen on mobile
     if self.is_fullscreen then return end
 
@@ -121,7 +134,7 @@ function screen:EnableFullScreen()
 
     self.previous_screen_wh.w, self.previous_screen_wh.h = self.screen_wh.w, self.screen_wh.h
 
-    local success2, w, h = pcall(love.window.getDesktopDimensions, self.window.display)
+    local success2, w, h = pcall(love.window.getDesktopDimensions, self.window.monitor)
     if success2 and w and h then
         self.screen_wh.w, self.screen_wh.h = w, h
     else
@@ -132,17 +145,25 @@ function screen:EnableFullScreen()
     self.window.resizable = false
     self.window.borderless = false
 
-    pcall(love.window.updateMode, self.screen_wh.w, self.screen_wh.h, self.window)
+    updateMode(self.screen_wh.w, self.screen_wh.h, self.window)
     self.is_fullscreen = true
 
     self:CalculateScale()
 end
 
-function screen:DisableFullScreen()
+function display:DisableFullScreen()
     if self.is_mobile then return end -- Can't exit fullscreen on mobile
     if not self.is_fullscreen then return end
 
-    if self.previous_screen_wh.w == self.screen_wh.w and self.previous_screen_wh.h == self.screen_wh.h then
+    -- Use GameConfig resolution if available (handles resolution changes in settings)
+    if GameConfig and GameConfig.width and GameConfig.height then
+        self.screen_wh.w = GameConfig.width
+        self.screen_wh.h = GameConfig.height
+        self.window.x, self.window.y = self.previous_xy.x, self.previous_xy.y
+        self.window.resizable = true
+        self.window.borderless = false
+    elseif self.previous_screen_wh.w == self.screen_wh.w and self.previous_screen_wh.h == self.screen_wh.h then
+        -- Fallback: no previous size change detected
         self.window.x = self.screen_wh.w / 2 - self.render_wh.w / 2
         self.window.y = self.screen_wh.h / 2 - self.render_wh.h / 2
         self.screen_wh.w, self.screen_wh.h = self.render_wh.w, self.render_wh.h
@@ -150,19 +171,20 @@ function screen:DisableFullScreen()
         self.window.borderless = false
         self.window.centered = true
     else
+        -- Fallback: use stored previous size
         self.window.x, self.window.y = self.previous_xy.x, self.previous_xy.y
         self.screen_wh.w, self.screen_wh.h = self.previous_screen_wh.w, self.previous_screen_wh.h
         self.window.resizable = true
         self.window.borderless = false
     end
 
-    pcall(love.window.updateMode, self.screen_wh.w, self.screen_wh.h, self.window)
+    updateMode(self.screen_wh.w, self.screen_wh.h, self.window)
     self.is_fullscreen = false
 
     self:CalculateScale()
 end
 
-function screen:ToggleFullScreen()
+function display:ToggleFullScreen()
     if self.is_mobile then return end -- Can't toggle on mobile
 
     if self.is_fullscreen then
@@ -172,23 +194,23 @@ function screen:ToggleFullScreen()
     end
 end
 
-function screen:GetScale()
+function display:GetScale()
     return self.scale
 end
 
-function screen:GetOffset()
+function display:GetOffset()
     return self.offset_x, self.offset_y
 end
 
-function screen:GetVirtualDimensions()
+function display:GetVirtualDimensions()
     return self.render_wh.w, self.render_wh.h
 end
 
-function screen:GetScreenDimensions()
+function display:GetScreenDimensions()
     return self.screen_wh.w, self.screen_wh.h
 end
 
-function screen:CalculateScale()
+function display:CalculateScale()
     self.screen_wh.w = love.graphics.getWidth()
     self.screen_wh.h = love.graphics.getHeight()
 
@@ -222,18 +244,18 @@ function screen:CalculateScale()
     self.physical_bounds = self:GetVisibleVirtualBounds()
 end
 
-function screen:Attach()
+function display:Attach()
     self:DrawLetterbox()
     love.graphics.push()
     love.graphics.translate(self.offset_x, self.offset_y)
     love.graphics.scale(self.scale, self.scale)
 end
 
-function screen:Detach()
+function display:Detach()
     love.graphics.pop()
 end
 
-function screen:DrawLetterbox(r, g, b, a)
+function display:DrawLetterbox(r, g, b, a)
     r = r or 0
     g = g or 0
     b = b or 0
@@ -254,20 +276,20 @@ function screen:DrawLetterbox(r, g, b, a)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function screen:ToVirtualCoords(x, y)
+function display:ToVirtualCoords(x, y)
     local virtual_x = (x - self.offset_x) / self.scale
     local virtual_y = (y - self.offset_y) / self.scale
     return virtual_x, virtual_y
 end
 
-function screen:ToScreenCoords(x, y)
+function display:ToScreenCoords(x, y)
     local screen_x = x * self.scale + self.offset_x
     local screen_y = y * self.scale + self.offset_y
     return screen_x, screen_y
 end
 
 -- Get mouse position (works for both mouse and touch)
-function screen:GetVirtualMousePosition()
+function display:GetVirtualMousePosition()
     local mx, my
 
     if self.is_mobile then
@@ -287,7 +309,7 @@ function screen:GetVirtualMousePosition()
 end
 
 -- Get all touch positions (Android multi-touch support)
-function screen:GetAllTouches()
+function display:GetAllTouches()
     if not self.is_mobile then
         return {}
     end
@@ -310,11 +332,11 @@ function screen:GetAllTouches()
     return touches
 end
 
-function screen:Resize(w, h)
+function display:Resize(w, h)
     self:CalculateScale()
 end
 
-function screen:GetVisibleVirtualBounds()
+function display:GetVisibleVirtualBounds()
     if self.scale_mode == "fill" then
         local virtual_aspect = self.render_wh.w / self.render_wh.h
         local screen_aspect = self.screen_wh.w / self.screen_wh.h
@@ -344,7 +366,7 @@ end
 -- ShowDebugInfo moved to engine/debug.lua (better architecture)
 -- lib should not depend on engine modules
 
-function screen:ShowGridVisualization()
+function display:ShowGridVisualization()
     local debug = require "engine.debug"
     if not debug.show_colliders then return end
 
@@ -381,7 +403,7 @@ function screen:ShowGridVisualization()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function screen:ShowVirtualMouse()
+function display:ShowVirtualMouse()
     local debug = require "engine.debug"
     if not debug.show_virtual_mouse then return end
 
@@ -439,4 +461,4 @@ function screen:ShowVirtualMouse()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-return screen
+return display

@@ -3,7 +3,7 @@
 
 local input_handler = {}
 
-local screen = require "engine.display"
+local display = require "engine.display"
 local input = require "engine.input"
 local sound = require "engine.sound"
 local coords = require "engine.coords"
@@ -101,7 +101,7 @@ function input_handler.touchpressed(self, id, x, y, dx, dy, pressure)
     end
 
     -- Convert to virtual coords for UI check using coords module
-    local vx, vy = coords:physicalToVirtual(x, y, screen)
+    local vx, vy = coords:physicalToVirtual(x, y, display)
 
     -- Only handle touch if it's in the UI area (not gamepad area)
     -- Handle touch as mouse click for inventory UI
@@ -113,7 +113,7 @@ end
 -- Handle click/touch on UI elements
 function input_handler.handleClick(self, x, y)
     -- Convert screen coordinates to virtual coordinates using coords module
-    local vx, vy = coords:physicalToVirtual(x, y, screen)
+    local vx, vy = coords:physicalToVirtual(x, y, display)
 
     -- Check if clicked on close button
     if self.close_button_bounds then
@@ -127,7 +127,7 @@ function input_handler.handleClick(self, x, y)
     end
 
     -- Get virtual dimensions for slot calculation
-    local vw, vh = screen:GetVirtualDimensions()
+    local vw, vh = display:GetVirtualDimensions()
 
     -- Check if clicked on a slot
     local start_x = (vw - (self.slot_size + self.slot_spacing) * math.min(#self.inventory.items, 5)) / 2

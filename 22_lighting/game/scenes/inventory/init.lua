@@ -3,7 +3,7 @@
 
 local inventory = {}
 
-local screen = require "engine.display"
+local display = require "engine.display"
 local sound = require "engine.sound"
 local slot_renderer = require "game.scenes.inventory.slot_renderer"
 local input_handler = require "game.scenes.inventory.input"
@@ -74,9 +74,9 @@ function inventory:draw()
         self.previous_scene:draw()
     end
 
-    screen:Attach()
+    display:Attach()
 
-    local vw, vh = screen:GetVirtualDimensions()
+    local vw, vh = display:GetVirtualDimensions()
 
     -- Draw dark overlay
     love.graphics.setColor(0, 0, 0, 0.7)
@@ -132,7 +132,7 @@ function inventory:draw()
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setLineWidth(1)
 
-    screen:Detach()
+    display:Detach()
 end
 
 return inventory

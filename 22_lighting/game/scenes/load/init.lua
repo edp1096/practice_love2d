@@ -4,7 +4,7 @@
 local load = {}
 
 local scene_control = require "engine.scene_control"
-local screen = require "engine.display"
+local display = require "engine.display"
 local save_sys = require "engine.save"
 local input = require "engine.input"
 local fonts = require "engine.utils.fonts"
@@ -21,7 +21,7 @@ function load:enter(previous, ...)
         input.virtual_gamepad:hide()
     end
 
-    local vw, vh = screen:GetVirtualDimensions()
+    local vw, vh = display:GetVirtualDimensions()
     self.virtual_width = vw
     self.virtual_height = vh
 
@@ -61,7 +61,7 @@ end
 function load:update(dt)
     if self.confirm_delete then
         -- Check Yes/No button hover
-        local vmx, vmy = screen:GetVirtualMousePosition()
+        local vmx, vmy = display:GetVirtualMousePosition()
         self.confirm_mouse_over = 0
 
         local button_y = self.virtual_height / 2 + 60
@@ -86,7 +86,7 @@ function load:update(dt)
         return
     end
 
-    local vmx, vmy = screen:GetVirtualMousePosition()
+    local vmx, vmy = display:GetVirtualMousePosition()
 
     self.mouse_over = 0
     self.mouse_over_delete = 0
@@ -120,7 +120,7 @@ end
 function load:draw()
     love.graphics.clear(0.1, 0.1, 0.15, 1)
 
-    screen:Attach()
+    display:Attach()
 
     love.graphics.setColor(1, 1, 1, 1)
 
@@ -139,11 +139,11 @@ function load:draw()
         slot_renderer.drawConfirmDialog(self)
     end
 
-    screen:Detach()
+    display:Detach()
 end
 
 function load:resize(w, h)
-    screen:Resize(w, h)
+    display:Resize(w, h)
 end
 
 function load:keypressed(key)

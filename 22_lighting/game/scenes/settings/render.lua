@@ -3,7 +3,7 @@
 
 local render = {}
 
-local screen = require "engine.display"
+local display = require "engine.display"
 local input = require "engine.input"
 local options_module = require "game.scenes.settings.options"
 
@@ -17,15 +17,15 @@ function render:draw(state)
 
     -- Draw semi-transparent overlay
     if state.previous then
-        screen:Attach()
+        display:Attach()
         love.graphics.setColor(0, 0, 0, 0.9)
         love.graphics.rectangle("fill", 0, 0, state.virtual_width, state.virtual_height)
-        screen:Detach()
+        display:Detach()
     end
 
     love.graphics.setColor(1, 1, 1, 1)
 
-    screen:Attach()
+    display:Attach()
 
     love.graphics.setFont(state.titleFont)
     love.graphics.printf("Settings", 0, state.layout.title_y, state.virtual_width, "center")
@@ -79,10 +79,10 @@ function render:draw(state)
 
     love.graphics.printf(hint_text, 0, state.layout.hint_y - 20, state.virtual_width, "center")
 
-    screen:Detach()
+    display:Detach()
 
     -- Debug info now drawn in app_lifecycle (main.lua)
-    screen:ShowVirtualMouse()
+    display:ShowVirtualMouse()
 end
 
 return render

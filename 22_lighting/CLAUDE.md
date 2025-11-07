@@ -325,17 +325,17 @@ return mymodule
 local coords = require "engine.coords"
 
 -- World ↔ Camera (for rendering entities)
-local screen_x, screen_y = coords:worldToCamera(world_x, world_y, camera)
-local world_x, world_y = coords:cameraToWorld(screen_x, screen_y, camera)
+local cam_x, cam_y = coords:worldToCamera(world_x, world_y, camera)
+local world_x, world_y = coords:cameraToWorld(cam_x, cam_y, camera)
 
 -- Physical ↔ Virtual (for UI, touch input)
-local vx, vy = coords:physicalToVirtual(touch_x, touch_y, screen)
-local px, py = coords:virtualToPhysical(vx, vy, screen)
+local vx, vy = coords:physicalToVirtual(touch_x, touch_y, display)
+local px, py = coords:virtualToPhysical(vx, vy, display)
 ```
 
 **Never use these directly:**
 - ❌ `camera:cameraCoords()` / `camera:worldCoords()`
-- ❌ `screen:ToVirtualCoords()` / `screen:ToScreenCoords()`
+- ❌ `display:ToVirtualCoords()` / `display:ToScreenCoords()`
 
 **Coordinate Origins:**
 - Tiled objects: Top-left origin

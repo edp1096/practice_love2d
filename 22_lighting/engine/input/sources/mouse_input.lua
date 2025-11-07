@@ -36,8 +36,8 @@ function mouse_input:getAimDirection(player_x, player_y, cam)
     local screen_player_x, screen_player_y = coords:worldToCamera(player_x, player_y, cam)
 
     -- Calculate square aim area using actual screen height
-    local screen = require "engine.display"
-    local aim_area_size = screen.screen_wh.h -- Actual screen pixel height
+    local display = require "engine.display"
+    local aim_area_size = display.screen_wh.h -- Actual screen pixel height
     local half_area = aim_area_size / 2
 
     -- Check if mouse is within square area centered on player (screen coordinates)

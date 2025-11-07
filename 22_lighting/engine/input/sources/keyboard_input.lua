@@ -7,18 +7,19 @@ local keyboard_input = {}
 setmetatable(keyboard_input, { __index = base_input })
 keyboard_input.__index = keyboard_input
 
-function keyboard_input:new()
+function keyboard_input:new(input_config)
     local instance = setmetatable(base_input:new(), keyboard_input)
     instance.name = "Keyboard"
     instance.priority = 50 -- Medium priority
 
-    -- Load input config to get key mappings
-    local input_config = require "game.data.input_config"
+    -- Build action mapping from config
     instance.actions = {}
-    for category, actions in pairs(input_config) do
-        if type(actions) == "table" and category ~= "gamepad_settings" and category ~= "button_prompts" then
-            for action_name, mapping in pairs(actions) do
-                instance.actions[action_name] = mapping
+    if input_config then
+        for category, actions in pairs(input_config) do
+            if type(actions) == "table" and category ~= "gamepad_settings" and category ~= "button_prompts" then
+                for action_name, mapping in pairs(actions) do
+                    instance.actions[action_name] = mapping
+                end
             end
         end
     end

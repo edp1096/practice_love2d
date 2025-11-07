@@ -96,7 +96,7 @@ lifecycle:quit()                     -- Clean up and save config
 **Setup (in main.lua):**
 ```lua
 -- Configure dependencies
-lifecycle.screen = screen
+lifecycle.display = display
 lifecycle.input = input
 lifecycle.scene_control = scene_control
 -- ... (other dependencies)
@@ -107,7 +107,7 @@ lifecycle:initialize(menu)
 
 **Purpose:**
 - Encapsulates complex initialization logic from main.lua
-- Coordinates multiple engine systems (input, screen, fonts, sound)
+- Coordinates multiple engine systems (input, display, fonts, sound)
 - Provides clean separation between LÖVE callbacks and business logic
 - Centralizes error handling for system initialization
 
@@ -149,15 +149,15 @@ Unified coordinate system management for all engine systems. Handles conversions
 -- Conversion functions
 coords:worldToCamera(wx, wy, camera)
 coords:cameraToWorld(cx, cy, camera)
-coords:virtualToPhysical(vx, vy, screen)
-coords:physicalToVirtual(px, py, screen)
-coords:worldToVirtual(wx, wy, camera, screen)
-coords:virtualToWorld(vx, vy, camera, screen)
+coords:virtualToPhysical(vx, vy, display)
+coords:physicalToVirtual(px, py, display)
+coords:worldToVirtual(wx, wy, camera, display)
+coords:virtualToWorld(vx, vy, camera, display)
 
 -- Utility functions
-coords:debugPoint(x, y, camera, screen, label)
+coords:debugPoint(x, y, camera, display, label)
 coords:isVisibleInCamera(wx, wy, camera, margin)
-coords:isVisibleInVirtual(vx, vy, screen)
+coords:isVisibleInVirtual(vx, vy, display)
 coords:distanceWorld(x1, y1, x2, y2)
 coords:distanceCamera(x1, y1, x2, y2, camera)
 ```
@@ -167,8 +167,8 @@ coords:distanceCamera(x1, y1, x2, y2, camera)
 1. **Mouse Click to World Position:**
 ```lua
 local mx, my = love.mouse.getPosition()  -- Physical
-local vx, vy = coords:physicalToVirtual(mx, my, screen)
-local wx, wy = coords:virtualToWorld(vx, vy, cam, screen)
+local vx, vy = coords:physicalToVirtual(mx, my, display)
+local wx, wy = coords:virtualToWorld(vx, vy, cam, display)
 -- Now (wx, wy) is world position
 ```
 
@@ -176,13 +176,13 @@ local wx, wy = coords:virtualToWorld(vx, vy, cam, screen)
 ```lua
 -- Show health bar above enemy
 local cx, cy = coords:worldToCamera(enemy.x, enemy.y, cam)
-local vx, vy = coords:physicalToVirtual(cx, cy, screen)
+local vx, vy = coords:physicalToVirtual(cx, cy, display)
 -- Draw at (vx, vy) in virtual coords
 ```
 
 3. **Debugging Coordinates:**
 ```lua
-coords:debugPoint(player.x, player.y, cam, screen, "Player")
+coords:debugPoint(player.x, player.y, cam, display, "Player")
 -- Prints all coordinate representations
 ```
 
@@ -198,7 +198,7 @@ coords:debugPoint(player.x, player.y, cam, screen, "Player")
 - ✅ **ALWAYS** use `coords:worldToCamera()` and `coords:cameraToWorld()`
 - ✅ **ALWAYS** use `coords:physicalToVirtual()` and `coords:virtualToPhysical()`
 - ❌ **NEVER** use `camera:cameraCoords()` or `camera:worldCoords()` directly
-- ❌ **NEVER** use `screen:ToVirtualCoords()` or `screen:ToScreenCoords()` directly
+- ❌ **NEVER** use `display:ToVirtualCoords()` or `display:ToScreenCoords()` directly
 - The coords module provides a unified interface and handles nil checks automatically
 
 ---
@@ -813,7 +813,7 @@ Scenes go in `game/scenes/`. Simple scenes can be single files, complex scenes s
 local credits = {}
 
 local scene_control = require "engine.scene_control"
-local screen = require "engine.display"
+local display = require "engine.display"
 
 function credits:enter(previous, ...)
     self.text = "Thanks for playing!"

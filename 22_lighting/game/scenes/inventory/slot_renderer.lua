@@ -36,8 +36,8 @@ end
 
 -- Render the item grid with slots
 function slot_renderer.renderItemGrid(inventory, selected_slot, slot_size, slot_spacing, title_font, item_font, desc_font)
-    local screen = require "engine.display"
-    local vw, vh = screen:GetVirtualDimensions()
+    local display = require "engine.display"
+    local vw, vh = display:GetVirtualDimensions()
 
     if #inventory.items == 0 then
         love.graphics.setFont(item_font)

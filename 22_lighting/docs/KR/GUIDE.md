@@ -96,7 +96,7 @@ lifecycle:quit()                     -- 정리 및 설정 저장
 **설정 (main.lua):**
 ```lua
 -- 의존성 설정
-lifecycle.screen = screen
+lifecycle.display = display
 lifecycle.input = input
 lifecycle.scene_control = scene_control
 -- ... (기타 의존성)
@@ -107,7 +107,7 @@ lifecycle:initialize(menu)
 
 **목적:**
 - main.lua의 복잡한 초기화 로직을 캡슐화
-- 여러 엔진 시스템 조정 (input, screen, fonts, sound)
+- 여러 엔진 시스템 조정 (input, display, fonts, sound)
 - LÖVE 콜백과 비즈니스 로직 간의 깔끔한 분리 제공
 - 시스템 초기화 에러 처리 중앙화
 
@@ -149,15 +149,15 @@ lifecycle:initialize(menu)
 -- 변환 함수
 coords:worldToCamera(wx, wy, camera)
 coords:cameraToWorld(cx, cy, camera)
-coords:virtualToPhysical(vx, vy, screen)
-coords:physicalToVirtual(px, py, screen)
-coords:worldToVirtual(wx, wy, camera, screen)
-coords:virtualToWorld(vx, vy, camera, screen)
+coords:virtualToPhysical(vx, vy, display)
+coords:physicalToVirtual(px, py, display)
+coords:worldToVirtual(wx, wy, camera, display)
+coords:virtualToWorld(vx, vy, camera, display)
 
 -- 유틸리티 함수
-coords:debugPoint(x, y, camera, screen, label)
+coords:debugPoint(x, y, camera, display, label)
 coords:isVisibleInCamera(wx, wy, camera, margin)
-coords:isVisibleInVirtual(vx, vy, screen)
+coords:isVisibleInVirtual(vx, vy, display)
 coords:distanceWorld(x1, y1, x2, y2)
 coords:distanceCamera(x1, y1, x2, y2, camera)
 ```
@@ -167,8 +167,8 @@ coords:distanceCamera(x1, y1, x2, y2, camera)
 1. **마우스 클릭 → 월드 위치:**
 ```lua
 local mx, my = love.mouse.getPosition()  -- Physical
-local vx, vy = coords:physicalToVirtual(mx, my, screen)
-local wx, wy = coords:virtualToWorld(vx, vy, cam, screen)
+local vx, vy = coords:physicalToVirtual(mx, my, display)
+local wx, wy = coords:virtualToWorld(vx, vy, cam, display)
 -- 이제 (wx, wy)가 월드 위치
 ```
 
@@ -176,13 +176,13 @@ local wx, wy = coords:virtualToWorld(vx, vy, cam, screen)
 ```lua
 -- 적 위에 체력바 표시
 local cx, cy = coords:worldToCamera(enemy.x, enemy.y, cam)
-local vx, vy = coords:physicalToVirtual(cx, cy, screen)
+local vx, vy = coords:physicalToVirtual(cx, cy, display)
 -- 가상 좌표 (vx, vy)에 그리기
 ```
 
 3. **좌표 디버깅:**
 ```lua
-coords:debugPoint(player.x, player.y, cam, screen, "Player")
+coords:debugPoint(player.x, player.y, cam, display, "Player")
 -- 모든 좌표 표현 출력
 ```
 
@@ -198,7 +198,7 @@ coords:debugPoint(player.x, player.y, cam, screen, "Player")
 - ✅ **항상** `coords:worldToCamera()` 및 `coords:cameraToWorld()` 사용
 - ✅ **항상** `coords:physicalToVirtual()` 및 `coords:virtualToPhysical()` 사용
 - ❌ **절대** `camera:cameraCoords()` 또는 `camera:worldCoords()` 직접 사용 금지
-- ❌ **절대** `screen:ToVirtualCoords()` 또는 `screen:ToScreenCoords()` 직접 사용 금지
+- ❌ **절대** `display:ToVirtualCoords()` 또는 `display:ToScreenCoords()` 직접 사용 금지
 - coords 모듈은 통합 인터페이스를 제공하며 자동으로 nil 체크를 처리합니다
 
 ---

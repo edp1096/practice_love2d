@@ -8,7 +8,7 @@ local physical_gamepad_input = {}
 setmetatable(physical_gamepad_input, { __index = base_input })
 physical_gamepad_input.__index = physical_gamepad_input
 
-function physical_gamepad_input:new(joystick, settings)
+function physical_gamepad_input:new(joystick, settings, input_config)
     local instance = setmetatable(base_input:new(), physical_gamepad_input)
     instance.name = "PhysicalGamepad"
     instance.priority = 80 -- High priority, but below virtual gamepad
@@ -18,6 +18,7 @@ function physical_gamepad_input:new(joystick, settings)
         vibration_enabled = true,
         vibration_strength = 1.0
     }
+    instance.input_config = input_config
     return instance
 end
 

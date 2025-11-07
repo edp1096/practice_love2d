@@ -5,7 +5,7 @@
 local intro = {}
 
 local scene_control = require "engine.scene_control"
-local screen = require "engine.display"
+local display = require "engine.display"
 local dialogue = require "engine.ui.dialogue"
 local intro_configs = require "game.data.intro_configs"
 local sound = require "engine.sound"
@@ -73,7 +73,7 @@ function intro:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot)
     self.transition_duration = 0.5
 
     -- Get virtual dimensions
-    local vw, vh = screen:GetVirtualDimensions()
+    local vw, vh = display:GetVirtualDimensions()
     self.virtual_width = vw
     self.virtual_height = vh
 
@@ -132,7 +132,7 @@ function intro:update(dt)
 end
 
 function intro:draw()
-    screen:Attach()
+    display:Attach()
 
     -- Draw background
     if self.background then
@@ -167,7 +167,7 @@ function intro:draw()
         love.graphics.printf("Press ESC to skip", 10, self.virtual_height - 20, self.virtual_width - 20, "right")
     end
 
-    screen:Detach()
+    display:Detach()
 end
 
 function intro:keypressed(key)
@@ -210,10 +210,10 @@ function intro:touchpressed(id, x, y, dx, dy, pressure)
 end
 
 function intro:resize(w, h)
-    screen:Resize(w, h)
+    display:Resize(w, h)
 
     -- Recalculate virtual dimensions and background scaling
-    local vw, vh = screen:GetVirtualDimensions()
+    local vw, vh = display:GetVirtualDimensions()
     self.virtual_width = vw
     self.virtual_height = vh
 

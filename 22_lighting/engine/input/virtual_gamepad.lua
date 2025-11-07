@@ -99,14 +99,14 @@ function virtual_gamepad:init()
     end
 
     -- Get screen module for coordinate conversion
-    self.screen = require "engine.display"
+    self.display = require "engine.display"
 
     self:calculatePositions()
 end
 
 function virtual_gamepad:calculatePositions()
     -- Use VIRTUAL resolution (960x540) for consistent sizing across devices
-    local vw, vh = self.screen:GetVirtualDimensions()
+    local vw, vh = self.display:GetVirtualDimensions()
 
     -- All controls at same bottom level (virtual coordinates)
     local bottom_y = vh - 80  -- 80 pixels from bottom in virtual space
@@ -183,7 +183,7 @@ function virtual_gamepad:touchpressed(id, x, y)
     if not self.visible then return false end
 
     -- Convert physical touch coordinates to virtual coordinates using coords module
-    local vx, vy = coords:physicalToVirtual(x, y, self.screen)
+    local vx, vy = coords:physicalToVirtual(x, y, self.display)
 
     self.touches[id] = { x = vx, y = vy, start_x = vx, start_y = vy }
 
@@ -298,7 +298,7 @@ function virtual_gamepad:touchmoved(id, x, y)
     if not touch then return false end
 
     -- Convert physical touch coordinates to virtual coordinates using coords module
-    local vx, vy = coords:physicalToVirtual(x, y, self.screen)
+    local vx, vy = coords:physicalToVirtual(x, y, self.display)
 
     touch.x = vx
     touch.y = vy
@@ -532,8 +532,8 @@ function virtual_gamepad:getAimDirection(player_x, player_y, cam)
     local screen_player_x, screen_player_y = coords:worldToCamera(player_x, player_y, cam)
 
     -- Calculate square aim area using actual screen height
-    local screen = require "engine.display"
-    local aim_area_size = screen.screen_wh.h
+    local display = require "engine.display"
+    local aim_area_size = display.screen_wh.h
     local half_area = aim_area_size / 2
 
     -- Check distance in screen coordinates
@@ -565,7 +565,7 @@ end
 
 -- Helper function to convert virtual to physical coordinates
 function virtual_gamepad:toPhysical(vx, vy)
-    return coords:virtualToPhysical(vx, vy, self.screen)
+    return coords:virtualToPhysical(vx, vy, self.display)
 end
 
 -- Draw virtual gamepad overlay
@@ -573,9 +573,9 @@ function virtual_gamepad:draw()
     if not self.enabled or not self.visible then return end
 
     -- Cache scale for drawing
-    self.draw_scale = self.screen:GetScale()
+    self.draw_scale = self.display:GetScale()
 
-    -- No push/pop/origin needed - we draw in physical space after screen:Detach()
+    -- No push/pop/origin needed - we draw in physical space after display:Detach()
     -- Draw D-pad
     self:drawDPad()
 
@@ -838,7 +838,7 @@ function virtual_gamepad:isInVirtualPadArea(x, y)
     if not self.enabled then return false end
 
     -- Convert physical coordinates to virtual coordinates using coords module
-    local vx, vy = coords:physicalToVirtual(x, y, self.screen)
+    local vx, vy = coords:physicalToVirtual(x, y, self.display)
 
     -- Check D-pad
     if self:isInDPad(vx, vy) then

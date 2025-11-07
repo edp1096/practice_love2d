@@ -1,8 +1,6 @@
 -- systems/sound.lua
 -- Optimized for Android with memory tracking and automatic cleanup
 
-local sound_data = require "game.data.sounds"
-
 local sound = {}
 
 sound.settings = {
@@ -18,6 +16,7 @@ sound.current_bgm_name = nil
 sound.bgm = {}
 sound.sfx = {}
 sound.pools = {}
+sound.sound_data = nil  -- Store injected sound data
 
 -- Active source tracking for memory management
 sound.active_sources = {}
@@ -33,14 +32,30 @@ sound.memory_stats = {
     warnings = 0
 }
 
--- Pitch variation presets from config
-sound.pitch_variations = sound_data.variations.pitch
+-- Pitch variation presets (loaded from config)
+sound.pitch_variations = {}
 
--- Category constants
-sound.CATEGORY = sound_data.categories
+-- Category constants (loaded from config)
+sound.CATEGORY = {}
 
-function sound:init()
+function sound:init(sound_data)
     dprint("Sound system initializing...")
+
+    if not sound_data then
+        print("Warning: No sound data provided to sound:init()")
+        return
+    end
+
+    -- Store sound data for later use
+    self.sound_data = sound_data
+
+    -- Load pitch variations and categories from config
+    if sound_data.variations and sound_data.variations.pitch then
+        self.pitch_variations = sound_data.variations.pitch
+    end
+    if sound_data.categories then
+        self.CATEGORY = sound_data.categories
+    end
 
     -- Load settings from GameConfig if available
     if GameConfig and GameConfig.sound then
@@ -51,20 +66,29 @@ function sound:init()
         dprint("Loaded sound settings from config")
     end
 
-    for name, config in pairs(sound_data.bgm) do
-        self:_loadBGM(name, config)
-    end
-
-    for category, sounds in pairs(sound_data.sfx) do
-        self.sfx[category] = {}
-        for name, config in pairs(sounds) do
-            self:_loadSFX(category, name, config)
+    -- Load BGM
+    if sound_data.bgm then
+        for name, config in pairs(sound_data.bgm) do
+            self:_loadBGM(name, config)
         end
     end
 
-    for category, pools in pairs(sound_data.pools) do
-        for name, config in pairs(pools) do
-            self:_createPool(category, name, config)
+    -- Load SFX
+    if sound_data.sfx then
+        for category, sounds in pairs(sound_data.sfx) do
+            self.sfx[category] = {}
+            for name, config in pairs(sounds) do
+                self:_loadSFX(category, name, config)
+            end
+        end
+    end
+
+    -- Create sound pools
+    if sound_data.pools then
+        for category, pools in pairs(sound_data.pools) do
+            for name, config in pairs(pools) do
+                self:_createPool(category, name, config)
+            end
         end
     end
 
@@ -133,7 +157,11 @@ end
 
 -- Get pitch from sound config
 function sound:_getPitchFromConfig(category, name)
-    local config = sound_data.sfx[category] and sound_data.sfx[category][name]
+    if not self.sound_data or not self.sound_data.sfx then
+        return self:_getPitch("normal")
+    end
+
+    local config = self.sound_data.sfx[category] and self.sound_data.sfx[category][name]
 
     if config and config.pitch_variation then
         return self:_getPitch(config.pitch_variation)
@@ -459,7 +487,5 @@ function sound:getDebugInfo()
         warnings = self.memory_stats.warnings
     }
 end
-
-sound:init()
 
 return sound

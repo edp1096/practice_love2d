@@ -9,6 +9,9 @@ scene_control.previous = nil
 -- Scene cache (loaded lazily)
 local scene_cache = {}
 
+-- Scene loader function (injected from game code)
+scene_control.scene_loader = nil
+
 -- Lazy load sound system
 local sound
 
@@ -29,10 +32,14 @@ local function load_scene(scene_or_name)
         return scene_or_name
     end
 
-    -- If it's a string, load from cache or require
+    -- If it's a string, load from cache or use injected loader
     if type(scene_or_name) == "string" then
         if not scene_cache[scene_or_name] then
-            scene_cache[scene_or_name] = require("game.scenes." .. scene_or_name)
+            if not scene_control.scene_loader then
+                error("scene_control.scene_loader not configured! Set it in main.lua before loading scenes.")
+            end
+            -- Use injected scene loader
+            scene_cache[scene_or_name] = scene_control.scene_loader(scene_or_name)
         end
         return scene_cache[scene_or_name]
     end

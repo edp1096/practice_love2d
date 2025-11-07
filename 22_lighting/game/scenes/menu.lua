@@ -3,7 +3,7 @@
 local menu = {}
 
 local scene_control = require "engine.scene_control"
-local screen = require "engine.display"
+local display = require "engine.display"
 local debug = require "engine.debug"
 local input = require "engine.input"
 local save_sys = require "engine.save"
@@ -23,7 +23,7 @@ function menu:enter(previous, ...)
     self.mouse_over = 0
     self.previous_mouse_over = 0
 
-    local vw, vh = screen:GetVirtualDimensions()
+    local vw, vh = display:GetVirtualDimensions()
     self.virtual_width = vw
     self.virtual_height = vh
     self.fonts = ui_scene.createMenuFonts()
@@ -49,7 +49,7 @@ end
 
 function menu:draw()
     love.graphics.clear(0.1, 0.1, 0.15, 1)
-    screen:Attach()
+    display:Attach()
 
     ui_scene.drawTitle(self.title, self.fonts.title, self.layout.title_y, self.virtual_width)
 
@@ -65,13 +65,13 @@ function menu:draw()
 
     if debug.enabled then debug:drawHelp(self.virtual_width - 250, 10) end
 
-    screen:Detach()
+    display:Detach()
 
     -- Debug info now drawn in app_lifecycle (main.lua)
-    screen:ShowVirtualMouse()
+    display:ShowVirtualMouse()
 end
 
-function menu:resize(w, h) screen:Resize(w, h) end
+function menu:resize(w, h) display:Resize(w, h) end
 
 function menu:keypressed(key)
     local nav_result = ui_scene.handleKeyboardNav(key, self.selected, #self.options)

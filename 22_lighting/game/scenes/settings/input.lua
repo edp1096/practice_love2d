@@ -94,8 +94,8 @@ end
 
 function input_handler:touchreleased(state, id, x, y, dx, dy, pressure)
     -- Convert touch to virtual coordinates for hit detection using coords module
-    local screen = require "engine.display"
-    local vx, vy = coords:physicalToVirtual(x, y, screen)
+    local display = require "engine.display"
+    local vx, vy = coords:physicalToVirtual(x, y, display)
 
     -- Treat touch release like left mouse click
     self:mousereleased(state, vx, vy, 1)

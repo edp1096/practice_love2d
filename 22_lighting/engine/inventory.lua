@@ -1,14 +1,14 @@
 -- systems/inventory.lua
 -- Inventory management system with item selection UI
 
-local item_class = require "game.entities.item"
-
 local inventory = {}
 inventory.__index = inventory
+inventory.item_class = nil  -- Injected item class
 
-function inventory:new()
+function inventory:new(item_class)
     local instance = setmetatable({}, inventory)
 
+    instance.item_class = item_class or self.item_class
     instance.items = {}
     instance.max_slots = 10
     instance.selected_slot = 1
@@ -26,7 +26,7 @@ function inventory:addItem(item_type, quantity)
             if overflow > 0 then
                 -- Create new stack if overflow
                 if #self.items < self.max_slots then
-                    table.insert(self.items, item_class:new(item_type, overflow))
+                    table.insert(self.items, self.item_class:new(item_type, overflow))
                 else
                     return false
                 end
@@ -37,7 +37,7 @@ function inventory:addItem(item_type, quantity)
 
     -- Add new item
     if #self.items < self.max_slots then
-        table.insert(self.items, item_class:new(item_type, quantity))
+        table.insert(self.items, self.item_class:new(item_type, quantity))
         return true
     else
         return false
@@ -131,7 +131,7 @@ function inventory:load(save_data)
     self.items = {}
     if save_data.items then
         for _, item_data in ipairs(save_data.items) do
-            table.insert(self.items, item_class:new(item_data.type, item_data.quantity))
+            table.insert(self.items, self.item_class:new(item_data.type, item_data.quantity))
         end
     end
 

@@ -31,7 +31,7 @@ local coords = {}
 
 -- Cache dependencies (set externally)
 coords.camera = nil
-coords.screen = nil
+coords.display = nil
 
 -----------------------------------------------------------
 -- WORLD ↔ CAMERA COORDINATES
@@ -98,39 +98,39 @@ end
 -----------------------------------------------------------
 
 -- Convert virtual coordinates to physical screen pixels
-function coords:virtualToPhysical(vx, vy, screen)
-    screen = screen or self.screen
-    if not screen then
+function coords:virtualToPhysical(vx, vy, display)
+    display = display or self.display
+    if not display then
         return vx, vy
     end
 
-    if screen.ToScreenCoords then
-        return screen:ToScreenCoords(vx, vy)
+    if display.ToScreenCoords then
+        return display:ToScreenCoords(vx, vy)
     end
 
     -- Manual calculation
-    local scale = screen.scale or 1.0
-    local offset_x = screen.offset_x or 0
-    local offset_y = screen.offset_y or 0
+    local scale = display.scale or 1.0
+    local offset_x = display.offset_x or 0
+    local offset_y = display.offset_y or 0
 
     return vx * scale + offset_x, vy * scale + offset_y
 end
 
 -- Convert physical screen pixels to virtual coordinates
-function coords:physicalToVirtual(px, py, screen)
-    screen = screen or self.screen
-    if not screen then
+function coords:physicalToVirtual(px, py, display)
+    display = display or self.display
+    if not display then
         return px, py
     end
 
-    if screen.ToVirtualCoords then
-        return screen:ToVirtualCoords(px, py)
+    if display.ToVirtualCoords then
+        return display:ToVirtualCoords(px, py)
     end
 
     -- Manual calculation
-    local scale = screen.scale or 1.0
-    local offset_x = screen.offset_x or 0
-    local offset_y = screen.offset_y or 0
+    local scale = display.scale or 1.0
+    local offset_x = display.offset_x or 0
+    local offset_y = display.offset_y or 0
 
     return (px - offset_x) / scale, (py - offset_y) / scale
 end
@@ -140,7 +140,7 @@ end
 -----------------------------------------------------------
 
 -- World → Virtual (through camera and screen transforms)
-function coords:worldToVirtual(wx, wy, camera, screen)
+function coords:worldToVirtual(wx, wy, camera, display)
     -- This is complex because world renders in camera space to canvas,
     -- which is then scaled to physical screen, which maps to virtual screen
     -- In practice, this is rarely needed directly
@@ -151,17 +151,17 @@ function coords:worldToVirtual(wx, wy, camera, screen)
     -- Camera canvas is same size as physical screen in current setup
     -- So camera coords ≈ physical coords (with letterbox offset)
 
-    screen = screen or self.screen
-    if screen then
-        return self:physicalToVirtual(cx, cy, screen)
+    display = display or self.display
+    if display then
+        return self:physicalToVirtual(cx, cy, display)
     end
 
     return cx, cy
 end
 
 -- Virtual → World (inverse of above)
-function coords:virtualToWorld(vx, vy, camera, screen)
-    local px, py = self:virtualToPhysical(vx, vy, screen)
+function coords:virtualToWorld(vx, vy, camera, display)
+    local px, py = self:virtualToPhysical(vx, vy, display)
     return self:cameraToWorld(px, py, camera)
 end
 
@@ -170,7 +170,7 @@ end
 -----------------------------------------------------------
 
 -- Get all coordinate representations of a point
-function coords:debugPoint(x, y, camera, screen, label)
+function coords:debugPoint(x, y, camera, display, label)
     label = label or "Point"
 
     print(string.format("=== %s Coordinates ===", label))
@@ -181,12 +181,12 @@ function coords:debugPoint(x, y, camera, screen, label)
         print(string.format("  Camera:   (%.1f, %.1f)", cx, cy))
     end
 
-    if screen or self.screen then
-        screen = screen or self.screen
-        local vx, vy = self:physicalToVirtual(x, y, screen)
+    if display or self.display then
+        display = display or self.display
+        local vx, vy = self:physicalToVirtual(x, y, display)
         print(string.format("  Virtual:  (%.1f, %.1f)", vx, vy))
 
-        local px, py = self:virtualToPhysical(vx, vy, screen)
+        local px, py = self:virtualToPhysical(vx, vy, display)
         print(string.format("  Physical: (%.1f, %.1f)", px, py))
     end
 
@@ -211,13 +211,13 @@ function coords:isVisibleInCamera(wx, wy, camera, margin)
 end
 
 -- Check if virtual point is on screen
-function coords:isVisibleInVirtual(vx, vy, screen)
-    screen = screen or self.screen
-    if not screen then
+function coords:isVisibleInVirtual(vx, vy, display)
+    display = display or self.display
+    if not display then
         return true
     end
 
-    local vw, vh = screen:GetVirtualDimensions()
+    local vw, vh = display:GetVirtualDimensions()
     return vx >= 0 and vx <= vw and vy >= 0 and vy <= vh
 end
 
@@ -247,9 +247,9 @@ end
 -----------------------------------------------------------
 
 -- Set dependencies (call from main.lua after modules are loaded)
-function coords:init(camera, screen)
+function coords:init(camera, display)
     self.camera = camera
-    self.screen = screen
+    self.display = display
     dprint("Coordinate system initialized")
 end
 

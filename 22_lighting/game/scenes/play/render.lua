@@ -1,7 +1,7 @@
 -- scenes/play/render.lua
 -- Rendering logic for play scene
 
-local screen = require "engine.display"
+local display = require "engine.display"
 local hud = require "engine.hud.status"
 local dialogue = require "engine.ui.dialogue"
 local effects = require "engine.effects"
@@ -49,10 +49,10 @@ function render.draw(self)
     effects.screen:draw()
 
     -- UI rendering starts here
-    screen:Attach()
+    display:Attach()
 
-    local vw, vh = screen:GetVirtualDimensions()
-    local pb = screen.physical_bounds
+    local vw, vh = display:GetVirtualDimensions()
+    local pb = display.physical_bounds
 
     hud:draw_health_bar(pb.x + 12, pb.y + 12, 210, 20, self.player.health, self.player.max_health)
 
@@ -121,7 +121,7 @@ function render.draw(self)
 
     if debug.enabled then debug:drawHelp(vw - 250, 10) end
 
-    screen:Detach()
+    display:Detach()
 
     if self.fade_alpha > 0 then
         local real_w, real_h = love.graphics.getDimensions()

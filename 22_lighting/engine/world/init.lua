@@ -13,8 +13,19 @@ local rendering = require "engine.world.rendering"
 local world = {}
 world.__index = world
 
-function world:new(map_path)
+-- Injected entity classes (set from game code)
+world.enemy_class = nil
+world.npc_class = nil
+world.healing_point_class = nil
+
+function world:new(map_path, entity_classes)
     local instance = setmetatable({}, world)
+
+    -- Store injected entity classes (fallback to class-level if not provided)
+    entity_classes = entity_classes or {}
+    instance.enemy_class = entity_classes.enemy or self.enemy_class
+    instance.npc_class = entity_classes.npc or self.npc_class
+    instance.healing_point_class = entity_classes.healing_point or self.healing_point_class
 
     local map_info = love.filesystem.getInfo(map_path)
     if not map_info then

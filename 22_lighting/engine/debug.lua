@@ -302,14 +302,14 @@ function debug:IsHandMarkingActive()
 end
 
 -- === Debug Info Panel ===
-function debug:drawInfo(screen, player, current_save_slot)
+function debug:drawInfo(display, player, current_save_slot)
     if not self.enabled then return end
 
-    local sw, sh = screen:GetScreenDimensions()
-    local vw, vh = screen:GetVirtualDimensions()
-    local scale = screen:GetScale()
-    local offset_x, offset_y = screen:GetOffset()
-    local vmx, vmy = screen:GetVirtualMousePosition()
+    local sw, sh = display:GetScreenDimensions()
+    local vw, vh = display:GetVirtualDimensions()
+    local scale = display:GetScale()
+    local offset_x, offset_y = display:GetOffset()
+    local vmx, vmy = display:GetVirtualMousePosition()
 
     -- Get effects and input info (if available)
     local effects_count = 0
@@ -328,7 +328,7 @@ function debug:drawInfo(screen, player, current_save_slot)
 
     -- Calculate panel height based on content
     local base_height = 185
-    local mobile_extra = screen.is_mobile and 60 or 0
+    local mobile_extra = display.is_mobile and 60 or 0
     local player_extra = player and 120 or 0
     local effects_extra = has_effects and 20 or 0
     local gamepad_extra = gamepad_info and 40 or 0
@@ -375,20 +375,20 @@ function debug:drawInfo(screen, player, current_save_slot)
     y_offset = y_offset + 20
     love.graphics.print("Offset: " .. string.format("%.1f", offset_x) .. ", " .. string.format("%.1f", offset_y), 10, y_offset)
     y_offset = y_offset + 20
-    love.graphics.print("Mode: " .. screen.scale_mode, 10, y_offset)
+    love.graphics.print("Mode: " .. display.scale_mode, 10, y_offset)
     y_offset = y_offset + 20
     love.graphics.print("Virtual Mouse: " .. string.format("%.1f", vmx) .. ", " .. string.format("%.1f", vmy), 10, y_offset)
     y_offset = y_offset + 20
 
     -- Platform-specific info
-    if screen.is_mobile then
+    if display.is_mobile then
         y_offset = y_offset + 10
         love.graphics.print("Platform: " .. love.system.getOS(), 10, y_offset)
         y_offset = y_offset + 20
-        love.graphics.print("DPI Scale: " .. string.format("%.2f", screen.dpi_scale), 10, y_offset)
+        love.graphics.print("DPI Scale: " .. string.format("%.2f", display.dpi_scale), 10, y_offset)
         y_offset = y_offset + 20
 
-        local touches = screen:GetAllTouches()
+        local touches = display:GetAllTouches()
         love.graphics.print("Touches: " .. #touches, 10, y_offset)
         y_offset = y_offset + 20
     else

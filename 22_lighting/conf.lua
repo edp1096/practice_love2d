@@ -27,6 +27,14 @@ GameConfig = {
         bgm_volume = 0.7,
         sfx_volume = 0.8,
         muted = false
+    },
+
+    -- Input settings (defaults)
+    input = {
+        deadzone = 0.15,
+        vibration_enabled = true,
+        vibration_strength = 1.0,
+        mobile_vibration_enabled = true
     }
 }
 
@@ -52,6 +60,22 @@ if not is_mobile then
             GameConfig.sound.sfx_volume = tonumber(config.Sound.SFXVolume) or GameConfig.sound.sfx_volume
             GameConfig.sound.muted = (config.Sound.Muted == "true") or GameConfig.sound.muted
         end
+
+        -- Load Input settings if available
+        if config.Input then
+            if config.Input.Deadzone then
+                GameConfig.input.deadzone = tonumber(config.Input.Deadzone)
+            end
+            if config.Input.VibrationEnabled ~= nil then
+                GameConfig.input.vibration_enabled = (config.Input.VibrationEnabled == "true")
+            end
+            if config.Input.VibrationStrength then
+                GameConfig.input.vibration_strength = tonumber(config.Input.VibrationStrength)
+            end
+            if config.Input.MobileVibrationEnabled ~= nil then
+                GameConfig.input.mobile_vibration_enabled = (config.Input.MobileVibrationEnabled == "true")
+            end
+        end
     end
 else
     -- Mobile: load from love.filesystem
@@ -67,13 +91,34 @@ else
     end)
 
     if success and mobile_config then
-        print("Loading mobile config...")
         if mobile_config.sound then
-            GameConfig.sound.master_volume = mobile_config.sound.master_volume or GameConfig.sound.master_volume
-            GameConfig.sound.bgm_volume = mobile_config.sound.bgm_volume or GameConfig.sound.bgm_volume
-            GameConfig.sound.sfx_volume = mobile_config.sound.sfx_volume or GameConfig.sound.sfx_volume
-            GameConfig.sound.muted = mobile_config.sound.muted or GameConfig.sound.muted
-            print("Mobile sound settings loaded")
+            -- Use nil check instead of 'or' to preserve false/0.0 values
+            if mobile_config.sound.master_volume ~= nil then
+                GameConfig.sound.master_volume = mobile_config.sound.master_volume
+            end
+            if mobile_config.sound.bgm_volume ~= nil then
+                GameConfig.sound.bgm_volume = mobile_config.sound.bgm_volume
+            end
+            if mobile_config.sound.sfx_volume ~= nil then
+                GameConfig.sound.sfx_volume = mobile_config.sound.sfx_volume
+            end
+            if mobile_config.sound.muted ~= nil then
+                GameConfig.sound.muted = mobile_config.sound.muted
+            end
+        end
+        if mobile_config.input then
+            if mobile_config.input.deadzone ~= nil then
+                GameConfig.input.deadzone = mobile_config.input.deadzone
+            end
+            if mobile_config.input.vibration_enabled ~= nil then
+                GameConfig.input.vibration_enabled = mobile_config.input.vibration_enabled
+            end
+            if mobile_config.input.vibration_strength ~= nil then
+                GameConfig.input.vibration_strength = mobile_config.input.vibration_strength
+            end
+            if mobile_config.input.mobile_vibration_enabled ~= nil then
+                GameConfig.input.mobile_vibration_enabled = mobile_config.input.mobile_vibration_enabled
+            end
         end
     end
 end

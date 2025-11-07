@@ -4,7 +4,7 @@
 local saveslot = {}
 
 local scene_control = require "engine.scene_control"
-local screen = require "engine.display"
+local display = require "engine.display"
 local save_sys = require "engine.save"
 local input = require "engine.input"
 local fonts = require "engine.utils.fonts"
@@ -14,7 +14,7 @@ function saveslot:enter(previous, save_callback, ...)
     self.save_callback = save_callback
     self.selected = 1
 
-    local vw, vh = screen:GetVirtualDimensions()
+    local vw, vh = display:GetVirtualDimensions()
     self.virtual_width = vw
     self.virtual_height = vh
 
@@ -49,7 +49,7 @@ function saveslot:update(dt)
         self.overlay_alpha = math.min(self.overlay_alpha + dt * 3, self.target_alpha)
     end
 
-    local vmx, vmy = screen:GetVirtualMousePosition()
+    local vmx, vmy = display:GetVirtualMousePosition()
 
     self.mouse_over = 0
 
@@ -74,7 +74,7 @@ function saveslot:draw()
         if not success then love.graphics.clear(0, 0, 0, 1) end
     end
 
-    screen:Attach()
+    display:Attach()
 
     love.graphics.setColor(0, 0, 0, self.overlay_alpha)
     love.graphics.rectangle("fill", 0, 0, self.virtual_width, self.virtual_height)
@@ -153,10 +153,10 @@ function saveslot:draw()
             0, self.layout.hint_y, self.virtual_width, "center")
     end
 
-    screen:Detach()
+    display:Detach()
 end
 
-function saveslot:resize(w, h) screen:Resize(w, h) end
+function saveslot:resize(w, h) display:Resize(w, h) end
 
 function saveslot:keypressed(key)
     if key == "up" or key == "w" then

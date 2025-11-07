@@ -138,11 +138,14 @@ function loaders.loadSavePoints(self)
 end
 
 function loaders.loadEnemies(self)
-    if self.map.layers["Enemies"] then
-        local enemy_module = require "game.entities.enemy"
+    if not self.enemy_class then
+        dprint("Warning: No enemy_class injected, skipping enemy loading")
+        return
+    end
 
+    if self.map.layers["Enemies"] then
         for _, obj in ipairs(self.map.layers["Enemies"].objects) do
-            local new_enemy = enemy_module:new(obj.x, obj.y, obj.properties.type or "green_slime")
+            local new_enemy = self.enemy_class:new(obj.x, obj.y, obj.properties.type or "green_slime")
 
             new_enemy.world = self
 
@@ -190,14 +193,17 @@ function loaders.loadEnemies(self)
 end
 
 function loaders.loadNPCs(self)
-    if self.map.layers["NPCs"] then
-        local npc_module = require "game.entities.npc"
+    if not self.npc_class then
+        dprint("Warning: No npc_class injected, skipping NPC loading")
+        return
+    end
 
+    if self.map.layers["NPCs"] then
         for _, obj in ipairs(self.map.layers["NPCs"].objects) do
             local npc_type = obj.properties.type or "villager"
             local npc_id = obj.properties.id or obj.name or ("npc_" .. math.random(10000))
 
-            local new_npc = npc_module:new(obj.x, obj.y, npc_type, npc_id)
+            local new_npc = self.npc_class:new(obj.x, obj.y, npc_type, npc_id)
             new_npc.world = self
 
             local bounds = new_npc:getColliderBounds()
@@ -221,7 +227,10 @@ function loaders.loadNPCs(self)
 end
 
 function loaders.loadHealingPoints(self)
-    local healing_point_class = require "game.entities.healing_point"
+    if not self.healing_point_class then
+        dprint("Warning: No healing_point_class injected, skipping healing point loading")
+        return
+    end
 
     if self.map.layers["HealingPoints"] then
         for _, obj in ipairs(self.map.layers["HealingPoints"].objects) do
@@ -233,7 +242,7 @@ function loaders.loadHealingPoints(self)
                 local radius = obj.properties.radius or math.max(obj.width, obj.height) / 2
                 local cooldown = obj.properties.cooldown or 5.0
 
-                local hp = healing_point_class:new(center_x, center_y, heal_amount, radius)
+                local hp = self.healing_point_class:new(center_x, center_y, heal_amount, radius)
                 hp.cooldown_max = cooldown
 
                 table.insert(self.healing_points, hp)

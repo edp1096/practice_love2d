@@ -5,7 +5,7 @@ local options = {}
 
 local input = require "engine.input"
 local sound = require "engine.sound"
-local screen = require "engine.display"
+local display = require "engine.display"
 local utils = require "engine.utils.util"
 local constants = require "engine.constants"
 
@@ -175,7 +175,7 @@ function options:changeOption(state, direction)
                 resizable = GameConfig.resizable,
                 display = state.current_monitor_index
             })
-            screen:CalculateScale()
+            display:CalculateScale()
             -- CRITICAL: Call resize chain like window resize does
             if state.resize then state:resize(res.w, res.h) end
         end
@@ -185,8 +185,8 @@ function options:changeOption(state, direction)
         sound:playSFX("menu", "navigate")
     elseif option.name == "Fullscreen" then
         -- CRITICAL FIX: Always call resize chain for both fullscreen and windowed
-        screen:ToggleFullScreen()
-        GameConfig.fullscreen = screen.is_fullscreen
+        display:ToggleFullScreen()
+        GameConfig.fullscreen = display.is_fullscreen
 
         -- Get current dimensions (different for fullscreen vs windowed)
         local current_w, current_h
@@ -202,7 +202,7 @@ function options:changeOption(state, direction)
             })
         end
 
-        screen:CalculateScale()
+        display:CalculateScale()
         -- CRITICAL: Always call resize chain (both fullscreen and windowed)
         -- This propagates to pause → play → camera:zoomTo()
         if state.resize then state:resize(current_w, current_h) end
@@ -223,20 +223,20 @@ function options:changeOption(state, direction)
 
         -- Update monitor in config and screen
         GameConfig.monitor = state.current_monitor_index
-        screen.window.display = state.current_monitor_index
+        display.window.display = state.current_monitor_index
 
         if GameConfig.fullscreen then
             -- For fullscreen, disable then re-enable on new monitor
-            screen:DisableFullScreen()
-            screen:EnableFullScreen()
+            display:DisableFullScreen()
+            display:EnableFullScreen()
         else
             -- For windowed mode, calculate centered position on target monitor
             local dx, dy = love.window.getDesktopDimensions(state.current_monitor_index)
             local x = dx / 2 - GameConfig.width / 2
             local y = dy / 2 - GameConfig.height / 2
 
-            screen.window.x = x
-            screen.window.y = y
+            display.window.x = x
+            display.window.y = y
 
             love.window.updateMode(GameConfig.width, GameConfig.height, {
                 resizable = GameConfig.resizable,
@@ -245,7 +245,7 @@ function options:changeOption(state, direction)
         end
 
         -- Recalculate screen after monitor change
-        screen:CalculateScale()
+        display:CalculateScale()
         -- CRITICAL: Call resize chain
         if state.resize then state:resize(GameConfig.width, GameConfig.height) end
         utils:SaveConfig(GameConfig)
@@ -322,12 +322,20 @@ function options:changeOption(state, direction)
     elseif option.name == "Vibration" then
         input:setVibrationEnabled(not input.settings.vibration_enabled)
 
+        -- Sync to GameConfig before saving
+        GameConfig.input.vibration_enabled = input.settings.vibration_enabled
+        utils:SaveConfig(GameConfig, sound.settings, input.settings)
+
         -- Test vibration when enabling
         if input.settings.vibration_enabled then
             local v = constants.VIBRATION.ATTACK; input:vibrate(v.duration, v.left, v.right)
         end
     elseif option.name == "Mobile Vibration" then
         input:setMobileVibrationEnabled(not input.settings.mobile_vibration_enabled)
+
+        -- Sync to GameConfig before saving
+        GameConfig.input.mobile_vibration_enabled = input.settings.mobile_vibration_enabled
+        utils:SaveConfig(GameConfig, sound.settings, input.settings)
 
         -- Test vibration when enabling
         if input.settings.mobile_vibration_enabled then
@@ -343,6 +351,10 @@ function options:changeOption(state, direction)
 
         input:setVibrationStrength(self.vibration_strengths[state.current_vibration_index])
 
+        -- Sync to GameConfig before saving
+        GameConfig.input.vibration_strength = input.settings.vibration_strength
+        utils:SaveConfig(GameConfig, sound.settings, input.settings)
+
         -- Test vibration
         if input.settings.vibration_enabled then
             local v = constants.VIBRATION.ATTACK; input:vibrate(v.duration, v.left, v.right)
@@ -356,6 +368,10 @@ function options:changeOption(state, direction)
         end
 
         input:setDeadzone(self.deadzones[state.current_deadzone_index])
+
+        -- Sync to GameConfig before saving
+        GameConfig.input.deadzone = input.settings.deadzone
+        utils:SaveConfig(GameConfig, sound.settings, input.settings)
     end
 end
 

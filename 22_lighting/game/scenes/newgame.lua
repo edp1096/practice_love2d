@@ -4,7 +4,7 @@
 local newgame = {}
 
 local scene_control = require "engine.scene_control"
-local screen = require "engine.display"
+local display = require "engine.display"
 local save_sys = require "engine.save"
 local input = require "engine.input"
 local constants = require "engine.constants"
@@ -14,7 +14,7 @@ function newgame:enter(previous, ...)
     self.previous = previous
     self.selected = 1
 
-    local vw, vh = screen:GetVirtualDimensions()
+    local vw, vh = display:GetVirtualDimensions()
     self.virtual_width = vw
     self.virtual_height = vh
 
@@ -42,7 +42,7 @@ function newgame:enter(previous, ...)
 end
 
 function newgame:update(dt)
-    local vmx, vmy = screen:GetVirtualMousePosition()
+    local vmx, vmy = display:GetVirtualMousePosition()
 
     self.mouse_over = 0
 
@@ -61,7 +61,7 @@ end
 function newgame:draw()
     love.graphics.clear(0.1, 0.1, 0.15, 1)
 
-    screen:Attach()
+    display:Attach()
 
     love.graphics.setColor(1, 1, 1, 1)
 
@@ -139,10 +139,10 @@ function newgame:draw()
             0, self.layout.hint_y, self.virtual_width, "center")
     end
 
-    screen:Detach()
+    display:Detach()
 end
 
-function newgame:resize(w, h) screen:Resize(w, h) end
+function newgame:resize(w, h) display:Resize(w, h) end
 
 function newgame:keypressed(key)
     if key == "up" or key == "w" then

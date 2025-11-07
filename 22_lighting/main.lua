@@ -52,7 +52,7 @@ _G.dprint = function(...) debug:dprint(...) end
 dprint("Running with LOVE " .. love_version .. " and " .. _VERSION)
 
 -- Now load other modules (they can safely use dprint)
-local screen = require "engine.display"  -- Global for Talkies compatibility
+local display = require "engine.display"  -- Global for Talkies compatibility
 local utils = require "engine.utils.util"
 local scene_control = require "engine.scene_control"
 local input = require "engine.input"
@@ -71,6 +71,64 @@ end
 -- === Application Lifecycle ===
 
 function love.load()
+    -- Load mobile config if on mobile (for LÖVE runtime app)
+    if is_mobile then
+        local success, mobile_config = pcall(function()
+            local content = love.filesystem.read("mobile_config.lua")
+            if content then
+                local chunk = load(content)
+                if chunk then
+                    return chunk()
+                end
+            end
+            return nil
+        end)
+
+        if success and mobile_config then
+            if mobile_config.sound then
+                if mobile_config.sound.master_volume ~= nil then
+                    GameConfig.sound.master_volume = mobile_config.sound.master_volume
+                end
+                if mobile_config.sound.bgm_volume ~= nil then
+                    GameConfig.sound.bgm_volume = mobile_config.sound.bgm_volume
+                end
+                if mobile_config.sound.sfx_volume ~= nil then
+                    GameConfig.sound.sfx_volume = mobile_config.sound.sfx_volume
+                end
+                if mobile_config.sound.muted ~= nil then
+                    GameConfig.sound.muted = mobile_config.sound.muted
+                end
+            end
+            if mobile_config.input then
+                if mobile_config.input.deadzone ~= nil then
+                    GameConfig.input.deadzone = mobile_config.input.deadzone
+                end
+                if mobile_config.input.vibration_enabled ~= nil then
+                    GameConfig.input.vibration_enabled = mobile_config.input.vibration_enabled
+                end
+                if mobile_config.input.vibration_strength ~= nil then
+                    GameConfig.input.vibration_strength = mobile_config.input.vibration_strength
+                end
+                if mobile_config.input.mobile_vibration_enabled ~= nil then
+                    GameConfig.input.mobile_vibration_enabled = mobile_config.input.mobile_vibration_enabled
+                end
+            end
+        end
+    end
+
+    -- Initialize sound system AFTER loading config
+    local sound_data = require "game.data.sounds"
+    sound:init(sound_data)
+
+    -- Initialize input system with config
+    local input_config = require "game.data.input_config"
+    input:init(input_config)
+
+    -- Setup scene loader (inject game scene loading into engine)
+    scene_control.scene_loader = function(scene_name)
+        return require("game.scenes." .. scene_name)
+    end
+
     -- Setup input dispatcher
     input_dispatcher.scene_control = scene_control
     input_dispatcher.virtual_gamepad = virtual_gamepad
@@ -79,7 +137,7 @@ function love.load()
 
     -- Setup app lifecycle
     lifecycle.locker = locker
-    lifecycle.screen = screen
+    lifecycle.display = display
     lifecycle.input = input
     lifecycle.virtual_gamepad = virtual_gamepad
     lifecycle.fonts = fonts
@@ -89,9 +147,9 @@ function love.load()
     lifecycle.GameConfig = GameConfig
     lifecycle.is_mobile = is_mobile
 
-    -- Initialize coordinate system (must be after screen initialization)
+    -- Initialize coordinate system (must be after display initialization)
     -- Note: camera is scene-specific, so coords will use it dynamically
-    coords:init(nil, screen)
+    coords:init(nil, display)
 
     -- Initialize application
     lifecycle:initialize(menu)
@@ -108,8 +166,8 @@ function love.resize(w, h) lifecycle:resize(w, h) end
 function love.keypressed(key)
     -- Handle system-level hotkeys (F11, F1)
     if key == "f11" and not is_mobile then
-        screen:ToggleFullScreen()
-        GameConfig.fullscreen = screen.is_fullscreen
+        display:ToggleFullScreen()
+        GameConfig.fullscreen = display.is_fullscreen
         pcall(utils.SaveConfig, utils, GameConfig, sound.settings)
         lifecycle:resize(love.graphics.getWidth(), love.graphics.getHeight())
         return

@@ -4,7 +4,7 @@
 local settings = {}
 
 local scene_control = require "engine.scene_control"
-local screen = require "engine.display"
+local display = require "engine.display"
 local input = require "engine.input"
 local fonts = require "engine.utils.fonts"
 
@@ -19,7 +19,7 @@ function settings:enter(previous, ...)
     self.previous = previous
 
     -- Get virtual dimensions (960x540 for 16:9)
-    local vw, vh = screen:GetVirtualDimensions()
+    local vw, vh = display:GetVirtualDimensions()
     self.virtual_width = vw
     self.virtual_height = vh
 
@@ -110,7 +110,7 @@ function settings:exit()
 end
 
 function settings:update(dt)
-    local vmx, vmy = screen:GetVirtualMousePosition()
+    local vmx, vmy = display:GetVirtualMousePosition()
 
     self.mouse_over = 0
     love.graphics.setFont(self.labelFont)
@@ -157,7 +157,7 @@ function settings:touchreleased(id, x, y, dx, dy, pressure)
 end
 
 function settings:resize(w, h)
-    screen:Resize(w, h)
+    display:Resize(w, h)
     if self.previous and self.previous.resize then
         self.previous:resize(w, h)
     end

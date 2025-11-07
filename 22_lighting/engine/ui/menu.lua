@@ -1,7 +1,7 @@
 -- engine/ui/scene.lua
 -- Common UI utilities for menu scenes to eliminate code duplication
 
-local screen = require "engine.display"
+local display = require "engine.display"
 local input = require "engine.input"
 local sound = require "engine.sound"
 local fonts = require "engine.utils.fonts"
@@ -63,7 +63,7 @@ end
 
 -- Update mouse-over detection for menu options
 function scene.updateMouseOver(options, layout, width, font)
-    local vmx, vmy = screen:GetVirtualMousePosition()
+    local vmx, vmy = display:GetVirtualMousePosition()
     love.graphics.setFont(font)
 
     for i, option in ipairs(options) do
@@ -242,7 +242,7 @@ end
 
 -- Update mouse-over for confirmation dialog buttons
 function scene.updateConfirmMouseOver(width, height, button_count)
-    local vmx, vmy = screen:GetVirtualMousePosition()
+    local vmx, vmy = display:GetVirtualMousePosition()
 
     local button_y = height / 2 + 60
     local button_width = 120

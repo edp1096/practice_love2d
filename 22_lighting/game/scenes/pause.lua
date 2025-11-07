@@ -3,7 +3,7 @@
 local pause = {}
 
 local scene_control = require "engine.scene_control"
-local screen = require "engine.display"
+local display = require "engine.display"
 local sound = require "engine.sound"
 local input = require "engine.input"
 local ui_scene = require "engine.ui.menu"
@@ -16,7 +16,7 @@ function pause:enter(previous, ...)
     self.mouse_over = 0
 
     -- Setup UI
-    local vw, vh = screen:GetVirtualDimensions()
+    local vw, vh = display:GetVirtualDimensions()
     self.virtual_width = vw
     self.virtual_height = vh
     self.fonts = ui_scene.createMenuFonts()
@@ -46,7 +46,7 @@ function pause:draw()
     -- Draw background scene (gameplay)
     if self.previous and self.previous.draw then self.previous:draw() end
 
-    screen:Attach()
+    display:Attach()
 
     -- Draw overlay
     ui_scene.drawOverlay(self.virtual_width, self.virtual_height, self.overlay_alpha)
@@ -64,11 +64,11 @@ function pause:draw()
 
     ui_scene.drawControlHints(self.fonts.hint, self.layout, self.virtual_width, hint_text)
 
-    screen:Detach()
+    display:Detach()
 end
 
 function pause:resize(w, h)
-    screen:Resize(w, h)
+    display:Resize(w, h)
 
     if self.previous and self.previous.resize then self.previous:resize(w, h) end
 end

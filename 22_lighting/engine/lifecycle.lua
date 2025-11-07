@@ -6,7 +6,7 @@ local lifecycle = {}
 
 -- Dependencies (set from main.lua)
 lifecycle.locker = nil
-lifecycle.screen = nil
+lifecycle.display = nil
 lifecycle.input = nil
 lifecycle.virtual_gamepad = nil
 lifecycle.fonts = nil
@@ -27,26 +27,23 @@ function lifecycle:initialize(initial_scene)
         end
     end
 
-    -- 2. Initialize screen system
-    local success, err = pcall(self.screen.Initialize, self.screen, self.GameConfig)
+    -- 2. Initialize display system
+    local success, err = pcall(self.display.Initialize, self.display, self.GameConfig)
     if not success then
-        print("ERROR: Screen initialization failed: " .. tostring(err))
+        print("ERROR: Display initialization failed: " .. tostring(err))
         -- Fallback initialization
-        self.screen.screen_wh = { w = 0, h = 0 }
-        self.screen.render_wh = { w = 960, h = 540 }
-        self.screen.screen_wh.w, self.screen.screen_wh.h = love.graphics.getDimensions()
-        self.screen.scale = math.min(
-            self.screen.screen_wh.w / self.screen.render_wh.w,
-            self.screen.screen_wh.h / self.screen.render_wh.h
+        self.display.screen_wh = { w = 0, h = 0 }
+        self.display.render_wh = { w = 960, h = 540 }
+        self.display.screen_wh.w, self.display.screen_wh.h = love.graphics.getDimensions()
+        self.display.scale = math.min(
+            self.display.screen_wh.w / self.display.render_wh.w,
+            self.display.screen_wh.h / self.display.render_wh.h
         )
-        self.screen.offset_x = (self.screen.screen_wh.w - self.screen.render_wh.w * self.screen.scale) / 2
-        self.screen.offset_y = (self.screen.screen_wh.h - self.screen.render_wh.h * self.screen.scale) / 2
+        self.display.offset_x = (self.display.screen_wh.w - self.display.render_wh.w * self.display.scale) / 2
+        self.display.offset_y = (self.display.screen_wh.h - self.display.render_wh.h * self.display.scale) / 2
     end
 
-    -- 3. Initialize input system
-    self.input:init()
-
-    -- 4. Initialize fonts
+    -- 3. Initialize fonts (input already initialized in main.lua)
     self.fonts:init()
 
     -- 5. Initialize virtual gamepad (mobile only)
@@ -87,18 +84,18 @@ function lifecycle:draw()
     end
 
     -- Draw debug visualizations (if debug mode enabled)
-    if self.screen then
+    if self.display then
         local debug = require "engine.debug"
 
-        self.screen:ShowGridVisualization() -- F2: Grid visualization
+        self.display:ShowGridVisualization() -- F2: Grid visualization
 
         -- F1: Unified debug info window
         local current_scene = self.scene_control.current
         local player = current_scene and current_scene.player
         local save_slot = current_scene and current_scene.current_save_slot
-        debug:drawInfo(self.screen, player, save_slot)
+        debug:drawInfo(self.display, player, save_slot)
 
-        self.screen:ShowVirtualMouse() -- F3: Virtual mouse cursor
+        self.display:ShowVirtualMouse() -- F3: Virtual mouse cursor
     end
 end
 
@@ -110,10 +107,10 @@ function lifecycle:resize(w, h)
     self.GameConfig.height = h
 
     -- Save config to file
-    pcall(self.utils.SaveConfig, self.utils, self.GameConfig, self.sound.settings)
+    pcall(self.utils.SaveConfig, self.utils, self.GameConfig, self.sound.settings, self.input.settings)
 
-    -- Recalculate screen scale
-    pcall(self.screen.CalculateScale, self.screen)
+    -- Recalculate display scale
+    pcall(self.display.CalculateScale, self.display)
 
     -- Resize lighting system
     local lighting = require "engine.lighting"
@@ -137,14 +134,14 @@ end
 function lifecycle:quit()
     -- Save window size if not fullscreen
     local current_w, current_h, current_flags = love.window.getMode()
-    if not self.is_mobile and not self.screen.is_fullscreen then
+    if not self.is_mobile and not self.display.is_fullscreen then
         self.GameConfig.width = current_w
         self.GameConfig.height = current_h
         self.GameConfig.monitor = current_flags.display
     end
 
     -- Save config
-    pcall(self.utils.SaveConfig, self.utils, self.GameConfig, self.sound.settings)
+    pcall(self.utils.SaveConfig, self.utils, self.GameConfig, self.sound.settings, self.input.settings)
 
     -- Clean up process locker
     if self.locker then

@@ -1,4 +1,4 @@
--- systems/input/input_coordinator.lua
+-- systems/input/input_mapper.lua
 -- Coordinates multiple input sources with priority-based selection
 -- This is the clean V2 implementation that replaces complex input logic
 
@@ -7,15 +7,16 @@ local physical_gamepad_input = require "engine.input.sources.physical_gamepad_in
 local mouse_input = require "engine.input.sources.mouse_input"
 local keyboard_input = require "engine.input.sources.keyboard_input"
 
-local input_coordinator = {}
+local input_mapper = {}
 
 -- Initialize coordinator
-function input_coordinator:init(joystick, virtual_gamepad, settings)
+function input_mapper:init(joystick, virtual_gamepad, settings, input_config)
     self.sources = {}
     self.last_aim_angle = 0
     self.last_aim_source = "none"
     self.active_input = "keyboard_mouse" -- Track last used input device type
     self.settings = settings or {}       -- Store settings for access in vibrate method
+    self.input_config = input_config     -- Store input config
 
     -- Game context (set by play scene)
     self.game_context = nil
@@ -28,11 +29,11 @@ function input_coordinator:init(joystick, virtual_gamepad, settings)
     self.trigger_threshold = 0.5 -- Threshold for trigger press
 
     -- Create input sources
-    self.keyboard = keyboard_input:new()
+    self.keyboard = keyboard_input:new(input_config)
     self.mouse = mouse_input:new()
 
     if joystick then
-        self.physical_gamepad = physical_gamepad_input:new(joystick, settings)
+        self.physical_gamepad = physical_gamepad_input:new(joystick, settings, input_config)
     end
 
     if virtual_gamepad then
@@ -44,12 +45,12 @@ function input_coordinator:init(joystick, virtual_gamepad, settings)
 end
 
 -- Set game context for context-based actions
-function input_coordinator:setGameContext(context)
+function input_mapper:setGameContext(context)
     self.game_context = context
 end
 
 -- Register all input sources in priority order
-function input_coordinator:registerSources()
+function input_mapper:registerSources()
     self.sources = {}
 
     -- Add sources (they auto-sort by priority)
@@ -71,7 +72,7 @@ function input_coordinator:registerSources()
 end
 
 -- Update all input sources
-function input_coordinator:update(dt)
+function input_mapper:update(dt)
     for _, source in ipairs(self.sources) do
         if source:isAvailable() then
             source:update(dt)
@@ -80,7 +81,7 @@ function input_coordinator:update(dt)
 end
 
 -- Get movement from highest priority available source
-function input_coordinator:getMovement()
+function input_mapper:getMovement()
     -- Check input sources in priority order
     for _, source in ipairs(self.sources) do
         if source:isAvailable() then
@@ -102,7 +103,7 @@ function input_coordinator:getMovement()
 end
 
 -- Get aim direction from highest priority available source
-function input_coordinator:getAimDirection(player_x, player_y, cam)
+function input_mapper:getAimDirection(player_x, player_y, cam)
     -- Special handling: check if virtual gamepad has active touches
     if self.virtual_gamepad and self.virtual_gamepad:isAvailable() then
         if self.virtual_gamepad:hasActiveTouches() then
@@ -153,7 +154,7 @@ function input_coordinator:getAimDirection(player_x, player_y, cam)
 end
 
 -- Check if action is down from any available source
-function input_coordinator:isActionDown(action_mapping)
+function input_mapper:isActionDown(action_mapping)
     for _, source in ipairs(self.sources) do
         if source:isAvailable() and source:isActionDown(action_mapping) then
             -- Update active_input based on source
@@ -169,7 +170,7 @@ function input_coordinator:isActionDown(action_mapping)
 end
 
 -- Check if action was pressed from specific source
-function input_coordinator:wasActionPressed(action_mapping, event_source, value)
+function input_mapper:wasActionPressed(action_mapping, event_source, value)
     for _, source in ipairs(self.sources) do
         if source:isAvailable() and source:wasActionPressed(action_mapping, event_source, value) then
             -- Update active_input based on source
@@ -185,23 +186,23 @@ function input_coordinator:wasActionPressed(action_mapping, event_source, value)
 end
 
 -- Reset aim source
-function input_coordinator:resetAimSource()
+function input_mapper:resetAimSource()
     self.last_aim_source = "none"
 end
 
 -- Set aim angle manually (for weapon draw initialization, etc.)
-function input_coordinator:setAimAngle(angle, source)
+function input_mapper:setAimAngle(angle, source)
     self.last_aim_angle = angle
     self.last_aim_source = source or "manual"
 end
 
 -- Get last aim source name
-function input_coordinator:getAimSource()
+function input_mapper:getAimSource()
     return self.last_aim_source
 end
 
 -- Vibrate physical gamepad and/or mobile device if available
-function input_coordinator:vibrate(duration, left_strength, right_strength)
+function input_mapper:vibrate(duration, left_strength, right_strength)
     -- Vibrate physical gamepad (DualSense, etc.)
     if self.physical_gamepad and self.physical_gamepad:isAvailable() then
         self.physical_gamepad:vibrate(duration, left_strength, right_strength)
@@ -218,7 +219,7 @@ function input_coordinator:vibrate(duration, left_strength, right_strength)
 end
 
 -- Check if any gamepad (virtual or physical) is available
-function input_coordinator:hasGamepad()
+function input_mapper:hasGamepad()
     if self.virtual_gamepad and self.virtual_gamepad:isAvailable() then
         return true
     end
@@ -231,7 +232,7 @@ function input_coordinator:hasGamepad()
 end
 
 -- Update joystick reference (when controller connects/disconnects)
-function input_coordinator:setJoystick(joystick, settings)
+function input_mapper:setJoystick(joystick, settings)
     if joystick then
         if self.physical_gamepad then
             self.physical_gamepad.joystick = joystick
@@ -249,7 +250,7 @@ function input_coordinator:setJoystick(joystick, settings)
 end
 
 -- Update virtual gamepad reference
-function input_coordinator:setVirtualGamepad(vgp)
+function input_mapper:setVirtualGamepad(vgp)
     if vgp then
         if self.virtual_gamepad then
             self.virtual_gamepad.virtual_gamepad = vgp
@@ -268,9 +269,7 @@ end
 
 -- Handle gamepad button pressed event
 -- Returns action name(s) to be handled by scene, or nil if handled internally
-function input_coordinator:handleGamepadPressed(joystick, button)
-    local input_config = require "game.data.input_config"
-
+function input_mapper:handleGamepadPressed(joystick, button)
     -- Check context action first (A button)
     if button == "a" and self.game_context then
         -- Check if we can interact with something
@@ -323,7 +322,7 @@ end
 
 -- Handle gamepad axis movement (for trigger buttons on Xbox controllers)
 -- Returns action name if trigger crossed threshold, or nil otherwise
-function input_coordinator:handleGamepadAxis(joystick, axis, value)
+function input_mapper:handleGamepadAxis(joystick, axis, value)
     -- Only handle trigger axes
     if axis ~= "triggerleft" and axis ~= "triggerright" then
         return nil
@@ -352,7 +351,7 @@ function input_coordinator:handleGamepadAxis(joystick, axis, value)
 end
 
 -- Get debug information
-function input_coordinator:getDebugInfo()
+function input_mapper:getDebugInfo()
     local info = "Input Coordinator:\n"
     info = info .. "  Active Sources: " .. #self.sources .. "\n"
     info = info .. "  Last Aim Source: " .. self.last_aim_source .. "\n\n"
@@ -364,4 +363,4 @@ function input_coordinator:getDebugInfo()
     return info
 end
 
-return input_coordinator
+return input_mapper

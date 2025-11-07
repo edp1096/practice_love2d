@@ -31,7 +31,7 @@ function utils:DeepCopy(obj, seen)
     return res
 end
 
-function utils:SaveConfig(GameConfig, sound_settings)
+function utils:SaveConfig(GameConfig, sound_settings, input_settings)
     local os_name = love.system.getOS()
     local is_mobile = (os_name == "Android" or os_name == "iOS")
 
@@ -51,6 +51,15 @@ function utils:SaveConfig(GameConfig, sound_settings)
                 config_str = config_str .. "    bgm_volume = " .. tostring(sound_settings.bgm_volume) .. ",\n"
                 config_str = config_str .. "    sfx_volume = " .. tostring(sound_settings.sfx_volume) .. ",\n"
                 config_str = config_str .. "    muted = " .. tostring(sound_settings.muted) .. "\n"
+                config_str = config_str .. "  },\n"
+            end
+
+            if input_settings then
+                config_str = config_str .. "  input = {\n"
+                config_str = config_str .. "    deadzone = " .. tostring(input_settings.deadzone) .. ",\n"
+                config_str = config_str .. "    vibration_enabled = " .. tostring(input_settings.vibration_enabled) .. ",\n"
+                config_str = config_str .. "    vibration_strength = " .. tostring(input_settings.vibration_strength) .. ",\n"
+                config_str = config_str .. "    mobile_vibration_enabled = " .. tostring(input_settings.mobile_vibration_enabled) .. "\n"
                 config_str = config_str .. "  }\n"
             end
 
@@ -87,6 +96,16 @@ function utils:SaveConfig(GameConfig, sound_settings)
                 file:write("BGMVolume = " .. tostring(sound_settings.bgm_volume) .. "\n")
                 file:write("SFXVolume = " .. tostring(sound_settings.sfx_volume) .. "\n")
                 file:write("Muted = " .. tostring(sound_settings.muted) .. "\n")
+            end
+
+            -- Write Input settings if provided
+            if input_settings then
+                file:write("\n")
+                file:write("[Input]\n")
+                file:write("Deadzone = " .. tostring(input_settings.deadzone) .. "\n")
+                file:write("VibrationEnabled = " .. tostring(input_settings.vibration_enabled) .. "\n")
+                file:write("VibrationStrength = " .. tostring(input_settings.vibration_strength) .. "\n")
+                file:write("MobileVibrationEnabled = " .. tostring(input_settings.mobile_vibration_enabled) .. "\n")
             end
 
             file:close()

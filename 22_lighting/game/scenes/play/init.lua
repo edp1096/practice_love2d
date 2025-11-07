@@ -7,9 +7,13 @@ local player_module = require "game.entities.player"
 local world = require "engine.world"
 local camera = require "vendor.hump.camera"
 local scene_control = require "engine.scene_control"
-local screen = require "engine.display"
+local display = require "engine.display"
 local save_sys = require "engine.save"
 local inventory_class = require "engine.inventory"
+local item_class = require "game.entities.item"
+local enemy_class = require "game.entities.enemy"
+local npc_class = require "game.entities.npc"
+local healing_point_class = require "game.entities.healing_point"
 local dialogue = require "engine.ui.dialogue"
 local sound = require "engine.sound"
 local util = require "engine.utils.util"
@@ -35,14 +39,21 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     self.current_map_path = mapPath
 
     -- Use screen module for proper scaling
-    local vw, vh = screen:GetVirtualDimensions()
-    local sw, sh = screen:GetScreenDimensions()
+    local vw, vh = display:GetVirtualDimensions()
+    local sw, sh = display:GetScreenDimensions()
     local scale_x = sw / vw
     local scale_y = sh / vh
     local cam_scale = math.min(scale_x, scale_y)
 
     self.cam = camera(0, 0, cam_scale, 0, 0)
-    self.world = world:new(mapPath)
+
+    -- Create world with injected entity classes
+    self.world = world:new(mapPath, {
+        enemy = enemy_class,
+        npc = npc_class,
+        healing_point = healing_point_class
+    })
+
     self.player = player_module:new("assets/images/player-sheet.png", spawn_x, spawn_y)
 
     -- Set player game mode based on world
@@ -62,8 +73,8 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     self.minimap = minimap_class:new()
     self.minimap:setMap(self.world)
 
-    -- Initialize inventory
-    self.inventory = inventory_class:new()
+    -- Initialize inventory with item_class injection
+    self.inventory = inventory_class:new(item_class)
 
     -- Load inventory from save data
     if save_data and save_data.inventory then
@@ -223,7 +234,12 @@ function play:switchMap(new_map_path, spawn_x, spawn_y)
     if self.world then self.world:destroy() end
 
     self.current_map_path = new_map_path
-    self.world = world:new(new_map_path)
+    -- Create world with injected entity classes
+    self.world = world:new(new_map_path, {
+        enemy = enemy_class,
+        npc = npc_class,
+        healing_point = healing_point_class
+    })
 
     self.player.x = spawn_x
     self.player.y = spawn_y
@@ -316,8 +332,8 @@ end
 
 function play:resize(w, h)
     -- Use screen module for proper scaling
-    local vw, vh = screen:GetVirtualDimensions()
-    local sw, sh = screen:GetScreenDimensions()
+    local vw, vh = display:GetVirtualDimensions()
+    local sw, sh = display:GetScreenDimensions()
     local scale_x = sw / vw
     local scale_y = sh / vh
     local cam_scale = math.min(scale_x, scale_y)

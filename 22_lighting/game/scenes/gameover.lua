@@ -4,7 +4,7 @@
 local gameover = {}
 
 local scene_control = require "engine.scene_control"
-local screen = require "engine.display"
+local display = require "engine.display"
 local input = require "engine.input"
 local sound = require "engine.sound"
 local restart_util = require "engine.utils.restart"
@@ -32,7 +32,7 @@ function gameover:enter(previous, is_clear, ...)
 
     self.selected = 1
 
-    local vw, vh = screen:GetVirtualDimensions()
+    local vw, vh = display:GetVirtualDimensions()
     self.virtual_width = vw
     self.virtual_height = vh
 
@@ -84,7 +84,7 @@ function gameover:draw()
         if not success then love.graphics.clear(0, 0, 0, 1) end
     end
 
-    screen:Attach()
+    display:Attach()
 
     love.graphics.setColor(0, 0, 0, self.overlay_alpha)
     love.graphics.rectangle("fill", 0, 0, self.virtual_width, self.virtual_height)
@@ -135,11 +135,11 @@ function gameover:draw()
             0, self.layout.hint_y, self.virtual_width, "center")
     end
 
-    screen:Detach()
+    display:Detach()
 end
 
 function gameover:resize(w, h)
-    screen:Resize(w, h)
+    display:Resize(w, h)
     if self.previous and self.previous.resize then self.previous:resize(w, h) end
 end
 
