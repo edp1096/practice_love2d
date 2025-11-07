@@ -42,7 +42,7 @@ function render.draw(self)
 
     self.cam:detach()
 
-    -- Draw lighting (after camera detach, before screen attach)
+    -- Draw lighting (uses its own canvas, multiply blend works outside camera)
     lighting:draw(self.cam)
 
     -- Draw screen effects

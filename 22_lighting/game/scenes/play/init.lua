@@ -91,68 +91,7 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     dialogue:initialize()
 
     -- Initialize lighting
-    lighting:clearLights()
-    local ambient = self.world.map.properties.ambient or "day"
-    lighting:setAmbient(ambient)
-
-    -- Add lights only for dark environments (not day mode)
-    if ambient ~= "day" then
-        -- Add player light
-        self.player.light = lighting:addLight({
-            type = "point",
-            x = self.player.x,
-            y = self.player.y,
-            radius = 350,
-            color = {1, 0.9, 0.7},
-            intensity = 1.0
-        })
-
-        -- Add lights to enemies
-        for _, enemy in ipairs(self.world.enemies) do
-            local enemy_center_x = enemy.x + enemy.collider_offset_x
-            local enemy_center_y = enemy.y + enemy.collider_offset_y
-            enemy.light = lighting:addLight({
-                type = "point",
-                x = enemy_center_x,
-                y = enemy_center_y,
-                radius = 100,
-                color = {1, 0.4, 0.4},
-                intensity = 0.6
-            })
-        end
-
-        -- Add lights to NPCs
-        for _, npc in ipairs(self.world.npcs) do
-            local npc_center_x = npc.x + npc.collider_offset_x
-            local npc_center_y = npc.y + npc.collider_offset_y
-            npc.light = lighting:addLight({
-                type = "point",
-                x = npc_center_x,
-                y = npc_center_y,
-                radius = 120,
-                color = {0.8, 0.9, 1.0},
-                intensity = 0.7
-            })
-        end
-
-        -- Add lights to save points
-        for _, savepoint in ipairs(self.world.savepoints) do
-            savepoint.light = lighting:addLight({
-                type = "point",
-                x = savepoint.center_x,
-                y = savepoint.center_y,
-                radius = 150,
-                color = {0.3, 1.0, 0.5},
-                intensity = 0.8,
-                flicker = true,
-                flicker_speed = 3.0,
-                flicker_amount = 0.2
-            })
-        end
-    else
-        -- Day mode: no lights needed
-        self.player.light = nil
-    end
+    self:setupLighting()
 
     local level = mapPath:match("level(%d+)")
     if not level then level = "1" end
@@ -215,28 +154,7 @@ function play:showSaveNotification()
     self.save_notification.timer = self.save_notification.duration
 end
 
-function play:switchMap(new_map_path, spawn_x, spawn_y)
-    if self.world then self.world:destroy() end
-
-    self.current_map_path = new_map_path
-    self.world = world:new(new_map_path)
-
-    self.player.x = spawn_x
-    self.player.y = spawn_y
-
-    self.player.collider = nil
-
-    self.world:addEntity(self.player)
-
-    -- CRITICAL: Update player game mode when switching maps
-    self.player.game_mode = self.world.game_mode
-
-    -- Update minimap for new map
-    if self.minimap then
-        self.minimap:setMap(self.world)
-    end
-
-    -- Update lighting for new map
+function play:setupLighting()
     lighting:clearLights()
     local ambient = self.world.map.properties.ambient or "day"
     lighting:setAmbient(ambient)
@@ -299,6 +217,31 @@ function play:switchMap(new_map_path, spawn_x, spawn_y)
         -- Day mode: no lights needed
         self.player.light = nil
     end
+end
+
+function play:switchMap(new_map_path, spawn_x, spawn_y)
+    if self.world then self.world:destroy() end
+
+    self.current_map_path = new_map_path
+    self.world = world:new(new_map_path)
+
+    self.player.x = spawn_x
+    self.player.y = spawn_y
+
+    self.player.collider = nil
+
+    self.world:addEntity(self.player)
+
+    -- CRITICAL: Update player game mode when switching maps
+    self.player.game_mode = self.world.game_mode
+
+    -- Update minimap for new map
+    if self.minimap then
+        self.minimap:setMap(self.world)
+    end
+
+    -- Update lighting for new map
+    self:setupLighting()
 
     -- Handle BGM based on map properties
     local map_bgm = self.world.map.properties and self.world.map.properties.bgm
@@ -385,6 +328,9 @@ function play:resize(w, h)
     if self.minimap then
         self.minimap:setMap(self.world)
     end
+
+    -- Recreate lighting canvas after resize
+    lighting:resize(w, h)
 end
 
 -- Input handlers delegate to input module

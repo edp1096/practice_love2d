@@ -1,9 +1,7 @@
 -- engine/lighting/init.lua
 -- Lighting system manager (ambient, point lights, spotlights)
 
-local shaders = require "engine.lighting.shaders"
 local Light = require "engine.lighting.light"
-local coords = require "engine.coords"
 
 local lighting = {}
 
@@ -24,13 +22,32 @@ lighting.AMBIENT_PRESETS = {
 
 -- Initialize lighting system
 function lighting:init()
-    shaders.init()
-
     -- Create canvas for lighting
     local width, height = love.graphics.getDimensions()
     self.canvas = love.graphics.newCanvas(width, height)
 
-    dprint("Lighting system initialized")
+    -- Create circular gradient image for lights
+    local size = 256
+    local imageData = love.image.newImageData(size, size)
+    local center = size / 2
+
+    for y = 0, size - 1 do
+        for x = 0, size - 1 do
+            local dx = x - center + 0.5
+            local dy = y - center + 0.5
+            local dist = math.sqrt(dx * dx + dy * dy)
+            local normalized = dist / center
+
+            if normalized > 1.0 then
+                imageData:setPixel(x, y, 0, 0, 0, 0)  -- Transparent
+            else
+                local alpha = (1.0 - normalized) ^ 2  -- Quadratic falloff
+                imageData:setPixel(x, y, 1, 1, 1, alpha)
+            end
+        end
+    end
+
+    self.light_image = love.graphics.newImage(imageData)
 end
 
 -- Set ambient light color
@@ -131,55 +148,35 @@ end
 -- Draw a single light
 function lighting:drawLight(light, camera)
     local world_x, world_y = light.x, light.y
-
-    -- Get camera scale (default 1.0 if no camera)
-    local scale = 1.0
-    if camera and camera.scale then
-        scale = camera.scale
-    end
-
-    -- Convert to camera coordinates for shader using coords module
-    local screen_x, screen_y = coords:worldToCamera(world_x, world_y, camera)
-
-    -- Convert radius to camera space
-    local screen_radius = light.radius * scale
-
     local intensity = light:getCurrentIntensity()
 
     if light.type == "point" then
-        shaders.light:send("light_position", {screen_x, screen_y})
-        shaders.light:send("light_radius", screen_radius)
-        shaders.light:send("light_color", light.color)
-        shaders.light:send("light_intensity", intensity)
-
-        love.graphics.setShader(shaders.light)
-        love.graphics.rectangle("fill",
-            world_x - light.radius,
-            world_y - light.radius,
-            light.radius * 2,
-            light.radius * 2
+        -- Draw circular gradient image with color tint
+        love.graphics.setColor(
+            light.color[1] * intensity,
+            light.color[2] * intensity,
+            light.color[3] * intensity,
+            1
         )
-        love.graphics.setShader()
+
+        -- Draw in world space (camera already applied)
+        -- radius is in world units, no need to scale
+        love.graphics.draw(
+            self.light_image,
+            world_x,
+            world_y,
+            0,
+            light.radius * 2 / self.light_image:getWidth(),
+            light.radius * 2 / self.light_image:getHeight(),
+            self.light_image:getWidth() / 2,
+            self.light_image:getHeight() / 2
+        )
+
+        love.graphics.setColor(1, 1, 1, 1)
 
     elseif light.type == "spotlight" then
-        local dir_x = math.cos(light.angle)
-        local dir_y = math.sin(light.angle)
-
-        shaders.spotlight:send("light_position", {screen_x, screen_y})
-        shaders.spotlight:send("light_direction", {dir_x, dir_y})
-        shaders.spotlight:send("light_radius", screen_radius)
-        shaders.spotlight:send("cone_angle", light.cone_angle)
-        shaders.spotlight:send("light_color", light.color)
-        shaders.spotlight:send("light_intensity", intensity)
-
-        love.graphics.setShader(shaders.spotlight)
-        love.graphics.rectangle("fill",
-            world_x - light.radius,
-            world_y - light.radius,
-            light.radius * 2,
-            light.radius * 2
-        )
-        love.graphics.setShader()
+        -- TODO: Implement spotlight using image or shader
+        print("WARNING: Spotlight not implemented yet")
     end
 end
 
@@ -199,7 +196,6 @@ function lighting:resize(width, height)
         self.canvas:release()
     end
     self.canvas = love.graphics.newCanvas(width, height)
-    dprint("Lighting canvas resized: " .. width .. "x" .. height)
 end
 
 -- Initialize on require

@@ -61,10 +61,9 @@ engine/
 │   ├── particles/        - Particle effects (blood, sparks, etc.)
 │   └── screen/           - Screen effects (flash, vignette, overlay)
 │
-├── lighting/             - Lighting system
-│   ├── init.lua          - Lighting manager
-│   ├── light.lua         - Individual light object
-│   └── shaders.lua       - GLSL lighting shaders
+├── lighting/             - Lighting system (image-based)
+│   ├── init.lua          - Lighting manager (ambient, point lights)
+│   └── light.lua         - Individual light object
 │
 ├── hud/                  - In-game HUD system
 │   ├── status.lua        - Health bars, cooldowns, status indicators

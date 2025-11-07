@@ -61,10 +61,9 @@ engine/
 │   ├── particles/        - 파티클 효과 (피, 불꽃 등)
 │   └── screen/           - 스크린 효과 (플래시, 비네트, 오버레이)
 │
-├── lighting/             - 라이팅 시스템
-│   ├── init.lua          - 라이팅 매니저
-│   ├── light.lua         - 개별 광원 객체
-│   └── shaders.lua       - GLSL 라이팅 셰이더
+├── lighting/             - 라이팅 시스템 (이미지 기반)
+│   ├── init.lua          - 라이팅 매니저 (주변광, 포인트 라이트)
+│   └── light.lua         - 개별 광원 객체
 │
 ├── hud/                  - 인게임 HUD 시스템
 │   ├── status.lua        - 체력바, 쿨다운, 상태 표시

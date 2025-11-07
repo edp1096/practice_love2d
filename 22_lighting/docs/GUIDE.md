@@ -585,7 +585,9 @@ effects.screen:addEffect({
 ## Lighting System
 
 ### `engine/lighting/`
-Dynamic lighting with ambient and light sources.
+Dynamic lighting with ambient and light sources using image-based rendering.
+
+**Implementation:** Uses programmatically generated circular gradient images for point lights, providing cross-platform compatibility without shader issues.
 
 ### Ambient Light
 
@@ -595,10 +597,10 @@ local lighting = require "engine.lighting"
 -- Presets
 lighting:setAmbient("day")        -- Bright (0.95, 0.95, 1.0)
 lighting:setAmbient("dusk")       -- Dim (0.7, 0.6, 0.8)
-lighting:setAmbient("night")      -- Dark (0.15, 0.15, 0.25)
+lighting:setAmbient("night")      -- Dark (0.05, 0.05, 0.15)
 lighting:setAmbient("cave")       -- Very dark (0.05, 0.05, 0.1)
-lighting:setAmbient("indoor")     -- Indoor (0.5, 0.5, 0.6)
-lighting:setAmbient("underground")-- Underground (0.3, 0.25, 0.35)
+lighting:setAmbient("indoor")     -- Indoor (0.5, 0.5, 0.55)
+lighting:setAmbient("underground")-- Underground (0.1, 0.1, 0.12)
 
 -- Custom
 lighting:setAmbient(0.2, 0.3, 0.4)
@@ -615,7 +617,8 @@ local torch = lighting:addLight({
     color = {1, 0.8, 0.5},       -- Warm orange
     intensity = 1.0,
     flicker = true,              -- optional
-    flicker_speed = 5.0          -- optional
+    flicker_speed = 5.0,         -- optional
+    flicker_amount = 0.3         -- optional (0.0-1.0)
 })
 
 -- Player light (follow)
@@ -637,27 +640,14 @@ end
 ### Spotlights
 
 ```lua
--- Headlight
-local headlight = lighting:addLight({
-    type = "spotlight",
-    x = bike.x, y = bike.y,
-    angle = bike.rotation,
-    cone_angle = math.pi / 6,    -- 30 degrees
-    radius = 300,
-    color = {1, 1, 0.9},         -- Cool white
-    intensity = 1.5
-})
-
--- Update
-headlight:setPosition(bike.x, bike.y)
-headlight:setAngle(bike.rotation)
+-- Spotlight (not yet implemented)
+-- TODO: Implement spotlight using image or shader
 ```
 
 ### Light Control
 
 ```lua
 light:setPosition(x, y)
-light:setAngle(angle)              -- Spotlight only
 light:setColor(r, g, b)
 light:setIntensity(1.5)
 light:setEnabled(false)            -- Turn off
@@ -755,23 +745,35 @@ lighting:removeLight(entity.light)
 ### Map-Based Lighting
 
 ```lua
--- In scene:enter()
-local ambient = map.properties.ambient or "day"
-lighting:setAmbient(ambient)
-lighting:clearLights()
+-- Set ambient via map property (in Tiled)
+-- Map Properties:
+--   ambient = "night"  (or "day", "dusk", "cave", "indoor", "underground")
 
--- Load lights from map layer
-for _, obj in ipairs(map.layers["Lights"].objects) do
-    if obj.type == "torch" then
-        lighting:addLight({
+-- In scene:enter() or scene:switchMap()
+function play:setupLighting()
+    lighting:clearLights()
+    local ambient = self.world.map.properties.ambient or "day"
+    lighting:setAmbient(ambient)
+
+    -- Only add lights in dark environments
+    if ambient ~= "day" then
+        -- Add player light
+        self.player.light = lighting:addLight({
             type = "point",
-            x = obj.x, y = obj.y,
-            radius = obj.properties.radius or 150,
-            color = {1, 0.8, 0.5},
-            flicker = true
+            x = self.player.x,
+            y = self.player.y,
+            radius = 350,
+            color = {1, 0.9, 0.7},
+            intensity = 1.0
         })
+
+        -- Add lights to enemies, NPCs, save points, etc.
+        -- (See game/scenes/play/init.lua:setupLighting for full implementation)
     end
 end
+
+-- Call in scene:enter() and scene:switchMap()
+self:setupLighting()
 ```
 
 ### Important Notes
@@ -782,6 +784,8 @@ end
 4. Performance: ~10-20 lights, ~2-3 screen effects at once
 5. Infinite screen effects (`duration = -1`) must be cleared manually
 6. Light culling recommended for many lights (check distance from camera)
+7. **Lighting system** uses image-based rendering (no shaders) for cross-platform compatibility
+8. Light images are generated at init time (256x256 with quadratic falloff)
 
 ---
 
@@ -1663,4 +1667,4 @@ print("Took:", love.timer.getTime() - start)
 
 **Framework:** LÖVE 11.5 + Lua 5.1
 **Architecture:** Engine/Game Separation
-**Last Updated:** 2025-11-06
+**Last Updated:** 2025-11-07

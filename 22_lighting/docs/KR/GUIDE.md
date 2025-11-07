@@ -492,7 +492,9 @@ effects.screen:draw()
 ## 라이팅 시스템
 
 ### `engine/lighting/`
-주변광 및 광원을 가진 동적 조명 시스템.
+이미지 기반 렌더링을 사용하는 동적 조명 시스템.
+
+**구현 방식:** 포인트 라이트에 프로그래밍 방식으로 생성된 원형 그라디언트 이미지를 사용하여 크로스 플랫폼 호환성 제공 (셰이더 이슈 없음).
 
 ### 주변광
 
@@ -500,10 +502,12 @@ effects.screen:draw()
 local lighting = require "engine.lighting"
 
 -- 프리셋
-lighting:setAmbient("day")        -- 밝음
-lighting:setAmbient("dusk")       -- 황혼
-lighting:setAmbient("night")      -- 어두움
-lighting:setAmbient("cave")       -- 매우 어두움
+lighting:setAmbient("day")        -- 밝음 (0.95, 0.95, 1.0)
+lighting:setAmbient("dusk")       -- 황혼 (0.7, 0.6, 0.8)
+lighting:setAmbient("night")      -- 어두움 (0.05, 0.05, 0.15)
+lighting:setAmbient("cave")       -- 매우 어두움 (0.05, 0.05, 0.1)
+lighting:setAmbient("indoor")     -- 실내 (0.5, 0.5, 0.55)
+lighting:setAmbient("underground")-- 지하 (0.1, 0.1, 0.12)
 
 -- 커스텀
 lighting:setAmbient(0.2, 0.3, 0.4)
@@ -517,12 +521,14 @@ local torch = lighting:addLight({
     type = "point",
     x = 100, y = 100,
     radius = 150,
-    color = {1, 0.8, 0.5},
+    color = {1, 0.8, 0.5},       -- 따뜻한 오렌지
     intensity = 1.0,
-    flicker = true
+    flicker = true,              -- 선택사항
+    flicker_speed = 5.0,         -- 선택사항
+    flicker_amount = 0.3         -- 선택사항 (0.0-1.0)
 })
 
--- 플레이어 광원
+-- 플레이어 광원 (따라다님)
 function player:new()
     self.light = lighting:addLight({
         type = "point",
@@ -541,40 +547,28 @@ end
 ### 스포트라이트
 
 ```lua
--- 헤드라이트
-local headlight = lighting:addLight({
-    type = "spotlight",
-    x = bike.x, y = bike.y,
-    angle = bike.rotation,
-    cone_angle = math.pi / 6,
-    radius = 300,
-    color = {1, 1, 0.9},
-    intensity = 1.5
-})
-
-headlight:setPosition(bike.x, bike.y)
-headlight:setAngle(bike.rotation)
+-- 스포트라이트 (미구현)
+-- TODO: 이미지 또는 셰이더를 사용하여 스포트라이트 구현
 ```
 
 ### 광원 제어
 
 ```lua
 light:setPosition(x, y)
-light:setAngle(angle)
 light:setColor(r, g, b)
 light:setIntensity(1.5)
-light:setEnabled(false)
+light:setEnabled(false)            -- 끄기
 
 lighting:removeLight(light)
 lighting:clearLights()
 ```
 
-### 시스템
+### 시스템 업데이트 및 그리기
 
 ```lua
-lighting:update(dt)
-lighting:draw(camera)              -- 반드시 camera 전달!
-lighting:setEnabled(false)
+lighting:update(dt)                -- 업데이트 (깜빡임 등)
+lighting:draw(camera)              -- 그리기 (반드시 camera 전달!)
+lighting:setEnabled(false)         -- 전체 시스템 비활성화
 ```
 
 ---
@@ -658,33 +652,47 @@ lighting:removeLight(entity.light)
 ### 맵 기반 조명
 
 ```lua
--- scene:enter()에서
-local ambient = map.properties.ambient or "day"
-lighting:setAmbient(ambient)
-lighting:clearLights()
+-- Tiled에서 맵 속성 설정
+-- Map Properties:
+--   ambient = "night"  (또는 "day", "dusk", "cave", "indoor", "underground")
 
--- 맵 레이어에서 광원 로드
-for _, obj in ipairs(map.layers["Lights"].objects) do
-    if obj.type == "torch" then
-        lighting:addLight({
+-- scene:enter() 또는 scene:switchMap()에서
+function play:setupLighting()
+    lighting:clearLights()
+    local ambient = self.world.map.properties.ambient or "day"
+    lighting:setAmbient(ambient)
+
+    -- 어두운 환경에서만 광원 추가
+    if ambient ~= "day" then
+        -- 플레이어 광원 추가
+        self.player.light = lighting:addLight({
             type = "point",
-            x = obj.x, y = obj.y,
-            radius = obj.properties.radius or 150,
-            color = {1, 0.8, 0.5},
-            flicker = true
+            x = self.player.x,
+            y = self.player.y,
+            radius = 350,
+            color = {1, 0.9, 0.7},
+            intensity = 1.0
         })
+
+        -- 적, NPC, 세이브 포인트 등에 광원 추가
+        -- (전체 구현은 game/scenes/play/init.lua:setupLighting 참조)
     end
 end
+
+-- scene:enter()와 scene:switchMap()에서 호출
+self:setupLighting()
 ```
 
 ### 중요 사항
 
 1. **화면 효과**는 카메라 후에 그림 (스크린 좌표)
-2. **조명**은 camera 파라미터 필수
+2. **조명**은 camera 파라미터 필수: `lighting:draw(camera)`
 3. **파티클**은 카메라 안에서 그림 (월드 좌표)
 4. 성능: 광원 ~10-20개, 화면 효과 ~2-3개 동시
-5. 무한 화면 효과는 수동 제거 필요
-6. 많은 광원 사용 시 라이트 컬링 권장
+5. 무한 화면 효과 (`duration = -1`)는 수동 제거 필요
+6. 많은 광원 사용 시 라이트 컬링 권장 (카메라 거리 체크)
+7. **라이팅 시스템**은 크로스 플랫폼 호환성을 위해 이미지 기반 렌더링 사용 (셰이더 없음)
+8. 광원 이미지는 초기화 시에 생성됨 (256x256, 이차 감쇠)
 
 ---
 
@@ -1128,4 +1136,4 @@ end
 
 **프레임워크:** LÖVE 11.5 + Lua 5.1
 **아키텍처:** 엔진/게임 분리
-**최종 업데이트:** 2025-11-06
+**최종 업데이트:** 2025-11-07

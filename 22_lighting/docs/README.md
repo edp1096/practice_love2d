@@ -194,4 +194,4 @@ zip -9 -r game.love .
 
 **Framework:** LÖVE 11.5 + Lua 5.1
 **Architecture:** Engine/Game Separation
-**Last Updated:** 2025-11-06
+**Last Updated:** 2025-11-07
