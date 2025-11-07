@@ -9,6 +9,7 @@
 ### [Part 1: 엔진 시스템](#part-1-엔진-시스템)
 - [씬 관리](#씬-관리)
 - [애플리케이션 생명주기](#애플리케이션-생명주기)
+- [좌표계 시스템](#좌표계-시스템)
 - [카메라 시스템](#카메라-시스템)
 - [사운드 시스템](#사운드-시스템)
 - [입력 시스템](#입력-시스템)
@@ -109,6 +110,96 @@ lifecycle:initialize(menu)
 - 여러 엔진 시스템 조정 (input, screen, fonts, sound)
 - LÖVE 콜백과 비즈니스 로직 간의 깔끔한 분리 제공
 - 시스템 초기화 에러 처리 중앙화
+
+---
+
+## 좌표계 시스템
+
+### `engine/coords.lua`
+모든 엔진 시스템을 위한 통합 좌표계 관리. 다양한 좌표 공간 간 변환을 처리합니다.
+
+**좌표계:**
+
+1. **WORLD** - 게임 월드 좌표
+   - 원점: 맵 원점 (0,0)
+   - 단위: 게임 월드의 픽셀
+   - 사용처: 엔티티, 콜라이더, 맵 타일
+
+2. **CAMERA** - 카메라 변환 좌표
+   - 원점: 캔버스 중앙
+   - 변환: `camera:attach()`로 적용됨
+   - 사용처: 캔버스 내 렌더링
+
+3. **VIRTUAL** - 가상 화면 좌표
+   - 원점: 좌상단 (0,0)
+   - 해상도: 고정 (기본 960x540)
+   - 사용처: UI, HUD, 메뉴
+
+4. **PHYSICAL** - 물리 화면 좌표
+   - 원점: 좌상단 (0,0)
+   - 해상도: 실제 기기 화면
+   - 사용처: 윈도우, 원시 입력 이벤트
+
+5. **CANVAS** - 캔버스 픽셀 좌표
+   - 원점: 캔버스 좌상단 (0,0)
+   - 사용처: 셰이더, 저수준 렌더링
+
+**주요 함수:**
+```lua
+-- 변환 함수
+coords:worldToCamera(wx, wy, camera)
+coords:cameraToWorld(cx, cy, camera)
+coords:virtualToPhysical(vx, vy, screen)
+coords:physicalToVirtual(px, py, screen)
+coords:worldToVirtual(wx, wy, camera, screen)
+coords:virtualToWorld(vx, vy, camera, screen)
+
+-- 유틸리티 함수
+coords:debugPoint(x, y, camera, screen, label)
+coords:isVisibleInCamera(wx, wy, camera, margin)
+coords:isVisibleInVirtual(vx, vy, screen)
+coords:distanceWorld(x1, y1, x2, y2)
+coords:distanceCamera(x1, y1, x2, y2, camera)
+```
+
+**일반적인 사용 사례:**
+
+1. **마우스 클릭 → 월드 위치:**
+```lua
+local mx, my = love.mouse.getPosition()  -- Physical
+local vx, vy = coords:physicalToVirtual(mx, my, screen)
+local wx, wy = coords:virtualToWorld(vx, vy, cam, screen)
+-- 이제 (wx, wy)가 월드 위치
+```
+
+2. **월드 오브젝트에 UI 오버레이:**
+```lua
+-- 적 위에 체력바 표시
+local cx, cy = coords:worldToCamera(enemy.x, enemy.y, cam)
+local vx, vy = coords:physicalToVirtual(cx, cy, screen)
+-- 가상 좌표 (vx, vy)에 그리기
+```
+
+3. **좌표 디버깅:**
+```lua
+coords:debugPoint(player.x, player.y, cam, screen, "Player")
+-- 모든 좌표 표현 출력
+```
+
+**중요 사항:**
+- 각 컨텍스트에 올바른 좌표계 사용
+- 게임 로직 및 물리: 월드 좌표
+- UI 렌더링: 가상 좌표
+- 원시 입력: 물리 좌표
+- 월드 렌더링: 카메라 좌표
+- 셰이더: 캔버스 좌표
+
+**중요 - 사용 규칙:**
+- ✅ **항상** `coords:worldToCamera()` 및 `coords:cameraToWorld()` 사용
+- ✅ **항상** `coords:physicalToVirtual()` 및 `coords:virtualToPhysical()` 사용
+- ❌ **절대** `camera:cameraCoords()` 또는 `camera:worldCoords()` 직접 사용 금지
+- ❌ **절대** `screen:ToVirtualCoords()` 또는 `screen:ToScreenCoords()` 직접 사용 금지
+- coords 모듈은 통합 인터페이스를 제공하며 자동으로 nil 체크를 처리합니다
 
 ---
 

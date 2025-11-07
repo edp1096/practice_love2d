@@ -1,6 +1,8 @@
 -- engine/debug.lua
 -- Unified debug system: gameplay, rendering, and advanced features
 
+local coords = require "engine.coords"
+
 local debug = {}
 
 -- Lazy-load effects system (to avoid circular dependency)
@@ -114,7 +116,7 @@ function debug:handleInput(key, context)
     elseif key == "f5" and context.camera then
         -- Test effects at mouse position
         local mouse_x, mouse_y = love.mouse.getPosition()
-        local world_x, world_y = context.camera:worldCoords(mouse_x, mouse_y)
+        local world_x, world_y = coords:cameraToWorld(mouse_x, mouse_y, context.camera)
         get_effects():test(world_x, world_y)
 
         -- === Hand Marking Mode ===
@@ -122,7 +124,7 @@ function debug:handleInput(key, context)
         self:ToggleHandMarking(context.player)
     elseif key == "p" and self.hand_marking_active and context.player and context.camera then
         local mouse_x, mouse_y = love.mouse.getPosition()
-        local world_x, world_y = context.camera:worldCoords(mouse_x, mouse_y)
+        local world_x, world_y = coords:cameraToWorld(mouse_x, mouse_y, context.camera)
         self:MarkHandPosition(context.player, world_x, world_y)
     elseif key == "pageup" and self.hand_marking_active and context.player then
         self:PreviousFrame(context.player)

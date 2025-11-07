@@ -2,6 +2,7 @@
 -- Mouse input source for aiming
 
 local base_input = require "engine.input.sources.base_input"
+local coords = require "engine.coords"
 
 local mouse_input = {}
 setmetatable(mouse_input, { __index = base_input })
@@ -31,13 +32,8 @@ function mouse_input:getAimDirection(player_x, player_y, cam)
     -- Get mouse position in screen coordinates
     local screen_mouse_x, screen_mouse_y = love.mouse.getPosition()
 
-    -- Convert player world position to screen coordinates
-    local screen_player_x, screen_player_y
-    if cam then
-        screen_player_x, screen_player_y = cam:cameraCoords(player_x, player_y)
-    else
-        screen_player_x, screen_player_y = player_x, player_y
-    end
+    -- Convert player world position to screen coordinates using coords module
+    local screen_player_x, screen_player_y = coords:worldToCamera(player_x, player_y, cam)
 
     -- Calculate square aim area using actual screen height
     local screen = require "engine.display"
@@ -50,13 +46,8 @@ function mouse_input:getAimDirection(player_x, player_y, cam)
 
     -- Only update aim if mouse is within the square area
     if math.abs(dx) <= half_area and math.abs(dy) <= half_area then
-        -- Calculate angle in world coordinates
-        local world_mouse_x, world_mouse_y
-        if cam then
-            world_mouse_x, world_mouse_y = cam:worldCoords(screen_mouse_x, screen_mouse_y)
-        else
-            world_mouse_x, world_mouse_y = screen_mouse_x, screen_mouse_y
-        end
+        -- Calculate angle in world coordinates using coords module
+        local world_mouse_x, world_mouse_y = coords:cameraToWorld(screen_mouse_x, screen_mouse_y, cam)
 
         local mouse_angle = math.atan2(world_mouse_y - player_y, world_mouse_x - player_x)
         return mouse_angle, true

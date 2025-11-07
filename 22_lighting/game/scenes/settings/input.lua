@@ -7,6 +7,7 @@ local scene_control = require "engine.scene_control"
 local input = require "engine.input"
 local sound = require "engine.sound"
 local options_module = require "game.scenes.settings.options"
+local coords = require "engine.coords"
 
 function input_handler:keypressed(state, key)
     if key == "escape" then
@@ -92,9 +93,9 @@ function input_handler:touchpressed(state, id, x, y, dx, dy, pressure)
 end
 
 function input_handler:touchreleased(state, id, x, y, dx, dy, pressure)
-    -- Convert touch to virtual coordinates for hit detection
+    -- Convert touch to virtual coordinates for hit detection using coords module
     local screen = require "engine.display"
-    local vx, vy = screen:ToVirtualCoords(x, y)
+    local vx, vy = coords:physicalToVirtual(x, y, screen)
 
     -- Treat touch release like left mouse click
     self:mousereleased(state, vx, vy, 1)

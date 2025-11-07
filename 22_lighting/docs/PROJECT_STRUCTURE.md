@@ -28,6 +28,7 @@ engine/
 ├── lifecycle.lua         - Application lifecycle (init, update, draw, resize, quit)
 ├── scene_control.lua     - Scene stack management (switch, push, pop)
 ├── camera.lua            - Camera effects (shake, slow-motion)
+├── coords.lua            - **Unified coordinate system** (World, Camera, Virtual, Physical)
 ├── game_mode.lua         - Game mode management (topdown/platformer)
 ├── sound.lua             - Audio system (BGM, SFX, volume control)
 ├── save.lua              - Save/Load system (slot-based)

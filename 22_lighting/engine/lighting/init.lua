@@ -3,6 +3,7 @@
 
 local shaders = require "engine.lighting.shaders"
 local Light = require "engine.lighting.light"
+local coords = require "engine.coords"
 
 local lighting = {}
 
@@ -137,13 +138,10 @@ function lighting:drawLight(light, camera)
         scale = camera.scale
     end
 
-    -- Convert to screen coordinates for shader
-    local screen_x, screen_y = world_x, world_y
-    if camera then
-        screen_x, screen_y = camera:cameraCoords(world_x, world_y)
-    end
+    -- Convert to camera coordinates for shader using coords module
+    local screen_x, screen_y = coords:worldToCamera(world_x, world_y, camera)
 
-    -- Convert radius to screen space
+    -- Convert radius to camera space
     local screen_radius = light.radius * scale
 
     local intensity = light:getCurrentIntensity()

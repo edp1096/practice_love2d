@@ -60,6 +60,7 @@ local input_dispatcher = require "engine.input.dispatcher"
 local lifecycle = require "engine.lifecycle"
 local sound = require "engine.sound"
 local fonts = require "engine.utils.fonts"
+local coords = require "engine.coords"
 local menu = require "game.scenes.menu"
 
 local virtual_gamepad
@@ -87,6 +88,10 @@ function love.load()
     lifecycle.sound = sound
     lifecycle.GameConfig = GameConfig
     lifecycle.is_mobile = is_mobile
+
+    -- Initialize coordinate system (must be after screen initialization)
+    -- Note: camera is scene-specific, so coords will use it dynamically
+    coords:init(nil, screen)
 
     -- Initialize application
     lifecycle:initialize(menu)

@@ -270,6 +270,7 @@ return mymodule
 
 ### Display & Rendering
 - `engine/display/` - Virtual screen system (scaling, letterboxing, coordinate transform)
+- `engine/coords.lua` - **Unified coordinate system** (World, Camera, Virtual, Physical, Canvas)
 - `engine/lighting/` - Dynamic lighting system (point lights, spotlights, ambient, GLSL shaders)
 - `engine/effects/` - Visual effects (particles, screen effects like flash/vignette)
 
@@ -318,6 +319,25 @@ return mymodule
 - File paths use forward slashes: `"assets/maps/level1/area1.lua"`
 
 ### Coordinate Systems
+**IMPORTANT: Always use `engine/coords.lua` for coordinate transformations**
+
+```lua
+local coords = require "engine.coords"
+
+-- World ↔ Camera (for rendering entities)
+local screen_x, screen_y = coords:worldToCamera(world_x, world_y, camera)
+local world_x, world_y = coords:cameraToWorld(screen_x, screen_y, camera)
+
+-- Physical ↔ Virtual (for UI, touch input)
+local vx, vy = coords:physicalToVirtual(touch_x, touch_y, screen)
+local px, py = coords:virtualToPhysical(vx, vy, screen)
+```
+
+**Never use these directly:**
+- ❌ `camera:cameraCoords()` / `camera:worldCoords()`
+- ❌ `screen:ToVirtualCoords()` / `screen:ToScreenCoords()`
+
+**Coordinate Origins:**
 - Tiled objects: Top-left origin
 - Physics colliders: Center origin
 - Sprites: Usually center origin
@@ -369,6 +389,7 @@ return mymodule
 - Lifecycle → `engine/lifecycle.lua`
 - Scene → `engine/scene_control.lua`
 - Display → `engine/display/`
+- **Coordinates → `engine/coords.lua`** (unified coordinate system)
 - Input → `engine/input/`
 - Physics → `engine/world/`
 - Audio → `engine/sound.lua`

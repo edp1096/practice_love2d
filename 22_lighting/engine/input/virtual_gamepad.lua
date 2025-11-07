@@ -2,6 +2,8 @@
 -- Android virtual gamepad for touch controls with D-pad, aim stick, and buttons
 -- MODIFIED: Added aim stick for better aiming control
 
+local coords = require "engine.coords"
+
 local virtual_gamepad = {}
 
 -- Configuration
@@ -180,8 +182,8 @@ function virtual_gamepad:touchpressed(id, x, y)
     if not self.enabled then return false end
     if not self.visible then return false end
 
-    -- Convert physical touch coordinates to virtual coordinates
-    local vx, vy = self.screen:ToVirtualCoords(x, y)
+    -- Convert physical touch coordinates to virtual coordinates using coords module
+    local vx, vy = coords:physicalToVirtual(x, y, self.screen)
 
     self.touches[id] = { x = vx, y = vy, start_x = vx, start_y = vy }
 
@@ -295,8 +297,8 @@ function virtual_gamepad:touchmoved(id, x, y)
     local touch = self.touches[id]
     if not touch then return false end
 
-    -- Convert physical touch coordinates to virtual coordinates
-    local vx, vy = self.screen:ToVirtualCoords(x, y)
+    -- Convert physical touch coordinates to virtual coordinates using coords module
+    local vx, vy = coords:physicalToVirtual(x, y, self.screen)
 
     touch.x = vx
     touch.y = vy
@@ -526,13 +528,8 @@ function virtual_gamepad:getAimDirection(player_x, player_y, cam)
     local screen_touch_x = self.aim_touch.x
     local screen_touch_y = self.aim_touch.y
 
-    -- Convert player world position to screen coordinates
-    local screen_player_x, screen_player_y
-    if cam then
-        screen_player_x, screen_player_y = cam:cameraCoords(player_x, player_y)
-    else
-        screen_player_x, screen_player_y = player_x, player_y
-    end
+    -- Convert player world position to screen coordinates using coords module
+    local screen_player_x, screen_player_y = coords:worldToCamera(player_x, player_y, cam)
 
     -- Calculate square aim area using actual screen height
     local screen = require "engine.display"
@@ -550,13 +547,8 @@ function virtual_gamepad:getAimDirection(player_x, player_y, cam)
         return nil, false
     end
 
-    -- Calculate angle in world coordinates
-    local world_touch_x, world_touch_y
-    if cam then
-        world_touch_x, world_touch_y = cam:worldCoords(screen_touch_x, screen_touch_y)
-    else
-        world_touch_x, world_touch_y = screen_touch_x, screen_touch_y
-    end
+    -- Calculate angle in world coordinates using coords module
+    local world_touch_x, world_touch_y = coords:cameraToWorld(screen_touch_x, screen_touch_y, cam)
 
     local angle = math.atan2(world_touch_y - player_y, world_touch_x - player_x)
 
@@ -573,7 +565,7 @@ end
 
 -- Helper function to convert virtual to physical coordinates
 function virtual_gamepad:toPhysical(vx, vy)
-    return self.screen:ToScreenCoords(vx, vy)
+    return coords:virtualToPhysical(vx, vy, self.screen)
 end
 
 -- Draw virtual gamepad overlay
@@ -845,8 +837,8 @@ end
 function virtual_gamepad:isInVirtualPadArea(x, y)
     if not self.enabled then return false end
 
-    -- Convert physical coordinates to virtual coordinates
-    local vx, vy = self.screen:ToVirtualCoords(x, y)
+    -- Convert physical coordinates to virtual coordinates using coords module
+    local vx, vy = coords:physicalToVirtual(x, y, self.screen)
 
     -- Check D-pad
     if self:isInDPad(vx, vy) then

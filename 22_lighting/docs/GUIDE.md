@@ -9,6 +9,7 @@ This comprehensive guide covers engine systems, game content creation, developme
 ### [Part 1: Engine Systems](#part-1-engine-systems)
 - [Scene Management](#scene-management)
 - [Application Lifecycle](#application-lifecycle)
+- [Coordinate System](#coordinate-system)
 - [Camera System](#camera-system)
 - [Sound System](#sound-system)
 - [Input System](#input-system)
@@ -109,6 +110,96 @@ lifecycle:initialize(menu)
 - Coordinates multiple engine systems (input, screen, fonts, sound)
 - Provides clean separation between LÖVE callbacks and business logic
 - Centralizes error handling for system initialization
+
+---
+
+## Coordinate System
+
+### `engine/coords.lua`
+Unified coordinate system management for all engine systems. Handles conversions between different coordinate spaces.
+
+**Coordinate Systems:**
+
+1. **WORLD** - Game world coordinates
+   - Origin: Map origin (0,0)
+   - Unit: Pixels in game world
+   - Used by: Entities, colliders, map tiles
+
+2. **CAMERA** - Camera-transformed coordinates
+   - Origin: Canvas center
+   - Transform: Applied by `camera:attach()`
+   - Used by: Rendering within canvas
+
+3. **VIRTUAL** - Virtual screen coordinates
+   - Origin: Top-left (0,0)
+   - Resolution: Fixed (960x540 default)
+   - Used by: UI, HUD, menus
+
+4. **PHYSICAL** - Physical screen coordinates
+   - Origin: Top-left (0,0)
+   - Resolution: Actual device screen
+   - Used by: Window, raw input events
+
+5. **CANVAS** - Canvas pixel coordinates
+   - Origin: Top-left (0,0) of canvas
+   - Used by: Shaders, low-level rendering
+
+**Key Functions:**
+```lua
+-- Conversion functions
+coords:worldToCamera(wx, wy, camera)
+coords:cameraToWorld(cx, cy, camera)
+coords:virtualToPhysical(vx, vy, screen)
+coords:physicalToVirtual(px, py, screen)
+coords:worldToVirtual(wx, wy, camera, screen)
+coords:virtualToWorld(vx, vy, camera, screen)
+
+-- Utility functions
+coords:debugPoint(x, y, camera, screen, label)
+coords:isVisibleInCamera(wx, wy, camera, margin)
+coords:isVisibleInVirtual(vx, vy, screen)
+coords:distanceWorld(x1, y1, x2, y2)
+coords:distanceCamera(x1, y1, x2, y2, camera)
+```
+
+**Common Use Cases:**
+
+1. **Mouse Click to World Position:**
+```lua
+local mx, my = love.mouse.getPosition()  -- Physical
+local vx, vy = coords:physicalToVirtual(mx, my, screen)
+local wx, wy = coords:virtualToWorld(vx, vy, cam, screen)
+-- Now (wx, wy) is world position
+```
+
+2. **UI Overlay on World Object:**
+```lua
+-- Show health bar above enemy
+local cx, cy = coords:worldToCamera(enemy.x, enemy.y, cam)
+local vx, vy = coords:physicalToVirtual(cx, cy, screen)
+-- Draw at (vx, vy) in virtual coords
+```
+
+3. **Debugging Coordinates:**
+```lua
+coords:debugPoint(player.x, player.y, cam, screen, "Player")
+-- Prints all coordinate representations
+```
+
+**Important Notes:**
+- Always use the correct coordinate system for each context
+- World coords for game logic and physics
+- Virtual coords for UI rendering
+- Physical coords for raw input
+- Camera coords for world rendering
+- Canvas coords for shaders
+
+**IMPORTANT - Usage Rules:**
+- ✅ **ALWAYS** use `coords:worldToCamera()` and `coords:cameraToWorld()`
+- ✅ **ALWAYS** use `coords:physicalToVirtual()` and `coords:virtualToPhysical()`
+- ❌ **NEVER** use `camera:cameraCoords()` or `camera:worldCoords()` directly
+- ❌ **NEVER** use `screen:ToVirtualCoords()` or `screen:ToScreenCoords()` directly
+- The coords module provides a unified interface and handles nil checks automatically
 
 ---
 
