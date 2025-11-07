@@ -12,7 +12,7 @@ local ui_scene = require "engine.ui.menu"
 local constants = require "engine.constants"
 
 function menu:enter(previous, ...)
-    self.title = GameConfig.title
+    self.title = "Hello Love2D"
 
     local has_saves = save_sys:hasSaveFiles()
     self.options = has_saves and
@@ -34,8 +34,11 @@ function menu:enter(previous, ...)
         input.virtual_gamepad:hide()
     end
 
-    -- Play menu BGM from beginning
-    sound:playBGM("menu", 1.0, true)
+    -- Play menu BGM (only restart from beginning if not coming from load scene)
+    local load_scene = require "game.scenes.load"
+    if previous ~= load_scene then
+        sound:playBGM("menu", 1.0, true)
+    end
 end
 
 function menu:update(dt)
@@ -74,6 +77,14 @@ end
 function menu:resize(w, h) display:Resize(w, h) end
 
 function menu:keypressed(key)
+    -- Handle debug keys first
+    debug:handleInput(key, {})
+
+    -- If debug mode consumed the key (F1-F6), don't process menu navigation
+    if key:match("^f%d+$") and debug.enabled then
+        return
+    end
+
     local nav_result = ui_scene.handleKeyboardNav(key, self.selected, #self.options)
 
     if nav_result.action == "navigate" then
@@ -82,8 +93,6 @@ function menu:keypressed(key)
         self:executeOption(self.selected)
     elseif nav_result.action == "back" then
         love.event.quit()
-    elseif nav_result.action == "none" then
-        debug:handleInput(key, {})
     end
 end
 

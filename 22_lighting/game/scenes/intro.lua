@@ -10,6 +10,7 @@ local dialogue = require "engine.ui.dialogue"
 local intro_configs = require "game.data.intro_configs"
 local sound = require "engine.sound"
 local fonts = require "engine.utils.fonts"
+local debug = require "engine.debug"
 
 function intro:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot)
 
@@ -65,6 +66,7 @@ function intro:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot)
 
     -- Initialize and show intro messages
     dialogue:initialize()
+    dialogue:setDisplay(display)
     local speaker = self.config.speaker or ""
     dialogue:showMultiple(speaker, self.config.messages)
 
@@ -171,6 +173,14 @@ function intro:draw()
 end
 
 function intro:keypressed(key)
+    -- Handle debug keys first
+    debug:handleInput(key, {})
+
+    -- If debug mode consumed the key (F1-F6), don't process intro keys
+    if key:match("^f%d+$") and debug.enabled then
+        return
+    end
+
     if key == "return" or key == "space" or key == "z" then
         dialogue:onAction()
     end
@@ -197,16 +207,42 @@ function intro:gamepadpressed(joystick, button)
 end
 
 function intro:mousepressed(x, y, button)
-    if button == 1 then
-        dialogue:onAction()
+    if button == 1 and dialogue:isOpen() then
+        if not dialogue:touchPressed(0, x, y) then
+            -- Click outside buttons advances dialogue
+            dialogue:onAction()
+        end
+    end
+end
+
+function intro:mousereleased(x, y, button)
+    if button == 1 and dialogue:isOpen() then
+        dialogue:touchReleased(0, x, y)
     end
 end
 
 function intro:touchpressed(id, x, y, dx, dy, pressure)
-    -- Touch to advance dialogue
+    -- Priority 1: Dialogue buttons (SKIP/NEXT)
+    if dialogue:touchPressed(id, x, y) then
+        return true  -- Button consumed
+    end
+
+    -- Priority 2: Touch anywhere to advance dialogue
     dialogue:onAction()
-    -- Return true to block other touch handlers
-    return true
+    return true  -- Block other touch handlers
+end
+
+function intro:touchreleased(id, x, y, dx, dy, pressure)
+    -- Handle dialogue button releases (SKIP/NEXT)
+    if dialogue:touchReleased(id, x, y) then
+        return true  -- Button clicked
+    end
+    return false
+end
+
+function intro:touchmoved(id, x, y, dx, dy, pressure)
+    -- Update dialogue button hover states
+    dialogue:touchMoved(id, x, y)
 end
 
 function intro:resize(w, h)

@@ -2,9 +2,10 @@
 -- Minimap system for displaying a small overview of the current map
 
 local minimap = {}
+minimap.__index = minimap
 
 function minimap:new()
-    local instance = {
+    local instance = setmetatable({
         enabled = true,
 
         -- Minimap display settings
@@ -30,9 +31,7 @@ function minimap:new()
         map_width = 0,
         map_height = 0,
         scale = 1,
-    }
-
-    setmetatable(instance, { __index = minimap })
+    }, minimap)
     return instance
 end
 

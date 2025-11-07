@@ -3,11 +3,11 @@
 ## 📁 Root Directory
 
 ```
-21_map/
+22_lighting/
 ├── main.lua              - Entry point (LÖVE callbacks, error handler, input routing)
-├── conf.lua              - LÖVE configuration (window, modules, identity)
+├── conf.lua              - LÖVE configuration (window, modules, version)
 ├── locker.lua            - Process locking (desktop only, prevents multiple instances)
-├── config.ini            - Auto-generated settings (desktop)
+├── config.ini            - User settings (window, sound, input, IsDebug)
 │
 ├── engine/               - Reusable game engine (see ENGINE_GUIDE.md)
 ├── game/                 - Game-specific content (see GAME_GUIDE.md)

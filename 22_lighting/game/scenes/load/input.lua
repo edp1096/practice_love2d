@@ -6,6 +6,7 @@ local input_handler = {}
 local scene_control = require "engine.scene_control"
 local save_sys = require "engine.save"
 local input = require "engine.input"
+local debug = require "engine.debug"
 
 -- Select a slot (load game or go back)
 function input_handler.selectSlot(load_scene, slot_index)
@@ -43,6 +44,14 @@ end
 
 -- Keyboard input
 function input_handler.keypressed(load_scene, key)
+    -- Handle debug keys first
+    debug:handleInput(key, {})
+
+    -- If debug mode consumed the key (F1-F6), don't process load keys
+    if key:match("^f%d+$") and debug.enabled then
+        return
+    end
+
     if load_scene.confirm_delete then
         -- Delete confirmation dialog
         if key == "left" or key == "a" then

@@ -178,6 +178,10 @@ function options:changeOption(state, direction)
             display:CalculateScale()
             -- CRITICAL: Call resize chain like window resize does
             if state.resize then state:resize(res.w, res.h) end
+        else
+            -- If in fullscreen, update previous_screen_wh so it applies when returning to windowed
+            display.previous_screen_wh.w = res.w
+            display.previous_screen_wh.h = res.h
         end
         utils:SaveConfig(GameConfig)
 

@@ -46,6 +46,11 @@ end
 
 -- Define global dprint BEFORE loading other modules that might use it
 local debug = require "engine.debug"
+
+-- Initialize debug mode from config
+debug.allowed = GameConfig.is_debug  -- Allow F1-F6 keys if true
+debug.enabled = false  -- Debug UI starts OFF, user must press F1 to enable
+
 _G.dprint = function(...) debug:dprint(...) end
 
 -- Print version info
@@ -63,10 +68,8 @@ local fonts = require "engine.utils.fonts"
 local coords = require "engine.coords"
 local menu = require "game.scenes.menu"
 
-local virtual_gamepad
-if is_mobile then
-    virtual_gamepad = require "engine.input.virtual_gamepad"
-end
+-- Always load virtual_gamepad (needed for PC debug mode testing)
+local virtual_gamepad = require "engine.input.virtual_gamepad"
 
 -- === Application Lifecycle ===
 
@@ -170,9 +173,6 @@ function love.keypressed(key)
         GameConfig.fullscreen = display.is_fullscreen
         pcall(utils.SaveConfig, utils, GameConfig, sound.settings)
         lifecycle:resize(love.graphics.getWidth(), love.graphics.getHeight())
-        return
-    elseif key == "f1" then
-        debug:toggle()
         return
     end
 

@@ -238,7 +238,7 @@ function input_mapper:setJoystick(joystick, settings)
             self.physical_gamepad.joystick = joystick
             self.physical_gamepad.enabled = true
         else
-            self.physical_gamepad = physical_gamepad_input:new(joystick, settings)
+            self.physical_gamepad = physical_gamepad_input:new(joystick, settings, self.input_config)
             self:registerSources()
         end
     else

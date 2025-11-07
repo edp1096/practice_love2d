@@ -8,6 +8,7 @@ local display = require "engine.display"
 local save_sys = require "engine.save"
 local input = require "engine.input"
 local fonts = require "engine.utils.fonts"
+local debug = require "engine.debug"
 
 function saveslot:enter(previous, save_callback, ...)
     self.previous = previous
@@ -159,6 +160,14 @@ end
 function saveslot:resize(w, h) display:Resize(w, h) end
 
 function saveslot:keypressed(key)
+    -- Handle debug keys first
+    debug:handleInput(key, {})
+
+    -- If debug mode is enabled, F1-F3 are debug keys, not slot selection
+    if debug.enabled and key:match("^f[123]$") then
+        return
+    end
+
     if key == "up" or key == "w" then
         self.selected = self.selected - 1
         if self.selected < 1 then self.selected = #self.slots end

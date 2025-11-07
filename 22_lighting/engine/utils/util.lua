@@ -39,11 +39,6 @@ function utils:SaveConfig(GameConfig, sound_settings, input_settings)
         -- Mobile: save using love.filesystem (Lua format)
         local success, err = pcall(function()
             local config_str = "return {\n"
-            config_str = config_str .. "  title = \"" .. GameConfig.title .. "\",\n"
-            config_str = config_str .. "  author = \"" .. GameConfig.author .. "\",\n"
-            config_str = config_str .. "  width = " .. GameConfig.width .. ",\n"
-            config_str = config_str .. "  height = " .. GameConfig.height .. ",\n"
-            config_str = config_str .. "  fullscreen = " .. tostring(GameConfig.fullscreen) .. ",\n"
 
             if sound_settings then
                 config_str = config_str .. "  sound = {\n"
@@ -77,10 +72,22 @@ function utils:SaveConfig(GameConfig, sound_settings, input_settings)
 
     -- Desktop: save to config.ini
     local success, err = pcall(function()
+        -- Read existing IsDebug value to preserve it
+        local existing_is_debug = nil
+        local ini = require "engine.utils.ini"
+        local existing_config = ini:Read("config.ini")
+        if existing_config and existing_config.Game and existing_config.Game.IsDebug ~= nil then
+            existing_is_debug = existing_config.Game.IsDebug
+        end
+
         local file = io.open("config.ini", "w")
         if file then
-            file:write("Title = " .. GameConfig.title .. "\n")
-            file:write("Author = " .. GameConfig.author .. "\n")
+            file:write("[Game]\n")
+            -- Version is hardcoded in conf.lua, not saved to config.ini
+            -- Preserve existing IsDebug value (developer-only setting)
+            if existing_is_debug ~= nil then
+                file:write("IsDebug = " .. tostring(existing_is_debug) .. "\n")
+            end
             file:write("\n")
             file:write("[Window]\n")
             file:write("Width = " .. GameConfig.width .. "\n")

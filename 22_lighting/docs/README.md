@@ -66,9 +66,12 @@ zip -9 -r game.love .
 - **1-5** - Quick select inventory slot
 - **Escape** - Pause
 - **F11** - Toggle Fullscreen
-- **F1** - Toggle Debug Mode
+- **F1** - Toggle Debug Mode (requires IsDebug=true in config.ini)
 - **F2** - Toggle Grid Visualization
 - **F3** - Toggle Virtual Mouse
+- **F4** - Toggle Virtual Gamepad (PC only, for testing)
+- **F5** - Toggle Effects Debug
+- **F6** - Test Effects at Mouse Position
 
 **Gamepad:**
 - **Left Stick / D-Pad** - Move / Aim

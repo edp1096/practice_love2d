@@ -3,11 +3,11 @@
 ## 📁 루트 디렉토리
 
 ```
-21_map/
+22_lighting/
 ├── main.lua              - 진입점 (LÖVE 콜백, 에러 핸들러, 입력 라우팅)
-├── conf.lua              - LÖVE 설정 (윈도우, 모듈, identity)
+├── conf.lua              - LÖVE 설정 (윈도우, 모듈, 버전)
 ├── locker.lua            - 프로세스 잠금 (데스크톱 전용, 다중 인스턴스 방지)
-├── config.ini            - 자동 생성 설정 (데스크톱)
+├── config.ini            - 사용자 설정 (윈도우, 사운드, 입력, IsDebug)
 │
 ├── engine/               - 재사용 가능한 게임 엔진 (ENGINE_GUIDE.md 참조)
 ├── game/                 - 게임 전용 콘텐츠 (GAME_GUIDE.md 참조)

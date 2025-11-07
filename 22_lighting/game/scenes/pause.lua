@@ -8,6 +8,7 @@ local sound = require "engine.sound"
 local input = require "engine.input"
 local ui_scene = require "engine.ui.menu"
 local restart_util = require "engine.utils.restart"
+local debug = require "engine.debug"
 
 function pause:enter(previous, ...)
     self.previous = previous
@@ -79,6 +80,14 @@ function pause:resume()
 end
 
 function pause:keypressed(key)
+    -- Handle debug keys first
+    debug:handleInput(key, {})
+
+    -- If debug mode consumed the key (F1-F6), don't process pause keys
+    if key:match("^f%d+$") and debug.enabled then
+        return
+    end
+
     -- Quick resume with ESC
     if input:wasPressed("pause", "keyboard", key) then
         sound:playSFX("ui", "unpause")

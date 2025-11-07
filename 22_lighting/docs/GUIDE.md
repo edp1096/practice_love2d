@@ -315,6 +315,26 @@ end
 - Coordinates between virtual gamepad, scene input, and mouse fallback
 - Handles all LÖVE input callbacks (keyboard, mouse, touch, gamepad)
 
+**Virtual Gamepad (`engine/input/virtual_gamepad.lua`):**
+Mobile on-screen gamepad with touch controls:
+- **D-pad** (bottom-left): Movement (8-way directional input)
+- **Aim stick** (center-right): Aiming direction
+- **Action buttons** (bottom-right): A, B, X, Y (diamond layout)
+- **Shoulder buttons** (top): L1, L2, R1, R2
+- **Menu button** (top-left): Pause/menu access
+- Auto-enabled on mobile (Android/iOS)
+- Can be tested on PC using F4 debug key
+
+```lua
+-- Show/hide virtual gamepad (handled automatically by scenes)
+virtual_gamepad:show()   -- Show in gameplay
+virtual_gamepad:hide()   -- Hide in menus
+
+-- Get input from virtual gamepad
+local stick_x, stick_y = virtual_gamepad:getStickAxis()
+local aim_angle, is_aiming = virtual_gamepad:getAimDirection(player.x, player.y, cam)
+```
+
 ---
 
 ## World System
@@ -457,21 +477,43 @@ hud:drawParryFeedback()                       -- Draw parry success indicator
 ## Debug System
 
 ### `engine/debug.lua`
-Debug overlay and visualization (F1 toggle).
+Debug overlay and visualization controlled by config.ini.
+
+**Configuration:**
+- `config.ini` → `[Game]` → `IsDebug = true/false`
+- When `IsDebug = true`: F1-F6 keys are enabled
+- When `IsDebug = false`: F1-F6 keys are disabled
+- Debug UI starts **OFF** by default (press F1 to enable)
 
 **Key Features:**
 - Unified info window (FPS, player state, screen info)
 - Hitbox visualization (F1)
 - Grid visualization (F2)
 - Virtual mouse cursor (F3)
+- Virtual gamepad testing (F4, PC only)
+- Effects debug (F5)
+- Test effects (F6)
 - Hand marking mode for animation development
 
-**Toggle:**
+**States:**
 ```lua
-debug.enabled = true/false  -- F1 key toggles this
-debug:toggleLayer("visualizations")  -- F2 toggles grid
-debug:toggleLayer("mouse")  -- F3 toggles virtual mouse
+debug.allowed = true/false   -- From GameConfig.is_debug (allows F1-F6)
+debug.enabled = true/false   -- Debug UI visibility (toggled with F1)
+
+-- F1: Toggle debug UI (requires allowed = true)
+debug:toggle()
+
+-- F2-F6: Layer toggles (require enabled = true)
+debug:toggleLayer("visualizations")    -- F2: Grid
+debug:toggleLayer("mouse")             -- F3: Virtual mouse
+debug:toggleLayer("virtual_gamepad")   -- F4: Virtual gamepad (PC)
+debug:toggleLayer("effects")           -- F5: Effects debug
 ```
+
+**Developer Note:**
+- `IsDebug` is a developer-only setting in config.ini
+- Not overwritten when saving user settings
+- Version is hardcoded in conf.lua, not saved to config.ini
 
 ---
 

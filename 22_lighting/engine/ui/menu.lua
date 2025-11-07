@@ -94,7 +94,7 @@ function scene.drawControlHints(font, layout, width, custom_text)
         hint_text = "D-Pad: Navigate | " .. input:getPrompt("menu_select") .. ": Select | " ..
             input:getPrompt("menu_back") .. ": Back"
     else
-        hint_text = "Arrow/WASD: Navigate | Enter: Select | Mouse: Click"
+        hint_text = "v" .. (GameConfig.version or "0.0.1")
     end
 
     love.graphics.printf(hint_text, 0, layout.hint_y - 10, width, "center")

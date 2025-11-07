@@ -9,6 +9,7 @@ local virtual_gamepad = {}
 -- Configuration
 virtual_gamepad.enabled = false
 virtual_gamepad.visible = false  -- Controls whether gamepad is shown
+virtual_gamepad.debug_override = false  -- If true, visible is controlled by debug mode, not scenes
 virtual_gamepad.alpha = 0.5
 virtual_gamepad.size = 160
 virtual_gamepad.button_size = 80
@@ -17,16 +18,7 @@ virtual_gamepad.button_size = 80
 virtual_gamepad.touches = {}
 virtual_gamepad.active_buttons = {}
 
--- OLD: Direct aim touch state (kept as fallback)
-virtual_gamepad.aim_touch = {
-    active = false,
-    id = nil,
-    x = 0,
-    y = 0,
-    angle = 0
-}
-
--- NEW: Aim stick (smaller size for space)
+-- Aim stick (smaller size for space)
 virtual_gamepad.aim_stick = {
     x = 0,
     y = 0,
@@ -89,17 +81,16 @@ virtual_gamepad.MOUSE_AIM_BLOCK_DURATION = 0.35
 
 function virtual_gamepad:init()
     local os = love.system.getOS()
-    local debug = require "engine.debug"
 
-    -- Enable on mobile OR when debug mode is active on PC
-    self.enabled = (os == "Android" or os == "iOS") or debug.debug_mode
+    -- Enable on mobile platforms
+    self.enabled = (os == "Android" or os == "iOS")
+
+    -- Get screen module for coordinate conversion (always set, even if disabled)
+    self.display = require "engine.display"
 
     if not self.enabled then
         return
     end
-
-    -- Get screen module for coordinate conversion
-    self.display = require "engine.display"
 
     self:calculatePositions()
 end
@@ -108,20 +99,20 @@ function virtual_gamepad:calculatePositions()
     -- Use VIRTUAL resolution (960x540) for consistent sizing across devices
     local vw, vh = self.display:GetVirtualDimensions()
 
-    -- All controls at same bottom level (virtual coordinates)
-    local bottom_y = vh - 80  -- 80 pixels from bottom in virtual space
+    -- Move controls up to avoid covering dodge bar and to keep A button visible
+    local bottom_y = vh - 100  -- Increased from 80 to 100 (moved up 20 pixels)
 
-    -- D-pad on bottom left
+    -- D-pad on bottom left (moved up more)
     self.dpad.x = 100
-    self.dpad.y = bottom_y
+    self.dpad.y = bottom_y - 50  -- Moved up 50 pixels more (was 30)
 
-    -- Aim stick in center-right (between D-pad and buttons)
-    self.aim_stick.x = vw * 0.70 -- 70% from left
+    -- Aim stick in center-right (between D-pad and buttons) - moved left
+    self.aim_stick.x = vw * 0.65 -- 65% from left (was 70%)
     self.aim_stick.y = bottom_y
 
-    -- Face buttons on bottom right (diamond pattern)
-    local button_base_x = vw - 100
-    local button_base_y = bottom_y
+    -- Face buttons on bottom right (diamond pattern) - moved left
+    local button_base_x = vw - 130  -- Moved left (was 100)
+    local button_base_y = bottom_y - 20  -- Moved up 20 pixels to keep A button visible
     local button_spacing = 70
 
     -- Diamond layout: A (bottom), B (right), X (left), Y (top)
@@ -138,12 +129,12 @@ function virtual_gamepad:calculatePositions()
     self.buttons.y.y = button_base_y - button_spacing  -- Top
 
     -- Shoulder buttons (L1/L2 on left, R1/R2 on right)
-    -- Changed to horizontal layout to reduce overlap with Y button
-    -- Positioned above D-pad (left) and Y button (right) with small gap
-    local shoulder_spacing = 60
-    local gap_from_controls = 20  -- Gap between shoulder buttons and controls below
+    -- Changed to horizontal layout to reduce overlap
+    -- Positioned above D-pad (left) and Y button (right) with increased gap
+    local shoulder_spacing = 90  -- Increased from 75 to 90 for more spacing between L1/L2 and R1/R2
+    local gap_from_controls = 30  -- Increased from 20 to 30 for better spacing
 
-    -- Left shoulder buttons (horizontal) - above D-pad
+    -- Left shoulder buttons (horizontal) - above D-pad (keep original position)
     local left_shoulder_y = self.dpad.y - self.dpad.radius - gap_from_controls - (self.button_size / 2)
     self.buttons.l1.x = 60
     self.buttons.l1.y = left_shoulder_y
@@ -151,17 +142,19 @@ function virtual_gamepad:calculatePositions()
     self.buttons.l2.x = 60 + shoulder_spacing
     self.buttons.l2.y = left_shoulder_y
 
-    -- Right shoulder buttons (horizontal) - above Y button
-    local right_shoulder_y = self.buttons.y.y - button_spacing - gap_from_controls - (self.button_size / 2)
-    self.buttons.r2.x = vw - 60
+    -- Right shoulder buttons (horizontal) - above Y button (moved down more)
+    local right_shoulder_y = self.buttons.y.y - button_spacing - gap_from_controls - (self.button_size / 2) + 30  -- Moved down 30 pixels (was 20)
+    self.buttons.r2.x = vw - 60 - 30  -- Moved left 30 pixels to match button movement
     self.buttons.r2.y = right_shoulder_y
 
-    self.buttons.r1.x = vw - 60 - shoulder_spacing
+    self.buttons.r1.x = vw - 60 - shoulder_spacing - 30  -- Moved left 30 pixels to match button movement
     self.buttons.r1.y = right_shoulder_y
 
-    -- Menu button on top center
-    self.menu_button.x = vw / 2
-    self.menu_button.y = 40
+    -- Menu button on top left (left of minimap) - moved down and left
+    -- Minimap is at top-right with padding of 10, size ~180
+    -- Place menu button on left side with some margin
+    self.menu_button.x = vw - 280  -- Moved more left (was 250)
+    self.menu_button.y = 55  -- Moved down (was 40)
 end
 
 function virtual_gamepad:resize(w, h)
@@ -192,7 +185,7 @@ function virtual_gamepad:touchpressed(id, x, y)
         self.touches[id].type = "dpad"
         self:updateDPad(vx, vy)
         -- Deactivate aim when touching D-pad
-        self:deactivateAllAim()
+        self:resetAimStick()
         return true
     end
 
@@ -204,7 +197,7 @@ function virtual_gamepad:touchpressed(id, x, y)
             self.touches[id].button = name
             self:triggerButtonPress(name)
             -- Deactivate aim when pressing buttons
-            self:deactivateAllAim()
+            self:resetAimStick()
             return true
         end
     end
@@ -215,31 +208,21 @@ function virtual_gamepad:touchpressed(id, x, y)
         self.touches[id].type = "menu"
         self:triggerMenuPress()
         -- Deactivate aim when pressing menu
-        self:deactivateAllAim()
+        self:resetAimStick()
         return true
     end
 
-    -- NEW: Check aim stick
+    -- Check aim stick
     if self:isInAimStick(vx, vy) then
         self.touches[id].type = "aim_stick"
         self.aim_stick.active = true
         self.aim_stick.touch_id = id
         self:updateAimStick(vx, vy)
-        -- Deactivate direct aim
-        if self.aim_touch.active then
-            self.aim_touch.active = false
-            self.aim_touch.id = nil
-        end
         return true
     end
 
-    -- Fallback: Direct aim touch (legacy support)
-    self.touches[id].type = "aim"
-    self.aim_touch.active = true
-    self.aim_touch.id = id
-    self.aim_touch.x = vx
-    self.aim_touch.y = vy
-    return true
+    -- No control was touched
+    return false
 end
 
 function virtual_gamepad:touchreleased(id, x, y)
@@ -269,21 +252,12 @@ function virtual_gamepad:touchreleased(id, x, y)
         self.mouse_aim_block_time = self.MOUSE_AIM_BLOCK_DURATION
         return true
     elseif touch.type == "aim_stick" then
-        -- NEW: Release aim stick
         if self.aim_stick.touch_id == id then
             self:resetAimStick()
         end
         self.touches[id] = nil
         self.mouse_aim_block_time = self.MOUSE_AIM_BLOCK_DURATION
         return true
-    elseif touch.type == "aim" then
-        -- Release direct aim touch
-        if self.aim_touch.id == id then
-            self.aim_touch.active = false
-            self.aim_touch.id = nil
-        end
-        self.touches[id] = nil
-        return false
     end
 
     self.touches[id] = nil
@@ -307,13 +281,7 @@ function virtual_gamepad:touchmoved(id, x, y)
         self:updateDPad(vx, vy)
         return true
     elseif touch.type == "aim_stick" then
-        -- NEW: Update aim stick
         self:updateAimStick(vx, vy)
-        return true
-    elseif touch.type == "aim" then
-        -- Update direct aim position
-        self.aim_touch.x = vx
-        self.aim_touch.y = vy
         return true
     end
 
@@ -327,7 +295,7 @@ function virtual_gamepad:isInDPad(x, y)
     return dist <= self.dpad.radius
 end
 
--- NEW: Check if touch is in aim stick area
+-- Check if touch is in aim stick area
 function virtual_gamepad:isInAimStick(x, y)
     local dx = x - self.aim_stick.x
     local dy = y - self.aim_stick.y
@@ -370,7 +338,7 @@ function virtual_gamepad:updateDPad(x, y)
     end
 end
 
--- NEW: Update aim stick based on touch position
+-- Update aim stick based on touch position
 function virtual_gamepad:updateAimStick(x, y)
     local dx = x - self.aim_stick.x
     local dy = y - self.aim_stick.y
@@ -400,7 +368,7 @@ function virtual_gamepad:resetDPad()
     self.dpad_direction.right = false
 end
 
--- NEW: Reset aim stick to center
+-- Reset aim stick to center
 function virtual_gamepad:resetAimStick()
     self.aim_stick.active = false
     self.aim_stick.touch_id = nil
@@ -410,18 +378,6 @@ function virtual_gamepad:resetAimStick()
     self.aim_stick.magnitude = 0
 end
 
--- Helper: Deactivate all aim systems (stick and direct touch)
-function virtual_gamepad:deactivateAllAim()
-    -- Deactivate direct aim touch
-    if self.aim_touch.active then
-        self.aim_touch.active = false
-        self.aim_touch.id = nil
-    end
-    -- Deactivate aim stick
-    if self.aim_stick.active then
-        self:resetAimStick()
-    end
-end
 
 function virtual_gamepad:triggerButtonPress(button_name)
     local button = self.buttons[button_name]
@@ -508,51 +464,18 @@ function virtual_gamepad:getStickAxis()
     return self.stick_x, self.stick_y
 end
 
--- MODIFIED: Get aim direction (prioritizes aim stick over direct aim)
+-- Get aim direction from aim stick
 function virtual_gamepad:getAimDirection(player_x, player_y, cam)
     if not self.enabled then
         return nil, false
     end
 
-    -- NEW: Use aim stick if active
+    -- Use aim stick if active and moved beyond deadzone
     if self.aim_stick.active and self.aim_stick.magnitude > self.aim_stick.deadzone then
         return self.aim_stick.angle, true
     end
 
-    -- Fallback to direct aim touch (legacy support)
-    if not self.aim_touch.active then
-        return nil, false
-    end
-
-    -- Touch position is already in screen coordinates
-    local screen_touch_x = self.aim_touch.x
-    local screen_touch_y = self.aim_touch.y
-
-    -- Convert player world position to screen coordinates using coords module
-    local screen_player_x, screen_player_y = coords:worldToCamera(player_x, player_y, cam)
-
-    -- Calculate square aim area using actual screen height
-    local display = require "engine.display"
-    local aim_area_size = display.screen_wh.h
-    local half_area = aim_area_size / 2
-
-    -- Check distance in screen coordinates
-    local dx = screen_touch_x - screen_player_x
-    local dy = screen_touch_y - screen_player_y
-
-    -- If outside aim area, deactivate and return
-    if math.abs(dx) > half_area or math.abs(dy) > half_area then
-        self.aim_touch.active = false
-        self.aim_touch.id = nil
-        return nil, false
-    end
-
-    -- Calculate angle in world coordinates using coords module
-    local world_touch_x, world_touch_y = coords:cameraToWorld(screen_touch_x, screen_touch_y, cam)
-
-    local angle = math.atan2(world_touch_y - player_y, world_touch_x - player_x)
-
-    return angle, true
+    return nil, false
 end
 
 -- Check if direction is pressed
@@ -579,7 +502,7 @@ function virtual_gamepad:draw()
     -- Draw D-pad
     self:drawDPad()
 
-    -- NEW: Draw aim stick
+    -- Draw aim stick
     self:drawAimStick()
 
     -- Draw action buttons
@@ -587,11 +510,6 @@ function virtual_gamepad:draw()
 
     -- Draw menu button
     self:drawMenuButton()
-
-    -- Draw direct aim indicator (only if not using aim stick)
-    if not self.aim_stick.active then
-        self:drawAimIndicator()
-    end
 end
 
 function virtual_gamepad:drawDPad()
@@ -667,7 +585,7 @@ function virtual_gamepad:drawDPad()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- NEW: Draw aim stick
+-- Draw aim stick
 function virtual_gamepad:drawAimStick()
     local stick = self.aim_stick
     local px, py = self:toPhysical(stick.x, stick.y)
@@ -796,31 +714,6 @@ function virtual_gamepad:drawMenuButton()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function virtual_gamepad:drawAimIndicator()
-    if not self.aim_touch.active then return end
-
-    -- Draw crosshair at touch position (already in virtual coords, convert to physical)
-    local px, py = self:toPhysical(self.aim_touch.x, self.aim_touch.y)
-    local scale = self.draw_scale or 1
-    local size = 20 * scale
-
-    love.graphics.setColor(1, 0, 0, self.alpha * 2)
-    love.graphics.setLineWidth(3 * scale)
-
-    -- Horizontal line
-    love.graphics.line(px - size, py, px + size, py)
-    -- Vertical line
-    love.graphics.line(px, py - size, px, py + size)
-
-    -- Outer circle
-    love.graphics.circle("line", px, py, size + 5 * scale)
-
-    -- Inner dot
-    love.graphics.circle("fill", px, py, 4 * scale)
-
-    love.graphics.setLineWidth(1)
-    love.graphics.setColor(1, 1, 1, 1)
-end
 
 -- Toggle visibility
 function virtual_gamepad:toggle()
@@ -845,7 +738,7 @@ function virtual_gamepad:isInVirtualPadArea(x, y)
         return true
     end
 
-    -- NEW: Check aim stick
+    -- Check aim stick
     if self:isInAimStick(vx, vy) then
         return true
     end
@@ -890,12 +783,14 @@ end
 -- Show virtual gamepad (for gameplay scenes)
 function virtual_gamepad:show()
     if not self.enabled then return end
+    if self.debug_override then return end  -- Don't change visibility in debug mode
     self.visible = true
 end
 
 -- Hide virtual gamepad (for menu scenes)
 function virtual_gamepad:hide()
     if not self.enabled then return end
+    if self.debug_override then return end  -- Don't change visibility in debug mode
     self.visible = false
     -- Reset all touch states when hiding
     self:resetDPad()
@@ -905,10 +800,6 @@ function virtual_gamepad:hide()
         button.pressed = false
     end
     self.menu_button.pressed = false
-    if self.aim_touch.active then
-        self.aim_touch.active = false
-        self.aim_touch.id = nil
-    end
 end
 
 return virtual_gamepad

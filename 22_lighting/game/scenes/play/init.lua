@@ -100,6 +100,7 @@ function play:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     }
 
     dialogue:initialize()
+    dialogue:setDisplay(display)
 
     -- Initialize lighting
     self:setupLighting()
@@ -372,6 +373,10 @@ end
 
 function play:touchreleased(id, x, y, dx, dy, pressure)
     return input_module.touchreleased(self, id, x, y, dx, dy, pressure)
+end
+
+function play:touchmoved(id, x, y, dx, dy, pressure)
+    return input_module.touchmoved(self, id, x, y, dx, dy, pressure)
 end
 
 return play

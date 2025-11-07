@@ -106,14 +106,13 @@ end
 
 -- Mouse input handler
 function input_handler.mousepressed(self, x, y, button)
-    -- Ignore mouse events on mobile (virtual gamepad handles all input)
-    if is_mobile then
-        return
-    end
+    if is_mobile then return end
 
     if dialogue:isOpen() then
         if input:wasPressed("menu_select", "mouse", button) then
-            dialogue:onAction()
+            if not dialogue:touchPressed(0, x, y) then
+                dialogue:onAction()
+            end
         end
         return
     end
@@ -127,9 +126,10 @@ end
 
 -- Mouse release handler
 function input_handler.mousereleased(self, x, y, button)
-    -- Ignore mouse events on mobile
-    if is_mobile then
-        return
+    if is_mobile then return end
+
+    if dialogue:isOpen() and input:wasPressed("menu_select", "mouse", button) then
+        dialogue:touchReleased(0, x, y)
     end
 end
 
@@ -247,8 +247,12 @@ end
 
 -- Touch input handler
 function input_handler.touchpressed(id, x, y, dx, dy, pressure)
-    -- Dialogue takes priority for touch input
+    -- Priority 1: Dialogue buttons (NEXT/SKIP)
     if dialogue:isOpen() then
+        if dialogue:touchPressed(id, x, y) then
+            return true -- Button consumed (will be handled in touchreleased)
+        end
+        -- If buttons didn't consume, touch anywhere to advance dialogue
         dialogue:onAction()
         return true -- Block virtual gamepad
     end
@@ -257,9 +261,23 @@ function input_handler.touchpressed(id, x, y, dx, dy, pressure)
 end
 
 function input_handler.touchreleased(self, id, x, y, dx, dy, pressure)
-    -- Handle debug button release
+    -- Priority 1: Dialogue buttons (NEXT advances, SKIP clears all)
+    if dialogue:isOpen() then
+        if dialogue:touchReleased(id, x, y) then
+            return true -- Button clicked (NEXT or SKIP)
+        end
+    end
+
+    -- Priority 2: Debug button release
     if self:handleDebugButtonTouch(x, y, id, false) then
         return
+    end
+end
+
+function input_handler.touchmoved(self, id, x, y, dx, dy, pressure)
+    -- Update dialogue button hover states (NEXT/SKIP)
+    if dialogue:isOpen() then
+        dialogue:touchMoved(id, x, y)
     end
 end
 

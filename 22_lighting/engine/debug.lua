@@ -17,7 +17,8 @@ local function get_effects()
 end
 
 -- === Master Control ===
-debug.enabled = false
+debug.allowed = false  -- Whether F1-F6 keys are allowed (set from GameConfig.is_debug)
+debug.enabled = false  -- Whether debug UI is currently shown (toggled with F1)
 
 -- === Gameplay Debug ===
 debug.show_fps = false
@@ -60,7 +61,7 @@ function debug:toggle()
         self.show_screen_info = true
         self.show_bounds = true  -- Show hitboxes/collision boxes
         dprint("=== DEBUG MODE ENABLED ===")
-        dprint("F2: Toggle Grid | F3: Virtual Mouse | F4: Effects | F5: Test Effects")
+        dprint("F2: Toggle Grid | F3: Virtual Mouse | F4: Virtual Gamepad | F5: Effects | F6: Test Effects")
         dprint("H: Hand Marking | P: Mark Position | PgUp/PgDn: Frame Nav")
     else
         -- Disable all debug features
@@ -71,6 +72,22 @@ function debug:toggle()
         self.show_virtual_mouse = false
         self.show_effects = false
         self.show_bounds = false
+
+        -- Reset virtual gamepad debug override
+        local virtual_gamepad = require "engine.input.virtual_gamepad"
+        if virtual_gamepad.debug_override then
+            virtual_gamepad.debug_override = false
+            virtual_gamepad.visible = false
+
+            -- Disable virtual gamepad on PC (restore original state)
+            local os = love.system.getOS()
+            if os ~= "Android" and os ~= "iOS" then
+                virtual_gamepad.enabled = false
+            end
+
+            dprint("Virtual gamepad debug override disabled")
+        end
+
         dprint("=== DEBUG MODE DISABLED ===")
     end
 end
@@ -83,12 +100,42 @@ function debug:toggleLayer(layer)
     end
 
     if layer == "visualizations" then
-        -- F1: Toggle ONLY grid visualization (not hitboxes)
+        -- F2: Toggle ONLY grid visualization (not hitboxes)
         self.show_colliders = not self.show_colliders
         dprint("Grid visualization: " .. tostring(self.show_colliders))
     elseif layer == "mouse" then
         self.show_virtual_mouse = not self.show_virtual_mouse
         dprint("Virtual mouse: " .. tostring(self.show_virtual_mouse))
+    elseif layer == "virtual_gamepad" then
+        -- F4: Toggle virtual gamepad visibility (PC only, for layout testing)
+        -- Get virtual_gamepad module directly (it's a singleton)
+        local virtual_gamepad = require "engine.input.virtual_gamepad"
+
+        -- If not initialized yet (PC), initialize it
+        if not virtual_gamepad.display then
+            dprint("Initializing virtual gamepad for debug mode...")
+            virtual_gamepad:init()
+        end
+
+        -- Force enable for debug mode (PC normally has enabled=false)
+        if not virtual_gamepad.enabled then
+            virtual_gamepad.enabled = true
+            -- Calculate positions now that it's enabled
+            virtual_gamepad:calculatePositions()
+            dprint("Virtual gamepad force enabled for debug mode")
+        end
+
+        -- Enable debug override so scenes can't change visibility
+        virtual_gamepad.debug_override = true
+
+        -- Toggle visibility
+        virtual_gamepad.visible = not virtual_gamepad.visible
+        dprint("Virtual gamepad visible: " .. tostring(virtual_gamepad.visible))
+
+        if virtual_gamepad.visible then
+            dprint("  enabled: " .. tostring(virtual_gamepad.enabled))
+            dprint("  display: " .. tostring(virtual_gamepad.display ~= nil))
+        end
     elseif layer == "effects" then
         self.show_effects = not self.show_effects
         dprint("Effects debug: " .. tostring(self.show_effects))
@@ -100,21 +147,35 @@ function debug:handleInput(key, context)
     -- context = { player, world, camera } (optional)
     context = context or {}
 
-    if not self.enabled then
-        -- Debug mode is off, ignore other debug keys
+    -- All debug keys only work when allowed (GameConfig.is_debug = true)
+    if not self.allowed then
         return
+    end
 
-        -- === Layer Toggles (debug mode must be on) ===
-    elseif key == "f2" then
+    -- F1: Master toggle (only works if allowed)
+    if key == "f1" then
+        self:toggle()
+        return
+    end
+
+    -- All other debug keys require debug mode to be enabled
+    if not self.enabled then
+        return
+    end
+
+    -- === Layer Toggles (debug mode must be on) ===
+    if key == "f2" then
         self:toggleLayer("visualizations")  -- F2: Toggle grid visualization
     elseif key == "f3" then
         self:toggleLayer("mouse")  -- F3: Toggle virtual mouse
     elseif key == "f4" then
-        self:toggleLayer("effects")
+        self:toggleLayer("virtual_gamepad")  -- F4: Toggle virtual gamepad
+    elseif key == "f5" then
+        self:toggleLayer("effects")  -- F5: Toggle effects debug
 
         -- === Test Functions ===
-    elseif key == "f5" and context.camera then
-        -- Test effects at mouse position
+    elseif key == "f6" and context.camera then
+        -- F6: Test effects at mouse position
         local mouse_x, mouse_y = love.mouse.getPosition()
         local world_x, world_y = coords:cameraToWorld(mouse_x, mouse_y, context.camera)
         get_effects():test(world_x, world_y)
@@ -421,7 +482,7 @@ function debug:drawHelp(x, y)
     love.graphics.setFont(self.help_font)
 
     love.graphics.setColor(0, 0, 0, 0.7)
-    love.graphics.rectangle("fill", x - 5, y - 5, 240, 120)
+    love.graphics.rectangle("fill", x - 5, y - 5, 240, 135)
 
     love.graphics.setColor(1, 1, 0, 1)
     love.graphics.print("DEBUG CONTROLS:", x, y)
@@ -429,9 +490,10 @@ function debug:drawHelp(x, y)
     love.graphics.print("F1: Toggle Debug", x, y + 18)
     love.graphics.print("F2: Grid, Collider Info", x, y + 33)
     love.graphics.print("F3: Virtual Mouse", x, y + 48)
-    love.graphics.print("F4: Effects Debug", x, y + 63)
-    love.graphics.print("F5: Test Effects", x, y + 78)
-    love.graphics.print("H: Hand Marking", x, y + 93)
+    love.graphics.print("F4: Virtual Gamepad", x, y + 63)
+    love.graphics.print("F5: Effects Debug", x, y + 78)
+    love.graphics.print("F6: Test Effects", x, y + 93)
+    love.graphics.print("H: Hand Marking", x, y + 108)
 end
 
 return debug

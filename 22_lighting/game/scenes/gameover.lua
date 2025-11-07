@@ -10,6 +10,7 @@ local sound = require "engine.sound"
 local restart_util = require "engine.utils.restart"
 local fonts = require "engine.utils.fonts"
 local ui_scene = require "engine.ui.menu"
+local debug = require "engine.debug"
 
 function gameover:enter(previous, is_clear, ...)
     self.previous = previous
@@ -144,6 +145,14 @@ function gameover:resize(w, h)
 end
 
 function gameover:keypressed(key)
+    -- Handle debug keys first
+    debug:handleInput(key, {})
+
+    -- If debug mode consumed the key (F1-F6), don't process gameover keys
+    if key:match("^f%d+$") and debug.enabled then
+        return
+    end
+
     local nav_result = ui_scene.handleKeyboardNav(key, self.selected, #self.options)
 
     if nav_result.action == "navigate" then

@@ -145,8 +145,15 @@ function hud:draw_inventory(inventory, screen_w, screen_h)
 
     local slot_size = 50
     local slot_spacing = 8
-    local start_x = screen_w - (slot_size + slot_spacing) * math.min(#inventory.items, 5) - 20
-    local start_y = screen_h - slot_size - 20
+    -- Position at top-left (11 o'clock), to the right of HP bar
+    -- HP bar is at (pb.x + 12, pb.y + 12) with width 210 and background extends 2px
+    local hp_bar_x = 12
+    local hp_bar_y = 10  -- pb.y + 12 - 2 (background top)
+    local hp_bar_width = 210
+    local hp_bar_margin = 12
+
+    local start_x = hp_bar_x + hp_bar_width + hp_bar_margin  -- Right of HP bar
+    local start_y = hp_bar_y  -- Align top with HP bar background
 
     love.graphics.setFont(self.small_font)
 

@@ -155,27 +155,24 @@ function display:DisableFullScreen()
     if self.is_mobile then return end -- Can't exit fullscreen on mobile
     if not self.is_fullscreen then return end
 
-    -- Use GameConfig resolution if available (handles resolution changes in settings)
-    if GameConfig and GameConfig.width and GameConfig.height then
-        self.screen_wh.w = GameConfig.width
-        self.screen_wh.h = GameConfig.height
+    -- ALWAYS use previous_screen_wh (saved before entering fullscreen)
+    -- This ensures we return to the resolution that was set in settings,
+    -- not the fullscreen resolution that might be saved in config.ini
+    if self.previous_screen_wh.w > 0 and self.previous_screen_wh.h > 0 then
+        -- Use stored previous size (from before fullscreen)
+        self.screen_wh.w, self.screen_wh.h = self.previous_screen_wh.w, self.previous_screen_wh.h
         self.window.x, self.window.y = self.previous_xy.x, self.previous_xy.y
-        self.window.resizable = true
+        -- Restore resizable setting from GameConfig (default: false)
+        self.window.resizable = GameConfig and GameConfig.resizable or false
         self.window.borderless = false
-    elseif self.previous_screen_wh.w == self.screen_wh.w and self.previous_screen_wh.h == self.screen_wh.h then
-        -- Fallback: no previous size change detected
-        self.window.x = self.screen_wh.w / 2 - self.render_wh.w / 2
-        self.window.y = self.screen_wh.h / 2 - self.render_wh.h / 2
+    else
+        -- Fallback: use virtual resolution
+        self.window.x = 0
+        self.window.y = 0
         self.screen_wh.w, self.screen_wh.h = self.render_wh.w, self.render_wh.h
-        self.window.resizable = true
+        self.window.resizable = GameConfig and GameConfig.resizable or false
         self.window.borderless = false
         self.window.centered = true
-    else
-        -- Fallback: use stored previous size
-        self.window.x, self.window.y = self.previous_xy.x, self.previous_xy.y
-        self.screen_wh.w, self.screen_wh.h = self.previous_screen_wh.w, self.previous_screen_wh.h
-        self.window.resizable = true
-        self.window.borderless = false
     end
 
     updateMode(self.screen_wh.w, self.screen_wh.h, self.window)

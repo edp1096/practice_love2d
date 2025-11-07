@@ -17,6 +17,15 @@ end
 
 -- Handle keyboard input
 function input_handler.keypressed(self, key)
+    -- Handle debug keys first
+    local debug = require "engine.debug"
+    debug:handleInput(key, {})
+
+    -- If debug mode consumed the key (F1-F6), don't process inventory keys
+    if key:match("^f%d+$") and debug.enabled then
+        return
+    end
+
     if key == "i" or key == "escape" or input:wasPressed("pause", "keyboard", key) then
         -- I key or ESC to close (toggle behavior)
         local scene_control = require "engine.scene_control"

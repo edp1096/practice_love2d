@@ -9,6 +9,7 @@ local save_sys = require "engine.save"
 local input = require "engine.input"
 local constants = require "engine.constants"
 local fonts = require "engine.utils.fonts"
+local debug = require "engine.debug"
 
 function newgame:enter(previous, ...)
     self.previous = previous
@@ -145,6 +146,14 @@ end
 function newgame:resize(w, h) display:Resize(w, h) end
 
 function newgame:keypressed(key)
+    -- Handle debug keys first
+    debug:handleInput(key, {})
+
+    -- If debug mode consumed the key (F1-F6), don't process scene keys
+    if key:match("^f%d+$") and debug.enabled then
+        return
+    end
+
     if key == "up" or key == "w" then
         self.selected = self.selected - 1
         if self.selected < 1 then self.selected = #self.slots end

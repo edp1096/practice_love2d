@@ -7,9 +7,8 @@ local is_android = love._os == "Android"
 local is_mobile = is_android or love._os == "iOS"
 
 GameConfig = {
-    title = "Hello Love2D",
-    author = "Your Name",
-    version = "0.0.1",
+    version = "0.0.1",  -- Hardcoded version (not saved to config.ini)
+    is_debug = false,
 
     width = 1280,
     height = 720,
@@ -47,6 +46,15 @@ if not is_mobile then
 
     local success2, config, err2 = pcall(ini.Read, ini, "config.ini")
     if success2 and config and not err2 then
+        -- Load Game settings if available
+        if config.Game then
+            -- Version is hardcoded in conf.lua, not loaded from config.ini
+            if config.Game.IsDebug ~= nil then
+                -- ini parser already converts "true"/"false" to boolean
+                GameConfig.is_debug = config.Game.IsDebug
+            end
+        end
+
         GameConfig.width = config.Window.Width or GameConfig.width
         GameConfig.height = config.Window.Height or GameConfig.height
         GameConfig.resizable = config.Window.Resizable or GameConfig.resizable
@@ -128,7 +136,7 @@ function love.conf(t)
     t.version = "11.5"
     t.console = false
 
-    t.window.title = GameConfig.title
+    t.window.title = "Hello Love2D"
     t.window.icon = nil
 
     if is_mobile then

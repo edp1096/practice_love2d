@@ -8,8 +8,17 @@ local input = require "engine.input"
 local sound = require "engine.sound"
 local options_module = require "game.scenes.settings.options"
 local coords = require "engine.coords"
+local debug = require "engine.debug"
 
 function input_handler:keypressed(state, key)
+    -- Handle debug keys first
+    debug:handleInput(key, {})
+
+    -- If debug mode consumed the key (F1-F6), don't process settings keys
+    if key:match("^f%d+$") and debug.enabled then
+        return
+    end
+
     if key == "escape" then
         sound:playSFX("menu", "back")
         scene_control.pop()

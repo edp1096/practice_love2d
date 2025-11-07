@@ -290,7 +290,39 @@ actions = {
 - 모바일: 가상 온스크린 게임패드 + 터치 입력
 
 **입력 이벤트 디스패처 (`engine/input/dispatcher.lua`):**
-우선순위 시스템으로 LÖVE 입력 이벤트를 적절한 핸들러로 라우팅합니다.
+우선순위 시스템으로 LÖVE 입력 이벤트를 적절한 핸들러로 라우팅합니다:
+```lua
+-- 터치 이벤트 우선순위:
+-- 1. 디버그 버튼 (최우선)
+-- 2. 씬 touchpressed (인벤토리, 대화 오버레이)
+-- 3. 가상 게임패드 (씬에서 처리하지 않은 경우)
+-- 4. 마우스 이벤트로 폴백 (데스크톱 테스트용)
+
+-- 설정 (main.lua에서)
+input_dispatcher.scene_control = scene_control
+input_dispatcher.virtual_gamepad = virtual_gamepad
+input_dispatcher.input = input
+```
+
+**가상 게임패드 (`engine/input/virtual_gamepad.lua`):**
+터치 컨트롤이 있는 모바일 온스크린 게임패드:
+- **D-pad** (좌하단): 이동 (8방향 입력)
+- **조준 스틱** (중앙 우측): 조준 방향
+- **액션 버튼** (우하단): A, B, X, Y (다이아몬드 레이아웃)
+- **숄더 버튼** (상단): L1, L2, R1, R2
+- **메뉴 버튼** (좌상단): 일시정지/메뉴 접근
+- 모바일(Android/iOS)에서 자동 활성화
+- PC에서 F4 디버그 키로 테스트 가능
+
+```lua
+-- 가상 게임패드 표시/숨김 (씬에서 자동 처리)
+virtual_gamepad:show()   -- 게임플레이에서 표시
+virtual_gamepad:hide()   -- 메뉴에서 숨김
+
+-- 가상 게임패드에서 입력 받기
+local stick_x, stick_y = virtual_gamepad:getStickAxis()
+local aim_angle, is_aiming = virtual_gamepad:getAimDirection(player.x, player.y, cam)
+```
 
 ---
 
@@ -396,13 +428,43 @@ dialogue:draw()                               -- 대화 상자 그리기
 ## 디버그 시스템
 
 ### `engine/debug.lua`
-디버그 오버레이 및 시각화 (F1 토글).
+config.ini로 제어되는 디버그 오버레이 및 시각화.
+
+**설정:**
+- `config.ini` → `[Game]` → `IsDebug = true/false`
+- `IsDebug = true`일 때: F1-F6 키 활성화
+- `IsDebug = false`일 때: F1-F6 키 비활성화
+- 디버그 UI는 기본적으로 **꺼진 상태** (F1을 눌러 활성화)
 
 **주요 기능:**
 - 통합 정보 창 (FPS, 플레이어 상태, 화면 정보)
 - 히트박스 시각화 (F1)
 - 그리드 시각화 (F2)
 - 가상 마우스 커서 (F3)
+- 가상 게임패드 테스트 (F4, PC 전용)
+- 효과 디버그 (F5)
+- 효과 테스트 (F6)
+- 애니메이션 개발용 손 마킹 모드
+
+**상태:**
+```lua
+debug.allowed = true/false   -- GameConfig.is_debug에서 설정 (F1-F6 허용 여부)
+debug.enabled = true/false   -- 디버그 UI 표시 여부 (F1로 토글)
+
+-- F1: 디버그 UI 토글 (allowed = true 필요)
+debug:toggle()
+
+-- F2-F6: 레이어 토글 (enabled = true 필요)
+debug:toggleLayer("visualizations")    -- F2: 그리드
+debug:toggleLayer("mouse")             -- F3: 가상 마우스
+debug:toggleLayer("virtual_gamepad")   -- F4: 가상 게임패드 (PC)
+debug:toggleLayer("effects")           -- F5: 효과 디버그
+```
+
+**개발자 참고사항:**
+- `IsDebug`는 config.ini의 개발자 전용 설정
+- 사용자 설정 저장 시 덮어쓰지 않음
+- 버전은 conf.lua에 하드코딩, config.ini에 저장하지 않음
 
 ---
 
