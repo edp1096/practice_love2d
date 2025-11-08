@@ -63,15 +63,20 @@ engine/
 │
 ├── lighting/             - Lighting system (image-based)
 │   ├── init.lua          - Lighting manager (ambient, point lights)
-│   └── light.lua         - Individual light object
+│   └── source.lua        - Individual light source object (LightSource class)
 │
 ├── hud/                  - In-game HUD system
 │   ├── status.lua        - Health bars, cooldowns, status indicators
 │   └── minimap.lua       - Minimap rendering
 │
 ├── ui/                   - Menu UI system
-│   ├── menu.lua          - Menu UI helpers (layout, navigation, dialogs)
-│   └── dialogue.lua      - NPC dialogue system (Talkies wrapper)
+│   ├── menu/             - Menu UI system
+│   │   ├── base.lua      - Base menu scene class (MenuSceneBase)
+│   │   └── helpers.lua   - Menu UI helpers (layout, navigation, dialogs)
+│   ├── dialogue.lua      - NPC dialogue system (Talkies wrapper)
+│   ├── text.lua          - Text rendering utilities
+│   ├── shapes.lua        - Shape rendering utilities
+│   └── widgets/          - Reusable UI widgets (skip_button, next_button)
 │
 └── utils/                - Engine utilities
     ├── util.lua          - General utilities
@@ -107,11 +112,11 @@ game/
 │   │   └── input.lua
 │   ├── load/             - Load game scene (modular)
 │   │   ├── init.lua
-│   │   ├── slot_renderer.lua
+│   │   ├── save_slot_renderer.lua
 │   │   └── input.lua
 │   └── inventory/        - Inventory overlay (modular)
 │       ├── init.lua
-│       ├── slot_renderer.lua
+│       ├── inventory_renderer.lua
 │       └── input.lua
 │
 ├── entities/             - Game characters & objects

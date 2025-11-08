@@ -48,7 +48,9 @@ luac -p **/*.lua
 │   ├── effects/                       # Visual effects (particles, screen effects)
 │   ├── lighting/                      # Dynamic lighting system (GLSL shaders)
 │   ├── ui/                            # UI systems (menu, dialogue, widgets)
-│   │   ├── menu.lua                   # Menu UI helpers
+│   │   ├── menu/                      # Menu UI system
+│   │   │   ├── base.lua               # Base menu scene class
+│   │   │   └── helpers.lua            # Menu UI helpers (layout, navigation, dialogs)
 │   │   ├── dialogue.lua               # Dialogue system (Talkies wrapper)
 │   │   └── widgets/                   # Reusable UI widgets (skip_button, next_button)
 │   └── utils/                         # Engine utilities
@@ -285,8 +287,12 @@ return mymodule
   - `status.lua` - Health bars, cooldowns, status indicators
   - `minimap.lua` - Minimap rendering
 - `engine/ui/` - Menu & dialogue UI system
-  - `menu.lua` - Menu UI helpers (layout, navigation, dialogs, touch input)
+  - `menu/` - Menu UI system
+    - `base.lua` - Base menu scene class (MenuSceneBase)
+    - `helpers.lua` - Menu UI helpers (layout, navigation, dialogs, touch input)
   - `dialogue.lua` - NPC dialogue system (Talkies wrapper with skip/next buttons)
+  - `text.lua` - Text rendering utilities (centralized print wrapper)
+  - `shapes.lua` - Shape rendering utilities (buttons, overlays)
   - `widgets/` - Reusable UI widgets
     - `skip_button.lua` - Skip button with charge system (0.5s hold)
     - `next_button.lua` - Next button for advancing dialogue

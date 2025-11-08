@@ -501,7 +501,7 @@ end
 
 ## Menu UI System
 
-### `engine/ui/menu.lua`
+### `engine/ui/menu/helpers.lua`
 Common UI utilities for menu scenes to eliminate code duplication.
 
 **Layout Functions:**
@@ -538,7 +538,7 @@ ui_scene.updateConfirmMouseOver(width, height, button_count)
 
 **Usage Example (Menu Scene):**
 ```lua
-local ui_scene = require "engine.ui.menu"
+local ui_helpers = require "engine.ui.menu.helpers"
 local display = require "engine.display"
 local sound = require "engine.sound"
 
@@ -550,27 +550,27 @@ function menu:enter(previous)
     local vw, vh = display:GetVirtualDimensions()
     self.virtual_width = vw
     self.virtual_height = vh
-    self.fonts = ui_scene.createMenuFonts()
-    self.layout = ui_scene.createMenuLayout(vh)
+    self.fonts = ui_helpers.createMenuFonts()
+    self.layout = ui_helpers.createMenuLayout(vh)
 end
 
 function menu:update(dt)
     -- Update mouse-over detection
-    self.mouse_over = ui_scene.updateMouseOver(
+    self.mouse_over = ui_helpers.updateMouseOver(
         self.options, self.layout, self.virtual_width, self.fonts.option)
 end
 
 function menu:draw()
     display:Attach()
-    ui_scene.drawTitle("Main Menu", self.fonts.title, self.layout.title_y, self.virtual_width)
-    ui_scene.drawOptions(self.options, self.selected, self.mouse_over,
+    ui_helpers.drawTitle("Main Menu", self.fonts.title, self.layout.title_y, self.virtual_width)
+    ui_helpers.drawOptions(self.options, self.selected, self.mouse_over,
         self.fonts.option, self.layout, self.virtual_width)
-    ui_scene.drawControlHints(self.fonts.hint, self.layout, self.virtual_width)
+    ui_helpers.drawControlHints(self.fonts.hint, self.layout, self.virtual_width)
     display:Detach()
 end
 
 function menu:keypressed(key)
-    local nav_result = ui_scene.handleKeyboardNav(key, self.selected, #self.options)
+    local nav_result = ui_helpers.handleKeyboardNav(key, self.selected, #self.options)
     if nav_result.action == "navigate" then
         self.selected = nav_result.new_selection
     elseif nav_result.action == "select" then
@@ -588,13 +588,13 @@ end
 
 -- Touch input (mobile support)
 function menu:touchpressed(id, x, y, dx, dy, pressure)
-    self.mouse_over = ui_scene.handleTouchPress(
+    self.mouse_over = ui_helpers.handleTouchPress(
         self.options, self.layout, self.virtual_width, self.fonts.option, x, y, display)
     return false
 end
 
 function menu:touchreleased(id, x, y, dx, dy, pressure)
-    local touched = ui_scene.handleTouchPress(
+    local touched = ui_helpers.handleTouchPress(
         self.options, self.layout, self.virtual_width, self.fonts.option, x, y, display)
     if touched > 0 then
         self.selected = touched
@@ -609,13 +609,13 @@ end
 **Slot-Based Menu Example (Save/Load):**
 ```lua
 function saveslot:touchpressed(id, x, y, dx, dy, pressure)
-    self.mouse_over = ui_scene.handleSlotTouchPress(
+    self.mouse_over = ui_helpers.handleSlotTouchPress(
         self.slots, self.layout, self.virtual_width, x, y, display)
     return false
 end
 
 function saveslot:touchreleased(id, x, y, dx, dy, pressure)
-    local touched = ui_scene.handleSlotTouchPress(
+    local touched = ui_helpers.handleSlotTouchPress(
         self.slots, self.layout, self.virtual_width, x, y, display)
     if touched > 0 then
         self.selected = touched
