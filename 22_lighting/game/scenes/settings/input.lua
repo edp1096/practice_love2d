@@ -70,9 +70,8 @@ function input_handler:gamepadpressed(state, joystick, button)
     end
 end
 
-function input_handler:mousepressed(state, x, y, button)
-    -- Empty implementation - kept for consistency
-end
+-- Empty implementation - kept for consistency
+function input_handler:mousepressed(state, x, y, button) end
 
 function input_handler:mousereleased(state, x, y, button)
     if button == 1 then
@@ -96,10 +95,9 @@ function input_handler:mousereleased(state, x, y, button)
     end
 end
 
-function input_handler:touchpressed(state, id, x, y, dx, dy, pressure)
-    -- Touch events are handled the same as mouse for settings menu
-    -- No return value needed as settings doesn't have gamepad
-end
+-- Touch events are handled the same as mouse for settings menu
+-- No return value needed as settings doesn't have gamepad
+function input_handler:touchpressed(state, id, x, y, dx, dy, pressure) end
 
 function input_handler:touchreleased(state, id, x, y, dx, dy, pressure)
     -- Convert touch to virtual coordinates for hit detection using coords module
