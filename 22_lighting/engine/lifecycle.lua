@@ -137,11 +137,9 @@ function lifecycle:quit()
     if not self.is_mobile and not self.display.is_fullscreen then
         self.GameConfig.width = current_w
         self.GameConfig.height = current_h
-        -- LÖVE 12.0: current_flags.display might be nil, preserve existing value
         if current_flags.display then
             self.GameConfig.monitor = current_flags.display
         end
-        -- Ensure monitor is always a valid number
         self.GameConfig.monitor = self.GameConfig.monitor or 1
     end
 
