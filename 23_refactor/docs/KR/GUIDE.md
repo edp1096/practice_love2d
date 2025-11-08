@@ -57,7 +57,7 @@
 
 ## 씬 관리
 
-### `engine/scene_control.lua`
+### `engine/core/scene_control.lua`
 씬 전환 및 씬 스택을 관리합니다.
 
 **주요 함수:**
@@ -80,7 +80,7 @@ function scene:draw() end                -- 렌더링 시 호출
 
 ## 애플리케이션 생명주기
 
-### `engine/lifecycle.lua`
+### `engine/core/lifecycle.lua`
 애플리케이션 생명주기(초기화, 업데이트, 렌더링, 리사이즈, 종료)를 관리합니다.
 모든 엔진 시스템을 오케스트레이션하고 scene_control에 위임합니다.
 
@@ -205,7 +205,7 @@ coords:debugPoint(player.x, player.y, cam, display, "Player")
 
 ## 카메라 시스템
 
-### `engine/camera.lua`
+### `engine/core/camera.lua`
 카메라 효과 시스템 (흔들림, 슬로우 모션).
 
 **주요 함수:**
@@ -226,7 +226,7 @@ camera_sys:setTimeScale(0.3)  -- 30% 속도 (슬로우 모션)
 
 ## 사운드 시스템
 
-### `engine/sound.lua`
+### `engine/core/sound.lua`
 오디오 관리 (BGM, SFX, 볼륨 제어, 지연 로딩).
 
 **주요 함수:**
@@ -1007,7 +1007,7 @@ game/scenes/shop/
 ### 적 타입 예제
 
 ```lua
--- game/entities/enemy/types/goblin.lua
+-- engine/entities/enemy/types/goblin.lua
 return {
     name = "Goblin",
     max_health = 50,
@@ -1025,7 +1025,7 @@ return {
 ### 아이템 타입 예제
 
 ```lua
--- game/entities/item/types/potion.lua
+-- engine/item/types/potion.lua
 return {
     id = "potion",
     name = "Potion",
@@ -1208,12 +1208,12 @@ end
 
 ### 새 적 추가
 1. 스프라이트: `assets/images/enemies/dragon.png`
-2. 타입: `game/entities/enemy/types/dragon.lua`
+2. 타입: `engine/entities/enemy/types/dragon.lua`
 3. Tiled 맵에 배치: `type = "dragon"`
 
 ### 새 아이템 추가
 1. 아이콘: `assets/images/items/sword.png`
-2. 타입: `game/entities/item/types/sword.lua`
+2. 타입: `engine/item/types/sword.lua`
 3. 인벤토리에 추가: `inventory:addItem("sword", 1)`
 
 ---
@@ -1276,7 +1276,7 @@ end
 ### 네이밍 규칙
 ```lua
 -- 모듈: 언더스코어를 사용한 소문자
-local scene_control = require "engine.scene_control"
+local scene_control = require "engine.scene.control"
 
 -- 함수: camelCase
 function player:updateAnimation(dt)

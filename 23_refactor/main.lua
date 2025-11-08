@@ -45,7 +45,7 @@ end
 
 
 -- Define global dprint BEFORE loading other modules that might use it
-local debug = require "engine.debug"
+local debug = require "engine.core.debug"
 
 -- Initialize debug mode from config
 debug.allowed = GameConfig.is_debug  -- Allow F1-F6 keys if true
@@ -57,19 +57,20 @@ _G.dprint = function(...) debug:dprint(...) end
 dprint("Running with LOVE " .. love_version .. " and " .. _VERSION)
 
 -- Now load other modules (they can safely use dprint)
-local display = require "engine.display"  -- Global for Talkies compatibility
+local display = require "engine.core.display"
+_G.screen = display  -- Global for Talkies compatibility
 local utils = require "engine.utils.util"
-local scene_control = require "engine.scene_control"
-local input = require "engine.input"
-local input_dispatcher = require "engine.input.dispatcher"
-local lifecycle = require "engine.lifecycle"
-local sound = require "engine.sound"
+local scene_control = require "engine.core.scene_control"
+local input = require "engine.core.input"
+local input_dispatcher = require "engine.core.input.dispatcher"
+local lifecycle = require "engine.core.lifecycle"
+local sound = require "engine.core.sound"
 local fonts = require "engine.utils.fonts"
-local coords = require "engine.coords"
+local coords = require "engine.core.coords"
 local menu = require "game.scenes.menu"
 
 -- Always load virtual_gamepad (needed for PC debug mode testing)
-local virtual_gamepad = require "engine.input.virtual_gamepad"
+local virtual_gamepad = require "engine.core.input.virtual_gamepad"
 
 -- === Application Lifecycle ===
 
@@ -127,8 +128,75 @@ function love.load()
     local input_config = require "game.data.input_config"
     input:init(input_config)
 
-    -- Setup scene loader (inject game scene loading into engine)
+    -- Inject entity type data into engine classes (dependency injection)
+    local entity_types = require "game.data.entity_types"
+    local enemy_class = require "engine.entities.enemy"
+    local npc_class = require "engine.entities.npc"
+    local weapon_class = require "engine.entities.weapon"
+
+    enemy_class.type_registry = entity_types.enemies
+    npc_class.type_registry = entity_types.npcs
+    weapon_class.type_registry = entity_types.weapons
+    weapon_class.effects_config = entity_types.weapon_effects
+
+    -- Inject game data into engine systems
+    local game_config = require "game.data.game_config"
+    local entity_defaults = require "game.data.entity_defaults"
+    local player_config = require "game.data.player"
+    local cutscene_configs = require "game.data.cutscenes"
+
+    local constants = require "engine.core.constants"
+    local factory = require "engine.entities.factory"
+    local player_sound = require "engine.entities.player.sound"
+    local enemy_sound = require "engine.entities.enemy.sound"
+    local gameplay_scene = require "engine.scenes.gameplay"
+    local cutscene_scene = require "engine.scenes.cutscene"
+
+    -- Inject game start defaults
+    constants.GAME_START.DEFAULT_MAP = game_config.start.map
+    constants.GAME_START.DEFAULT_SPAWN_X = game_config.start.spawn_x
+    constants.GAME_START.DEFAULT_SPAWN_Y = game_config.start.spawn_y
+
+    -- Inject entity factory defaults
+    factory.DEFAULTS = entity_defaults
+
+    -- Inject sound configs
+    player_sound.sounds_config = sound_data
+    enemy_sound.sounds_config = sound_data
+
+    -- Inject player config
+    gameplay_scene.player_config = player_config
+
+    -- Inject cutscene configs
+    cutscene_scene.configs = cutscene_configs
+
+    -- Setup scene loader (inject scene loading into engine)
     scene_control.scene_loader = function(scene_name)
+        -- Engine UI screens
+        local engine_ui_paths = {
+            newgame = "engine.ui.screens.newgame",
+            saveslot = "engine.ui.screens.saveslot",
+            inventory = "engine.ui.screens.inventory",
+            load = "engine.ui.screens.load",
+            settings = "engine.ui.screens.settings"
+        }
+
+        -- Engine scenes
+        local engine_scene_paths = {
+            cutscene = "engine.scenes.cutscene",
+            intro = "engine.scenes.cutscene",  -- legacy
+            gameplay = "engine.scenes.gameplay"
+        }
+
+        -- Check engine paths first
+        if engine_ui_paths[scene_name] then
+            return require(engine_ui_paths[scene_name])
+        end
+        if engine_scene_paths[scene_name] then
+            return require(engine_scene_paths[scene_name])
+        end
+
+        -- Fall back to game scenes (menu, pause, gameover)
         return require("game.scenes." .. scene_name)
     end
 

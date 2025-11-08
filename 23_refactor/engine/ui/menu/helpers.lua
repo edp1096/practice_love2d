@@ -1,11 +1,11 @@
 -- engine/ui/menu/helpers.lua
 -- Common UI utilities for menu scenes to eliminate code duplication
 
-local display = require "engine.display"
-local input = require "engine.input"
-local sound = require "engine.sound"
+local display = require "engine.core.display"
+local input = require "engine.core.input"
+local sound = require "engine.core.sound"
 local fonts = require "engine.utils.fonts"
-local text_ui = require "engine.ui.text"
+local text_ui = require "engine.utils.text"
 
 local helpers = {}
 
@@ -277,7 +277,7 @@ end
 -- Handle touch input for menu options
 -- Returns touched option index (1-based) or 0 if no option was touched
 function helpers.handleTouchPress(options, layout, width, font, x, y, display_module)
-    local coords = require "engine.coords"
+    local coords = require "engine.core.coords"
     local vx, vy = coords:physicalToVirtual(x, y, display_module)
 
     love.graphics.setFont(font)
@@ -300,7 +300,7 @@ end
 -- Handle touch input for slot-based menus (newgame, saveslot, load)
 -- Returns touched slot index (1-based) or 0 if no slot was touched
 function helpers.handleSlotTouchPress(slots, layout, width, x, y, display_module)
-    local coords = require "engine.coords"
+    local coords = require "engine.core.coords"
     local vx, vy = coords:physicalToVirtual(x, y, display_module)
 
     for i, slot in ipairs(slots) do

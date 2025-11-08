@@ -4,13 +4,13 @@
 
 local MenuSceneBase = {}
 
-local scene_control = require "engine.scene_control"
-local display = require "engine.display"
-local sound = require "engine.sound"
-local input = require "engine.input"
+local scene_control = require "engine.core.scene_control"
+local display = require "engine.core.display"
+local sound = require "engine.core.sound"
+local input = require "engine.core.input"
 local ui_helpers = require "engine.ui.menu.helpers"
-local debug = require "engine.debug"
-local text_ui = require "engine.ui.text"
+local debug = require "engine.core.debug"
+local text_ui = require "engine.utils.text"
 
 -- Create a new menu scene with common boilerplate
 -- config = {

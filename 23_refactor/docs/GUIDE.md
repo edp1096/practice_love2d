@@ -57,7 +57,7 @@ This section documents all engine systems in the `engine/` folder.
 
 ## Scene Management
 
-### `engine/scene_control.lua`
+### `engine/core/scene_control.lua`
 Manages scene transitions and scene stack.
 
 **Key Functions:**
@@ -80,7 +80,7 @@ function scene:draw() end                -- Called for rendering
 
 ## Application Lifecycle
 
-### `engine/lifecycle.lua`
+### `engine/core/lifecycle.lua`
 Manages application lifecycle (initialization, update, draw, resize, quit).
 Orchestrates all engine systems and delegates to scene_control.
 
@@ -205,7 +205,7 @@ coords:debugPoint(player.x, player.y, cam, display, "Player")
 
 ## Camera System
 
-### `engine/camera.lua`
+### `engine/core/camera.lua`
 Camera effects system (shake, slow-motion).
 
 **Key Functions:**
@@ -226,7 +226,7 @@ camera_sys:setTimeScale(0.3)  -- 30% speed (slow-motion)
 
 ## Sound System
 
-### `engine/sound.lua`
+### `engine/core/sound.lua`
 Audio management (BGM, SFX, volume control, lazy loading).
 
 **Key Functions:**
@@ -264,10 +264,10 @@ return {
 
 ## Input System
 
-### `engine/input/`
+### `engine/core/input/`
 Unified input system supporting keyboard, mouse, gamepad, and touch.
 
-**Main API (`engine/input/init.lua`):**
+**Main API (`engine/core/input/dispatcher.lua`):**
 ```lua
 input:wasPressed("action_name")          -- Check if action was just pressed
 input:isDown("action_name")              -- Check if action is held down
@@ -289,7 +289,7 @@ actions = {
 - Desktop: Keyboard + Mouse + Physical Gamepad
 - Mobile: Virtual on-screen gamepad + Touch input
 
-**Input Event Dispatcher (`engine/input/dispatcher.lua`):**
+**Input Event Dispatcher (`engine/core/input/dispatcher.lua`):**
 Routes LÖVE input events to appropriate handlers with priority system:
 ```lua
 -- Priority order for touch events:
@@ -315,7 +315,7 @@ end
 - Coordinates between virtual gamepad, scene input, and mouse fallback
 - Handles all LÖVE input callbacks (keyboard, mouse, touch, gamepad)
 
-**Virtual Gamepad (`engine/input/virtual_gamepad.lua`):**
+**Virtual Gamepad (`engine/core/input/virtual_gamepad.lua`):**
 Mobile on-screen gamepad with touch controls:
 - **D-pad** (bottom-left): Movement (8-way directional input)
 - **Aim stick** (center-right): Aiming direction
@@ -339,10 +339,10 @@ local aim_angle, is_aiming = virtual_gamepad:getAimDirection(player.x, player.y,
 
 ## World System
 
-### `engine/world/`
+### `engine/systems/world/`
 Physics and world management (Windfield/Box2D wrapper).
 
-**Main API (`engine/world/init.lua`):**
+**Main API (`engine/systems/world/init.lua`):**
 ```lua
 world:new(mapPath)                       -- Create world from Tiled map
 world:addEntity(entity)                  -- Add entity to world
@@ -364,7 +364,7 @@ world:drawEntitiesYSorted()              -- Draw entities with Y-sorting
 
 ## Save/Load System
 
-### `engine/save.lua`
+### `engine/core/save.lua`
 Slot-based save system.
 
 **Key Functions:**
@@ -406,9 +406,9 @@ inventory:prevItem()                     -- Cycle to previous item
 ```
 
 **Item Definition:**
-Items are defined in `game/entities/item/types/`:
+Items are defined in `engine/entities/item/types/`:
 ```lua
--- game/entities/item/types/small_potion.lua
+-- engine/entities/item/types/small_potion.lua
 return {
     id = "small_potion",
     name = "Small Potion",
@@ -1042,7 +1042,7 @@ Scenes go in `game/scenes/`. Simple scenes can be single files, complex scenes s
 -- game/scenes/credits.lua
 local credits = {}
 
-local scene_control = require "engine.scene_control"
+local scene_control = require "engine.scene.control"
 local display = require "engine.display"
 
 function credits:enter(previous, ...)
@@ -1079,7 +1079,7 @@ game/scenes/shop/
 ### Using Engine Systems in Scenes
 ```lua
 -- game/scenes/yourscene.lua
-local scene_control = require "engine.scene_control"
+local scene_control = require "engine.scene.control"
 local sound = require "engine.sound"
 local input = require "engine.input"
 local save_sys = require "engine.save"
@@ -1102,7 +1102,7 @@ end
 
 ### Enemy Type Example
 ```lua
--- game/entities/enemy/types/goblin.lua
+-- engine/entities/enemy/types/goblin.lua
 return {
     -- Stats
     name = "Goblin",
@@ -1141,7 +1141,7 @@ return {
 
 ### NPC Type Example
 ```lua
--- game/entities/npc/types/shopkeeper.lua
+-- engine/entities/npc/types/shopkeeper.lua
 return {
     name = "Shopkeeper",
     sprite_path = "assets/images/npcs/shopkeeper.png",
@@ -1163,7 +1163,7 @@ return {
 
 ### Item Type Example
 ```lua
--- game/entities/item/types/mega_potion.lua
+-- engine/entities/item/types/mega_potion.lua
 return {
     id = "mega_potion",
     name = "Mega Potion",
@@ -1285,7 +1285,7 @@ Object Properties:
 Create object in **Enemies** layer:
 ```
 Object Properties:
-  type = "goblin"  (matches filename in game/entities/enemy/types/)
+  type = "goblin"  (matches filename in engine/entities/enemy/types/)
   patrol_points = "100,200;300,200;300,400"  (optional)
 ```
 
@@ -1380,7 +1380,7 @@ return {
 
 ### 2. Trigger Cutscene
 ```lua
-local scene_control = require "engine.scene_control"
+local scene_control = require "engine.scene.control"
 local intro = require "game.scenes.intro"
 
 -- Show intro, then go to play scene
@@ -1442,12 +1442,12 @@ end
 
 ### Add a New Enemy
 1. Create sprite: `assets/images/enemies/dragon.png`
-2. Create type: `game/entities/enemy/types/dragon.lua`
+2. Create type: `engine/entities/enemy/types/dragon.lua`
 3. Place in Tiled map: Object type = "dragon"
 
 ### Add a New Item
 1. Create icon: `assets/images/items/sword.png`
-2. Create type: `game/entities/item/types/sword.lua`
+2. Create type: `engine/entities/item/types/sword.lua`
 3. Add to inventory: `inventory:addItem("sword", 1)`
 
 ### Add a New Menu
@@ -1581,7 +1581,7 @@ end
 
 3. **Connect to scene control:**
    ```lua
-   local scene_control = require "engine.scene_control"
+   local scene_control = require "engine.scene.control"
    local yourscene = require "game.scenes.yourscene"
    scene_control.switch(yourscene)
    ```
@@ -1590,7 +1590,7 @@ end
 
 1. **Create entity definition:**
    ```lua
-   -- game/entities/enemy/types/yourenemy.lua
+   -- engine/entities/enemy/types/yourenemy.lua
    return {
        name = "Your Enemy",
        max_health = 100,
@@ -1644,7 +1644,7 @@ end
 ### Naming Conventions
 ```lua
 -- Modules: lowercase with underscores
-local scene_control = require "engine.scene_control"
+local scene_control = require "engine.scene.control"
 
 -- Classes/Objects: PascalCase (rare in Lua)
 local Player = require "game.entities.player"
@@ -1848,7 +1848,7 @@ git add engine/ game/
 git commit -m "Refactor: Separate engine and game folders"
 
 # Commit content changes
-git add game/entities/enemy/types/newenemy.lua
+git add engine/entities/enemy/types/newenemy.lua
 git commit -m "Add new enemy: Dragon"
 ```
 
@@ -1896,5 +1896,5 @@ print("Took:", love.timer.getTime() - start)
 ---
 
 **Framework:** LÖVE 11.5 + Lua 5.1
-**Architecture:** Engine/Game Separation
-**Last Updated:** 2025-11-07
+**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven
+**Last Updated:** 2025-11-09

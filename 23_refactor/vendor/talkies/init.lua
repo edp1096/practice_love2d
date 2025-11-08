@@ -282,7 +282,7 @@ function Talkies.draw()
     end
 
     -- Fallback: try package.loaded
-    local screen = package.loaded["engine.display"] or package.loaded["lib.screen"]
+    local screen = package.loaded["engine.core.display"] or package.loaded["engine.display"] or package.loaded["lib.screen"]
     if screen and screen.GetVirtualDimensions then
       return screen:GetVirtualDimensions()
     end

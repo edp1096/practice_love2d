@@ -119,7 +119,7 @@ function shapes:drawHealthBar(x, y, w, h, hp, max_hp, show_text, font)
 
     -- Text (optional)
     if show_text and font then
-        local text_ui = require "engine.ui.text"
+        local text_ui = require "engine.utils.text"
         text_ui:draw(string.format("HP: %d / %d", hp, max_hp), x + 5, y + 3, {1, 1, 1, 1}, font)
     end
 end
@@ -158,7 +158,7 @@ function shapes:drawDialog(x, y, w, h, title, title_font, title_color)
     -- Title area (if provided)
     if title and title_font then
         title_color = title_color or {1, 1, 1, 1}
-        local text_ui = require "engine.ui.text"
+        local text_ui = require "engine.utils.text"
 
         -- Title background
         love.graphics.setColor(0.25, 0.25, 0.3, 1)
@@ -195,7 +195,7 @@ function shapes:drawConfirmDialog(x, y, w, h, message, message_font, yes_hover, 
 
     -- Message
     if message and message_font then
-        local text_ui = require "engine.ui.text"
+        local text_ui = require "engine.utils.text"
         text_ui:drawCentered(message, content_y + 20, w, {1, 1, 1, 1}, message_font)
     end
 
@@ -217,7 +217,7 @@ function shapes:drawConfirmDialog(x, y, w, h, message, message_font, yes_hover, 
     self:drawButton(no_x, button_y, button_width, button_height, no_state, 5)
 
     -- Button text
-    local text_ui = require "engine.ui.text"
+    local text_ui = require "engine.utils.text"
     text_ui:drawCentered("Yes", button_y + 12, button_width, {1, 1, 1, 1}, message_font)
     text_ui:drawCentered("No", button_y + 12, button_width, {1, 1, 1, 1}, message_font)
 

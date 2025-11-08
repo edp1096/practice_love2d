@@ -2,8 +2,8 @@
 -- Simple dialogue system using Talkies with mobile SKIP/NEXT buttons
 
 local Talkies = require "vendor.talkies"
-local skip_button_widget = require "engine.ui.widgets.skip_button"
-local next_button_widget = require "engine.ui.widgets.next_button"
+local skip_button_widget = require "engine.ui.widgets.button.skip"
+local next_button_widget = require "engine.ui.widgets.button.next"
 
 local dialogue = {}
 

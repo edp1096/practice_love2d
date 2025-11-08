@@ -3,9 +3,9 @@
 
 local restart = {}
 
-local save_sys = require "engine.save"
-local sound = require "engine.sound"
-local constants = require "engine.constants"
+local save_sys = require "engine.core.save"
+local sound = require "engine.core.sound"
+local constants = require "engine.core.constants"
 
 -- Restart from current map using saved position if available
 -- @param play_scene: The play scene table from previous scene

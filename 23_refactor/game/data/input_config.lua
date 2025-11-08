@@ -50,8 +50,8 @@ return {
             gamepad = "rightshoulder" -- R1 button (DualSense)
         },
         jump = {
-            keyboard = { "space" }, -- Space for jump (platformer mode) or dodge (topdown mode)
-            gamepad = "b"           -- Circle button (B) for jump in platformer mode
+            keyboard = { "space", "w", "up" }, -- Space/W/Up for jump (platformer mode)
+            gamepad = "b"                       -- Circle button (B) for jump in platformer mode
         },
         interact = {
             keyboard = { "f" },

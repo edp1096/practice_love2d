@@ -9,7 +9,7 @@ local is_mobile = is_android or love._os == "iOS"
 
 GameConfig = {
     version = "0.0.1",  -- Hardcoded version (not saved to config.ini)
-    is_debug = false,
+    is_debug = true,  -- Temporarily enabled for debugging
 
     width = 1280,
     height = 720,

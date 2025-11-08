@@ -3,15 +3,14 @@
 ## 📁 루트 디렉토리
 
 ```
-22_lighting/
+23_refactor/
 ├── main.lua              - 진입점 (LÖVE 콜백, 에러 핸들러, 입력 라우팅)
 ├── conf.lua              - LÖVE 설정 (윈도우, 모듈, 버전)
 ├── locker.lua            - 프로세스 잠금 (데스크톱 전용, 다중 인스턴스 방지)
 ├── config.ini            - 사용자 설정 (윈도우, 사운드, 입력, IsDebug)
 │
-├── engine/               - 재사용 가능한 게임 엔진 (ENGINE_GUIDE.md 참조)
-├── game/                 - 게임 전용 콘텐츠 (GAME_GUIDE.md 참조)
-├── lib/                  - 서드파티 라이브러리 래퍼
+├── engine/               - 재사용 가능한 게임 엔진 (100% 재사용 가능 - 모든 엔티티 포함!)
+├── game/                 - 게임 전용 콘텐츠 (데이터 설정 + 최소 코드)
 ├── vendor/               - 외부 라이브러리 (STI, Windfield, anim8, hump, Talkies)
 ├── assets/               - 게임 리소스 (맵, 이미지, 사운드, 폰트)
 └── docs/                 - 문서 (이 폴더)
@@ -21,63 +20,76 @@
 
 ## 🎮 엔진 폴더 (`engine/`)
 
-**목적:** 모든 LÖVE2D 게임에서 재사용 가능한 시스템.
+**목적:** 100% 재사용 가능한 게임 엔진 (계층 아키텍처).
+
+**아키텍처:** 명확한 계층으로 구성:
+- **core/** - 핵심 시스템 (lifecycle, input, display, sound, save 등)
+- **systems/** - 서브시스템 (world, effects, lighting, hud)
+- **scenes/** - 씬 빌더 및 템플릿
+- **entities/** - 재사용 가능한 엔티티 (player, enemy, weapon, npc, item) ⭐
+- **ui/** - UI 시스템 (menu, screens, dialogue, widgets)
+- **utils/** - 유틸리티 (text, fonts, util, ini)
 
 ```
 engine/
-├── lifecycle.lua         - 애플리케이션 생명주기 (초기화, 업데이트, 렌더링, 리사이즈, 종료)
-├── scene_control.lua     - 씬 스택 관리 (switch, push, pop)
-├── camera.lua            - 카메라 효과 (흔들림, 슬로우 모션)
-├── coords.lua            - **통합 좌표계 시스템** (월드, 카메라, 가상, 물리)
-├── game_mode.lua         - 게임 모드 관리 (topdown/platformer)
-├── sound.lua             - 오디오 시스템 (BGM, SFX, 볼륨 제어)
-├── save.lua              - 저장/로드 시스템 (슬롯 기반)
-├── inventory.lua         - 인벤토리 시스템 (아이템, 사용)
-├── debug.lua             - 디버그 오버레이 (F1 토글)
-├── constants.lua         - 엔진 상수
+├── core/                 - **핵심 엔진 시스템 (Layer 1)**
+│   ├── lifecycle.lua     - 애플리케이션 생명주기
+│   ├── scene_control.lua - 씬 스택 관리
+│   ├── camera.lua        - 카메라 효과
+│   ├── coords.lua        - **통합 좌표계 시스템**
+│   ├── sound.lua         - 오디오 시스템
+│   ├── save.lua          - 저장/로드 시스템
+│   ├── inventory.lua     - 인벤토리 시스템
+│   ├── debug.lua         - 디버그 오버레이
+│   ├── constants.lua     - 엔진 상수
+│   ├── display/          - 가상 화면 시스템
+│   └── input/            - 입력 시스템
+│       ├── dispatcher.lua
+│       ├── virtual_gamepad.lua
+│       └── sources/
 │
-├── display/              - 가상 화면 시스템
-│   └── init.lua          - 스케일링, 레터박싱, 좌표 변환
+├── systems/              - **엔진 서브시스템 (Layer 2)**
+│   ├── world/            - 물리 & 월드 시스템
+│   ├── effects/          - 시각 효과 시스템
+│   ├── lighting/         - 라이팅 시스템
+│   └── hud/              - 인게임 HUD 시스템
 │
-├── input/                - 입력 시스템
-│   ├── init.lua                        - 입력 퍼사드 (API 진입점)
-│   ├── dispatcher.lua                  - 입력 이벤트 디스패처
-│   ├── virtual_gamepad.lua             - 가상 온스크린 게임패드 (모바일)
-│   └── sources/
-│       ├── base_input.lua              - 베이스 클래스
-│       ├── keyboard_input.lua          - 키보드 처리
-│       ├── mouse_input.lua             - 마우스/조준 처리
-│       ├── gamepad.lua                 - 물리 컨트롤러
-│       └── virtual_pad.lua             - 가상 게임패드 어댑터
+├── scenes/               - **씬 관리 (Layer 3)**
+│   ├── builder.lua       - **데이터 기반 씬 팩토리**
+│   ├── cutscene.lua      - 컷신/인트로 씬
+│   └── gameplay.lua      - 메인 게임플레이 씬
 │
-├── world/                - 물리 & 월드 시스템
-│   ├── init.lua          - 월드 코디네이터 (Windfield 래퍼)
-│   ├── loaders.lua       - 맵 로딩 (Tiled TMX)
-│   ├── entities.lua      - 엔티티 관리 (추가, 제거, 업데이트)
-│   └── rendering.lua     - Y 정렬 렌더링
+├── entities/             - **재사용 가능한 엔티티 (Layer 3)** ⭐ 모두 엔진에!
+│   ├── factory.lua       - **엔티티 팩토리** (Tiled 속성으로부터 생성)
+│   ├── player/           - 플레이어 엔티티 (의존성 주입)
+│   ├── enemy/            - 적 엔티티 (타입 주입)
+│   ├── weapon/           - 무기 엔티티 (설정 주입)
+│   ├── npc/              - NPC 엔티티
+│   ├── item/             - 아이템 엔티티
+│   └── healing_point/    - 회복 포인트 엔티티
 │
-├── effects/              - 시각 효과 시스템
-│   ├── init.lua          - 효과 코디네이터
-│   ├── particles/        - 파티클 효과 (피, 불꽃 등)
-│   └── screen/           - 스크린 효과 (플래시, 비네트, 오버레이)
+├── ui/                   - **UI 시스템 (Layer 4)**
+│   ├── menu/             - 메뉴 UI 시스템
+│   ├── screens/          - 재사용 가능한 UI 화면들
+│   ├── dialogue.lua      - NPC 대화 시스템
+│   ├── shapes.lua        - 도형 렌더링 유틸리티
+│   └── widgets/          - 재사용 가능한 UI 위젯들
 │
-├── lighting/             - 라이팅 시스템 (이미지 기반)
-│   ├── init.lua          - 라이팅 매니저 (주변광, 포인트 라이트)
-│   └── light.lua         - 개별 광원 객체
-│
-├── hud/                  - 인게임 HUD 시스템
-│   ├── status.lua        - 체력바, 쿨다운, 상태 표시
-│   └── minimap.lua       - 미니맵 렌더링
-│
-├── ui/                   - 메뉴 UI 시스템
-│   ├── menu.lua          - 메뉴 UI 헬퍼 (레이아웃, 네비게이션, 다이얼로그)
-│   └── dialogue.lua      - NPC 대화 시스템 (Talkies 래퍼)
-│
-└── utils/                - 엔진 유틸리티
+└── utils/                - **엔진 유틸리티 (Layer 0)**
     ├── util.lua          - 일반 유틸리티
-    ├── restart.lua       - 게임 재시작 로직
+    ├── text.lua          - **텍스트 렌더링 유틸리티**
     ├── fonts.lua         - 폰트 관리
+    ├── restart.lua       - 게임 재시작 로직
+    ├── convert.lua       - 데이터 변환 헬퍼
     └── ini.lua           - INI 파일 파서
+```
+
+**의존성 주입 패턴:**
+```lua
+-- main.lua가 게임 설정을 엔진 클래스에 주입
+local player_module = require "engine.entities.player"
+local player_config = require "game.data.player"
+player_module.config = player_config  -- 게임별 설정 주입!
 ```
 
 ---

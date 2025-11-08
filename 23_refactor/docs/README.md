@@ -8,21 +8,19 @@ A LÖVE2D game project with a clean **Engine/Game separation architecture**.
 
 This project follows a **modular architecture**:
 
-### **Engine (Reusable)**
-The `engine/` folder contains generic, reusable game systems that can be used in any LÖVE2D project:
-- Physics & collision system
-- Input handling (keyboard, gamepad, touch)
-- Audio management (BGM, SFX)
-- Save/Load system
-- Scene management
-- UI rendering (HUD, minimap, dialogue)
-- Visual effects (particles, lighting, screen effects)
+### **Engine (100% Reusable)** ⭐
+The `engine/` folder contains **ALL** game systems AND entities:
+- **Core systems:** lifecycle, input, display, sound, save, camera, debug
+- **Subsystems:** world (physics), effects, lighting, HUD
+- **Entities:** player, enemy, weapon, NPC, item, healing_point (**ALL in engine!**)
+- **UI:** menu system, screens, dialogue, widgets
+- **Scene builders:** data-driven scene factory, cutscene, gameplay
 
-### **Game (Content)**
-The `game/` folder contains game-specific content:
-- Scenes (menus, gameplay, settings)
-- Entities (player, enemies, NPCs, items)
-- Data (sound definitions, input configs, intro cutscenes)
+### **Game (Data + Minimal Code)**
+The `game/` folder contains **only** game-specific content:
+- **Scenes:** 4 data-driven menus (6 lines each!), complex scenes (play, settings, inventory, load)
+- **Data configs:** player stats, enemy types, menu configs, sounds, input mappings
+- **No entities folder!** (moved to engine)
 
 ### **Benefits**
 - **Easy to create new games**: Copy `engine/` folder, create new `game/` content
@@ -94,17 +92,18 @@ zip -9 -r game.love .
 ## 📁 Project Structure
 
 ```
-22_lighting/
-├── engine/       - Reusable game engine (systems)
-├── game/         - Game content (scenes, entities, data)
+23_refactor/
+├── engine/       - Reusable game engine (systems + entities)
+├── game/         - Game content (scenes, data configs)
 ├── assets/       - Resources (maps, images, sounds)
 ├── vendor/       - External libraries
 └── docs/         - Documentation
 ```
 
-**Key Concept:**
-- **engine/** = "How it works" (reusable)
-- **game/** = "What it shows" (content)
+**Key Concepts:**
+- **engine/** = "How it works" (100% reusable - includes ALL entities!)
+- **game/** = "What it shows" (data configs + game-specific scenes)
+- **Dependency Injection** = Game configs injected into engine via `main.lua`
 
 ---
 
@@ -137,14 +136,47 @@ zip -9 -r game.love .
 
 ## 🛠️ Creating Content
 
-### Add a New Enemy
+### Add a New Enemy ⭐ (Data-Driven - No Code!)
 1. Create sprite: `assets/images/enemies/yourenemy.png`
-2. Create type: `game/entities/enemy/types/yourenemy.lua` (copy from `slime.lua`)
-3. Open map in Tiled, add enemy object with `type = "yourenemy"`
+2. Open map in Tiled, add enemy object
+3. Set properties: `type = "yourenemy"`, `hp = 50`, `dmg = 10`, `spd = 100`, `spr = "assets/images/enemies/yourenemy.png"`
+4. Export map to Lua - Done! (Entity factory handles the rest)
+
+**Or:** Add to `game/data/entity_types.lua` for reusable enemy types:
+```lua
+enemies = {
+  yourenemy = {
+    hp = 50,
+    damage = 10,
+    speed = 100,
+    sprite = "assets/images/enemies/yourenemy.png"
+  }
+}
+```
+
+### Add a New Menu ⭐ (Data-Driven - 6 lines!)
+1. Add config to `game/data/scenes.lua`:
+```lua
+scenes.mymenu = {
+  type = "menu",
+  title = "My Menu",
+  options = {"Play", "Quit"},
+  actions = {
+    ["Play"] = {action = "switch_scene", scene = "play"},
+    ["Quit"] = {action = "quit"}
+  }
+}
+```
+2. Create `game/scenes/mymenu.lua`:
+```lua
+local builder = require "engine.scenes.builder"
+local configs = require "game.data.scenes"
+return builder:build("mymenu", configs)
+```
 
 ### Add a New Item
 1. Create icon: `assets/images/items/youritem.png`
-2. Create type: `game/entities/item/types/youritem.lua` (copy from `small_potion.lua`)
+2. Create type: `engine/entities/item/types/youritem.lua` (copy from `small_potion.lua`)
 3. Add to inventory in code: `inventory:addItem("youritem", 1)`
 
 ### Add a New Map
@@ -180,8 +212,9 @@ zip -9 -r game.love .
 - Look for errors in console
 
 ### Files not found errors
-- Check all `require` paths use dots: `require "engine.sound"`
+- Check all `require` paths use dots: `require "engine.core.sound"`
 - Check file paths use forward slashes: `"assets/maps/level1/area1.lua"`
+- Remember engine paths: `engine.core.*`, `engine.systems.*`, `engine.entities.*`
 
 ### No sound
 - Check `config.ini` has non-zero volumes
@@ -196,5 +229,5 @@ zip -9 -r game.love .
 ---
 
 **Framework:** LÖVE 11.5 + Lua 5.1
-**Architecture:** Engine/Game Separation
-**Last Updated:** 2025-11-07
+**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven
+**Last Updated:** 2025-11-09

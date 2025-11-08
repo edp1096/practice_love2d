@@ -192,4 +192,13 @@ function utils:Get16by9Size(w, h)
     end
 end
 
+-- Calculate distance between two points
+-- Returns: distance, dx, dy
+function utils:calculateDistance(x1, y1, x2, y2)
+    local dx = x2 - x1
+    local dy = y2 - y1
+    local distance = math.sqrt(dx * dx + dy * dy)
+    return distance, dx, dy
+end
+
 return utils
