@@ -16,6 +16,8 @@ Code example:
     end
  ]]
 
+local convert = require "engine.utils.convert"
+
 local ini = {}
 
 function ini:Read(filename)
@@ -41,13 +43,14 @@ function ini:Read(filename)
                     key = key:match("^%s*(.-)%s*$")
                     value = value:match("^%s*(.-)%s*$")
 
-                    if tonumber(value) then
-                        value = tonumber(value)
-                    elseif value == "true" then
-                        value = true
-                    elseif value == "false" then
-                        value = false
+                    -- Try number first, then boolean, then keep as string
+                    local num_value = tonumber(value)
+                    if num_value then
+                        value = num_value
+                    elseif value == "true" or value == "false" then
+                        value = convert:toBool(value)
                     end
+                    -- Otherwise keep as string
 
                     if current_section then
                         config[current_section][key] = value

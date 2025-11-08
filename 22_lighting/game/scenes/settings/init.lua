@@ -7,6 +7,7 @@ local scene_control = require "engine.scene_control"
 local display = require "engine.display"
 local input = require "engine.input"
 local fonts = require "engine.utils.fonts"
+local convert = require "engine.utils.convert"
 
 -- Import modules
 local options_module = require "game.scenes.settings.options"
@@ -77,7 +78,7 @@ function settings:enter(previous, ...)
     -- Current values indices (desktop only)
     if not is_mobile then
         self.current_resolution_index = options_module:findCurrentResolution()
-        self.current_monitor_index = GameConfig.monitor or 1
+        self.current_monitor_index = convert:toInt(GameConfig.monitor, 1)
     else
         -- Set default monitor index for mobile (always 1)
         self.current_monitor_index = 1
@@ -103,6 +104,21 @@ function settings:enter(previous, ...)
     }
 
     is_ready = true
+end
+
+function settings:leave()
+    -- Save settings when leaving settings screen
+    local utils = require "engine.utils.util"
+    local sound = require "engine.sound"
+    local is_mobile = (love._os == "Android" or love._os == "iOS")
+
+    if not is_mobile then
+        -- Desktop: save with resolution override
+        utils:SaveConfig(GameConfig, sound.settings, input.settings, self.resolutions[self.current_resolution_index])
+    else
+        -- Mobile: save without resolution
+        utils:SaveConfig(GameConfig, sound.settings, input.settings, nil)
+    end
 end
 
 function settings:exit()

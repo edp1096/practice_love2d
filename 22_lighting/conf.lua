@@ -1,6 +1,7 @@
 -- conf.lua
 local ini = require "engine.utils.ini"
 local util = require "engine.utils.util"
+local convert = require "engine.utils.convert"
 
 -- Detect platform early
 local is_android = love._os == "Android"
@@ -57,35 +58,36 @@ if not is_mobile then
             end
         end
 
+        -- LÖVE 12.0 / Lua 5.4: ini.lua now ensures proper type conversion
         GameConfig.width = config.Window.Width or GameConfig.width
         GameConfig.height = config.Window.Height or GameConfig.height
         GameConfig.windowed_width = config.Window.Width or GameConfig.windowed_width
         GameConfig.windowed_height = config.Window.Height or GameConfig.windowed_height
         GameConfig.resizable = config.Window.Resizable or GameConfig.resizable
         GameConfig.fullscreen = config.Window.FullScreen or GameConfig.fullscreen
-        GameConfig.monitor = config.Window.Monitor or 1
+        GameConfig.monitor = config.Window.Monitor or 1  -- Already number from ini.lua
 
         -- Load Sound settings if available
         if config.Sound then
-            GameConfig.sound.master_volume = tonumber(config.Sound.MasterVolume) or GameConfig.sound.master_volume
-            GameConfig.sound.bgm_volume = tonumber(config.Sound.BGMVolume) or GameConfig.sound.bgm_volume
-            GameConfig.sound.sfx_volume = tonumber(config.Sound.SFXVolume) or GameConfig.sound.sfx_volume
-            GameConfig.sound.muted = (config.Sound.Muted == "true") or GameConfig.sound.muted
+            GameConfig.sound.master_volume = convert:toPercent(config.Sound.MasterVolume, GameConfig.sound.master_volume)
+            GameConfig.sound.bgm_volume = convert:toPercent(config.Sound.BGMVolume, GameConfig.sound.bgm_volume)
+            GameConfig.sound.sfx_volume = convert:toPercent(config.Sound.SFXVolume, GameConfig.sound.sfx_volume)
+            GameConfig.sound.muted = convert:toBool(config.Sound.Muted, GameConfig.sound.muted)
         end
 
         -- Load Input settings if available
         if config.Input then
             if config.Input.Deadzone then
-                GameConfig.input.deadzone = tonumber(config.Input.Deadzone)
+                GameConfig.input.deadzone = convert:toNumberClamped(config.Input.Deadzone, 0.05, 0.30, 0.15)
             end
             if config.Input.VibrationEnabled ~= nil then
-                GameConfig.input.vibration_enabled = (config.Input.VibrationEnabled == "true")
+                GameConfig.input.vibration_enabled = convert:toBool(config.Input.VibrationEnabled)
             end
             if config.Input.VibrationStrength then
-                GameConfig.input.vibration_strength = tonumber(config.Input.VibrationStrength)
+                GameConfig.input.vibration_strength = convert:toPercent(config.Input.VibrationStrength, 1.0)
             end
             if config.Input.MobileVibrationEnabled ~= nil then
-                GameConfig.input.mobile_vibration_enabled = (config.Input.MobileVibrationEnabled == "true")
+                GameConfig.input.mobile_vibration_enabled = convert:toBool(config.Input.MobileVibrationEnabled)
             end
         end
     end
@@ -137,7 +139,7 @@ end
 
 function love.conf(t)
     t.identity = "hello_love2d"
-    t.version = "11.5"
+    -- t.version = "11.5"
     t.console = false
 
     t.window.title = "Hello Love2D"

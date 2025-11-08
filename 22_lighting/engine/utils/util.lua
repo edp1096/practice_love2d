@@ -107,7 +107,10 @@ function utils:SaveConfig(GameConfig, sound_settings, input_settings, resolution
             file:write("Width = " .. width .. "\n")
             file:write("Height = " .. height .. "\n")
             file:write("FullScreen = " .. tostring(GameConfig.fullscreen) .. "\n")
-            file:write("Monitor = " .. tostring(GameConfig.monitor) .. "\n")
+            -- Monitor: ensure it's a valid number, default to 1
+            local monitor = GameConfig.monitor or 1
+            if type(monitor) ~= "number" then monitor = 1 end
+            file:write("Monitor = " .. monitor .. "\n")
 
             -- Write Sound settings if provided
             if sound_settings then
