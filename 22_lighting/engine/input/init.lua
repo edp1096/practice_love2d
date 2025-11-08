@@ -43,7 +43,7 @@ end
 -- Initialize input system
 function input:init(input_config)
     if not input_config then
-        print("Warning: No input config provided to input:init()")
+        dprint("Warning: No input config provided to input:init()")
         return
     end
 

@@ -28,7 +28,7 @@ function screen:addEffect(effect)
 
     -- Validate effect type
     if effect.type ~= "flash" and effect.type ~= "vignette" and effect.type ~= "overlay" then
-        print("WARNING: Unknown screen effect type: " .. tostring(effect.type))
+        dprint("WARNING: Unknown screen effect type: " .. tostring(effect.type))
         return
     end
 

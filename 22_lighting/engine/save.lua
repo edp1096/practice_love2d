@@ -12,7 +12,7 @@ function save:init()
     if success then
         dprint("Save system initialized: " .. love.filesystem.getSaveDirectory())
     else
-        print("Warning: Could not create save directory")
+        dprint("Warning: Could not create save directory")
     end
 end
 
@@ -154,13 +154,13 @@ function save:deserialize(str)
 
     local func, err = load("return " .. str)
     if not func then
-        print("ERROR: Failed to deserialize: " .. tostring(err))
+        dprint("ERROR: Failed to deserialize: " .. tostring(err))
         return nil
     end
 
     local success, result = pcall(func)
     if not success then
-        print("ERROR: Failed to execute deserialized data: " .. tostring(result))
+        dprint("ERROR: Failed to execute deserialized data: " .. tostring(result))
         return nil
     end
 
@@ -169,7 +169,7 @@ end
 
 function save:saveGame(slot, data)
     if slot < 1 or slot > self.MAX_SLOTS then
-        print("ERROR: Invalid save slot: " .. slot)
+        dprint("ERROR: Invalid save slot: " .. slot)
         return false
     end
 
@@ -178,7 +178,7 @@ function save:saveGame(slot, data)
 
     local serialized = self:serialize(data)
     if not serialized then
-        print("ERROR: Failed to serialize save data")
+        dprint("ERROR: Failed to serialize save data")
         return false
     end
 
@@ -190,14 +190,14 @@ function save:saveGame(slot, data)
         self:saveRecentSlot(slot)
         return true
     else
-        print("ERROR: Failed to save game: " .. tostring(message))
+        dprint("ERROR: Failed to save game: " .. tostring(message))
         return false
     end
 end
 
 function save:loadGame(slot)
     if slot < 1 or slot > self.MAX_SLOTS then
-        print("ERROR: Invalid save slot: " .. slot)
+        dprint("ERROR: Invalid save slot: " .. slot)
         return nil
     end
 
@@ -210,13 +210,13 @@ function save:loadGame(slot)
 
     local contents, size = love.filesystem.read(filepath)
     if not contents then
-        print("ERROR: Failed to read save file")
+        dprint("ERROR: Failed to read save file")
         return nil
     end
 
     local data = self:deserialize(contents)
     if not data then
-        print("ERROR: Failed to deserialize save data")
+        dprint("ERROR: Failed to deserialize save data")
         return nil
     end
 
@@ -263,7 +263,7 @@ end
 
 function save:deleteSlot(slot)
     if slot < 1 or slot > self.MAX_SLOTS then
-        print("ERROR: Invalid save slot: " .. slot)
+        dprint("ERROR: Invalid save slot: " .. slot)
         return false
     end
 

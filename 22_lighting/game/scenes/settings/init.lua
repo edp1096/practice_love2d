@@ -126,6 +126,19 @@ function settings:update(dt)
             break
         end
     end
+
+    -- Check gamepad axis input for menu navigation (left stick)
+    if input:hasGamepad() then
+        if input:wasPressed("menu_up") then
+            self.selected = self.selected - 1
+            if self.selected < 1 then self.selected = #self.options end
+            require("engine.sound"):playSFX("menu", "navigate")
+        elseif input:wasPressed("menu_down") then
+            self.selected = self.selected + 1
+            if self.selected > #self.options then self.selected = 1 end
+            require("engine.sound"):playSFX("menu", "navigate")
+        end
+    end
 end
 
 function settings:draw()

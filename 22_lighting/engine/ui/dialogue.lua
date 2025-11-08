@@ -24,6 +24,7 @@ function dialogue:initialize()
         height = 45,
         padding_x = 15,
         padding_y = 15,
+        charge_max = 0.5,
     })
     self.skip_button.visible = false  -- Hidden by default
 
@@ -78,10 +79,20 @@ end
 function dialogue:update(dt)
     Talkies.update(dt)
 
-    -- Update button hover states (desktop)
+    -- Update skip button (charge system)
     if self.skip_button and self.skip_button.visible then
+        self.skip_button:update(dt)
         self.skip_button:updateHover()
+
+        -- Check if skip was triggered (fully charged)
+        if self.skip_button:isFullyCharged() then
+            dprint("[DIALOGUE] SKIP button fully charged - clearing all dialogue")
+            self:clear()
+            self.skip_button:reset()
+        end
     end
+
+    -- Update next button hover state (desktop)
     if self.next_button and self.next_button.visible then
         self.next_button:updateHover()
     end
@@ -205,9 +216,10 @@ function dialogue:touchReleased(id, x, y)
         return true  -- Consumed
     end
 
-    -- Priority 2: SKIP button - clears all dialogue
+    -- Priority 2: SKIP button - clears all dialogue (only if fully charged)
     if self.skip_button and self.skip_button:touchReleased(id, x, y) then
-        dprint("[DIALOGUE] SKIP button clicked - clearing all dialogue")
+        -- touchReleased returns true only if fully charged
+        dprint("[DIALOGUE] SKIP button fully charged - clearing all dialogue")
         self:clear()  -- Clear all dialogue
         return true  -- Consumed
     end

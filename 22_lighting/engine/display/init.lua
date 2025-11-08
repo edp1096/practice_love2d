@@ -115,9 +115,9 @@ function display:Initialize(config)
     else
         -- Mobile: always fullscreen
         self.is_fullscreen = true
-        print("Running on mobile platform: " .. love.system.getOS())
-        print("Screen dimensions: " .. self.screen_wh.w .. "x" .. self.screen_wh.h)
-        print("DPI scale: " .. self.dpi_scale)
+        dprint("Running on mobile platform: " .. love.system.getOS())
+        dprint("Screen dimensions: " .. self.screen_wh.w .. "x" .. self.screen_wh.h)
+        dprint("DPI scale: " .. self.dpi_scale)
     end
 
     self:CalculateScale()

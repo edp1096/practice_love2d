@@ -468,7 +468,7 @@ end
 ```
 
 **위젯:**
-- `engine/ui/widgets/skip_button.lua` - SKIP 버튼 위젯
+- `engine/ui/widgets/skip_button.lua` - SKIP 버튼 위젯 (0.5초 충전 시스템)
 - `engine/ui/widgets/next_button.lua` - NEXT 버튼 위젯
 
 ---

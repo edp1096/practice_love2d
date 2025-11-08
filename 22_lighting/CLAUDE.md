@@ -47,7 +47,10 @@ luac -p **/*.lua
 │   ├── world/                         # Physics & map loading (Windfield/STI)
 │   ├── effects/                       # Visual effects (particles, screen effects)
 │   ├── lighting/                      # Dynamic lighting system (GLSL shaders)
-│   ├── ui/                            # UI utilities (menu helpers)
+│   ├── ui/                            # UI systems (menu, dialogue, widgets)
+│   │   ├── menu.lua                   # Menu UI helpers
+│   │   ├── dialogue.lua               # Dialogue system (Talkies wrapper)
+│   │   └── widgets/                   # Reusable UI widgets (skip_button, next_button)
 │   └── utils/                         # Engine utilities
 ├── game/                              # Game content ⭐
 │   ├── scenes/                        # Game screens (menu, play, settings, etc.)
@@ -281,9 +284,12 @@ return mymodule
 - `engine/hud/` - In-game HUD system
   - `status.lua` - Health bars, cooldowns, status indicators
   - `minimap.lua` - Minimap rendering
-- `engine/ui/` - Menu UI system
+- `engine/ui/` - Menu & dialogue UI system
   - `menu.lua` - Menu UI helpers (layout, navigation, dialogs, touch input)
-  - `dialogue.lua` - NPC dialogue system (Talkies wrapper)
+  - `dialogue.lua` - NPC dialogue system (Talkies wrapper with skip/next buttons)
+  - `widgets/` - Reusable UI widgets
+    - `skip_button.lua` - Skip button with charge system (0.5s hold)
+    - `next_button.lua` - Next button for advancing dialogue
 
 ### Data
 - `engine/save.lua` - Save/Load system

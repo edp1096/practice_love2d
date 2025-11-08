@@ -494,7 +494,7 @@ end
 ```
 
 **Widgets:**
-- `engine/ui/widgets/skip_button.lua` - SKIP button widget
+- `engine/ui/widgets/skip_button.lua` - SKIP button widget (0.5s charge system)
 - `engine/ui/widgets/next_button.lua` - NEXT button widget
 
 ---

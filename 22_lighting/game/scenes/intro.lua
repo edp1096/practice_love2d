@@ -31,7 +31,7 @@ function intro:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot)
     dprint("Config loaded:", self.config ~= nil)
 
     if not self.config then
-        print("Warning: No intro config found for id: " .. tostring(intro_id))
+        dprint("Warning: No intro config found for id: " .. tostring(intro_id))
         -- Fallback: skip to target map
         if target_map then
             local play = require "game.scenes.play"
@@ -57,7 +57,7 @@ function intro:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot)
         if success then
             self.background = result
         else
-            print("Warning: Could not load intro background: " .. self.config.background)
+            dprint("Warning: Could not load intro background: " .. self.config.background)
             self.background = nil
         end
     else
@@ -98,6 +98,9 @@ function intro:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot)
     -- Fade-in effect
     self.fade_alpha = 1.0
     self.fade_speed = 2.0
+
+    -- Track gamepad button state for skip charging
+    self.skip_button_held = false
 end
 
 function intro:update(dt)
@@ -106,6 +109,24 @@ function intro:update(dt)
     -- Fade-in effect
     if self.fade_alpha > 0 then
         self.fade_alpha = math.max(0, self.fade_alpha - self.fade_speed * dt)
+    end
+
+    -- Update skip button (use dialogue's skip button)
+    if dialogue.skip_button then
+        -- Sync gamepad button state to skip button
+        if self.skip_button_held then
+            dialogue.skip_button.pressed = true
+        end
+
+        dialogue.skip_button:update(dt)
+
+        -- Check if skip was triggered (fully charged)
+        if dialogue.skip_button:isFullyCharged() and not self.dialogue_finished then
+            dialogue:clear()
+            self.dialogue_finished = true
+            self.transition_delay = self.transition_duration
+            dialogue.skip_button:reset()
+        end
     end
 
     -- Check if dialogue finished
@@ -162,13 +183,6 @@ function intro:draw()
     -- Draw dialogue (inside virtual coordinates for proper scaling)
     dialogue:draw()
 
-    -- Draw skip hint
-    if not self.dialogue_finished then
-        love.graphics.setFont(fonts.small)
-        love.graphics.setColor(0.7, 0.7, 0.7, 0.8)
-        love.graphics.printf("Press ESC to skip", 10, self.virtual_height - 20, self.virtual_width - 20, "right")
-    end
-
     display:Detach()
 end
 
@@ -185,48 +199,86 @@ function intro:keypressed(key)
         dialogue:handleInput("keyboard")
     end
 
-    -- Allow skipping intro
-    if key == "escape" then
-        dialogue:clear()
-        self.dialogue_finished = true
-        self.transition_delay = self.transition_duration
+    -- Start charging skip with ESC key
+    if key == "escape" and dialogue.skip_button then
+        dialogue.skip_button.pressed = true
+    end
+end
+
+function intro:keyreleased(key)
+    -- Stop charging skip
+    if key == "escape" and dialogue.skip_button then
+        dialogue.skip_button.pressed = false
     end
 end
 
 function intro:gamepadpressed(joystick, button)
-    if button == "a" or button == "b" then
+    if button == "a" then
         dialogue:handleInput("keyboard")
     end
 
-    -- Allow skipping with start button
-    if button == "start" then
-        dialogue:clear()
-        self.dialogue_finished = true
-        self.transition_delay = self.transition_duration
+    -- Start charging skip with B or start button
+    if button == "b" or button == "start" then
+        self.skip_button_held = true
+    end
+end
+
+function intro:gamepadreleased(joystick, button)
+    -- Stop charging skip
+    if button == "b" or button == "start" then
+        self.skip_button_held = false
+        if dialogue.skip_button then
+            dialogue.skip_button.pressed = false
+        end
     end
 end
 
 function intro:mousepressed(x, y, button)
     if button == 1 then
+        -- Dialogue handles skip button internally
         dialogue:handleInput("mouse", x, y)
     end
 end
 
 function intro:mousereleased(x, y, button)
     if button == 1 then
+        -- Check if skip button was triggered
+        if dialogue.skip_button and dialogue.skip_button:touchReleased(0, x, y) then
+            -- Skip triggered by button
+            if not self.dialogue_finished then
+                dialogue:clear()
+                self.dialogue_finished = true
+                self.transition_delay = self.transition_duration
+            end
+            return
+        end
+        -- Otherwise handle dialogue normally
         dialogue:handleInput("mouse_release", x, y)
     end
 end
 
 function intro:touchpressed(id, x, y, dx, dy, pressure)
+    -- Dialogue handles skip button internally
     return dialogue:handleInput("touch", id, x, y)
 end
 
 function intro:touchreleased(id, x, y, dx, dy, pressure)
+    -- Check if skip button was triggered
+    if dialogue.skip_button and dialogue.skip_button:touchReleased(id, x, y) then
+        -- Skip triggered by button
+        if not self.dialogue_finished then
+            dialogue:clear()
+            self.dialogue_finished = true
+            self.transition_delay = self.transition_duration
+        end
+        return true
+    end
+    -- Otherwise handle dialogue normally
     return dialogue:handleInput("touch_release", id, x, y)
 end
 
 function intro:touchmoved(id, x, y, dx, dy, pressure)
+    -- Dialogue handles touch move internally
     dialogue:handleInput("touch_move", id, x, y)
 end
 
@@ -249,6 +301,9 @@ function intro:resize(w, h)
         self.bg_x = (vw - img_w * self.bg_scale) / 2
         self.bg_y = (vh - img_h * self.bg_scale) / 2
     end
+
+    -- Recalculate dialogue button positions
+    dialogue:setDisplay(display)
 end
 
 return intro

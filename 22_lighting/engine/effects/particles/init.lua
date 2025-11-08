@@ -26,7 +26,7 @@ end
 -- Spawn an effect at a position
 function particles:spawn(effect_type, x, y, angle, particle_count)
     if not self.particle_systems[effect_type] then
-        print("WARNING: Unknown effect type: " .. tostring(effect_type))
+        dprint("WARNING: Unknown effect type: " .. tostring(effect_type))
         return
     end
 

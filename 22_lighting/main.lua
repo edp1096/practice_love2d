@@ -39,7 +39,7 @@ if not is_mobile and _VERSION == "Lua 5.1" then
     if success then
         locker = result
     else
-        print("Warning: Could not load locker module: " .. tostring(result))
+        dprint("Warning: Could not load locker module: " .. tostring(result))
     end
 end
 
@@ -171,7 +171,7 @@ function love.keypressed(key)
     if key == "f11" and not is_mobile then
         display:ToggleFullScreen()
         GameConfig.fullscreen = display.is_fullscreen
-        pcall(utils.SaveConfig, utils, GameConfig, sound.settings)
+        pcall(utils.SaveConfig, utils, GameConfig, sound.settings, nil, display.previous_screen_wh)
         lifecycle:resize(love.graphics.getWidth(), love.graphics.getHeight())
         return
     end

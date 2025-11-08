@@ -12,6 +12,8 @@ GameConfig = {
 
     width = 1280,
     height = 720,
+    windowed_width = 1280,  -- Selected resolution (saved to config)
+    windowed_height = 720,  -- Selected resolution (saved to config)
     resizable = false,
     fullscreen = false,
     vsync = true,
@@ -41,7 +43,7 @@ GameConfig = {
 if not is_mobile then
     local success, err = pcall(util.ReadOrCreateConfig, util)
     if not success then
-        print("Warning: Could not read/create config: " .. tostring(err))
+        dprint("Warning: Could not read/create config: " .. tostring(err))
     end
 
     local success2, config, err2 = pcall(ini.Read, ini, "config.ini")
@@ -57,6 +59,8 @@ if not is_mobile then
 
         GameConfig.width = config.Window.Width or GameConfig.width
         GameConfig.height = config.Window.Height or GameConfig.height
+        GameConfig.windowed_width = config.Window.Width or GameConfig.windowed_width
+        GameConfig.windowed_height = config.Window.Height or GameConfig.windowed_height
         GameConfig.resizable = config.Window.Resizable or GameConfig.resizable
         GameConfig.fullscreen = config.Window.FullScreen or GameConfig.fullscreen
         GameConfig.monitor = config.Window.Monitor or 1

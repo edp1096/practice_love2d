@@ -48,6 +48,21 @@ function menu:update(dt)
     if self.mouse_over ~= self.previous_mouse_over and self.mouse_over > 0 then
         sound:playSFX("menu", "navigate")
     end
+
+    -- Check gamepad axis input for menu navigation (left stick)
+    if input:hasGamepad() then
+        if input:wasPressed("menu_up") then
+            local new_sel = self.selected - 1
+            if new_sel < 1 then new_sel = #self.options end
+            sound:playSFX("menu", "navigate")
+            self.selected = new_sel
+        elseif input:wasPressed("menu_down") then
+            local new_sel = self.selected + 1
+            if new_sel > #self.options then new_sel = 1 end
+            sound:playSFX("menu", "navigate")
+            self.selected = new_sel
+        end
+    end
 end
 
 function menu:draw()

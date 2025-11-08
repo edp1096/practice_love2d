@@ -42,7 +42,7 @@ function sound:init(sound_data)
     dprint("Sound system initializing...")
 
     if not sound_data then
-        print("Warning: No sound data provided to sound:init()")
+        dprint("Warning: No sound data provided to sound:init()")
         return
     end
 
@@ -104,7 +104,7 @@ function sound:_loadBGM(name, config)
         self.bgm[name]:setVolume((config.volume or 1.0) * self.settings.bgm_volume * self.settings.master_volume)
         dprint("  Loaded BGM: " .. name)
     else
-        print("  WARNING: BGM not found: " .. config.path)
+        dprint("  WARNING: BGM not found: " .. config.path)
     end
 end
 
@@ -115,14 +115,14 @@ function sound:_loadSFX(category, name, config)
         self.sfx[category][name]:setVolume((config.volume or 1.0) * self.settings.sfx_volume * self.settings.master_volume)
         dprint("  Loaded SFX: " .. category .. "/" .. name)
     else
-        print("  WARNING: SFX not found: " .. config.path)
+        dprint("  WARNING: SFX not found: " .. config.path)
     end
 end
 
 function sound:_createPool(category, name, config)
     local info = love.filesystem.getInfo(config.path)
     if not info then
-        print("  WARNING: Cannot create pool for missing file: " .. config.path)
+        dprint("  WARNING: Cannot create pool for missing file: " .. config.path)
         return
     end
 
@@ -187,7 +187,7 @@ end
 -- Force cleanup if too many active sources
 function sound:_forceCleanup()
     if #self.active_sources >= self.max_active_sources then
-        print("WARNING: Max active sources reached (" .. self.max_active_sources .. "), forcing cleanup")
+        dprint("WARNING: Max active sources reached (" .. self.max_active_sources .. "), forcing cleanup")
 
         -- Stop oldest sources first
         local to_remove = math.ceil(#self.active_sources * 0.3) -- Remove 30%
@@ -220,7 +220,7 @@ function sound:_checkMemory()
     -- Warning threshold: 50MB
     if mem_mb > 50 then
         self.memory_stats.warnings = self.memory_stats.warnings + 1
-        print(string.format("WARNING: High memory usage: %.2f MB (Peak: %.2f MB)",
+        dprint(string.format("WARNING: High memory usage: %.2f MB (Peak: %.2f MB)",
             mem_mb, self.memory_stats.peak_memory))
 
         -- Emergency cleanup
@@ -246,7 +246,7 @@ function sound:createPool(category, name, path, size, pitch_variation)
 
     local info = love.filesystem.getInfo(path)
     if not info then
-        print("WARNING: Cannot create pool for missing file: " .. path)
+        dprint("WARNING: Cannot create pool for missing file: " .. path)
         return false
     end
 
@@ -279,7 +279,7 @@ function sound:playBGM(name, fade_time, rewind)
     rewind = rewind == nil and false or rewind
 
     if not self.bgm[name] then
-        print("WARNING: BGM not found: " .. name)
+        dprint("WARNING: BGM not found: " .. name)
         return
     end
 
@@ -334,7 +334,7 @@ function sound:playSFX(category, name, pitch_override, volume_multiplier)
     if self.settings.muted then return end
 
     if not self.sfx[category] or not self.sfx[category][name] then
-        print("WARNING: SFX not found: " .. category .. "/" .. name)
+        dprint("WARNING: SFX not found: " .. category .. "/" .. name)
         return
     end
 
@@ -362,7 +362,7 @@ function sound:playPooled(category, name, pitch_override, volume_multiplier)
     local pool = self.pools[pool_key]
 
     if not pool then
-        print("WARNING: Pool not found: " .. pool_key)
+        dprint("WARNING: Pool not found: " .. pool_key)
         return
     end
 

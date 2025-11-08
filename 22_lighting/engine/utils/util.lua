@@ -31,7 +31,7 @@ function utils:DeepCopy(obj, seen)
     return res
 end
 
-function utils:SaveConfig(GameConfig, sound_settings, input_settings)
+function utils:SaveConfig(GameConfig, sound_settings, input_settings, resolution_override)
     local os_name = love.system.getOS()
     local is_mobile = (os_name == "Android" or os_name == "iOS")
 
@@ -64,7 +64,7 @@ function utils:SaveConfig(GameConfig, sound_settings, input_settings)
         end)
 
         if not success then
-            print("Warning: Could not save mobile config: " .. tostring(err))
+            dprint("Warning: Could not save mobile config: " .. tostring(err))
             return false
         end
         return true
@@ -90,8 +90,22 @@ function utils:SaveConfig(GameConfig, sound_settings, input_settings)
             end
             file:write("\n")
             file:write("[Window]\n")
-            file:write("Width = " .. GameConfig.width .. "\n")
-            file:write("Height = " .. GameConfig.height .. "\n")
+            -- Save selected windowed resolution (not current window/fullscreen size)
+            local width, height
+            if resolution_override then
+                width = resolution_override.w
+                height = resolution_override.h
+            elseif GameConfig.windowed_width and GameConfig.windowed_height then
+                -- Use stored windowed resolution
+                width = GameConfig.windowed_width
+                height = GameConfig.windowed_height
+            else
+                -- Fallback to GameConfig values
+                width = GameConfig.width
+                height = GameConfig.height
+            end
+            file:write("Width = " .. width .. "\n")
+            file:write("Height = " .. height .. "\n")
             file:write("FullScreen = " .. tostring(GameConfig.fullscreen) .. "\n")
             file:write("Monitor = " .. tostring(GameConfig.monitor) .. "\n")
 
@@ -122,7 +136,7 @@ function utils:SaveConfig(GameConfig, sound_settings, input_settings)
     end)
 
     if not success then
-        print("Warning: Could not save config: " .. tostring(err))
+        dprint("Warning: Could not save config: " .. tostring(err))
         return false
     end
 
@@ -155,7 +169,7 @@ function utils:ReadOrCreateConfig()
     end)
 
     if not success then
-        print("Warning: Could not read/create config: " .. tostring(err))
+        dprint("Warning: Could not read/create config: " .. tostring(err))
         return false
     end
 

@@ -23,14 +23,14 @@ function lifecycle:initialize(initial_scene)
     if self.locker then
         local success, err = pcall(self.locker.ProcInit, self.locker)
         if not success then
-            print("Warning: Locker init failed: " .. tostring(err))
+            dprint("Warning: Locker init failed: " .. tostring(err))
         end
     end
 
     -- 2. Initialize display system
     local success, err = pcall(self.display.Initialize, self.display, self.GameConfig)
     if not success then
-        print("ERROR: Display initialization failed: " .. tostring(err))
+        dprint("ERROR: Display initialization failed: " .. tostring(err))
         -- Fallback initialization
         self.display.screen_wh = { w = 0, h = 0 }
         self.display.render_wh = { w = 960, h = 540 }
@@ -106,8 +106,8 @@ function lifecycle:resize(w, h)
     self.GameConfig.width = w
     self.GameConfig.height = h
 
-    -- Save config to file
-    pcall(self.utils.SaveConfig, self.utils, self.GameConfig, self.sound.settings, self.input.settings)
+    -- Save config to file (use previous_screen_wh to avoid saving fullscreen resolution)
+    pcall(self.utils.SaveConfig, self.utils, self.GameConfig, self.sound.settings, self.input.settings, self.display.previous_screen_wh)
 
     -- Recalculate display scale
     pcall(self.display.CalculateScale, self.display)
@@ -140,8 +140,8 @@ function lifecycle:quit()
         self.GameConfig.monitor = current_flags.display
     end
 
-    -- Save config
-    pcall(self.utils.SaveConfig, self.utils, self.GameConfig, self.sound.settings, self.input.settings)
+    -- Save config (use previous_screen_wh to avoid saving fullscreen resolution)
+    pcall(self.utils.SaveConfig, self.utils, self.GameConfig, self.sound.settings, self.input.settings, self.display.previous_screen_wh)
 
     -- Clean up process locker
     if self.locker then

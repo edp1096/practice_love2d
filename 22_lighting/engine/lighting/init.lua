@@ -58,7 +58,7 @@ function lighting:setAmbient(preset_or_color, g, b)
         if preset then
             self.ambient_color = {preset[1], preset[2], preset[3]}
         else
-            print("WARNING: Unknown ambient preset: " .. preset_or_color)
+            dprint("WARNING: Unknown ambient preset: " .. preset_or_color)
         end
     elseif type(preset_or_color) == "table" then
         -- Direct color table
@@ -176,7 +176,7 @@ function lighting:drawLight(light, camera)
 
     elseif light.type == "spotlight" then
         -- TODO: Implement spotlight using image or shader
-        print("WARNING: Spotlight not implemented yet")
+        dprint("WARNING: Spotlight not implemented yet")
     end
 end
 

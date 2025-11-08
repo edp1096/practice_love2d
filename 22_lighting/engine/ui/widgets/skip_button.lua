@@ -41,6 +41,11 @@ function skip_button:new(options)
         -- Touch tracking
         touch_id = nil,
 
+        -- Charge system
+        charge = 0,
+        charge_max = options.charge_max or 1.0,  -- 1 second default
+        charging = false,
+
         -- Dependencies (set externally)
         display = nil,  -- engine.display
     }
@@ -74,6 +79,24 @@ end
 function skip_button:isInside(vx, vy)
     return vx >= self.x and vx <= self.x + self.width and
            vy >= self.y and vy <= self.y + self.height
+end
+
+-- Update (for charge system)
+function skip_button:update(dt)
+    if self.pressed then
+        -- Charge when pressed
+        self.charging = true
+        self.charge = math.min(self.charge_max, self.charge + dt)
+    else
+        -- Decay charge when not pressed
+        self.charging = false
+        self.charge = math.max(0, self.charge - dt * 2)
+    end
+end
+
+-- Check if fully charged
+function skip_button:isFullyCharged()
+    return self.charge >= self.charge_max
 end
 
 -- Handle touch/mouse press
@@ -110,16 +133,18 @@ function skip_button:touchReleased(id, x, y)
     local vx, vy = coords:physicalToVirtual(x, y, self.display)
 
     local was_pressed = self.pressed
+    local was_fully_charged = self:isFullyCharged()
     self.pressed = false
     self.touch_id = nil
 
-    -- Check if released inside button (complete click)
-    if was_pressed and self:isInside(vx, vy) then
-        dprint("[SKIP_BUTTON] Button clicked successfully")
-        return true  -- Button clicked!
+    -- Check if fully charged and released inside button
+    if was_pressed and was_fully_charged and self:isInside(vx, vy) then
+        dprint("[SKIP_BUTTON] Button skip triggered (fully charged)")
+        self.charge = 0  -- Reset charge
+        return true  -- Skip triggered!
     end
 
-    dprint("[SKIP_BUTTON] Released outside button area")
+    dprint("[SKIP_BUTTON] Released without full charge or outside button area")
     return false
 end
 
@@ -163,6 +188,19 @@ function skip_button:draw()
     -- Draw background
     love.graphics.setColor(bg_color)
     love.graphics.rectangle("fill", self.x, self.y, self.width, self.height, 8, 8)
+
+    -- Draw charge indicator (progress bar inside button)
+    if self.charge > 0 then
+        local charge_ratio = self.charge / self.charge_max
+        local charge_width = self.width * charge_ratio
+
+        -- Charge fill color (orange to yellow gradient)
+        local r = 0.8 + charge_ratio * 0.2
+        local g = 0.5 + charge_ratio * 0.5
+        local b = 0.2
+        love.graphics.setColor(r, g, b, 0.5)
+        love.graphics.rectangle("fill", self.x, self.y, charge_width, self.height, 8, 8)
+    end
 
     -- Draw border
     love.graphics.setColor(self.border_color)
@@ -214,6 +252,8 @@ function skip_button:reset()
     self.pressed = false
     self.hovered = false
     self.touch_id = nil
+    self.charge = 0
+    self.charging = false
 end
 
 return skip_button

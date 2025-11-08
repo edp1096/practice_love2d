@@ -19,11 +19,38 @@ function physical_gamepad_input:new(joystick, settings, input_config)
         vibration_strength = 1.0
     }
     instance.input_config = input_config
+
+    -- Track axis state for button-like behavior (menu navigation)
+    instance.axis_state = {
+        leftx = { value = 0, was_positive = false, was_negative = false },
+        lefty = { value = 0, was_positive = false, was_negative = false }
+    }
+    instance.axis_threshold = 0.5 -- Threshold for axis to register as button press
+
     return instance
 end
 
 function physical_gamepad_input:isAvailable()
     return self.enabled and self.joystick ~= nil
+end
+
+function physical_gamepad_input:update(dt)
+    if not self:isAvailable() then
+        return
+    end
+
+    -- Update axis state for button-like detection
+    for axis_name, state in pairs(self.axis_state) do
+        local raw_value = self.joystick:getGamepadAxis(axis_name)
+        local value = self:applyDeadzone(raw_value)
+
+        -- Store previous state BEFORE updating value
+        state.was_positive = (state.value > self.axis_threshold)
+        state.was_negative = (state.value < -self.axis_threshold)
+
+        -- Update current value
+        state.value = value
+    end
 end
 
 function physical_gamepad_input:applyDeadzone(value)
@@ -95,20 +122,61 @@ function physical_gamepad_input:isActionDown(action_mapping)
         end
     end
 
+    -- Check axis (for menu navigation with stick)
+    if action_mapping.gamepad_axis then
+        local axis_name = action_mapping.gamepad_axis.axis
+        local is_negative = action_mapping.gamepad_axis.negative
+
+        if self.axis_state[axis_name] then
+            local value = self.axis_state[axis_name].value
+            if is_negative then
+                return value < -self.axis_threshold
+            else
+                return value > self.axis_threshold
+            end
+        end
+    end
+
     return false
 end
 
 function physical_gamepad_input:wasActionPressed(action_mapping, source, value)
-    if not self:isAvailable() or source ~= "gamepad" then
+    if not self:isAvailable() then
         return false
     end
 
-    if action_mapping.gamepad and action_mapping.gamepad == value then
-        return true
+    -- Handle button events
+    if source == "gamepad" and value then
+        if action_mapping.gamepad and action_mapping.gamepad == value then
+            return true
+        end
+
+        if action_mapping.gamepad_dpad and ("dp" .. action_mapping.gamepad_dpad) == value then
+            return true
+        end
     end
 
-    if action_mapping.gamepad_dpad and ("dp" .. action_mapping.gamepad_dpad) == value then
-        return true
+    -- Check axis press (for menu navigation with stick)
+    -- This is called from update loop, not from button events
+    if action_mapping.gamepad_axis then
+        local axis_name = action_mapping.gamepad_axis.axis
+        local is_negative = action_mapping.gamepad_axis.negative
+
+        if self.axis_state[axis_name] then
+            local state = self.axis_state[axis_name]
+            local current_value = state.value
+
+            -- Detect axis crossing threshold (edge trigger)
+            if is_negative then
+                local is_pressed = (current_value < -self.axis_threshold)
+                local was_pressed = state.was_negative
+                return is_pressed and not was_pressed
+            else
+                local is_pressed = (current_value > self.axis_threshold)
+                local was_pressed = state.was_positive
+                return is_pressed and not was_pressed
+            end
+        end
     end
 
     return false

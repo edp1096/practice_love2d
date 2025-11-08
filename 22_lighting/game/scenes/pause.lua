@@ -41,6 +41,21 @@ function pause:update(dt)
 
     -- Update mouse-over
     self.mouse_over = ui_scene.updateMouseOver(self.options, self.layout, self.virtual_width, self.fonts.option)
+
+    -- Check gamepad axis input for menu navigation (left stick)
+    if input:hasGamepad() then
+        if input:wasPressed("menu_up") then
+            local new_sel = self.selected - 1
+            if new_sel < 1 then new_sel = #self.options end
+            sound:playSFX("menu", "navigate")
+            self.selected = new_sel
+        elseif input:wasPressed("menu_down") then
+            local new_sel = self.selected + 1
+            if new_sel > #self.options then new_sel = 1 end
+            sound:playSFX("menu", "navigate")
+            self.selected = new_sel
+        end
+    end
 end
 
 function pause:draw()

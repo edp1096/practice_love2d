@@ -104,18 +104,22 @@ return {
     menu = {
         menu_up = {
             keyboard = { "w", "up" },
+            gamepad_axis = { axis = "lefty", negative = true },
             gamepad_dpad = "up"
         },
         menu_down = {
             keyboard = { "s", "down" },
+            gamepad_axis = { axis = "lefty", negative = false },
             gamepad_dpad = "down"
         },
         menu_left = {
             keyboard = { "a", "left" },
+            gamepad_axis = { axis = "leftx", negative = true },
             gamepad_dpad = "left"
         },
         menu_right = {
             keyboard = { "d", "right" },
+            gamepad_axis = { axis = "leftx", negative = false },
             gamepad_dpad = "right"
         },
         menu_select = {
