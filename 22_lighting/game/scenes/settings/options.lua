@@ -184,7 +184,7 @@ function options:changeOption(state, direction)
             display.previous_screen_wh.w = res.w
             display.previous_screen_wh.h = res.h
         end
-        utils:SaveConfig(GameConfig, nil, nil, state.resolutions[state.current_resolution_index])
+        utils:SaveConfig(GameConfig, sound.settings, input.settings, state.resolutions[state.current_resolution_index])
 
         -- Play navigate sound
         sound:playSFX("menu", "navigate")
@@ -212,7 +212,7 @@ function options:changeOption(state, direction)
         -- This propagates to pause → play → camera:zoomTo()
         if state.resize then state:resize(current_w, current_h) end
 
-        utils:SaveConfig(GameConfig, nil, nil, state.resolutions[state.current_resolution_index])
+        utils:SaveConfig(GameConfig, sound.settings, input.settings, state.resolutions[state.current_resolution_index])
 
         -- Play navigate sound
         sound:playSFX("menu", "navigate")
@@ -253,7 +253,7 @@ function options:changeOption(state, direction)
         display:CalculateScale()
         -- CRITICAL: Call resize chain
         if state.resize then state:resize(GameConfig.width, GameConfig.height) end
-        utils:SaveConfig(GameConfig, nil, nil, state.resolutions[state.current_resolution_index])
+        utils:SaveConfig(GameConfig, sound.settings, input.settings, state.resolutions[state.current_resolution_index])
 
         -- Play navigate sound
         sound:playSFX("menu", "navigate")
@@ -273,7 +273,7 @@ function options:changeOption(state, direction)
         GameConfig.sound.sfx_volume = sound.settings.sfx_volume
         GameConfig.sound.muted = sound.settings.muted
 
-        utils:SaveConfig(GameConfig, sound.settings, nil, state.resolutions[state.current_resolution_index])
+        utils:SaveConfig(GameConfig, sound.settings, nil, nil)
 
         -- Test sound
         sound:playSFX("menu", "navigate")
@@ -293,7 +293,7 @@ function options:changeOption(state, direction)
         GameConfig.sound.sfx_volume = sound.settings.sfx_volume
         GameConfig.sound.muted = sound.settings.muted
 
-        utils:SaveConfig(GameConfig, sound.settings, nil, state.resolutions[state.current_resolution_index])
+        utils:SaveConfig(GameConfig, sound.settings, nil, nil)
     elseif option.name == "SFX Volume" then
         state.current_sfx_volume_index = state.current_sfx_volume_index + direction
         if state.current_sfx_volume_index < 1 then
@@ -310,7 +310,7 @@ function options:changeOption(state, direction)
         GameConfig.sound.sfx_volume = sound.settings.sfx_volume
         GameConfig.sound.muted = sound.settings.muted
 
-        utils:SaveConfig(GameConfig, sound.settings, nil, state.resolutions[state.current_resolution_index])
+        utils:SaveConfig(GameConfig, sound.settings, nil, nil)
 
         -- Test sound
         sound:playSFX("menu", "navigate")
@@ -323,13 +323,13 @@ function options:changeOption(state, direction)
         GameConfig.sound.sfx_volume = sound.settings.sfx_volume
         GameConfig.sound.muted = sound.settings.muted
 
-        utils:SaveConfig(GameConfig, sound.settings, nil, state.resolutions[state.current_resolution_index])
+        utils:SaveConfig(GameConfig, sound.settings, nil, nil)
     elseif option.name == "Vibration" then
         input:setVibrationEnabled(not input.settings.vibration_enabled)
 
         -- Sync to GameConfig before saving
         GameConfig.input.vibration_enabled = input.settings.vibration_enabled
-        utils:SaveConfig(GameConfig, sound.settings, input.settings, state.resolutions[state.current_resolution_index])
+        utils:SaveConfig(GameConfig, sound.settings, input.settings, nil)
 
         -- Test vibration when enabling
         if input.settings.vibration_enabled then
@@ -340,7 +340,7 @@ function options:changeOption(state, direction)
 
         -- Sync to GameConfig before saving
         GameConfig.input.mobile_vibration_enabled = input.settings.mobile_vibration_enabled
-        utils:SaveConfig(GameConfig, sound.settings, input.settings, state.resolutions[state.current_resolution_index])
+        utils:SaveConfig(GameConfig, sound.settings, input.settings, nil)
 
         -- Test vibration when enabling
         if input.settings.mobile_vibration_enabled then
@@ -358,7 +358,7 @@ function options:changeOption(state, direction)
 
         -- Sync to GameConfig before saving
         GameConfig.input.vibration_strength = input.settings.vibration_strength
-        utils:SaveConfig(GameConfig, sound.settings, input.settings, state.resolutions[state.current_resolution_index])
+        utils:SaveConfig(GameConfig, sound.settings, input.settings, nil)
 
         -- Test vibration
         if input.settings.vibration_enabled then
@@ -376,7 +376,7 @@ function options:changeOption(state, direction)
 
         -- Sync to GameConfig before saving
         GameConfig.input.deadzone = input.settings.deadzone
-        utils:SaveConfig(GameConfig, sound.settings, input.settings, state.resolutions[state.current_resolution_index])
+        utils:SaveConfig(GameConfig, sound.settings, input.settings, nil)
     end
 end
 

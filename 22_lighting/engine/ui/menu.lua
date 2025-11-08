@@ -5,6 +5,7 @@ local display = require "engine.display"
 local input = require "engine.input"
 local sound = require "engine.sound"
 local fonts = require "engine.utils.fonts"
+local text_ui = require "engine.ui.text"
 
 local scene = {}
 
@@ -38,26 +39,17 @@ end
 -- Draw menu title
 function scene.drawTitle(text, font, y, width, color)
     color = color or { 1, 1, 1, 1 }
-    love.graphics.setFont(font)
-    love.graphics.setColor(color)
-    love.graphics.printf(text, 0, y, width, "center")
+    text_ui:drawCentered(text, y, width, color, font)
 end
 
 -- Draw menu options with selection highlight
 function scene.drawOptions(options, selected, mouse_over, font, layout, width)
-    love.graphics.setFont(font)
-
     for i, option in ipairs(options) do
         local y = layout.options_start_y + (i - 1) * layout.option_spacing
         local is_selected = (i == selected or i == mouse_over)
+        local display_text = is_selected and ("> " .. option) or option
 
-        if is_selected then
-            love.graphics.setColor(1, 1, 0, 1) -- Yellow highlight
-            love.graphics.printf("> " .. option, 0, y, width, "center")
-        else
-            love.graphics.setColor(0.7, 0.7, 0.7, 1) -- Gray normal
-            love.graphics.printf(option, 0, y, width, "center")
-        end
+        text_ui:drawOptionCentered(display_text, y, width, is_selected, font)
     end
 end
 
@@ -84,9 +76,6 @@ end
 
 -- Draw control hints at bottom of screen
 function scene.drawControlHints(font, layout, width, custom_text)
-    love.graphics.setFont(font)
-    love.graphics.setColor(0.5, 0.5, 0.5, 1)
-
     local hint_text
     if custom_text then
         hint_text = custom_text
@@ -97,7 +86,7 @@ function scene.drawControlHints(font, layout, width, custom_text)
         hint_text = "v" .. (GameConfig.version or "0.0.1")
     end
 
-    love.graphics.printf(hint_text, 0, layout.hint_y - 10, width, "center")
+    text_ui:drawCentered(hint_text, layout.hint_y - 10, width, {0.5, 0.5, 0.5, 1}, font)
 end
 
 -- Handle keyboard navigation (returns result table with action and new_selection)
@@ -177,9 +166,7 @@ function scene.drawConfirmDialog(title, subtitle, button_labels, selected, mouse
         end
         title_font = scene.fallback_title_font
     end
-    love.graphics.setFont(title_font)
-    love.graphics.setColor(1, 0.3, 0.3, 1)
-    love.graphics.printf(title, 0, height / 2 - 60, width, "center")
+    text_ui:drawCentered(title, height / 2 - 60, width, {1, 0.3, 0.3, 1}, title_font)
 
     -- Subtitle
     if subtitle then
@@ -190,9 +177,7 @@ function scene.drawConfirmDialog(title, subtitle, button_labels, selected, mouse
             end
             hint_font = scene.fallback_hint_font
         end
-        love.graphics.setFont(hint_font)
-        love.graphics.setColor(0.9, 0.9, 0.9, 1)
-        love.graphics.printf(subtitle, 0, height / 2 - 20, width, "center")
+        text_ui:drawCentered(subtitle, height / 2 - 20, width, {0.9, 0.9, 0.9, 1}, hint_font)
     end
 
     -- Buttons

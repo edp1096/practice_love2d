@@ -10,6 +10,7 @@ local sound = require "engine.sound"
 local restart_util = require "engine.utils.restart"
 local fonts = require "engine.utils.fonts"
 local ui_scene = require "engine.ui.menu"
+local text_ui = require "engine.ui.text"
 local debug = require "engine.debug"
 
 function gameover:enter(previous, is_clear, ...)
@@ -95,45 +96,29 @@ function gameover:draw()
         love.graphics.rectangle("fill", 0, 0, self.virtual_width, self.virtual_height)
     end
 
-    love.graphics.setFont(self.titleFont)
     if self.is_clear then
-        love.graphics.setColor(1, 0.9, 0.2, 1)
-        local title = "GAME CLEAR!"
-        love.graphics.printf(title, 0, self.layout.title_y, self.virtual_width, "center")
+        text_ui:drawCentered("GAME CLEAR!", self.layout.title_y, self.virtual_width, {1, 0.9, 0.2, 1}, self.titleFont)
+        text_ui:drawCentered("Victory!", self.layout.subtitle_y, self.virtual_width, {0.9, 0.9, 0.9, 1}, self.subtitleFont)
     else
-        love.graphics.setColor(1, 0.2, 0.2, 1)
-        local title = "GAME OVER"
-        love.graphics.printf(title, 0, self.layout.title_y, self.virtual_width, "center")
-    end
-
-    love.graphics.setFont(self.subtitleFont)
-    if self.is_clear then
-        love.graphics.setColor(0.9, 0.9, 0.9, 1)
-        local subtitle = "Victory!"
-        love.graphics.printf(subtitle, 0, self.layout.subtitle_y, self.virtual_width, "center")
-    else
-        love.graphics.setColor(0.8, 0.8, 0.8, 1)
-        local subtitle = "You Have Fallen"
-        love.graphics.printf(subtitle, 0, self.layout.subtitle_y, self.virtual_width, "center")
+        text_ui:drawCentered("GAME OVER", self.layout.title_y, self.virtual_width, {1, 0.2, 0.2, 1}, self.titleFont)
+        text_ui:drawCentered("You Have Fallen", self.layout.subtitle_y, self.virtual_width, {0.8, 0.8, 0.8, 1}, self.subtitleFont)
     end
 
     -- Use scene_ui helper for option rendering
     ui_scene.drawOptions(self.options, self.selected, self.mouse_over, self.optionFont,
         self.layout, self.virtual_width)
 
-    love.graphics.setFont(self.hintFont)
-    love.graphics.setColor(0.7, 0.7, 0.7, 1)
-
+    local hint_color = {0.7, 0.7, 0.7, 1}
     if input:hasGamepad() then
-        love.graphics.printf("D-Pad: Navigate | " ..
+        text_ui:drawCentered("D-Pad: Navigate | " ..
             input:getPrompt("menu_select") .. ": Select | " ..
             input:getPrompt("menu_back") .. ": Main Menu",
-            0, self.layout.hint_y - 20, self.virtual_width, "center")
-        love.graphics.printf("Keyboard: Arrow Keys / WASD | Enter: Select | ESC: Main Menu | Mouse: Hover & Click",
-            0, self.layout.hint_y, self.virtual_width, "center")
+            self.layout.hint_y - 20, self.virtual_width, hint_color, self.hintFont)
+        text_ui:drawCentered("Keyboard: Arrow Keys / WASD | Enter: Select | ESC: Main Menu | Mouse: Hover & Click",
+            self.layout.hint_y, self.virtual_width, hint_color, self.hintFont)
     else
-        love.graphics.printf("Arrow Keys / WASD to navigate, Enter to select | Mouse to hover and click",
-            0, self.layout.hint_y, self.virtual_width, "center")
+        text_ui:drawCentered("Arrow Keys / WASD to navigate, Enter to select | Mouse to hover and click",
+            self.layout.hint_y, self.virtual_width, hint_color, self.hintFont)
     end
 
     display:Detach()

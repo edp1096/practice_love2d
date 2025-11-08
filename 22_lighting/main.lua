@@ -171,7 +171,7 @@ function love.keypressed(key)
     if key == "f11" and not is_mobile then
         display:ToggleFullScreen()
         GameConfig.fullscreen = display.is_fullscreen
-        pcall(utils.SaveConfig, utils, GameConfig, sound.settings, nil, display.previous_screen_wh)
+        pcall(utils.SaveConfig, utils, GameConfig, sound.settings, input.settings, nil)
         lifecycle:resize(love.graphics.getWidth(), love.graphics.getHeight())
         return
     end

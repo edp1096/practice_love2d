@@ -58,14 +58,26 @@ if not is_mobile then
             end
         end
 
-        -- LÖVE 12.0 / Lua 5.4: ini.lua now ensures proper type conversion
-        GameConfig.width = config.Window.Width or GameConfig.width
-        GameConfig.height = config.Window.Height or GameConfig.height
-        GameConfig.windowed_width = config.Window.Width or GameConfig.windowed_width
-        GameConfig.windowed_height = config.Window.Height or GameConfig.windowed_height
-        GameConfig.resizable = config.Window.Resizable or GameConfig.resizable
-        GameConfig.fullscreen = config.Window.FullScreen or GameConfig.fullscreen
-        GameConfig.monitor = config.Window.Monitor or 1  -- Already number from ini.lua
+        -- Load Window settings (properly handle nil vs false)
+        if config.Window then
+            if config.Window.Width then
+                GameConfig.width = config.Window.Width
+                GameConfig.windowed_width = config.Window.Width
+            end
+            if config.Window.Height then
+                GameConfig.height = config.Window.Height
+                GameConfig.windowed_height = config.Window.Height
+            end
+            if config.Window.Resizable ~= nil then
+                GameConfig.resizable = config.Window.Resizable
+            end
+            if config.Window.FullScreen ~= nil then
+                GameConfig.fullscreen = config.Window.FullScreen
+            end
+            if config.Window.Monitor then
+                GameConfig.monitor = config.Window.Monitor
+            end
+        end
 
         -- Load Sound settings if available
         if config.Sound then

@@ -108,17 +108,13 @@ end
 
 function settings:leave()
     -- Save settings when leaving settings screen
+    -- Note: Resolution is already saved when changed in options.lua
+    -- Here we just save sound/input settings
     local utils = require "engine.utils.util"
     local sound = require "engine.sound"
-    local is_mobile = (love._os == "Android" or love._os == "iOS")
 
-    if not is_mobile then
-        -- Desktop: save with resolution override
-        utils:SaveConfig(GameConfig, sound.settings, input.settings, self.resolutions[self.current_resolution_index])
-    else
-        -- Mobile: save without resolution
-        utils:SaveConfig(GameConfig, sound.settings, input.settings, nil)
-    end
+    -- Don't pass resolution_override - use already-set GameConfig values
+    utils:SaveConfig(GameConfig, sound.settings, input.settings, nil)
 end
 
 function settings:exit()

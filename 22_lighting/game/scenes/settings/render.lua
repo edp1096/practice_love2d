@@ -5,6 +5,7 @@ local render = {}
 
 local display = require "engine.display"
 local input = require "engine.input"
+local text_ui = require "engine.ui.text"
 local options_module = require "game.scenes.settings.options"
 
 function render:draw(state)
@@ -27,8 +28,8 @@ function render:draw(state)
 
     display:Attach()
 
-    love.graphics.setFont(state.titleFont)
-    love.graphics.printf("Settings", 0, state.layout.title_y, state.virtual_width, "center")
+    -- Title
+    text_ui:drawCentered("Settings", state.layout.title_y, state.virtual_width, {1, 1, 1, 1}, state.titleFont)
 
     -- Draw settings options
     for i, option in ipairs(state.options) do
@@ -36,39 +37,24 @@ function render:draw(state)
         local is_selected = (i == state.selected or i == state.mouse_over)
 
         -- Draw label
-        love.graphics.setFont(state.labelFont)
-        if is_selected then
-            love.graphics.setColor(1, 1, 0, 1)
-        else
-            love.graphics.setColor(0.7, 0.7, 0.7, 1)
-        end
-        love.graphics.printf(option.name, 0, y, state.layout.label_x, "right")
+        text_ui:drawOptionAligned(option.name, 0, y, state.layout.label_x, "right", is_selected, state.labelFont)
 
         -- Draw value
-        love.graphics.setFont(state.valueFont)
-        if is_selected then
-            love.graphics.setColor(1, 1, 0, 1)
-        else
-            love.graphics.setColor(1, 1, 1, 1)
-        end
-
         local value_text = options_module:getOptionValue(state, i)
         if option.type ~= "action" then
-            love.graphics.printf(value_text, state.layout.value_x, y, state.virtual_width - state.layout.value_x - 100, "left")
+            local value_color = is_selected and {1, 1, 0, 1} or {1, 1, 1, 1}
+            text_ui:drawf(value_text, state.layout.value_x, y, state.virtual_width - state.layout.value_x - 100, "left", value_color, state.valueFont)
         end
 
         -- Draw arrows for adjustable options
         if is_selected and option.type ~= "action" then
-            love.graphics.setColor(0.5, 0.5, 1, 1)
+            love.graphics.setFont(state.valueFont)
             local value_width = state.valueFont:getWidth(value_text)
-            love.graphics.printf("< >", state.layout.value_x + value_width + 20, y, state.virtual_width - state.layout.value_x - value_width - 20, "left")
+            text_ui:draw("< >", state.layout.value_x + value_width + 20, y, {0.5, 0.5, 1, 1})
         end
     end
 
     -- Controls hint
-    love.graphics.setFont(state.hintFont)
-    love.graphics.setColor(0.5, 0.5, 0.5, 1)
-
     local hint_text
     if input:hasGamepad() then
         hint_text = input:getPrompt("menu_back") .. ": Back | " ..
@@ -76,8 +62,7 @@ function render:draw(state)
     else
         hint_text = "ESC: Back | Enter: Select | Arrow/WASD: Navigate | Left-Right: Change"
     end
-
-    love.graphics.printf(hint_text, 0, state.layout.hint_y - 20, state.virtual_width, "center")
+    text_ui:drawCentered(hint_text, state.layout.hint_y - 20, state.virtual_width, {0.5, 0.5, 0.5, 1}, state.hintFont)
 
     display:Detach()
 
