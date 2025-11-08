@@ -153,21 +153,42 @@ function options:getOptionValue(state, index)
     return ""
 end
 
--- Change option value
-function options:changeOption(state, direction)
-    local option = state.options[state.selected]
+-- Helper: Cycle through an array index (wraps around)
+local function cycleIndex(current_index, array, direction)
+    local new_index = current_index + direction
+    if new_index < 1 then
+        return #array
+    elseif new_index > #array then
+        return 1
+    end
+    return new_index
+end
 
-    if option.name == "Resolution" then
+-- Helper: Sync and save sound config
+local function syncAndSaveSoundConfig()
+    GameConfig.sound.master_volume = sound.settings.master_volume
+    GameConfig.sound.bgm_volume = sound.settings.bgm_volume
+    GameConfig.sound.sfx_volume = sound.settings.sfx_volume
+    GameConfig.sound.muted = sound.settings.muted
+    utils:SaveConfig(GameConfig, sound.settings, nil, nil)
+end
+
+-- Helper: Sync and save input config
+local function syncAndSaveInputConfig()
+    GameConfig.input.vibration_enabled = input.settings.vibration_enabled
+    GameConfig.input.mobile_vibration_enabled = input.settings.mobile_vibration_enabled
+    GameConfig.input.vibration_strength = input.settings.vibration_strength
+    GameConfig.input.deadzone = input.settings.deadzone
+    utils:SaveConfig(GameConfig, sound.settings, input.settings, nil)
+end
+
+-- Option change handlers (data-driven)
+local option_handlers = {
+    ["Resolution"] = function(self, state, direction)
         if not state.resolutions or #state.resolutions == 0 then return end
 
-        state.current_resolution_index = state.current_resolution_index + direction
-        if state.current_resolution_index < 1 then
-            state.current_resolution_index = #state.resolutions
-        elseif state.current_resolution_index > #state.resolutions then
-            state.current_resolution_index = 1
-        end
+        state.current_resolution_index = cycleIndex(state.current_resolution_index, state.resolutions, direction)
 
-        -- Apply resolution
         local res = state.resolutions[state.current_resolution_index]
         GameConfig.width, GameConfig.height = res.w, res.h
         GameConfig.windowed_width, GameConfig.windowed_height = res.w, res.h
@@ -177,29 +198,23 @@ function options:changeOption(state, direction)
                 display = state.current_monitor_index
             })
             display:CalculateScale()
-            -- CRITICAL: Call resize chain like window resize does
             if state.resize then state:resize(res.w, res.h) end
         else
-            -- If in fullscreen, update previous_screen_wh so it applies when returning to windowed
             display.previous_screen_wh.w = res.w
             display.previous_screen_wh.h = res.h
         end
         utils:SaveConfig(GameConfig, sound.settings, input.settings, state.resolutions[state.current_resolution_index])
-
-        -- Play navigate sound
         sound:playSFX("menu", "navigate")
-    elseif option.name == "Fullscreen" then
-        -- CRITICAL FIX: Always call resize chain for both fullscreen and windowed
+    end,
+
+    ["Fullscreen"] = function(self, state, direction)
         display:ToggleFullScreen()
         GameConfig.fullscreen = display.is_fullscreen
 
-        -- Get current dimensions (different for fullscreen vs windowed)
         local current_w, current_h
         if GameConfig.fullscreen then
-            -- Fullscreen: use desktop dimensions
             current_w, current_h = love.window.getDesktopDimensions(state.current_monitor_index)
         else
-            -- Windowed: use config dimensions
             current_w, current_h = GameConfig.width, GameConfig.height
             love.window.updateMode(current_w, current_h, {
                 resizable = GameConfig.resizable,
@@ -208,175 +223,109 @@ function options:changeOption(state, direction)
         end
 
         display:CalculateScale()
-        -- CRITICAL: Always call resize chain (both fullscreen and windowed)
-        -- This propagates to pause → play → camera:zoomTo()
         if state.resize then state:resize(current_w, current_h) end
-
         utils:SaveConfig(GameConfig, sound.settings, input.settings, state.resolutions[state.current_resolution_index])
-
-        -- Play navigate sound
         sound:playSFX("menu", "navigate")
-    elseif option.name == "Monitor" then
+    end,
+
+    ["Monitor"] = function(self, state, direction)
         if not state.monitors or #state.monitors == 0 then return end
 
-        state.current_monitor_index = state.current_monitor_index + direction
-        if state.current_monitor_index < 1 then
-            state.current_monitor_index = #state.monitors
-        elseif state.current_monitor_index > #state.monitors then
-            state.current_monitor_index = 1
-        end
+        state.current_monitor_index = cycleIndex(state.current_monitor_index, state.monitors, direction)
 
-        -- Update monitor in config and screen
         GameConfig.monitor = state.current_monitor_index
         display.window.display = state.current_monitor_index
 
         if GameConfig.fullscreen then
-            -- For fullscreen, disable then re-enable on new monitor
             display:DisableFullScreen()
             display:EnableFullScreen()
         else
-            -- For windowed mode, calculate centered position on target monitor
             local dx, dy = love.window.getDesktopDimensions(state.current_monitor_index)
             local x = dx / 2 - GameConfig.width / 2
             local y = dy / 2 - GameConfig.height / 2
-
             display.window.x = x
             display.window.y = y
-
             love.window.updateMode(GameConfig.width, GameConfig.height, {
                 resizable = GameConfig.resizable,
                 display = state.current_monitor_index
             })
         end
 
-        -- Recalculate screen after monitor change
         display:CalculateScale()
-        -- CRITICAL: Call resize chain
         if state.resize then state:resize(GameConfig.width, GameConfig.height) end
         utils:SaveConfig(GameConfig, sound.settings, input.settings, state.resolutions[state.current_resolution_index])
-
-        -- Play navigate sound
         sound:playSFX("menu", "navigate")
-    elseif option.name == "Master Volume" then
-        state.current_master_volume_index = state.current_master_volume_index + direction
-        if state.current_master_volume_index < 1 then
-            state.current_master_volume_index = #self.volume_levels
-        elseif state.current_master_volume_index > #self.volume_levels then
-            state.current_master_volume_index = 1
-        end
+    end,
 
+    ["Master Volume"] = function(self, state, direction)
+        state.current_master_volume_index = cycleIndex(state.current_master_volume_index, self.volume_levels, direction)
         sound:setMasterVolume(self.volume_levels[state.current_master_volume_index])
-
-        -- Sync to GameConfig before saving
-        GameConfig.sound.master_volume = sound.settings.master_volume
-        GameConfig.sound.bgm_volume = sound.settings.bgm_volume
-        GameConfig.sound.sfx_volume = sound.settings.sfx_volume
-        GameConfig.sound.muted = sound.settings.muted
-
-        utils:SaveConfig(GameConfig, sound.settings, nil, nil)
-
-        -- Test sound
+        syncAndSaveSoundConfig()
         sound:playSFX("menu", "navigate")
-    elseif option.name == "BGM Volume" then
-        state.current_bgm_volume_index = state.current_bgm_volume_index + direction
-        if state.current_bgm_volume_index < 1 then
-            state.current_bgm_volume_index = #self.volume_levels
-        elseif state.current_bgm_volume_index > #self.volume_levels then
-            state.current_bgm_volume_index = 1
-        end
+    end,
 
+    ["BGM Volume"] = function(self, state, direction)
+        state.current_bgm_volume_index = cycleIndex(state.current_bgm_volume_index, self.volume_levels, direction)
         sound:setBGMVolume(self.volume_levels[state.current_bgm_volume_index])
+        syncAndSaveSoundConfig()
+    end,
 
-        -- Sync to GameConfig before saving
-        GameConfig.sound.master_volume = sound.settings.master_volume
-        GameConfig.sound.bgm_volume = sound.settings.bgm_volume
-        GameConfig.sound.sfx_volume = sound.settings.sfx_volume
-        GameConfig.sound.muted = sound.settings.muted
-
-        utils:SaveConfig(GameConfig, sound.settings, nil, nil)
-    elseif option.name == "SFX Volume" then
-        state.current_sfx_volume_index = state.current_sfx_volume_index + direction
-        if state.current_sfx_volume_index < 1 then
-            state.current_sfx_volume_index = #self.volume_levels
-        elseif state.current_sfx_volume_index > #self.volume_levels then
-            state.current_sfx_volume_index = 1
-        end
-
+    ["SFX Volume"] = function(self, state, direction)
+        state.current_sfx_volume_index = cycleIndex(state.current_sfx_volume_index, self.volume_levels, direction)
         sound:setSFXVolume(self.volume_levels[state.current_sfx_volume_index])
-
-        -- Sync to GameConfig before saving
-        GameConfig.sound.master_volume = sound.settings.master_volume
-        GameConfig.sound.bgm_volume = sound.settings.bgm_volume
-        GameConfig.sound.sfx_volume = sound.settings.sfx_volume
-        GameConfig.sound.muted = sound.settings.muted
-
-        utils:SaveConfig(GameConfig, sound.settings, nil, nil)
-
-        -- Test sound
+        syncAndSaveSoundConfig()
         sound:playSFX("menu", "navigate")
-    elseif option.name == "Mute" then
+    end,
+
+    ["Mute"] = function(self, state, direction)
         sound:toggleMute()
+        syncAndSaveSoundConfig()
+    end,
 
-        -- Sync to GameConfig before saving
-        GameConfig.sound.master_volume = sound.settings.master_volume
-        GameConfig.sound.bgm_volume = sound.settings.bgm_volume
-        GameConfig.sound.sfx_volume = sound.settings.sfx_volume
-        GameConfig.sound.muted = sound.settings.muted
-
-        utils:SaveConfig(GameConfig, sound.settings, nil, nil)
-    elseif option.name == "Vibration" then
+    ["Vibration"] = function(self, state, direction)
         input:setVibrationEnabled(not input.settings.vibration_enabled)
-
-        -- Sync to GameConfig before saving
-        GameConfig.input.vibration_enabled = input.settings.vibration_enabled
-        utils:SaveConfig(GameConfig, sound.settings, input.settings, nil)
-
-        -- Test vibration when enabling
+        syncAndSaveInputConfig()
         if input.settings.vibration_enabled then
-            local v = constants.VIBRATION.ATTACK; input:vibrate(v.duration, v.left, v.right)
+            local v = constants.VIBRATION.ATTACK
+            input:vibrate(v.duration, v.left, v.right)
         end
-    elseif option.name == "Mobile Vibration" then
+    end,
+
+    ["Mobile Vibration"] = function(self, state, direction)
         input:setMobileVibrationEnabled(not input.settings.mobile_vibration_enabled)
-
-        -- Sync to GameConfig before saving
-        GameConfig.input.mobile_vibration_enabled = input.settings.mobile_vibration_enabled
-        utils:SaveConfig(GameConfig, sound.settings, input.settings, nil)
-
-        -- Test vibration when enabling
+        syncAndSaveInputConfig()
         if input.settings.mobile_vibration_enabled then
-            local v = constants.VIBRATION.ATTACK; input:vibrate(v.duration, v.left, v.right)
+            local v = constants.VIBRATION.ATTACK
+            input:vibrate(v.duration, v.left, v.right)
         end
-    elseif option.name == "Vibration Strength" then
-        state.current_vibration_index = state.current_vibration_index + direction
-        if state.current_vibration_index < 1 then
-            state.current_vibration_index = #self.vibration_strengths
-        elseif state.current_vibration_index > #self.vibration_strengths then
-            state.current_vibration_index = 1
-        end
+    end,
 
+    ["Vibration Strength"] = function(self, state, direction)
+        state.current_vibration_index = cycleIndex(state.current_vibration_index, self.vibration_strengths, direction)
         input:setVibrationStrength(self.vibration_strengths[state.current_vibration_index])
-
-        -- Sync to GameConfig before saving
-        GameConfig.input.vibration_strength = input.settings.vibration_strength
-        utils:SaveConfig(GameConfig, sound.settings, input.settings, nil)
-
-        -- Test vibration
+        syncAndSaveInputConfig()
         if input.settings.vibration_enabled then
-            local v = constants.VIBRATION.ATTACK; input:vibrate(v.duration, v.left, v.right)
+            local v = constants.VIBRATION.ATTACK
+            input:vibrate(v.duration, v.left, v.right)
         end
-    elseif option.name == "Deadzone" then
-        state.current_deadzone_index = state.current_deadzone_index + direction
-        if state.current_deadzone_index < 1 then
-            state.current_deadzone_index = #self.deadzones
-        elseif state.current_deadzone_index > #self.deadzones then
-            state.current_deadzone_index = 1
-        end
+    end,
 
+    ["Deadzone"] = function(self, state, direction)
+        state.current_deadzone_index = cycleIndex(state.current_deadzone_index, self.deadzones, direction)
         input:setDeadzone(self.deadzones[state.current_deadzone_index])
+        syncAndSaveInputConfig()
+    end
+}
 
-        -- Sync to GameConfig before saving
-        GameConfig.input.deadzone = input.settings.deadzone
-        utils:SaveConfig(GameConfig, sound.settings, input.settings, nil)
+-- Change option value
+function options:changeOption(state, direction)
+    local option = state.options[state.selected]
+    local handler = option_handlers[option.name]
+
+    if handler then
+        handler(self, state, direction)
+    else
+        dprint("[OPTIONS] Warning: No handler for option '" .. tostring(option.name) .. "'")
     end
 end
 

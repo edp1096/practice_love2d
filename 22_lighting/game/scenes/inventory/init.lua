@@ -5,9 +5,11 @@ local inventory = {}
 
 local display = require "engine.display"
 local sound = require "engine.sound"
-local slot_renderer = require "game.scenes.inventory.slot_renderer"
+local slot_renderer = require "game.scenes.inventory.inventory_renderer"
 local input_handler = require "game.scenes.inventory.input"
 local fonts = require "engine.utils.fonts"
+local shapes = require "engine.ui.shapes"
+local text_ui = require "engine.ui.text"
 
 -- Safe sound wrapper
 local function play_sound(category, name)
@@ -79,8 +81,7 @@ function inventory:draw()
     local vw, vh = display:GetVirtualDimensions()
 
     -- Draw dark overlay
-    love.graphics.setColor(0, 0, 0, 0.7)
-    love.graphics.rectangle("fill", 0, 0, vw, vh)
+    shapes:drawOverlay(vw, vh, 0.7)
 
     -- Draw window background
     local window_w = 600
@@ -88,19 +89,12 @@ function inventory:draw()
     local window_x = (vw - window_w) / 2
     local window_y = (vh - window_h) / 2
 
-    love.graphics.setColor(0.15, 0.15, 0.2, 0.95)
-    love.graphics.rectangle("fill", window_x, window_y, window_w, window_h, 10, 10)
-
-    love.graphics.setColor(0.3, 0.3, 0.4, 1)
-    love.graphics.setLineWidth(3)
-    love.graphics.rectangle("line", window_x, window_y, window_w, window_h, 10, 10)
+    shapes:drawPanel(window_x, window_y, window_w, window_h, {0.15, 0.15, 0.2, 0.95}, {0.3, 0.3, 0.4, 1}, 10)
 
     -- Draw title
-    love.graphics.setFont(self.title_font)
-    love.graphics.setColor(1, 1, 1, 1)
     local title = "INVENTORY"
     local title_w = self.title_font:getWidth(title)
-    love.graphics.print(title, (vw - title_w) / 2, window_y + 20)
+    text_ui:draw(title, (vw - title_w) / 2, window_y + 20, {1, 1, 1, 1}, self.title_font)
 
     -- Draw close button (top-right corner)
     self.close_button_bounds = slot_renderer.renderCloseButton(
@@ -109,9 +103,7 @@ function inventory:draw()
     )
 
     -- Draw close instruction
-    love.graphics.setFont(self.desc_font)
-    love.graphics.setColor(0.7, 0.7, 0.7, 1)
-    love.graphics.print("Press [I] or [ESC] to close", window_x + 20, window_y + 20)
+    text_ui:draw("Press [I] or [ESC] to close", window_x + 20, window_y + 20, {0.7, 0.7, 0.7, 1}, self.desc_font)
 
     -- Draw items in grid
     slot_renderer.renderItemGrid(

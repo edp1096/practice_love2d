@@ -1,12 +1,12 @@
--- engine/lighting/light.lua
+-- engine/lighting/source.lua
 -- Individual light source object
 
-local Light = {}
-Light.__index = Light
+local LightSource = {}
+LightSource.__index = LightSource
 
--- Create a new light
-function Light.new(config)
-    local light = setmetatable({}, Light)
+-- Create a new light source
+function LightSource.new(config)
+    local light = setmetatable({}, LightSource)
 
     -- Type: "point" or "spotlight"
     light.type = config.type or "point"
@@ -37,14 +37,14 @@ function Light.new(config)
 end
 
 -- Update light (for flickering, animation, etc)
-function Light:update(dt)
+function LightSource:update(dt)
     if self.flicker then
         self.flicker_time = self.flicker_time + dt
     end
 end
 
 -- Get current intensity (with flicker applied)
-function Light:getCurrentIntensity()
+function LightSource:getCurrentIntensity()
     if not self.flicker then
         return self.intensity
     end
@@ -56,29 +56,29 @@ function Light:getCurrentIntensity()
 end
 
 -- Set position
-function Light:setPosition(x, y)
+function LightSource:setPosition(x, y)
     self.x = x
     self.y = y
 end
 
 -- Set angle (spotlight only)
-function Light:setAngle(angle)
+function LightSource:setAngle(angle)
     self.angle = angle
 end
 
 -- Set color
-function Light:setColor(r, g, b)
+function LightSource:setColor(r, g, b)
     self.color = {r, g, b}
 end
 
 -- Set intensity
-function Light:setIntensity(intensity)
+function LightSource:setIntensity(intensity)
     self.intensity = intensity
 end
 
 -- Enable/disable
-function Light:setEnabled(enabled)
+function LightSource:setEnabled(enabled)
     self.enabled = enabled
 end
 
-return Light
+return LightSource

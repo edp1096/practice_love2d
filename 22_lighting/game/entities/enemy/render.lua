@@ -2,6 +2,7 @@
 -- Rendering: sprite, effects, health bar, debug visualization
 
 local debug = require "engine.debug"
+local text_ui = require "engine.ui.text"
 
 local render = {}
 
@@ -200,7 +201,7 @@ function render.draw(enemy)
         if enemy.stunned then
             status = status .. " STUNNED"
         end
-        love.graphics.print(status, collider_center_x - 40, collider_center_y + 30)
+        text_ui:draw(status, collider_center_x - 40, collider_center_y + 30, {1, 1, 1, 1})
 
         if enemy.target_x and enemy.target_y then
             love.graphics.setColor(0, 1, 0, 0.5)

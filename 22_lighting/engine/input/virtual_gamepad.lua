@@ -1,8 +1,8 @@
 -- systems/input/virtual_gamepad.lua
 -- Android virtual gamepad for touch controls with D-pad, aim stick, and buttons
--- MODIFIED: Added aim stick for better aiming control
 
 local coords = require "engine.coords"
+local text_ui = require "engine.ui.text"
 
 local virtual_gamepad = {}
 
@@ -637,8 +637,7 @@ function virtual_gamepad:drawAimStick()
     love.graphics.circle("line", stick_px, stick_py, stick.center_radius * scale)
 
     -- Label
-    love.graphics.setColor(1, 1, 1, self.alpha * 1.5)
-    love.graphics.print("AIM", px - 15 * scale, py + r + 10 * scale)
+    text_ui:draw("AIM", px - 15 * scale, py + r + 10 * scale, {1, 1, 1, self.alpha * 1.5})
 
     love.graphics.setLineWidth(1)
     love.graphics.setColor(1, 1, 1, 1)
@@ -669,11 +668,10 @@ function virtual_gamepad:drawActionButtons()
         love.graphics.circle("line", px, py, radius)
 
         -- Button label
-        love.graphics.setColor(1, 1, 1, self.alpha * 2)
         local font = love.graphics.getFont()
         local text_w = font:getWidth(button.label)
         local text_h = font:getHeight()
-        love.graphics.print(button.label, px - text_w / 2, py - text_h / 2)
+        text_ui:draw(button.label, px - text_w / 2, py - text_h / 2, {1, 1, 1, self.alpha * 2})
     end
 
     love.graphics.setLineWidth(1)
@@ -704,11 +702,10 @@ function virtual_gamepad:drawMenuButton()
     love.graphics.circle("line", px, py, radius)
 
     -- Button label
-    love.graphics.setColor(1, 1, 1, self.alpha * 2)
     local font = love.graphics.getFont()
     local text_w = font:getWidth(button.label)
     local text_h = font:getHeight()
-    love.graphics.print(button.label, px - text_w / 2, py - text_h / 2)
+    text_ui:draw(button.label, px - text_w / 2, py - text_h / 2, {1, 1, 1, self.alpha * 2})
 
     love.graphics.setLineWidth(1)
     love.graphics.setColor(1, 1, 1, 1)

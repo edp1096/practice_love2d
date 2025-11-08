@@ -9,7 +9,7 @@ local save_sys = require "engine.save"
 local input = require "engine.input"
 local fonts = require "engine.utils.fonts"
 
-local slot_renderer = require "game.scenes.load.slot_renderer"
+local slot_renderer = require "game.scenes.load.save_slot_renderer"
 local input_handler = require "game.scenes.load.input"
 
 function load:enter(previous, ...)

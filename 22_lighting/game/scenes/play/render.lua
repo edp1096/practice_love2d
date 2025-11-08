@@ -10,6 +10,7 @@ local camera_sys = require "engine.camera"
 local input = require "engine.input"
 local fonts = require "engine.utils.fonts"
 local lighting = require "engine.lighting"
+local text_ui = require "engine.ui.text"
 
 local render = {}
 
@@ -56,29 +57,24 @@ function render.draw(self)
 
     hud:draw_health_bar(pb.x + 12, pb.y + 12, 210, 20, self.player.health, self.player.max_health)
 
-    love.graphics.setFont(hud.small_font)
     if self.player:isInvincible() or self.player:isDodgeInvincible() then
-        love.graphics.setColor(1, 1, 0, 1)
-        love.graphics.print("INVINCIBLE", 17, 35)
+        text_ui:draw("INVINCIBLE", 17, 35, {1, 1, 0, 1}, hud.small_font)
     end
 
     if self.player.dodge_active then
         hud:draw_cooldown(pb.x + 12, pb.h - 52, 210, 0, 1, "Dodge", input:getPrompt("dodge"))
-        love.graphics.setColor(0.3, 1, 0.3, 1)
-        love.graphics.print("DODGING", 17, vh - 29)
+        text_ui:draw("DODGING", 17, vh - 29, {0.3, 1, 0.3, 1}, hud.small_font)
     else
         hud:draw_cooldown(pb.x + 12, pb.h - 52, 210, self.player.dodge_cooldown, self.player.dodge_cooldown_duration, "Dodge", input:getPrompt("dodge"))
     end
 
     if self.player.parry_cooldown > 0 then
-        love.graphics.setColor(0.7, 0.7, 0.7, 1)
-        love.graphics.print(string.format("Parry CD: %.1f", self.player.parry_cooldown), 17, 35)
+        text_ui:draw(string.format("Parry CD: %.1f", self.player.parry_cooldown), 17, 35, {0.7, 0.7, 0.7, 1}, hud.small_font)
     end
 
     if self.player.parry_active then
         local pulse = 0.7 + 0.3 * math.sin(love.timer.getTime() * 15)
-        love.graphics.setColor(0.3, 0.6, 1, pulse)
-        love.graphics.print("PARRY READY!", 17, 35)
+        text_ui:draw("PARRY READY!", 17, 35, {0.3, 0.6, 1, pulse}, hud.small_font)
     end
 
     love.graphics.setColor(1, 1, 1, 1)
@@ -102,8 +98,7 @@ function render.draw(self)
         love.graphics.setColor(0, 0, 0, 0.7 * alpha)
         love.graphics.rectangle("fill", vw / 2 - text_width / 2 - 20, 150, text_width + 40, 50)
 
-        love.graphics.setColor(0, 1, 0.5, alpha)
-        love.graphics.print(text, vw / 2 - text_width / 2, 160)
+        text_ui:draw(text, vw / 2 - text_width / 2, 160, {0, 1, 0.5, alpha}, font)
 
         love.graphics.setColor(1, 1, 1, 1)
     end

@@ -2,6 +2,7 @@
 -- Healing point entity that restores player health
 
 local constants = require "engine.constants"
+local text_ui = require "engine.ui.text"
 
 local healing_point = {}
 healing_point.__index = healing_point
@@ -158,7 +159,7 @@ function healing_point:drawDebug()
     if not self.active then
         text = text .. string.format("\nCD: %.1f", self.cooldown)
     end
-    love.graphics.print(text, self.x - 20, self.y - self.radius - 20)
+    text_ui:draw(text, self.x - 20, self.y - self.radius - 20, {1, 1, 1, 1})
     love.graphics.setColor(1, 1, 1, 1)
 end
 

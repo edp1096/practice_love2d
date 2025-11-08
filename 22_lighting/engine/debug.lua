@@ -2,6 +2,7 @@
 -- Unified debug system: gameplay, rendering, and advanced features
 
 local coords = require "engine.coords"
+local text_ui = require "engine.ui.text"
 
 local debug = {}
 
@@ -194,7 +195,7 @@ function debug:handleInput(key, context)
     end
 end
 
--- === Hand Marking Functions (unchanged) ===
+-- === Hand Marking Functions ===
 function debug:ToggleHandMarking(player)
     self.hand_marking_active = not self.hand_marking_active
     if self.hand_marking_active then
@@ -350,8 +351,7 @@ function debug:DrawHandMarkers(player)
         love.graphics.setColor(1, 0, 0, 0.5)
         love.graphics.circle("line", world_x, world_y, 12)
 
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.print("ACTUAL", world_x - 20, world_y - 25)
+        text_ui:draw("ACTUAL", world_x - 20, world_y - 25, {1, 1, 1, 1})
     end
 
     love.graphics.setColor(1, 1, 1, 1)
@@ -398,28 +398,28 @@ function debug:drawInfo(display, player, current_save_slot)
     love.graphics.setColor(0, 0, 0, 0.5)
     love.graphics.rectangle("fill", 0, 0, 250, panel_height)
 
-    love.graphics.setColor(1, 1, 1, 1)
+    local white = {1, 1, 1, 1}
 
     -- FPS (most important, show first)
-    love.graphics.print("FPS: " .. love.timer.getFPS(), 10, 10)
+    text_ui:draw("FPS: " .. love.timer.getFPS(), 10, 10, white)
 
     -- Player info (if available)
     local y_offset = 30
     if player then
-        love.graphics.print(string.format("Player: %.1f, %.1f", player.x, player.y), 10, y_offset)
+        text_ui:draw(string.format("Player: %.1f, %.1f", player.x, player.y), 10, y_offset, white)
         y_offset = y_offset + 20
-        love.graphics.print("Health: " .. player.health, 10, y_offset)
+        text_ui:draw("Health: " .. player.health, 10, y_offset, white)
         y_offset = y_offset + 20
-        love.graphics.print("State: " .. (player.state or "unknown"), 10, y_offset)
+        text_ui:draw("State: " .. (player.state or "unknown"), 10, y_offset, white)
         y_offset = y_offset + 20
 
         if current_save_slot then
-            love.graphics.print("Current Slot: " .. current_save_slot, 10, y_offset)
+            text_ui:draw("Current Slot: " .. current_save_slot, 10, y_offset, white)
             y_offset = y_offset + 20
         end
 
         if player.game_mode then
-            love.graphics.print("Mode: " .. player.game_mode, 10, y_offset)
+            text_ui:draw("Mode: " .. player.game_mode, 10, y_offset, white)
             y_offset = y_offset + 20
         end
 
@@ -427,45 +427,45 @@ function debug:drawInfo(display, player, current_save_slot)
     end
 
     -- Screen/Scale info
-    love.graphics.print("Screen: " .. sw .. "x" .. sh, 10, y_offset)
+    text_ui:draw("Screen: " .. sw .. "x" .. sh, 10, y_offset, white)
     y_offset = y_offset + 20
-    love.graphics.print("Virtual: " .. vw .. "x" .. vh, 10, y_offset)
+    text_ui:draw("Virtual: " .. vw .. "x" .. vh, 10, y_offset, white)
     y_offset = y_offset + 20
-    love.graphics.print("Scale: " .. string.format("%.2f", scale), 10, y_offset)
+    text_ui:draw("Scale: " .. string.format("%.2f", scale), 10, y_offset, white)
     y_offset = y_offset + 20
-    love.graphics.print("Offset: " .. string.format("%.1f", offset_x) .. ", " .. string.format("%.1f", offset_y), 10, y_offset)
+    text_ui:draw("Offset: " .. string.format("%.1f", offset_x) .. ", " .. string.format("%.1f", offset_y), 10, y_offset, white)
     y_offset = y_offset + 20
-    love.graphics.print("Mode: " .. display.scale_mode, 10, y_offset)
+    text_ui:draw("Mode: " .. display.scale_mode, 10, y_offset, white)
     y_offset = y_offset + 20
-    love.graphics.print("Virtual Mouse: " .. string.format("%.1f", vmx) .. ", " .. string.format("%.1f", vmy), 10, y_offset)
+    text_ui:draw("Virtual Mouse: " .. string.format("%.1f", vmx) .. ", " .. string.format("%.1f", vmy), 10, y_offset, white)
     y_offset = y_offset + 20
 
     -- Platform-specific info
     if display.is_mobile then
         y_offset = y_offset + 10
-        love.graphics.print("Platform: " .. love.system.getOS(), 10, y_offset)
+        text_ui:draw("Platform: " .. love.system.getOS(), 10, y_offset, white)
         y_offset = y_offset + 20
-        love.graphics.print("DPI Scale: " .. string.format("%.2f", display.dpi_scale), 10, y_offset)
+        text_ui:draw("DPI Scale: " .. string.format("%.2f", display.dpi_scale), 10, y_offset, white)
         y_offset = y_offset + 20
 
         local touches = display:GetAllTouches()
-        love.graphics.print("Touches: " .. #touches, 10, y_offset)
+        text_ui:draw("Touches: " .. #touches, 10, y_offset, white)
         y_offset = y_offset + 20
     else
         y_offset = y_offset + 10
-        love.graphics.print("F11: Toggle Fullscreen", 10, y_offset)
+        text_ui:draw("F11: Toggle Fullscreen", 10, y_offset, white)
         y_offset = y_offset + 20
     end
 
     -- Effects info (if available)
     if has_effects then
-        love.graphics.print("Active Effects: " .. effects_count, 10, y_offset)
+        text_ui:draw("Active Effects: " .. effects_count, 10, y_offset, white)
         y_offset = y_offset + 20
     end
 
     -- Gamepad info (if connected)
     if gamepad_info then
-        love.graphics.print(gamepad_info, 10, y_offset)
+        text_ui:draw(gamepad_info, 10, y_offset, white)
     end
 
     love.graphics.setColor(1, 1, 1, 1)
@@ -483,16 +483,15 @@ function debug:drawHelp(x, y)
     love.graphics.setColor(0, 0, 0, 0.7)
     love.graphics.rectangle("fill", x - 5, y - 5, 240, 135)
 
-    love.graphics.setColor(1, 1, 0, 1)
-    love.graphics.print("DEBUG CONTROLS:", x, y)
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.print("F1: Toggle Debug", x, y + 18)
-    love.graphics.print("F2: Grid, Collider Info", x, y + 33)
-    love.graphics.print("F3: Virtual Mouse", x, y + 48)
-    love.graphics.print("F4: Virtual Gamepad", x, y + 63)
-    love.graphics.print("F5: Effects Debug", x, y + 78)
-    love.graphics.print("F6: Test Effects", x, y + 93)
-    love.graphics.print("H: Hand Marking", x, y + 108)
+    text_ui:draw("DEBUG CONTROLS:", x, y, {1, 1, 0, 1})
+    local white = {1, 1, 1, 1}
+    text_ui:draw("F1: Toggle Debug", x, y + 18, white)
+    text_ui:draw("F2: Grid, Collider Info", x, y + 33, white)
+    text_ui:draw("F3: Virtual Mouse", x, y + 48, white)
+    text_ui:draw("F4: Virtual Gamepad", x, y + 63, white)
+    text_ui:draw("F5: Effects Debug", x, y + 78, white)
+    text_ui:draw("F6: Test Effects", x, y + 93, white)
+    text_ui:draw("H: Hand Marking", x, y + 108, white)
 end
 
 return debug

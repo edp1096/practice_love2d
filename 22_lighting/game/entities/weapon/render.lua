@@ -2,6 +2,7 @@
 -- Rendering: weapon sprite, slash effects, particles, debug visualization
 
 local render = {}
+local text_ui = require "engine.ui.text"
 
 function render.createSheathParticleSystem()
     -- Create particle image (12x12)
@@ -98,8 +99,7 @@ function render.drawDebug(weapon, swing_configs)
         love.graphics.circle("fill", weapon.debug_hand_x, weapon.debug_hand_y, 8)
         love.graphics.setColor(1, 1, 0, 0.3)
         love.graphics.circle("line", weapon.debug_hand_x, weapon.debug_hand_y, 15)
-        love.graphics.setColor(1, 1, 0, 1)
-        love.graphics.print("HAND", weapon.debug_hand_x - 15, weapon.debug_hand_y - 25)
+        text_ui:draw("HAND", weapon.debug_hand_x - 15, weapon.debug_hand_y - 25, {1, 1, 0, 1})
     end
 
     -- Weapon center (GREEN)
@@ -107,8 +107,7 @@ function render.drawDebug(weapon, swing_configs)
     love.graphics.circle("fill", weapon.x, weapon.y, 6)
     love.graphics.setColor(0, 1, 0, 0.3)
     love.graphics.circle("line", weapon.x, weapon.y, 12)
-    love.graphics.setColor(0, 1, 0, 1)
-    love.graphics.print("CENTER", weapon.x - 20, weapon.y + 20)
+    text_ui:draw("CENTER", weapon.x - 20, weapon.y + 20, {0, 1, 0, 1})
 
     -- Weapon handle (CYAN)
     local handle_anchors = require "game.entities.weapon.config.handle_anchors"
@@ -137,8 +136,7 @@ function render.drawDebug(weapon, swing_configs)
     love.graphics.circle("fill", handle_world_x, handle_world_y, 10)
     love.graphics.setColor(0, 1, 1, 0.5)
     love.graphics.circle("line", handle_world_x, handle_world_y, 18)
-    love.graphics.setColor(0, 1, 1, 1)
-    love.graphics.print("HANDLE", handle_world_x - 22, handle_world_y - 30)
+    text_ui:draw("HANDLE", handle_world_x - 22, handle_world_y - 30, {0, 1, 1, 1})
 
     -- Line connecting hand to handle
     if weapon.debug_hand_x and weapon.debug_hand_y then
@@ -154,8 +152,7 @@ function render.drawDebug(weapon, swing_configs)
         love.graphics.circle("fill", weapon.slash_x, weapon.slash_y, 8)
         love.graphics.setColor(1, 0.5, 0, 0.5)
         love.graphics.circle("line", weapon.slash_x, weapon.slash_y, 35)
-        love.graphics.setColor(1, 0.5, 0, 1)
-        love.graphics.print("SLASH", weapon.slash_x - 20, weapon.slash_y - 45)
+        text_ui:draw("SLASH", weapon.slash_x - 20, weapon.slash_y - 45, {1, 0.5, 0, 1})
     end
 
     -- Attack hitbox

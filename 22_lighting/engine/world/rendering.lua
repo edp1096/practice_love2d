@@ -2,6 +2,7 @@
 -- Contains drawing and rendering functions
 
 local effects = require "engine.effects"
+local text_ui = require "engine.ui.text"
 
 local rendering = {}
 
@@ -61,7 +62,7 @@ function rendering.drawSavePoints(self)
         if savepoint.can_interact then
             love.graphics.setColor(1, 1, 0, 1)
             love.graphics.circle("line", savepoint.center_x, savepoint.center_y - 30, 20)
-            love.graphics.print("F", savepoint.center_x - 5, savepoint.center_y - 35)
+            text_ui:draw("F", savepoint.center_x - 5, savepoint.center_y - 35, {1, 1, 0, 1})
         end
     end
     love.graphics.setColor(1, 1, 1, 1)
@@ -117,7 +118,7 @@ function rendering.drawDebug(self)
             love.graphics.rectangle("fill", savepoint.x, savepoint.y, savepoint.width, savepoint.height)
             love.graphics.setColor(0, 0.5, 1, 1)
             love.graphics.rectangle("line", savepoint.x, savepoint.y, savepoint.width, savepoint.height)
-            love.graphics.print("SAVE", savepoint.x + 5, savepoint.y + 5)
+            text_ui:draw("SAVE", savepoint.x + 5, savepoint.y + 5, {0, 0.5, 1, 1})
 
             love.graphics.setColor(0, 1, 1, 0.3)
             love.graphics.circle("line", savepoint.center_x, savepoint.center_y, savepoint.interaction_range)

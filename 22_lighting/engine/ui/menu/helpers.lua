@@ -1,4 +1,4 @@
--- engine/ui/scene.lua
+-- engine/ui/menu/helpers.lua
 -- Common UI utilities for menu scenes to eliminate code duplication
 
 local display = require "engine.display"
@@ -7,15 +7,15 @@ local sound = require "engine.sound"
 local fonts = require "engine.utils.fonts"
 local text_ui = require "engine.ui.text"
 
-local scene = {}
+local helpers = {}
 
 -- Fallback fonts for confirmation dialogs (lazy-loaded)
-scene.fallback_title_font = nil
-scene.fallback_hint_font = nil
-scene.fallback_option_font = nil
+helpers.fallback_title_font = nil
+helpers.fallback_hint_font = nil
+helpers.fallback_option_font = nil
 
 -- Create standard menu layout configuration
-function scene.createMenuLayout(vh)
+function helpers.createMenuLayout(vh)
     return {
         title_y = vh * 0.18,
         options_start_y = vh * 0.38,
@@ -26,7 +26,7 @@ end
 
 -- Create standard fonts for menu scenes
 -- Returns references to centralized font manager
-function scene.createMenuFonts()
+function helpers.createMenuFonts()
     return {
         title = fonts.title_large,
         option = fonts.option,
@@ -37,13 +37,13 @@ function scene.createMenuFonts()
 end
 
 -- Draw menu title
-function scene.drawTitle(text, font, y, width, color)
+function helpers.drawTitle(text, font, y, width, color)
     color = color or { 1, 1, 1, 1 }
     text_ui:drawCentered(text, y, width, color, font)
 end
 
 -- Draw menu options with selection highlight
-function scene.drawOptions(options, selected, mouse_over, font, layout, width)
+function helpers.drawOptions(options, selected, mouse_over, font, layout, width)
     for i, option in ipairs(options) do
         local y = layout.options_start_y + (i - 1) * layout.option_spacing
         local is_selected = (i == selected or i == mouse_over)
@@ -54,7 +54,7 @@ function scene.drawOptions(options, selected, mouse_over, font, layout, width)
 end
 
 -- Update mouse-over detection for menu options
-function scene.updateMouseOver(options, layout, width, font)
+function helpers.updateMouseOver(options, layout, width, font)
     local vmx, vmy = display:GetVirtualMousePosition()
     love.graphics.setFont(font)
 
@@ -75,7 +75,7 @@ function scene.updateMouseOver(options, layout, width, font)
 end
 
 -- Draw control hints at bottom of screen
-function scene.drawControlHints(font, layout, width, custom_text)
+function helpers.drawControlHints(font, layout, width, custom_text)
     local hint_text
     if custom_text then
         hint_text = custom_text
@@ -90,7 +90,7 @@ function scene.drawControlHints(font, layout, width, custom_text)
 end
 
 -- Handle keyboard navigation (returns result table with action and new_selection)
-function scene.handleKeyboardNav(key, current_selection, option_count)
+function helpers.handleKeyboardNav(key, current_selection, option_count)
     if input:wasPressed("menu_up", "keyboard", key) then
         local new_sel = current_selection - 1
         if new_sel < 1 then new_sel = option_count end
@@ -112,7 +112,7 @@ function scene.handleKeyboardNav(key, current_selection, option_count)
 end
 
 -- Handle gamepad navigation (returns result table with action and new_selection)
-function scene.handleGamepadNav(button, current_selection, option_count)
+function helpers.handleGamepadNav(button, current_selection, option_count)
     if input:wasPressed("menu_up", "gamepad", button) then
         local new_sel = current_selection - 1
         if new_sel < 1 then new_sel = option_count end
@@ -135,7 +135,7 @@ function scene.handleGamepadNav(button, current_selection, option_count)
 end
 
 -- Handle mouse selection (returns selected index or nil)
-function scene.handleMouseSelection(button, mouse_over)
+function helpers.handleMouseSelection(button, mouse_over)
     if button == 1 and mouse_over > 0 then
         sound:playSFX("menu", "select")
         return mouse_over
@@ -144,14 +144,14 @@ function scene.handleMouseSelection(button, mouse_over)
 end
 
 -- Draw semi-transparent overlay (for pause/settings menus)
-function scene.drawOverlay(width, height, alpha)
+function helpers.drawOverlay(width, height, alpha)
     alpha = alpha or 0.7
     love.graphics.setColor(0, 0, 0, alpha)
     love.graphics.rectangle("fill", 0, 0, width, height)
 end
 
 -- Draw confirmation dialog (Yes/No)
-function scene.drawConfirmDialog(title, subtitle, button_labels, selected, mouse_over, fonts, width, height)
+function helpers.drawConfirmDialog(title, subtitle, button_labels, selected, mouse_over, fonts, width, height)
     button_labels = button_labels or { "No", "Yes" }
 
     -- Dark overlay
@@ -161,10 +161,10 @@ function scene.drawConfirmDialog(title, subtitle, button_labels, selected, mouse
     -- Title
     local title_font = fonts.title
     if not title_font then
-        if not scene.fallback_title_font then
-            scene.fallback_title_font = love.graphics.newFont(20)
+        if not helpers.fallback_title_font then
+            helpers.fallback_title_font = love.graphics.newFont(20)
         end
-        title_font = scene.fallback_title_font
+        title_font = helpers.fallback_title_font
     end
     text_ui:drawCentered(title, height / 2 - 60, width, {1, 0.3, 0.3, 1}, title_font)
 
@@ -172,10 +172,10 @@ function scene.drawConfirmDialog(title, subtitle, button_labels, selected, mouse
     if subtitle then
         local hint_font = fonts.hint
         if not hint_font then
-            if not scene.fallback_hint_font then
-                scene.fallback_hint_font = love.graphics.newFont(14)
+            if not helpers.fallback_hint_font then
+                helpers.fallback_hint_font = love.graphics.newFont(14)
             end
-            hint_font = scene.fallback_hint_font
+            hint_font = helpers.fallback_hint_font
         end
         text_ui:drawCentered(subtitle, height / 2 - 20, width, {0.9, 0.9, 0.9, 1}, hint_font)
     end
@@ -212,10 +212,10 @@ function scene.drawConfirmDialog(title, subtitle, button_labels, selected, mouse
         -- Button text
         local option_font = fonts.option
         if not option_font then
-            if not scene.fallback_option_font then
-                scene.fallback_option_font = love.graphics.newFont(24)
+            if not helpers.fallback_option_font then
+                helpers.fallback_option_font = love.graphics.newFont(24)
             end
-            option_font = scene.fallback_option_font
+            option_font = helpers.fallback_option_font
         end
         love.graphics.setFont(option_font)
         love.graphics.setColor(is_selected and 1 or 0.9, is_selected and 1 or 0.9, is_selected and 1 or 0.9, 1)
@@ -226,7 +226,7 @@ function scene.drawConfirmDialog(title, subtitle, button_labels, selected, mouse
 end
 
 -- Update mouse-over for confirmation dialog buttons
-function scene.updateConfirmMouseOver(width, height, button_count)
+function helpers.updateConfirmMouseOver(width, height, button_count)
     local vmx, vmy = display:GetVirtualMousePosition()
 
     local button_y = height / 2 + 60
@@ -248,7 +248,7 @@ function scene.updateConfirmMouseOver(width, height, button_count)
 end
 
 -- Handle confirmation dialog navigation
-function scene.handleConfirmNav(key_or_button, source, current_selection, button_count)
+function helpers.handleConfirmNav(key_or_button, source, current_selection, button_count)
     if source == "keyboard" then
         if input:wasPressed("menu_left", "keyboard", key_or_button) then
             return math.max(1, current_selection - 1)
@@ -276,7 +276,7 @@ end
 
 -- Handle touch input for menu options
 -- Returns touched option index (1-based) or 0 if no option was touched
-function scene.handleTouchPress(options, layout, width, font, x, y, display_module)
+function helpers.handleTouchPress(options, layout, width, font, x, y, display_module)
     local coords = require "engine.coords"
     local vx, vy = coords:physicalToVirtual(x, y, display_module)
 
@@ -299,7 +299,7 @@ end
 
 -- Handle touch input for slot-based menus (newgame, saveslot, load)
 -- Returns touched slot index (1-based) or 0 if no slot was touched
-function scene.handleSlotTouchPress(slots, layout, width, x, y, display_module)
+function helpers.handleSlotTouchPress(slots, layout, width, x, y, display_module)
     local coords = require "engine.coords"
     local vx, vy = coords:physicalToVirtual(x, y, display_module)
 
@@ -317,4 +317,4 @@ function scene.handleSlotTouchPress(slots, layout, width, x, y, display_module)
     return 0
 end
 
-return scene
+return helpers

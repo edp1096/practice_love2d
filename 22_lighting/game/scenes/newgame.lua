@@ -10,6 +10,8 @@ local input = require "engine.input"
 local constants = require "engine.constants"
 local fonts = require "engine.utils.fonts"
 local debug = require "engine.debug"
+local shapes = require "engine.ui.shapes"
+local text_ui = require "engine.ui.text"
 
 function newgame:enter(previous, ...)
     self.previous = previous
@@ -72,20 +74,11 @@ function newgame:draw()
     for i, slot in ipairs(self.slots) do
         local y = self.layout.slots_start_y + (i - 1) * self.layout.slot_spacing
         local is_selected = (i == self.selected or i == self.mouse_over)
+        local is_hovered = (i == self.mouse_over)
 
-        if is_selected then
-            love.graphics.setColor(0.3, 0.3, 0.4, 0.8)
-        else
-            love.graphics.setColor(0.2, 0.2, 0.25, 0.6)
-        end
-        love.graphics.rectangle("fill", self.virtual_width * 0.15, y - 5, self.virtual_width * 0.7, 75)
-
-        if is_selected then
-            love.graphics.setColor(1, 1, 0, 1)
-        else
-            love.graphics.setColor(0.5, 0.5, 0.5, 1)
-        end
-        love.graphics.rectangle("line", self.virtual_width * 0.15, y - 5, self.virtual_width * 0.7, 75)
+        -- Draw slot box
+        local state = is_selected and "selected" or (is_hovered and "hover" or "normal")
+        shapes:drawButton(self.virtual_width * 0.15, y - 5, self.virtual_width * 0.7, 75, state, 0)
 
         if slot.slot == "back" then
             love.graphics.setFont(self.slotFont)
@@ -96,30 +89,16 @@ function newgame:draw()
             end
             love.graphics.printf(slot.display_name, 0, y + 24, self.virtual_width, "center")
         elseif slot.exists then
-            love.graphics.setFont(self.slotFont)
-            if is_selected then
-                love.graphics.setColor(1, 0.7, 0, 1)
-            else
-                love.graphics.setColor(1, 1, 1, 1)
-            end
-            love.graphics.print("Slot " .. slot.slot .. " (Overwrite?)", self.virtual_width * 0.2, y)
+            local title_color = is_selected and {1, 0.7, 0, 1} or {1, 1, 1, 1}
+            text_ui:draw("Slot " .. slot.slot .. " (Overwrite?)", self.virtual_width * 0.2, y, title_color, self.slotFont)
 
-            love.graphics.setFont(self.infoFont)
-            love.graphics.setColor(0.8, 0.8, 0.8, 1)
-            love.graphics.print("HP: " .. slot.hp .. "/" .. slot.max_hp, self.virtual_width * 0.2, y + 24)
-            love.graphics.print(slot.map_display or "Unknown", self.virtual_width * 0.2, y + 41)
+            text_ui:draw("HP: " .. slot.hp .. "/" .. slot.max_hp, self.virtual_width * 0.2, y + 24, {0.8, 0.8, 0.8, 1}, self.infoFont)
+            text_ui:draw(slot.map_display or "Unknown", self.virtual_width * 0.2, y + 41, {0.8, 0.8, 0.8, 1}, self.infoFont)
 
-            love.graphics.setFont(self.hintFont)
-            love.graphics.setColor(0.6, 0.6, 0.6, 1)
-            love.graphics.print(slot.time_string, self.virtual_width * 0.2, y + 58)
+            text_ui:draw(slot.time_string, self.virtual_width * 0.2, y + 58, {0.6, 0.6, 0.6, 1}, self.hintFont)
         else
-            love.graphics.setFont(self.slotFont)
-            if is_selected then
-                love.graphics.setColor(0, 1, 0.5, 1)
-            else
-                love.graphics.setColor(0.7, 0.7, 0.7, 1)
-            end
-            love.graphics.print("Slot " .. slot.slot .. " - New Game", self.virtual_width * 0.2, y + 24)
+            local new_color = is_selected and {0, 1, 0.5, 1} or {0.7, 0.7, 0.7, 1}
+            text_ui:draw("Slot " .. slot.slot .. " - New Game", self.virtual_width * 0.2, y + 24, new_color, self.slotFont)
         end
     end
 
@@ -213,14 +192,14 @@ function newgame:mousereleased(x, y, button)
 end
 
 function newgame:touchpressed(id, x, y, dx, dy, pressure)
-    local ui_scene = require "engine.ui.menu"
+    local ui_scene = require "engine.ui.menu.helpers"
     self.mouse_over = ui_scene.handleSlotTouchPress(
         self.slots, self.layout, self.virtual_width, x, y, display)
     return false
 end
 
 function newgame:touchreleased(id, x, y, dx, dy, pressure)
-    local ui_scene = require "engine.ui.menu"
+    local ui_scene = require "engine.ui.menu.helpers"
     local touched = ui_scene.handleSlotTouchPress(
         self.slots, self.layout, self.virtual_width, x, y, display)
     if touched > 0 then

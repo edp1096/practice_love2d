@@ -2,6 +2,7 @@
 -- Reusable SKIP button widget for mobile UI (dialogue, cutscenes)
 
 local coords = require "engine.coords"
+local text_ui = require "engine.ui.text"
 
 local skip_button = {}
 
@@ -208,13 +209,11 @@ function skip_button:draw()
     love.graphics.rectangle("line", self.x, self.y, self.width, self.height, 8, 8)
 
     -- Draw text
-    love.graphics.setColor(self.text_color)
-    love.graphics.setFont(self.font)
     local text_width = self.font:getWidth(self.label)
     local text_height = self.font:getHeight()
     local text_x = self.x + (self.width - text_width) / 2
     local text_y = self.y + (self.height - text_height) / 2
-    love.graphics.print(self.label, text_x, text_y)
+    text_ui:draw(self.label, text_x, text_y, self.text_color, self.font)
 
     -- Reset
     love.graphics.setColor(1, 1, 1, 1)

@@ -1,38 +1,19 @@
 -- scenes/menu.lua
 
-local menu = {}
-
+local MenuSceneBase = require "engine.ui.menu.base"
 local scene_control = require "engine.scene_control"
-local display = require "engine.display"
-local debug = require "engine.debug"
-local input = require "engine.input"
 local save_sys = require "engine.save"
 local sound = require "engine.sound"
-local ui_scene = require "engine.ui.menu"
 local constants = require "engine.constants"
+local text_ui = require "engine.ui.text"
 
-function menu:enter(previous, ...)
-    self.title = "Hello Love2D"
-
+-- Custom enter logic for main menu
+local function onEnter(self, previous, ...)
     local has_saves = save_sys:hasSaveFiles()
     self.options = has_saves and
         { "Continue", "New Game", "Load Game", "Settings", "Quit" } or
         { "New Game", "Settings", "Quit" }
-
     self.selected = 1
-    self.mouse_over = 0
-    self.previous_mouse_over = 0
-
-    local vw, vh = display:GetVirtualDimensions()
-    self.virtual_width = vw
-    self.virtual_height = vh
-    self.fonts = ui_scene.createMenuFonts()
-    self.layout = ui_scene.createMenuLayout(vh)
-
-    -- Hide virtual gamepad in menu
-    if input.virtual_gamepad then
-        input.virtual_gamepad:hide()
-    end
 
     -- Play menu BGM (only restart from beginning if not coming from load scene)
     local load_scene = require "game.scenes.load"
@@ -41,89 +22,22 @@ function menu:enter(previous, ...)
     end
 end
 
-function menu:update(dt)
-    self.previous_mouse_over = self.mouse_over
-    self.mouse_over = ui_scene.updateMouseOver(self.options, self.layout, self.virtual_width, self.fonts.option)
-
-    if self.mouse_over ~= self.previous_mouse_over and self.mouse_over > 0 then
-        sound:playSFX("menu", "navigate")
-    end
-
-    -- Check gamepad axis input for menu navigation (left stick)
-    if input:hasGamepad() then
-        if input:wasPressed("menu_up") then
-            local new_sel = self.selected - 1
-            if new_sel < 1 then new_sel = #self.options end
-            sound:playSFX("menu", "navigate")
-            self.selected = new_sel
-        elseif input:wasPressed("menu_down") then
-            local new_sel = self.selected + 1
-            if new_sel > #self.options then new_sel = 1 end
-            sound:playSFX("menu", "navigate")
-            self.selected = new_sel
-        end
-    end
-end
-
-function menu:draw()
-    love.graphics.clear(0.1, 0.1, 0.15, 1)
-    display:Attach()
-
-    ui_scene.drawTitle(self.title, self.fonts.title, self.layout.title_y, self.virtual_width)
-
-    ui_scene.drawOptions(self.options, self.selected, self.mouse_over, self.fonts.option,
-        self.layout, self.virtual_width)
-
-    ui_scene.drawControlHints(self.fonts.hint, self.layout, self.virtual_width)
+-- Custom draw logic for main menu
+local function onDraw(self)
+    local input = require "engine.input"
+    local debug = require "engine.debug"
 
     if input:hasGamepad() then
-        love.graphics.setColor(0.3, 0.8, 0.3, 1)
-        love.graphics.print("Controller: " .. input.joystick_name, 10, 10)
+        text_ui:draw("Controller: " .. input.joystick_name, 10, 10, {0.3, 0.8, 0.3, 1})
     end
 
-    if debug.enabled then debug:drawHelp(self.virtual_width - 250, 10) end
-
-    display:Detach()
-
-    -- Debug info now drawn in app_lifecycle (main.lua)
-    display:ShowVirtualMouse()
-end
-
-function menu:resize(w, h) display:Resize(w, h) end
-
-function menu:keypressed(key)
-    -- Handle debug keys first
-    debug:handleInput(key, {})
-
-    -- If debug mode consumed the key (F1-F6), don't process menu navigation
-    if key:match("^f%d+$") and debug.enabled then
-        return
-    end
-
-    local nav_result = ui_scene.handleKeyboardNav(key, self.selected, #self.options)
-
-    if nav_result.action == "navigate" then
-        self.selected = nav_result.new_selection
-    elseif nav_result.action == "select" then
-        self:executeOption(self.selected)
-    elseif nav_result.action == "back" then
-        love.event.quit()
+    if debug.enabled then
+        debug:drawHelp(self.virtual_width - 250, 10)
     end
 end
 
-function menu:gamepadpressed(joystick, button)
-    local nav_result = ui_scene.handleGamepadNav(button, self.selected, #self.options)
-
-    if nav_result.action == "navigate" then
-        self.selected = nav_result.new_selection
-    elseif nav_result.action == "select" then
-        self:executeOption(self.selected)
-    elseif nav_result.action == "back" then
-        love.event.quit()
-    end
-end
-
-function menu:executeOption(option_index)
+-- Option selection handler
+local function onSelect(self, option_index)
     local option_name = self.options[option_index]
 
     if option_name == "Continue" then
@@ -170,32 +84,20 @@ function menu:executeOption(option_index)
     end
 end
 
-function menu:mousepressed(x, y, button) end
-
-function menu:mousereleased(x, y, button)
-    if button == 1 and self.mouse_over > 0 then
-        self.selected = self.mouse_over
-        sound:playSFX("menu", "select")
-        self:executeOption(self.selected)
-    end
+-- Back handler (ESC key)
+local function onBack(self)
+    love.event.quit()
 end
 
-function menu:touchpressed(id, x, y, dx, dy, pressure)
-    self.mouse_over = ui_scene.handleTouchPress(
-        self.options, self.layout, self.virtual_width, self.fonts.option, x, y, display)
-    return false
-end
-
-function menu:touchreleased(id, x, y, dx, dy, pressure)
-    local touched = ui_scene.handleTouchPress(
-        self.options, self.layout, self.virtual_width, self.fonts.option, x, y, display)
-    if touched > 0 then
-        self.selected = touched
-        sound:playSFX("menu", "select")
-        self:executeOption(self.selected)
-        return true
-    end
-    return false
-end
+-- Create menu scene using base
+local menu = MenuSceneBase:create({
+    title = "Hello Love2D",
+    options = { "New Game", "Settings", "Quit" }, -- Default options, overridden in onEnter
+    on_enter = onEnter,
+    on_select = onSelect,
+    on_back = onBack,
+    on_draw = onDraw,
+    show_debug = true
+})
 
 return menu

@@ -2,26 +2,16 @@
 -- Slot rendering logic for load scene
 
 local slot_renderer = {}
+local shapes = require "engine.ui.shapes"
+local text_ui = require "engine.ui.text"
 
 -- Render individual save slot
 function slot_renderer.drawSlot(load_scene, slot, i, is_selected)
     local y = load_scene.layout.slots_start_y + (i - 1) * load_scene.layout.slot_spacing
 
-    -- Slot background
-    if is_selected then
-        love.graphics.setColor(0.3, 0.3, 0.4, 0.8)
-    else
-        love.graphics.setColor(0.2, 0.2, 0.25, 0.6)
-    end
-    love.graphics.rectangle("fill", load_scene.virtual_width * 0.15, y - 5, load_scene.virtual_width * 0.7, 80)
-
-    -- Slot border
-    if is_selected then
-        love.graphics.setColor(1, 1, 0, 1)
-    else
-        love.graphics.setColor(0.5, 0.5, 0.5, 1)
-    end
-    love.graphics.rectangle("line", load_scene.virtual_width * 0.15, y - 5, load_scene.virtual_width * 0.7, 80)
+    -- Slot background and border
+    local state = is_selected and "selected" or "normal"
+    shapes:drawButton(load_scene.virtual_width * 0.15, y - 5, load_scene.virtual_width * 0.7, 80, state, 0)
 
     if slot.slot == "back" then
         slot_renderer.drawBackButton(load_scene, slot, y, is_selected)
@@ -46,24 +36,15 @@ end
 -- Render existing save slot with data
 function slot_renderer.drawExistingSlot(load_scene, slot, i, y, is_selected)
     -- Slot title
-    love.graphics.setFont(load_scene.slotFont)
-    if is_selected then
-        love.graphics.setColor(1, 1, 0, 1)
-    else
-        love.graphics.setColor(1, 1, 1, 1)
-    end
-    love.graphics.print("Slot " .. slot.slot, load_scene.virtual_width * 0.2, y)
+    local title_color = is_selected and {1, 1, 0, 1} or {1, 1, 1, 1}
+    text_ui:draw("Slot " .. slot.slot, load_scene.virtual_width * 0.2, y, title_color, load_scene.slotFont)
 
     -- HP info
-    love.graphics.setFont(load_scene.infoFont)
-    love.graphics.setColor(0.8, 0.8, 0.8, 1)
-    love.graphics.print("HP: " .. slot.hp .. "/" .. slot.max_hp, load_scene.virtual_width * 0.2, y + 28)
-    love.graphics.print(slot.map_display or "Unknown", load_scene.virtual_width * 0.2, y + 48)
+    text_ui:draw("HP: " .. slot.hp .. "/" .. slot.max_hp, load_scene.virtual_width * 0.2, y + 28, {0.8, 0.8, 0.8, 1}, load_scene.infoFont)
+    text_ui:draw(slot.map_display or "Unknown", load_scene.virtual_width * 0.2, y + 48, {0.8, 0.8, 0.8, 1}, load_scene.infoFont)
 
     -- Timestamp
-    love.graphics.setFont(load_scene.hintFont)
-    love.graphics.setColor(0.6, 0.6, 0.6, 1)
-    love.graphics.print(slot.time_string, load_scene.virtual_width * 0.2, y + 65)
+    text_ui:draw(slot.time_string, load_scene.virtual_width * 0.2, y + 65, {0.6, 0.6, 0.6, 1}, load_scene.hintFont)
 
     -- Draw X delete button
     slot_renderer.drawDeleteButton(load_scene, i, y)
@@ -71,9 +52,7 @@ end
 
 -- Render empty save slot
 function slot_renderer.drawEmptySlot(load_scene, slot, y)
-    love.graphics.setFont(load_scene.slotFont)
-    love.graphics.setColor(0.5, 0.5, 0.5, 1)
-    love.graphics.print("Slot " .. slot.slot .. " - Empty", load_scene.virtual_width * 0.2, y + 25)
+    text_ui:draw("Slot " .. slot.slot .. " - Empty", load_scene.virtual_width * 0.2, y + 25, {0.5, 0.5, 0.5, 1}, load_scene.slotFont)
 end
 
 -- Render delete button (X button)
@@ -83,30 +62,7 @@ function slot_renderer.drawDeleteButton(load_scene, i, y)
     local delete_size = 30
     local is_delete_hovered = (load_scene.mouse_over_delete == i)
 
-    -- Button background
-    if is_delete_hovered then
-        love.graphics.setColor(0.8, 0.2, 0.2, 0.9)
-    else
-        love.graphics.setColor(0.5, 0.2, 0.2, 0.7)
-    end
-    love.graphics.rectangle("fill", delete_x, delete_y, delete_size, delete_size)
-
-    -- Button border
-    if is_delete_hovered then
-        love.graphics.setColor(1, 0.3, 0.3, 1)
-    else
-        love.graphics.setColor(0.7, 0.3, 0.3, 1)
-    end
-    love.graphics.rectangle("line", delete_x, delete_y, delete_size, delete_size)
-
-    -- X mark
-    love.graphics.setFont(load_scene.slotFont)
-    if is_delete_hovered then
-        love.graphics.setColor(1, 1, 1, 1)
-    else
-        love.graphics.setColor(0.9, 0.9, 0.9, 0.9)
-    end
-    love.graphics.print("X", delete_x + 8, delete_y + 2)
+    shapes:drawCloseButton(delete_x, delete_y, delete_size, is_delete_hovered)
 end
 
 -- Render all slots
@@ -120,8 +76,7 @@ end
 -- Render delete confirmation dialog
 function slot_renderer.drawConfirmDialog(load_scene)
     -- Dark overlay
-    love.graphics.setColor(0, 0, 0, 0.85)
-    love.graphics.rectangle("fill", 0, 0, load_scene.virtual_width, load_scene.virtual_height)
+    shapes:drawOverlay(load_scene.virtual_width, load_scene.virtual_height, 0.85)
 
     -- Confirmation text
     love.graphics.setFont(load_scene.confirmFont)
@@ -151,19 +106,8 @@ function slot_renderer.drawConfirmButtons(load_scene)
     local no_x = load_scene.virtual_width / 2 - button_width - button_spacing / 2
     local is_no_selected = (load_scene.confirm_selected == 1 or load_scene.confirm_mouse_over == 1)
 
-    if is_no_selected then
-        love.graphics.setColor(0.4, 0.4, 0.5, 0.9)
-    else
-        love.graphics.setColor(0.3, 0.3, 0.35, 0.7)
-    end
-    love.graphics.rectangle("fill", no_x, button_y, button_width, button_height)
-
-    if is_no_selected then
-        love.graphics.setColor(0.7, 0.7, 0.8, 1)
-    else
-        love.graphics.setColor(0.5, 0.5, 0.5, 1)
-    end
-    love.graphics.rectangle("line", no_x, button_y, button_width, button_height)
+    local no_state = is_no_selected and "selected" or "normal"
+    shapes:drawButton(no_x, button_y, button_width, button_height, no_state, 0)
 
     love.graphics.setFont(load_scene.slotFont)
     if is_no_selected then
@@ -177,6 +121,7 @@ function slot_renderer.drawConfirmButtons(load_scene)
     local yes_x = load_scene.virtual_width / 2 + button_spacing / 2
     local is_yes_selected = (load_scene.confirm_selected == 2 or load_scene.confirm_mouse_over == 2)
 
+    -- Custom red color for Yes button
     if is_yes_selected then
         love.graphics.setColor(0.8, 0.2, 0.2, 0.9)
     else

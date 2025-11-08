@@ -1,7 +1,7 @@
 -- engine/lighting/init.lua
 -- Lighting system manager (ambient, point lights, spotlights)
 
-local Light = require "engine.lighting.light"
+local LightSource = require "engine.lighting.source"
 
 local lighting = {}
 
@@ -71,7 +71,7 @@ end
 
 -- Add a light source
 function lighting:addLight(config)
-    local light = Light.new(config)
+    local light = LightSource.new(config)
     table.insert(self.lights, light)
     return light
 end

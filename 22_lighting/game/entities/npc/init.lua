@@ -3,6 +3,7 @@
 
 local anim8 = require "vendor.anim8"
 local npc_types = require "game.entities.npc.types.villager"
+local text_ui = require "engine.ui.text"
 
 local npc = {}
 npc.__index = npc
@@ -161,7 +162,7 @@ function npc:draw()
     if self.can_interact then
         love.graphics.setColor(1, 1, 0, 1)
         love.graphics.circle("line", collider_center_x, collider_center_y - 60, 20)
-        love.graphics.print("F", collider_center_x - 5, collider_center_y - 65)
+        text_ui:draw("F", collider_center_x - 5, collider_center_y - 65, {1, 1, 0, 1})
     end
 
     love.graphics.setColor(1, 1, 1, 1)
@@ -181,8 +182,7 @@ function npc:drawDebug()
     love.graphics.rectangle("line", bounds.x - (bounds.width / 2), bounds.y - (bounds.height / 2), bounds.width, bounds.height)
 
     -- Draw name (using collider center)
-    love.graphics.setColor(0, 1, 1, 1)
-    love.graphics.print(self.name, collider_center_x - 20, collider_center_y - 70)
+    text_ui:draw(self.name, collider_center_x - 20, collider_center_y - 70, {0, 1, 1, 1})
 
     love.graphics.setColor(1, 1, 1, 1)
 end
