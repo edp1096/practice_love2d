@@ -146,8 +146,7 @@ game/
 │   │   └── types/
 │   │       ├── small_potion.lua
 │   │       └── large_potion.lua
-│   └── healing_point/
-│       └── init.lua
+│   └── healing_point.lua - 힐링 포인트 엔티티 (단일 파일)
 │
 └── data/                 - 게임 설정 데이터
     ├── input_config.lua  - 키 매핑 & 컨트롤러 설정

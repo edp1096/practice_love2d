@@ -151,8 +151,7 @@ game/
 │   │   └── types/
 │   │       ├── small_potion.lua
 │   │       └── large_potion.lua
-│   └── healing_point/
-│       └── init.lua
+│   └── healing_point.lua - Healing point entity (single file)
 │
 └── data/                 - Game configuration data
     ├── input_config.lua  - Key mappings & controller settings
