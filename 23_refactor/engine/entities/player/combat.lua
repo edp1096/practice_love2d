@@ -277,6 +277,7 @@ function combat.checkParry(player, incoming_damage)
     local is_perfect = time_elapsed <= player.parry_perfect_window
 
     player.parry_active = false
+    player.parry_timer = 0  -- Reset timer to prevent cooldown application
     player.parry_success = true
     player.parry_perfect = is_perfect
     player.parry_success_timer = 0.5

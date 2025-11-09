@@ -115,7 +115,12 @@ function minimap:setMap(world)
     -- Calculate scale to fit map in minimap size, then apply zoom
     local scale_x = self.size / self.map_width
     local scale_y = self.size / self.map_height
-    self.scale = math.min(scale_x, scale_y) * self.zoom_factor
+    local raw_scale = math.min(scale_x, scale_y) * self.zoom_factor
+
+    -- Round scale to prevent subpixel rendering artifacts
+    -- This ensures tiles are rendered at integer pixel positions
+    local tile_size = world.map.tilewidth  -- assuming square tiles
+    self.scale = math.floor(raw_scale * tile_size + 0.5) / tile_size
 
     -- Calculate actual canvas size based on map aspect ratio
     self.canvas_width = math.floor(self.map_width * self.scale)
@@ -123,6 +128,8 @@ function minimap:setMap(world)
 
     -- Create canvas for minimap with actual dimensions
     self.canvas = love.graphics.newCanvas(self.canvas_width, self.canvas_height)
+    -- Use nearest filter to prevent interpolation artifacts (grid lines)
+    self.canvas:setFilter("nearest", "nearest")
     self.needs_update = true
 
     self:updateMinimapCanvas()
@@ -158,7 +165,11 @@ function minimap:updateMinimapCanvas()
     if self.world.transitions then
         love.graphics.setColor(self.portal_color)
         for _, transition in ipairs(self.world.transitions) do
-            love.graphics.rectangle("fill", transition.x, transition.y, transition.width, transition.height)
+            love.graphics.rectangle("fill",
+                math.floor(transition.x),
+                math.floor(transition.y),
+                math.floor(transition.width),
+                math.floor(transition.height))
         end
     end
 
@@ -193,8 +204,8 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
     local canvas_offset_y = 0
 
     if player and player.x and player.y then
-        canvas_offset_x = center_x - (player.x * self.scale)
-        canvas_offset_y = center_y - (player.y * self.scale)
+        canvas_offset_x = math.floor(center_x - (player.x * self.scale))
+        canvas_offset_y = math.floor(center_y - (player.y * self.scale))
     end
 
     -- Draw background
@@ -211,7 +222,7 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
 
     -- Draw static minimap (walls, portals, etc.) with offset
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.draw(self.canvas, x + canvas_offset_x, y + canvas_offset_y)
+    love.graphics.draw(self.canvas, math.floor(x + canvas_offset_x), math.floor(y + canvas_offset_y))
 
     -- Apply lighting effect with multiply blend (brightened for minimap visibility)
     local ambient = lighting.ambient_color or {1, 1, 1}
@@ -234,8 +245,8 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
 
         for _, npc in ipairs(npcs) do
             if npc.x and npc.y and npc.spriteSheet and npc.grid then
-                local nx = x + canvas_offset_x + (npc.x * self.scale)
-                local ny = y + canvas_offset_y + (npc.y * self.scale)
+                local nx = math.floor(x + canvas_offset_x + (npc.x * self.scale))
+                local ny = math.floor(y + canvas_offset_y + (npc.y * self.scale))
 
                 -- Draw first frame of sprite (1,1)
                 -- grid(1,1) returns a table, so get the first element
@@ -289,8 +300,8 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
 
         for _, enemy in ipairs(enemies) do
             if enemy.x and enemy.y and enemy.health > 0 and enemy.spriteSheet and enemy.grid then
-                local ex = x + canvas_offset_x + (enemy.x * self.scale)
-                local ey = y + canvas_offset_y + (enemy.y * self.scale)
+                local ex = math.floor(x + canvas_offset_x + (enemy.x * self.scale))
+                local ey = math.floor(y + canvas_offset_y + (enemy.y * self.scale))
 
                 -- Draw first frame of sprite (1,1)
                 -- grid(1,1) returns a table, so get the first element
