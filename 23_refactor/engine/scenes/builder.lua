@@ -30,14 +30,10 @@ local function resolveScenePath(scene_name)
   }
 
   -- Check engine UI screens first
-  if engine_ui_paths[scene_name] then
-    return engine_ui_paths[scene_name]
-  end
+  if engine_ui_paths[scene_name] then return engine_ui_paths[scene_name] end
 
   -- Check engine scenes
-  if engine_scene_paths[scene_name] then
-    return engine_scene_paths[scene_name]
-  end
+  if engine_scene_paths[scene_name] then return engine_scene_paths[scene_name] end
 
   -- Fall back to game scenes (menu, pause, gameover) - uses injected prefix
   return builder.game_scene_prefix .. scene_name
@@ -52,9 +48,7 @@ local function executeAction(action_cfg, previous_scene)
     if action_cfg.sfx then
       sound:playSFX(action_cfg.sfx:match("(.+)/"), action_cfg.sfx:match("/(.+)"))
     end
-    if action_cfg.resume_bgm then
-      sound:resumeBGM()
-    end
+    if action_cfg.resume_bgm then sound:resumeBGM() end
     scene_control.pop()
 
   elseif action_cfg.action == "push_scene" then
@@ -136,25 +130,19 @@ function builder:buildMenu(cfg)
     end
 
     -- Play BGM
-    if cfg.bgm then
-      sound:playBGM(cfg.bgm, 1.0, true)
-    end
+    if cfg.bgm then sound:playBGM(cfg.bgm, 1.0, true) end
   end
 
   -- Select handler
   local function onSelect(self, option_index)
     local option_name = self.options[option_index]
     local action = cfg.actions[option_name]
-    if action then
-      executeAction(action, self.previous)
-    end
+    if action then executeAction(action, self.previous) end
   end
 
   -- Back handler
   local function onBack(self)
-    if cfg.back_action then
-      executeAction(cfg.back_action, self.previous)
-    end
+    if cfg.back_action then executeAction(cfg.back_action, self.previous) end
   end
 
   -- Update handler for flash effect
@@ -197,13 +185,9 @@ end
 -- Main builder function
 function builder:build(scene_name, scene_configs)
   local cfg = scene_configs[scene_name]
-  if not cfg then
-    error("Scene config not found: " .. scene_name)
-  end
+  if not cfg then error("Scene config not found: " .. scene_name) end
 
-  if cfg.type == "menu" then
-    return self:buildMenu(cfg)
-  end
+  if cfg.type == "menu" then return self:buildMenu(cfg) end
 
   error("Unknown scene type: " .. cfg.type)
 end
