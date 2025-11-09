@@ -114,7 +114,8 @@ function render.draw(self)
     -- Draw dialogue (inside virtual coordinates for proper scaling)
     dialogue:draw()
 
-    if debug.enabled then debug:drawHelp(vw - 250, 10) end
+    -- Draw debug help (avoid minimap: size=126, padding=10, total=146)
+    if debug.enabled then debug:drawHelp(vw - 250 - 146, 10) end
 
     display:Detach()
 

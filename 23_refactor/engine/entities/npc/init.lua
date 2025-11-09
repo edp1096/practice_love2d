@@ -4,6 +4,7 @@
 local anim8 = require "vendor.anim8"
 local prompt = require "engine.ui.prompt"
 local entity_base = require "engine.entities.base.entity"
+local text_ui = require "engine.utils.text"
 
 local npc = {}
 npc.__index = npc

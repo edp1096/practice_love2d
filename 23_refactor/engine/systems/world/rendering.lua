@@ -3,6 +3,7 @@
 
 local effects = require "engine.systems.effects"
 local prompt = require "engine.ui.prompt"
+local text_ui = require "engine.utils.text"
 
 local rendering = {}
 

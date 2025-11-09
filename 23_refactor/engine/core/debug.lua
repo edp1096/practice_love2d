@@ -395,17 +395,20 @@ function debug:drawInfo(display, player, current_save_slot, effects_sys)
     local gamepad_extra = gamepad_info and 40 or 0
     local panel_height = base_height + mobile_extra + player_extra + effects_extra + gamepad_extra
 
+    -- Offset to avoid overlapping HP bar and inventory (height ~60)
+    local y_start = 70
+
     -- Unified debug panel background
     love.graphics.setColor(0, 0, 0, 0.5)
-    love.graphics.rectangle("fill", 0, 0, 250, panel_height)
+    love.graphics.rectangle("fill", 0, y_start, 250, panel_height)
 
     local white = {1, 1, 1, 1}
 
     -- FPS (most important, show first)
-    text_ui:draw("FPS: " .. love.timer.getFPS(), 10, 10, white)
+    text_ui:draw("FPS: " .. love.timer.getFPS(), 10, y_start + 10, white)
 
     -- Player info (if available)
-    local y_offset = 30
+    local y_offset = y_start + 30
     if player then
         text_ui:draw(string.format("Player: %.1f, %.1f", player.x, player.y), 10, y_offset, white)
         y_offset = y_offset + 20

@@ -98,14 +98,18 @@ function lifecycle:draw()
         -- F2: Grid visualization
         self.display:ShowGridVisualization(debug.show_colliders)
 
-        -- F1: Unified debug info window
-        local current_scene = self.scene_control.current
-        local player = current_scene and current_scene.player
-        local save_slot = current_scene and current_scene.current_save_slot
-        debug:drawInfo(self.display, player, save_slot, self.effects)
-
         -- F3: Virtual mouse cursor
         self.display:ShowVirtualMouse(debug.show_virtual_mouse)
+
+        -- F1: Unified debug info window (drawn in virtual coordinates for scaling)
+        if debug.enabled then
+            self.display:Attach()
+            local current_scene = self.scene_control.current
+            local player = current_scene and current_scene.player
+            local save_slot = current_scene and current_scene.current_save_slot
+            debug:drawInfo(self.display, player, save_slot, self.effects)
+            self.display:Detach()
+        end
     end
 end
 
