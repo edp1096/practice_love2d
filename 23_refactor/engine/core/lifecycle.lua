@@ -5,7 +5,6 @@
 local lifecycle = {}
 
 -- Dependencies (set from main.lua)
-lifecycle.locker = nil
 lifecycle.display = nil
 lifecycle.input = nil
 lifecycle.virtual_gamepad = nil
@@ -28,15 +27,7 @@ end
 -- === Initialization ===
 
 function lifecycle:initialize(initial_scene)
-    -- 1. Process locker (single instance check)
-    if self.locker then
-        local success, err = pcall(self.locker.ProcInit, self.locker)
-        if not success then
-            print("Warning: Locker init failed: " .. tostring(err))
-        end
-    end
-
-    -- 2. Initialize display system
+    -- 1. Initialize display system
     local success, err = pcall(self.display.Initialize, self.display, self.GameConfig)
     if not success then
         print("ERROR: Display initialization failed: " .. tostring(err))
@@ -52,16 +43,16 @@ function lifecycle:initialize(initial_scene)
         self.display.offset_y = (self.display.screen_wh.h - self.display.render_wh.h * self.display.scale) / 2
     end
 
-    -- 3. Initialize fonts (input already initialized in main.lua)
+    -- 2. Initialize fonts (input already initialized in main.lua)
     self.fonts:init()
 
-    -- 5. Initialize virtual gamepad (mobile only)
+    -- 3. Initialize virtual gamepad (mobile only)
     if self.virtual_gamepad then
         self.virtual_gamepad:init()
         self.input:setVirtualGamepad(self.virtual_gamepad)
     end
 
-    -- 6. Switch to initial scene
+    -- 4. Switch to initial scene
     self.scene_control.switch(initial_scene)
 end
 
@@ -156,11 +147,6 @@ function lifecycle:quit()
 
     -- Save config
     pcall(self.utils.SaveConfig, self.utils, self.GameConfig, self.sound.settings, self.input.settings, nil)
-
-    -- Clean up process locker
-    if self.locker then
-        pcall(self.locker.ProcQuit, self.locker)
-    end
 end
 
 return lifecycle

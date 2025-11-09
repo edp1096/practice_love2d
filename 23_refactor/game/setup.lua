@@ -73,12 +73,8 @@ function setup.getSceneLoader()
         }
 
         -- Check engine paths first
-        if engine_ui_paths[scene_name] then
-            return require(engine_ui_paths[scene_name])
-        end
-        if engine_scene_paths[scene_name] then
-            return require(engine_scene_paths[scene_name])
-        end
+        if engine_ui_paths[scene_name] then return require(engine_ui_paths[scene_name]) end
+        if engine_scene_paths[scene_name] then return require(engine_scene_paths[scene_name]) end
 
         -- Fall back to game scenes (menu, pause, gameover, ending)
         return require("game.scenes." .. scene_name)

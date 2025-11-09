@@ -131,7 +131,11 @@ function display:EnableFullScreen()
 
     self.previous_screen_wh.w, self.previous_screen_wh.h = self.screen_wh.w, self.screen_wh.h
 
-    local success2, w, h = pcall(love.window.getDesktopDimensions, self.window.monitor)
+    -- Use monitor from GameConfig if available (allows monitor switching in settings)
+    local target_monitor = (GameConfig and GameConfig.monitor) or self.window.monitor or 1
+    self.window.monitor = target_monitor
+
+    local success2, w, h = pcall(love.window.getDesktopDimensions, target_monitor)
     if success2 and w and h then
         self.screen_wh.w, self.screen_wh.h = w, h
     else
