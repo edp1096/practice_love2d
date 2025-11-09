@@ -974,7 +974,7 @@ function play:setupLighting()
             type = "point",
             x = self.player.x,
             y = self.player.y,
-            radius = 350,
+            radius = 250,
             color = {1, 0.9, 0.7},
             intensity = 1.0
         })

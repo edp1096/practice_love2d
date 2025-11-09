@@ -94,48 +94,36 @@ function lighting:removeLight(light)
 end
 
 -- Remove all lights
-function lighting:clearLights()
-    self.lights = {}
-end
+function lighting:clearLights() self.lights = {} end
 
 -- Update all lights
 function lighting:update(dt)
     for _, light in ipairs(self.lights) do
-        if light.enabled then
-            light:update(dt)
-        end
+        if light.enabled then light:update(dt) end
     end
 end
 
 -- Draw lighting (call after camera:detach(), before display:Attach())
 function lighting:draw(camera)
-    if not self.enabled then
-        return
-    end
+    if not self.enabled then return end
 
     -- Draw to lighting canvas in camera space
     love.graphics.setCanvas(self.canvas)
     love.graphics.clear(self.ambient_color[1], self.ambient_color[2], self.ambient_color[3], 1)
 
     -- Apply camera transformation to lighting canvas
-    if camera then
-        camera:attach()
-    end
+    if camera then camera:attach() end
 
     -- Draw all lights with additive blending
     love.graphics.setBlendMode("add")
 
     for _, light in ipairs(self.lights) do
-        if light.enabled then
-            self:drawLight(light, camera)
-        end
+        if light.enabled then self:drawLight(light, camera) end
     end
 
     love.graphics.setBlendMode("alpha")
 
-    if camera then
-        camera:detach()
-    end
+    if camera then camera:detach() end
 
     love.graphics.setCanvas()
 
@@ -187,24 +175,15 @@ function lighting:drawLight(light, camera)
 end
 
 -- Get light count (for debugging)
-function lighting:getCount()
-    return #self.lights
-end
+function lighting:getCount() return #self.lights end
 
 -- Enable/disable entire lighting system
-function lighting:setEnabled(enabled)
-    self.enabled = enabled
-end
+function lighting:setEnabled(enabled) self.enabled = enabled end
 
 -- Resize lighting canvas (call on window resize)
 function lighting:resize(width, height)
-    if self.canvas then
-        self.canvas:release()
-    end
+    if self.canvas then self.canvas:release() end
     self.canvas = love.graphics.newCanvas(width, height)
 end
-
--- Initialize on require
-lighting:init()
 
 return lighting

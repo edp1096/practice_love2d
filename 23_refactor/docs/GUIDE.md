@@ -872,10 +872,12 @@ effects.screen:addEffect({
 
 ## Lighting System
 
-### `engine/lighting/`
+### `engine/systems/lighting/`
 Dynamic lighting with ambient and light sources using image-based rendering.
 
 **Implementation:** Uses programmatically generated circular gradient images for point lights, providing cross-platform compatibility without shader issues.
+
+**Initialization:** Lazy initialization - lighting:init() is called automatically on first gameplay scene entry (not on require). This ensures correct canvas dimensions after window initialization.
 
 ### Ambient Light
 
@@ -1050,7 +1052,7 @@ function play:setupLighting()
             type = "point",
             x = self.player.x,
             y = self.player.y,
-            radius = 350,
+            radius = 250,
             color = {1, 0.9, 0.7},
             intensity = 1.0
         })

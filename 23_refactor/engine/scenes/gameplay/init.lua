@@ -34,6 +34,9 @@ local render_module = require "engine.scenes.gameplay.render"
 local is_mobile = (love.system.getOS() == "Android" or love.system.getOS() == "iOS")
 
 function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
+    -- Initialize lighting system if not already initialized
+    if not lighting.canvas then lighting:init() end
+
     mapPath = mapPath or constants.GAME_START.DEFAULT_MAP
     spawn_x = spawn_x or constants.GAME_START.DEFAULT_SPAWN_X
     spawn_y = spawn_y or constants.GAME_START.DEFAULT_SPAWN_Y

@@ -87,11 +87,10 @@ scenes.ending = {
     fade_speed = 1.5
   },
 
-  options = { "New Game", "Continue Playing", "Quit to Menu" },
+  options = { "New Game", "Quit to Menu" },
 
   actions = {
     ["New Game"] = { action = "switch_scene", scene = "newgame" },
-    ["Continue Playing"] = { action = "restart_from_save" },
     ["Quit to Menu"] = { action = "switch_scene", scene = "menu" }
   },
 

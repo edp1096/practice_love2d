@@ -4,8 +4,10 @@
 
 ```
 23_refactor/
-├── main.lua              - Entry point (LÖVE callbacks, error handler, input routing)
+├── main.lua              - Entry point (LÖVE callbacks, delegates to startup/system)
 ├── conf.lua              - LÖVE configuration (window, modules, version)
+├── startup.lua           - Initialization utilities (error handler, platform detection, config loading)
+├── system.lua            - System-level runtime handlers (hotkeys, instance lock, cleanup)
 ├── locker.lua            - Process locking (desktop only, prevents multiple instances)
 ├── config.ini            - User settings (window, sound, input, IsDebug)
 │
