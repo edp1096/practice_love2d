@@ -14,7 +14,7 @@ local sound = require "engine.core.sound"
 local fonts = require "engine.utils.fonts"
 local debug = require "engine.core.debug"
 
-function cutscene:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot)
+function cutscene:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot, is_new_game)
 
     -- Hide virtual gamepad during intro/cutscene
     local input = require "engine.core.input"
@@ -27,17 +27,21 @@ function cutscene:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot)
     self.spawn_x = spawn_x
     self.spawn_y = spawn_y
     self.slot = slot -- Optional slot number for new game
+    -- Explicit nil check: nil defaults to false, but explicit false/true values are preserved
+    if is_new_game == nil then
+        is_new_game = false
+    end
+    self.is_new_game = is_new_game
 
     -- Load configuration for this cutscene
     self.config = cutscene.configs[intro_id]
-    dprint("Config loaded:", self.config ~= nil)
 
     if not self.config then
-        dprint("Warning: No intro config found for id: " .. tostring(intro_id))
+        print("Warning: No intro config found for id: " .. tostring(intro_id))
         -- Fallback: skip to target map
         if target_map then
             local gameplay = require "engine.scenes.gameplay"
-            scene_control.switch(gameplay, target_map, spawn_x, spawn_y, slot)
+            scene_control.switch(gameplay, target_map, spawn_x, spawn_y, slot, is_new_game)
         else
             scene_control.switch("menu")
         end
@@ -46,10 +50,7 @@ function cutscene:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot)
 
     -- Play intro BGM if specified
     if self.config.bgm then
-        dprint("[CUTSCENE] Playing BGM: " .. self.config.bgm)
         sound:playBGM(self.config.bgm, 1.0, true)
-    else
-        dprint("[CUTSCENE] No BGM configured")
     end
 
     -- Load background image
@@ -61,7 +62,7 @@ function cutscene:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot)
         if success then
             self.background = result
         else
-            dprint("Warning: Could not load intro background: " .. self.config.background)
+            print("Warning: Could not load intro background: " .. self.config.background)
             self.background = nil
         end
     else
@@ -119,7 +120,7 @@ function cutscene:update(dt)
     if dialogue.skip_button then
         -- Sync gamepad button state to skip button
         if self.skip_button_held then
-            dialogue.skip_button.pressed = true
+            dialogue.skip_button.is_pressed = true
         end
 
         dialogue.skip_button:update(dt)
@@ -142,16 +143,14 @@ function cutscene:update(dt)
     if self.dialogue_finished then
         self.transition_delay = self.transition_delay + dt
         if self.transition_delay >= self.transition_duration then
-            dprint("[CUTSCENE] Transition delay complete, is_ending: " .. tostring(self.config.is_ending))
             -- Check if this is an ending scene
             if self.config.is_ending then
                 -- Go to ending (game clear) screen for endings
-                dprint("[CUTSCENE] Switching to ending scene")
                 scene_control.switch("ending")
             elseif self.target_map then
                 -- Go to target map for level transitions
                 local gameplay = require "engine.scenes.gameplay"
-                scene_control.switch(gameplay, self.target_map, self.spawn_x, self.spawn_y, self.slot)
+                scene_control.switch(gameplay, self.target_map, self.spawn_x, self.spawn_y, self.slot, self.is_new_game)
             else
                 -- Fallback to menu
                 scene_control.switch("menu")
@@ -207,14 +206,18 @@ function cutscene:keypressed(key)
 
     -- Start charging skip with ESC key
     if key == "escape" and dialogue.skip_button then
-        dialogue.skip_button.pressed = true
+        dialogue.skip_button.is_pressed = true
     end
 end
 
 function cutscene:keyreleased(key)
     -- Stop charging skip
     if key == "escape" and dialogue.skip_button then
-        dialogue.skip_button.pressed = false
+        dialogue.skip_button.is_pressed = false
+        -- Force charge decay when key is released
+        if not dialogue.skip_button:isFullyCharged() then
+            dialogue.skip_button.charge = 0
+        end
     end
 end
 
@@ -234,7 +237,11 @@ function cutscene:gamepadreleased(joystick, button)
     if button == "b" or button == "start" then
         self.skip_button_held = false
         if dialogue.skip_button then
-            dialogue.skip_button.pressed = false
+            dialogue.skip_button.is_pressed = false
+            -- Force charge decay when button is released
+            if not dialogue.skip_button:isFullyCharged() then
+                dialogue.skip_button.charge = 0
+            end
         end
     end
 end

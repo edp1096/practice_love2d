@@ -8,10 +8,8 @@ local enemy_sound = {}
 enemy_sound.sounds_config = {}
 
 function enemy_sound.initialize()
-    dprint("Initializing enemy sounds...")
     local slime_move = enemy_sound.sounds_config.pools.enemy.slime_move
     sound_sys:createPool("enemy", "slime_move", slime_move.path, slime_move.size, slime_move.pitch_variation)
-    dprint("Enemy sounds initialized")
 end
 
 -- All sounds now use automatic pitch variation from config

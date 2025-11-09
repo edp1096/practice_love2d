@@ -473,6 +473,52 @@ end
 
 ---
 
+## UI 헬퍼 모듈
+
+### `engine/ui/prompt.lua`
+활성화된 입력 방식에 따라 동적 버튼 아이콘으로 상호작용 프롬프트를 그립니다.
+
+**주요 기능:**
+- 적절한 버튼 라벨 표시 (키보드는 F, 게임패드는 Y, 터치는 B)
+- 활성 입력 소스 자동 감지
+- 일관된 원형 버튼 디자인
+
+**사용법:**
+```lua
+local prompt = require "engine.ui.prompt"
+
+-- NPC 위에 상호작용 프롬프트 그리기
+prompt:draw("interact", npc_center_x, npc_center_y, -60)
+
+-- 선택사항: 커스텀 색상과 오프셋
+prompt:draw("interact", x, y, -30, {1, 1, 0, 1})  -- 노란색
+```
+
+### `engine/ui/shapes.lua`
+일관된 UI 요소를 위한 도형 렌더링 유틸리티.
+
+**주요 함수:**
+```lua
+shapes:drawBox(x, y, w, h, color, border_color, border_width, rounding)
+shapes:drawPanel(x, y, w, h, bg_color, border_color, rounding)
+shapes:drawButton(x, y, w, h, state, rounding)
+shapes:drawCloseButton(x, y, size, is_hovered)  -- 빨간 배경!
+shapes:drawConfirmDialog(x, y, w, h, message, message_font, yes_hover, no_hover)
+```
+
+**닫기 버튼 (빨강):**
+```lua
+-- 빨간 X 버튼 그리기 (삭제/닫기 동작용)
+local is_hovered = check_mouse_over(x, y, size)
+shapes:drawCloseButton(x, y, 30, is_hovered)
+
+-- 색상:
+-- 보통: {0.5, 0.2, 0.2, 0.7} (어두운 빨강)
+-- 호버: {0.8, 0.2, 0.2, 0.9} (밝은 빨강)
+```
+
+---
+
 ## 메뉴 UI 시스템
 
 ### `engine/ui/menu.lua`

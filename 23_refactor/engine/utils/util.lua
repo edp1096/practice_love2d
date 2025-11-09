@@ -64,7 +64,7 @@ function utils:SaveConfig(GameConfig, sound_settings, input_settings, resolution
         end)
 
         if not success then
-            dprint("Warning: Could not save mobile config: " .. tostring(err))
+            print("Warning: Could not save mobile config: " .. tostring(err))
             return false
         end
         return true
@@ -139,7 +139,7 @@ function utils:SaveConfig(GameConfig, sound_settings, input_settings, resolution
     end)
 
     if not success then
-        dprint("Warning: Could not save config: " .. tostring(err))
+        print("Warning: Could not save config: " .. tostring(err))
         return false
     end
 
@@ -172,7 +172,7 @@ function utils:ReadOrCreateConfig()
     end)
 
     if not success then
-        dprint("Warning: Could not read/create config: " .. tostring(err))
+        print("Warning: Could not read/create config: " .. tostring(err))
         return false
     end
 

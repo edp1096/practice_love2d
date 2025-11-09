@@ -2,15 +2,15 @@
 -- Renders inventory slots, items, and UI elements
 
 local slot_renderer = {}
-local shapes = require "engine.ui.shapes"
+local shapes = require "engine.utils.shapes"
 local text_ui = require "engine.utils.text"
 
 -- Render the close button in the top-right corner
-function slot_renderer.renderCloseButton(window_x, window_y, window_w, close_button_size, close_button_padding)
+function slot_renderer.renderCloseButton(window_x, window_y, window_w, close_button_size, close_button_padding, is_hovered)
     local close_x = window_x + window_w - close_button_size - close_button_padding
     local close_y = window_y + close_button_padding
 
-    shapes:drawCloseButton(close_x, close_y, close_button_size, false)
+    shapes:drawCloseButton(close_x, close_y, close_button_size, is_hovered or false)
 
     return { x = close_x, y = close_y, size = close_button_size }
 end

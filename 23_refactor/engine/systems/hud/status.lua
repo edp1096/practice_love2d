@@ -3,7 +3,7 @@
 
 local fonts = require "engine.utils.fonts"
 local text_ui = require "engine.utils.text"
-local shapes = require "engine.ui.shapes"
+local shapes = require "engine.utils.shapes"
 
 local hud = {}
 

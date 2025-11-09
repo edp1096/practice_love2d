@@ -325,7 +325,7 @@ function options:changeOption(state, direction)
     if handler then
         handler(self, state, direction)
     else
-        dprint("[OPTIONS] Warning: No handler for option '" .. tostring(option.name) .. "'")
+        print("WARNING: No handler for option '" .. tostring(option.name) .. "'")
     end
 end
 

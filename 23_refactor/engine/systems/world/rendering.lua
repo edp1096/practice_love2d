@@ -2,7 +2,7 @@
 -- Contains drawing and rendering functions
 
 local effects = require "engine.systems.effects"
-local text_ui = require "engine.utils.text"
+local prompt = require "engine.ui.prompt"
 
 local rendering = {}
 
@@ -60,9 +60,7 @@ end
 function rendering.drawSavePoints(self)
     for _, savepoint in ipairs(self.savepoints) do
         if savepoint.can_interact then
-            love.graphics.setColor(1, 1, 0, 1)
-            love.graphics.circle("line", savepoint.center_x, savepoint.center_y - 30, 20)
-            text_ui:draw("F", savepoint.center_x - 5, savepoint.center_y - 35, {1, 1, 0, 1})
+            prompt:draw("interact", savepoint.center_x, savepoint.center_y, -30)
         end
     end
     love.graphics.setColor(1, 1, 1, 1)

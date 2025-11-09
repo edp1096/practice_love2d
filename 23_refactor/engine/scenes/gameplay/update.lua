@@ -23,81 +23,93 @@ local function checkPlayerDeath(self)
     return false
 end
 
+-- Calculate attack distance based on enemy type and game mode
+local function calculateAttackDistance(enemy, dx, dy, is_platformer)
+    local distance
+    if is_platformer then
+        distance = math.abs(dx)
+        -- CRITICAL: Check Y distance in platformer to prevent air attacks
+        local vertical_distance = math.abs(dy)
+        if vertical_distance > constants.COMBAT.VERTICAL_ATTACK_LIMIT then
+            return nil  -- Too far vertically, skip this enemy
+        end
+    else
+        distance = math.sqrt(dx * dx + dy * dy)
+    end
+
+    local attack_distance = distance
+    if enemy.is_humanoid then
+        -- Calculate edge-to-edge distance for humanoid
+        local abs_dx = math.abs(dx)
+        local abs_dy = math.abs(dy)
+
+        if is_platformer then
+            attack_distance = distance - constants.COMBAT.HUMANOID_WIDTH_RADIUS
+        elseif abs_dy > abs_dx then
+            attack_distance = distance - constants.COMBAT.HUMANOID_HEIGHT_RADIUS
+        else
+            attack_distance = distance - constants.COMBAT.HUMANOID_WIDTH_RADIUS
+        end
+    else
+        -- Slime uses simple distance check
+        if is_platformer then
+            attack_distance = distance - constants.COMBAT.SLIME_COLLIDER_WIDTH
+        end
+    end
+
+    return attack_distance
+end
+
+-- Handle parry effects (slow-motion and camera shake)
+local function handleParryEffects(is_perfect)
+    if is_perfect then
+        camera_sys:activate_slow_motion(
+            constants.COMBAT.PERFECT_PARRY_SLOW_MO,
+            constants.COMBAT.PERFECT_PARRY_SLOW_DURATION
+        )
+    else
+        camera_sys:activate_slow_motion(
+            constants.COMBAT.NORMAL_PARRY_SLOW_MO,
+            constants.COMBAT.NORMAL_PARRY_SLOW_DURATION
+        )
+    end
+    camera_sys:shake(constants.COMBAT.PARRY_SHAKE_INTENSITY, constants.COMBAT.PARRY_SHAKE_DURATION)
+end
+
 -- Handle enemy attack detection and damage
 function update.handleEnemyAttacks(self, scaled_dt, shake_callback)
+    local is_platformer = self.world.game_mode == "platformer"
+
     for _, enemy in ipairs(self.world.enemies) do
-        if enemy.state == constants.ENEMY_STATES.ATTACK and not enemy.stunned and not enemy.has_attacked then
-            -- Calculate distance using collider centers
-            local enemy_center_x = enemy.x + enemy.collider_offset_x
-            local enemy_center_y = enemy.y + enemy.collider_offset_y
-            local dx = enemy_center_x - self.player.x
-            local dy = enemy_center_y - self.player.y
+        -- Early skip: only process attacking enemies that haven't attacked yet
+        if enemy.state ~= constants.ENEMY_STATES.ATTACK or enemy.is_stunned or enemy.has_attacked then
+            goto continue_enemy_loop
+        end
 
-            -- Check if platformer mode
-            local is_platformer = self.world.game_mode == "platformer"
+        -- Calculate distance
+        local enemy_center_x = enemy.x + enemy.collider_offset_x
+        local enemy_center_y = enemy.y + enemy.collider_offset_y
+        local dx = enemy_center_x - self.player.x
+        local dy = enemy_center_y - self.player.y
 
-            -- In platformer mode, check both horizontal AND vertical distance
-            local distance
-            if is_platformer then
-                distance = math.abs(dx)
-                -- CRITICAL: Also check Y distance in platformer to prevent air attacks
-                local vertical_distance = math.abs(dy)
-                -- If Y distance is too large (player jumping/falling), skip attack
-                if vertical_distance > 50 then
-                    goto continue_enemy_loop
-                end
-            else
-                distance = math.sqrt(dx * dx + dy * dy)
-            end
+        local attack_distance = calculateAttackDistance(enemy, dx, dy, is_platformer)
+        if not attack_distance then
+            goto continue_enemy_loop  -- Too far vertically in platformer
+        end
 
-            local in_attack_range = false
+        -- Check if in attack range
+        local in_attack_range = (attack_distance < (enemy.attack_range or constants.COMBAT.DEFAULT_ATTACK_RANGE))
+        if not in_attack_range then
+            goto continue_enemy_loop
+        end
 
-            if enemy.is_humanoid then
-                -- Calculate edge-to-edge distance for humanoid
-                local abs_dx = math.abs(dx)
-                local abs_dy = math.abs(dy)
+        -- Process attack
+        local damaged, parried, is_perfect = self.player:takeDamage(enemy.damage or 10, shake_callback)
+        enemy.has_attacked = true
 
-                local edge_distance = distance
-                if is_platformer then
-                    -- Platformer: horizontal only, subtract width radii
-                    edge_distance = distance - 45
-                elseif abs_dy > abs_dx then
-                    -- Topdown vertical: subtract height radii (enemy: 40, player: 50)
-                    edge_distance = distance - 90
-                else
-                    -- Topdown horizontal: subtract width radii (enemy: 20, player: 25)
-                    edge_distance = distance - 45
-                end
-
-                in_attack_range = (edge_distance < (enemy.attack_range or 60))
-            else
-                -- Slime uses simple distance check
-                local attack_distance = distance
-                if is_platformer then
-                    -- Platformer: subtract collider widths (slime 16 + player 25 = ~40)
-                    attack_distance = distance - 40
-                end
-
-                in_attack_range = (attack_distance < (enemy.attack_range or 60))
-            end
-
-            if in_attack_range then
-                local damaged, parried, is_perfect = self.player:takeDamage(enemy.damage or 10, shake_callback)
-
-                enemy.has_attacked = true
-
-                if parried then
-                    enemy:stun(nil, is_perfect)
-
-                    if is_perfect then
-                        camera_sys:activate_slow_motion(0.3, 0.2)
-                    else
-                        camera_sys:activate_slow_motion(0.2, 0.4)
-                    end
-
-                    camera_sys:shake(8, 0.2)
-                end
-            end
+        if parried then
+            enemy:stun(nil, is_perfect)
+            handleParryEffects(is_perfect)
         end
 
         ::continue_enemy_loop::
@@ -117,7 +129,7 @@ function update.updateGroundDetection(self)
     else
         -- Player is in air - use raycast to find ground below for shadow
         local half_width = self.player.width / 2
-        local ray_length = 1000
+        local ray_length = constants.PLAYER.RAYCAST_LENGTH
         local closest_ground_y = nil
 
         -- Cast 3 rays: left edge, center, right edge
@@ -183,6 +195,19 @@ function update.updateCamera(self)
     self.cam:lockBounds(mapWidth, mapHeight, w, h)
 end
 
+-- Get player foot position for zone checking
+local function getPlayerFootPosition(player)
+    local px, py = player.collider:getPosition()
+
+    -- In topdown mode, check foot position (center Y + half height)
+    -- This represents where the shadow/feet are touching the ground
+    if player.game_mode == "topdown" then
+        py = py + player.height / 2
+    end
+
+    return px, py
+end
+
 -- Check for map transitions
 function update.checkTransitions(self, scaled_dt)
     if self.transition_cooldown > 0 then
@@ -199,7 +224,7 @@ function update.checkTransitions(self, scaled_dt)
 
     if transition then
         if transition.transition_type == "gameclear" then
-            scene_control.switch("gameover", true)
+            scene_control.switch("ending")
         elseif transition.transition_type == "intro" then
             local cutscene = require "engine.scenes.cutscene"
             local intro_id = transition.intro_id or "level1"
@@ -218,22 +243,13 @@ end
 function update.checkDeathZones(self)
     if not self.player.collider then return false end
 
+    local px, py = getPlayerFootPosition(self.player)
+
     -- Check each death zone (Box2D testPoint for accurate polygon collision)
     for _, zone in ipairs(self.world.death_zones) do
-        -- Get player foot position (shadow position for topdown)
-        local px, py = self.player.collider:getPosition()
-
-        -- In topdown mode, check foot position (center Y + half height)
-        -- This represents where the shadow/feet are touching the ground
-        if self.player.game_mode == "topdown" then
-            py = py + self.player.height / 2
-        end
-
         -- Use Box2D's testPoint to check if player foot is inside the zone
         -- This works accurately for any polygon shape
-        local is_in_zone = zone.fixture:testPoint(px, py)
-
-        if is_in_zone then
+        if zone.fixture:testPoint(px, py) then
             -- Player is in death zone - instant death
             self.player.health = 0
             return true
@@ -261,36 +277,28 @@ function update.checkDamageZones(self, scaled_dt, shake_callback)
 
     -- Check each damage zone (Box2D testPoint for accurate polygon collision)
     for i, zone_data in ipairs(self.world.damage_zones) do
-        local zone = zone_data.collider
-
-        -- Get player foot position (shadow position for topdown)
-        local px, py = self.player.collider:getPosition()
-
-        -- In topdown mode, check foot position (center Y + half height)
-        -- This represents where the shadow/feet are touching the ground
-        if self.player.game_mode == "topdown" then
-            py = py + self.player.height / 2
-        end
+        local px, py = getPlayerFootPosition(self.player)
 
         -- Use Box2D's testPoint to check if player foot is inside the zone
-        -- This works accurately for any polygon shape
-        local is_in_zone = zone.fixture:testPoint(px, py)
-
-        if is_in_zone then
-            -- Player is in damage zone - check cooldown
-            local zone_id = "zone_" .. i
-            local cooldown = self.player.damage_zone_cooldowns[zone_id] or 0
-
-            if cooldown <= 0 then
-                -- Apply damage
-                local damaged = self.player:takeDamage(zone_data.damage, shake_callback)
-
-                if damaged then
-                    -- Reset cooldown
-                    self.player.damage_zone_cooldowns[zone_id] = zone_data.damage_cooldown
-                end
-            end
+        local is_in_zone = zone_data.collider.fixture:testPoint(px, py)
+        if not is_in_zone then
+            goto continue_zone_loop
         end
+
+        -- Check cooldown
+        local zone_id = "zone_" .. i
+        local cooldown = self.player.damage_zone_cooldowns[zone_id] or 0
+        if cooldown > 0 then
+            goto continue_zone_loop
+        end
+
+        -- Apply damage
+        local damaged = self.player:takeDamage(zone_data.damage, shake_callback)
+        if damaged then
+            self.player.damage_zone_cooldowns[zone_id] = zone_data.damage_cooldown
+        end
+
+        ::continue_zone_loop::
     end
 end
 
@@ -302,7 +310,22 @@ function update.update(self, dt)
     effects:update(dt)
     effects.screen:update(dt)
     lighting:update(dt)
+
+    -- Sync gamepad skip button state to dialogue (same as cutscene)
+    if dialogue.skip_button and self.skip_button_held then
+        dialogue.skip_button.is_pressed = true
+    end
+
     dialogue:update(dt)
+
+    -- Reset skip button state when dialogue is closed
+    if not dialogue:isOpen() and self.skip_button_held then
+        self.skip_button_held = false
+        if dialogue.skip_button then
+            dialogue.skip_button.is_pressed = false
+            dialogue.skip_button.charge = 0
+        end
+    end
 
     -- Update player light position
     if self.player.light then
@@ -413,8 +436,8 @@ function update.update(self, dt)
     -- Check hazard zones
     local death_zone_hit = update.checkDeathZones(self)
     if death_zone_hit then
-        -- Player died from death zone
-        scene_control.switch("gameover", false)
+        -- Player died from death zone - use existing helper
+        checkPlayerDeath(self)
         return
     end
 

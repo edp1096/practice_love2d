@@ -90,8 +90,7 @@ function ai.updateIdle(enemy, dt, player_x, player_y)
     end
 
     if distance < enemy.detection_range then
-        local collider_center_x = enemy.x + enemy.collider_offset_x
-        local collider_center_y = enemy.y + enemy.collider_offset_y
+        local collider_center_x, collider_center_y = enemy:getColliderCenter()
         if enemy.world and enemy.world:checkLineOfSight(collider_center_x, collider_center_y, player_x, player_y) then
             ai.setState(enemy, "chase")
 
@@ -125,8 +124,7 @@ function ai.updatePatrol(enemy, dt, player_x, player_y)
     end
 
     if distance < enemy.detection_range then
-        local collider_center_x = enemy.x + enemy.collider_offset_x
-        local collider_center_y = enemy.y + enemy.collider_offset_y
+        local collider_center_x, collider_center_y = enemy:getColliderCenter()
         if enemy.world and enemy.world:checkLineOfSight(collider_center_x, collider_center_y, player_x, player_y) then
             ai.setState(enemy, "chase")
 
@@ -217,8 +215,7 @@ function ai.updateChase(enemy, dt, player_x, player_y)
     end
 
     -- Lost line of sight
-    local collider_center_x = enemy.x + enemy.collider_offset_x
-    local collider_center_y = enemy.y + enemy.collider_offset_y
+    local collider_center_x, collider_center_y = enemy:getColliderCenter()
     if enemy.world and not enemy.world:checkLineOfSight(collider_center_x, collider_center_y, player_x, player_y) then
         ai.setState(enemy, "idle")
         return

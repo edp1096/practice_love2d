@@ -5,13 +5,15 @@ local player_config = {}
 
 -- Basic stats
 player_config.stats = {
-  max_health = 100,
   speed = 300,
   jump_power = 600,
 }
 
 -- Combat abilities
 player_config.combat = {
+  -- Health
+  max_health = 100,
+
   -- Attack
   attack_cooldown = 0.5,
   weapon_sheath_delay = 5.0,

@@ -173,10 +173,21 @@ function shapes:drawDialog(x, y, w, h, title, title_font, title_color)
     return y + 10 -- Content starts with padding
 end
 
--- Draw a close button (X)
+-- Draw a close button (X) with red background
 function shapes:drawCloseButton(x, y, size, is_hovered)
-    local state = is_hovered and "hover" or "normal"
-    self:drawButton(x, y, size, size, state, 3)
+    local rounding = 3
+    local bg_color, border_color
+
+    -- Red background for delete/close buttons
+    if is_hovered then
+        bg_color = {0.8, 0.2, 0.2, 0.9}      -- Bright red on hover
+        border_color = {1, 0.3, 0.3, 1}
+    else
+        bg_color = {0.5, 0.2, 0.2, 0.7}      -- Dark red normal
+        border_color = {0.7, 0.3, 0.3, 1}
+    end
+
+    self:drawBox(x, y, size, size, bg_color, border_color, 1, rounding)
 
     -- Draw X
     love.graphics.setColor(1, 1, 1, 1)

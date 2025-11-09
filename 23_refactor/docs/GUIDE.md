@@ -499,6 +499,64 @@ end
 
 ---
 
+## UI Helper Modules
+
+### `engine/ui/prompt.lua`
+Draws interaction prompts with dynamic button icons based on active input method.
+
+**Key Features:**
+- Shows appropriate button label (F for keyboard, Y for gamepad, B for touch)
+- Automatically detects active input source
+- Consistent circular button design
+
+**Usage:**
+```lua
+local prompt = require "engine.ui.prompt"
+
+-- Draw interaction prompt above NPC
+prompt:draw("interact", npc_center_x, npc_center_y, -60)
+
+-- Optional: custom color and offset
+prompt:draw("interact", x, y, -30, {1, 1, 0, 1})  -- Yellow
+```
+
+**Parameters:**
+- `action` - Action name from input config (e.g., "interact")
+- `x, y` - Center position
+- `y_offset` - Vertical offset from center (default: -30)
+- `color` - Text color (default: {1, 1, 0, 1} yellow)
+
+### `engine/ui/shapes.lua`
+Shape rendering utilities for consistent UI elements.
+
+**Key Functions:**
+```lua
+shapes:drawBox(x, y, w, h, color, border_color, border_width, rounding)
+shapes:drawPanel(x, y, w, h, bg_color, border_color, rounding)
+shapes:drawButton(x, y, w, h, state, rounding)
+shapes:drawSlot(x, y, size, is_selected, is_hovered, rounding)
+shapes:drawOverlay(w, h, alpha)
+shapes:drawProgressBar(x, y, w, h, value, max, color, bg_color, rounding)
+shapes:drawHealthBar(x, y, w, h, hp, max_hp, font, show_text)
+shapes:drawCooldown(x, y, w, h, cd, max_cd, ready_color, cd_color)
+shapes:drawDialog(x, y, w, h, title, title_font, title_color)
+shapes:drawCloseButton(x, y, size, is_hovered)  -- Red background!
+shapes:drawConfirmDialog(x, y, w, h, message, message_font, yes_hover, no_hover)
+```
+
+**Close Button (Red):**
+```lua
+-- Draw red X button (for delete/close actions)
+local is_hovered = check_mouse_over(x, y, size)
+shapes:drawCloseButton(x, y, 30, is_hovered)
+
+-- Colors:
+-- Normal: {0.5, 0.2, 0.2, 0.7} (dark red)
+-- Hover: {0.8, 0.2, 0.2, 0.9} (bright red)
+```
+
+---
+
 ## Menu UI System
 
 ### `engine/ui/menu/helpers.lua`

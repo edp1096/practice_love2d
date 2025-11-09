@@ -61,7 +61,6 @@ function NextButton:touchReleased(id, x, y)
 
     -- Only process if this touch/click started on the button
     if self.touch_id ~= id then
-        dprint("[NEXT_BUTTON] Touch ID mismatch: expected " .. tostring(self.touch_id) .. ", got " .. tostring(id))
         return false
     end
 
@@ -69,17 +68,15 @@ function NextButton:touchReleased(id, x, y)
     local coords = require "engine.core.coords"
     local vx, vy = coords:physicalToVirtual(x, y, self.display)
 
-    local was_pressed = self.pressed
-    self.pressed = false
+    local was_pressed = self.is_pressed
+    self.is_pressed = false
     self.touch_id = nil
 
     -- Check if released inside button (complete click)
     if was_pressed and self:isInside(vx, vy) then
-        dprint("[NEXT_BUTTON] Button clicked successfully")
         return true  -- Button clicked!
     end
 
-    dprint("[NEXT_BUTTON] Released outside button area")
     return false
 end
 

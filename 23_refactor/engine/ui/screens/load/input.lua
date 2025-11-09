@@ -15,8 +15,7 @@ function input_handler.selectSlot(load_scene, slot_index)
     if slot.slot == "back" then
         scene_control.switch("menu")
     elseif slot.exists then
-        local gameplay = require "engine.scenes.gameplay"
-        scene_control.switch(gameplay, slot.map, slot.x, slot.y, slot.slot)
+        scene_control.switch("gameplay", slot.map, slot.x, slot.y, slot.slot, false)  -- is_new_game = false
     end
 end
 

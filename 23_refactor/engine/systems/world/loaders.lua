@@ -61,7 +61,7 @@ function loaders.loadWalls(self)
         -- Get shape handler
         local handler = shapeHandlers[obj.shape]
         if not handler then
-            dprint("Warning: Unknown shape type '" .. tostring(obj.shape) .. "' in Walls layer")
+            print("Warning: Unknown shape type '" .. tostring(obj.shape) .. "' in Walls layer")
             goto continue
         end
 
@@ -95,8 +95,31 @@ function loaders.loadTransitions(self)
                         max_y = math.max(max_y, obj.y + point.y)
                     end
                 else
-                    max_x = obj.x + obj.width
-                    max_y = obj.y + obj.height
+                    -- Handle rotation (Tiled rotates objects around their origin)
+                    local rotation = obj.rotation or 0
+                    if rotation == 90 or rotation == -270 then
+                        -- 90° clockwise: width and height swap, x shifts
+                        min_x = obj.x - obj.height
+                        min_y = obj.y
+                        max_x = obj.x
+                        max_y = obj.y + obj.width
+                    elseif rotation == 180 or rotation == -180 then
+                        -- 180°: object flips
+                        min_x = obj.x - obj.width
+                        min_y = obj.y - obj.height
+                        max_x = obj.x
+                        max_y = obj.y
+                    elseif rotation == 270 or rotation == -90 then
+                        -- 270° clockwise (90° counter-clockwise): width and height swap, y shifts
+                        min_x = obj.x
+                        min_y = obj.y - obj.width
+                        max_x = obj.x + obj.height
+                        max_y = obj.y
+                    else
+                        -- No rotation or unsupported rotation
+                        max_x = obj.x + obj.width
+                        max_y = obj.y + obj.height
+                    end
                 end
 
                 table.insert(self.transitions, {
@@ -140,7 +163,7 @@ end
 
 function loaders.loadEnemies(self)
     if not self.enemy_class then
-        dprint("Warning: No enemy_class injected, skipping enemy loading")
+        print("Warning: No enemy_class injected, skipping enemy loading")
         return
     end
 
@@ -196,7 +219,7 @@ end
 
 function loaders.loadNPCs(self)
     if not self.npc_class then
-        dprint("Warning: No npc_class injected, skipping NPC loading")
+        print("Warning: No npc_class injected, skipping NPC loading")
         return
     end
 
@@ -228,7 +251,7 @@ end
 
 function loaders.loadHealingPoints(self)
     if not self.healing_point_class then
-        dprint("Warning: No healing_point_class injected, skipping healing point loading")
+        print("Warning: No healing_point_class injected, skipping healing point loading")
         return
     end
 
@@ -295,11 +318,8 @@ end
 
 function loaders.loadDamageZones(self)
     if not self.map.layers["DamageZones"] then
-        dprint("DamageZones layer not found!")
         return
     end
-
-    dprint("Loading DamageZones:", #self.map.layers["DamageZones"].objects, "zones found")
 
     for _, obj in ipairs(self.map.layers["DamageZones"].objects) do
         local zone
@@ -345,11 +365,8 @@ function loaders.loadDamageZones(self)
                 damage = zone.damage,
                 damage_cooldown = zone.damage_cooldown
             })
-            dprint("DamageZone added:", zone.damage, "damage,", zone.damage_cooldown, "cooldown")
         end
     end
-
-    dprint("Total DamageZones loaded:", #self.damage_zones)
 end
 
 return loaders

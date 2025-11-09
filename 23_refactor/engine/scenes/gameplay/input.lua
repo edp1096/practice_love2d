@@ -29,8 +29,7 @@ function input_handler.keypressed(self, key)
         sound:pauseBGM()
     elseif input:wasPressed("open_inventory", "keyboard", key) then
         -- Open inventory UI (I key or R2 on gamepad)
-        local inventory = require "engine.ui.screens.inventory"
-        scene_control.push(inventory, self.inventory, self.player)
+        scene_control.push("inventory", self.inventory, self.player)
     elseif input:wasPressed("dodge", "keyboard", key) then
         -- Dodge (lshift key or R1 on gamepad) - works in both modes
         self.player:startDodge()
@@ -73,8 +72,7 @@ function input_handler.keypressed(self, key)
 
         local savepoint = self.world:getInteractableSavePoint()
         if savepoint then
-            local saveslot = require "engine.ui.screens.saveslot"
-            scene_control.push(saveslot, function(slot)
+            scene_control.push("saveslot", function(slot)
                 self:saveGame(slot)
             end)
         end
@@ -122,6 +120,10 @@ function input_handler.gamepadpressed(self, joystick, button)
         if button == "a" or button == "y" then
             dialogue:onAction()
         end
+        -- Start charging skip with B button
+        if button == "b" then
+            self.skip_button_held = true
+        end
         return
     end
 
@@ -147,8 +149,7 @@ function input_handler.gamepadpressed(self, joystick, button)
 
     elseif action == "interact_savepoint" then
         -- ctx is the savepoint
-        local saveslot = require "engine.ui.screens.saveslot"
-        scene_control.push(saveslot, function(slot)
+        scene_control.push("saveslot", function(slot)
             self:saveGame(slot)
         end)
 
@@ -174,8 +175,7 @@ function input_handler.gamepadpressed(self, joystick, button)
 
         local savepoint = self.world:getInteractableSavePoint()
         if savepoint then
-            local saveslot = require "engine.ui.screens.saveslot"
-            scene_control.push(saveslot, function(slot)
+            scene_control.push("saveslot", function(slot)
                 self:saveGame(slot)
             end)
         end
@@ -192,8 +192,7 @@ function input_handler.gamepadpressed(self, joystick, button)
         self.player:startDodge()
 
     elseif action == "open_inventory" then
-        local inventory = require "engine.ui.screens.inventory"
-        scene_control.push(inventory, self.inventory, self.player)
+        scene_control.push("inventory", self.inventory, self.player)
     end
 end
 
@@ -221,8 +220,27 @@ function input_handler.gamepadaxis(self, joystick, axis, value)
         end
 
     elseif action == "open_inventory" then
-        local inventory = require "engine.ui.screens.inventory"
-        scene_control.push(inventory, self.inventory, self.player)
+        scene_control.push("inventory", self.inventory, self.player)
+    end
+end
+
+-- Gamepad release handler
+function input_handler.gamepadreleased(self, joystick, button)
+    -- Handle skip button release (regardless of dialogue state)
+    if button == "b" then
+        self.skip_button_held = false
+        if dialogue.skip_button then
+            dialogue.skip_button.is_pressed = false
+            -- Force charge decay when button is released
+            if not dialogue.skip_button:isFullyCharged() then
+                dialogue.skip_button.charge = 0
+            end
+        end
+    end
+
+    -- Early return if dialogue is open (handled above)
+    if dialogue:isOpen() then
+        return
     end
 end
 

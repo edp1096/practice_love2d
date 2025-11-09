@@ -2,7 +2,7 @@
 -- Slot rendering logic for load scene
 
 local slot_renderer = {}
-local shapes = require "engine.ui.shapes"
+local shapes = require "engine.utils.shapes"
 local text_ui = require "engine.utils.text"
 
 -- Render individual save slot

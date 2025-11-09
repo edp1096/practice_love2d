@@ -37,8 +37,8 @@ function BaseButton:new(options)
         -- State
         visible = true,
         enabled = true,
-        hovered = false,
-        pressed = false,
+        is_hovered = false,
+        is_pressed = false,
 
         -- Touch tracking
         touch_id = nil,
@@ -93,7 +93,7 @@ function BaseButton:touchPressed(id, x, y)
     local vx, vy = coords:physicalToVirtual(x, y, self.display)
 
     if self:isInside(vx, vy) then
-        self.pressed = true
+        self.is_pressed = true
         self.touch_id = id
         return true  -- Consumed
     end
@@ -115,8 +115,8 @@ function BaseButton:touchReleased(id, x, y)
     -- Convert physical to virtual coordinates
     local vx, vy = coords:physicalToVirtual(x, y, self.display)
 
-    local was_pressed = self.pressed
-    self.pressed = false
+    local was_pressed = self.is_pressed
+    self.is_pressed = false
     self.touch_id = nil
 
     -- Check if released inside button (complete click)
@@ -136,20 +136,20 @@ function BaseButton:touchMoved(id, x, y)
     -- Convert physical to virtual coordinates
     local vx, vy = coords:physicalToVirtual(x, y, self.display)
 
-    self.hovered = self:isInside(vx, vy)
+    self.is_hovered = self:isInside(vx, vy)
 end
 
 -- Update hover state based on mouse position (desktop)
 function BaseButton:updateHover()
     if not self.visible or not self.enabled or not self.display then
-        self.hovered = false
+        self.is_hovered = false
         return
     end
 
     local mx, my = love.mouse.getPosition()
     local vx, vy = coords:physicalToVirtual(mx, my, self.display)
 
-    self.hovered = self:isInside(vx, vy)
+    self.is_hovered = self:isInside(vx, vy)
 end
 
 -- Draw the button (override in subclass for custom rendering)
@@ -160,7 +160,7 @@ function BaseButton:draw()
 
     -- Select background color based on state
     local bg_color = self.bg_color
-    if self.hovered or self.pressed then
+    if self.is_hovered or self.is_pressed then
         bg_color = self.bg_hover_color
     end
 
@@ -193,8 +193,8 @@ end
 -- Hide button
 function BaseButton:hide()
     self.visible = false
-    self.pressed = false
-    self.hovered = false
+    self.is_pressed = false
+    self.is_hovered = false
     self.touch_id = nil
 end
 
@@ -206,15 +206,15 @@ end
 -- Disable button
 function BaseButton:disable()
     self.enabled = false
-    self.pressed = false
-    self.hovered = false
+    self.is_pressed = false
+    self.is_hovered = false
     self.touch_id = nil
 end
 
 -- Reset button state
 function BaseButton:reset()
-    self.pressed = false
-    self.hovered = false
+    self.is_pressed = false
+    self.is_hovered = false
     self.touch_id = nil
 end
 

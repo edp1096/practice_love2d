@@ -250,7 +250,6 @@ end
 function coords:init(camera, display)
     self.camera = camera
     self.display = display
-    dprint("Coordinate system initialized")
 end
 
 return coords

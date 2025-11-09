@@ -19,6 +19,13 @@ function input_dispatcher:keypressed(key)
     end
 end
 
+function input_dispatcher:keyreleased(key)
+    -- Delegate to scene_control
+    if self.scene_control and self.scene_control.keyreleased then
+        self.scene_control.keyreleased(key)
+    end
+end
+
 -- === Mouse Input ===
 
 function input_dispatcher:mousepressed(x, y, button)

@@ -17,7 +17,11 @@ function screen:init()
     local width, height = love.graphics.getDimensions()
     self.canvas = love.graphics.newCanvas(width, height)
 
-    dprint("Screen effects system initialized")
+    -- Register resize callback with lifecycle
+    local lifecycle = require "engine.core.lifecycle"
+    lifecycle:registerResizeCallback("screen_effects", function(w, h)
+        screen:resize(w, h)
+    end)
 end
 
 -- Add a screen effect
@@ -28,7 +32,7 @@ function screen:addEffect(effect)
 
     -- Validate effect type
     if effect.type ~= "flash" and effect.type ~= "vignette" and effect.type ~= "overlay" then
-        dprint("WARNING: Unknown screen effect type: " .. tostring(effect.type))
+        print("WARNING: Unknown screen effect type: " .. tostring(effect.type))
         return
     end
 
@@ -143,7 +147,6 @@ function screen:resize(width, height)
         self.canvas:release()
     end
     self.canvas = love.graphics.newCanvas(width, height)
-    dprint("Screen effects canvas resized: " .. width .. "x" .. height)
 end
 
 -- Attach preset methods

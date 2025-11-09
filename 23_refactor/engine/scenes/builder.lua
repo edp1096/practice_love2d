@@ -9,6 +9,9 @@ local constants = require "engine.core.constants"
 
 local builder = {}
 
+-- Game scene path prefix (injected from main.lua)
+builder.game_scene_prefix = "game.scenes."
+
 -- Scene path resolver (try engine first, then game)
 local function resolveScenePath(scene_name)
   -- Engine UI screens
@@ -37,8 +40,8 @@ local function resolveScenePath(scene_name)
     return engine_scene_paths[scene_name]
   end
 
-  -- Fall back to game scenes (menu, pause, gameover)
-  return "game.scenes." .. scene_name
+  -- Fall back to game scenes (menu, pause, gameover) - uses injected prefix
+  return builder.game_scene_prefix .. scene_name
 end
 
 -- Execute action from config
@@ -71,16 +74,25 @@ local function executeAction(action_cfg, previous_scene)
         constants.GAME_START.DEFAULT_SPAWN_Y,
         1)  -- slot 1
     elseif action_cfg.scene == "newgame" then
-      local newgame = require "engine.ui.screens.newgame"
-      scene_control.switch(newgame)
+      scene_control.switch("newgame")
     elseif action_cfg.scene == "load" then
-      local load = require "engine.ui.screens.load"
-      scene_control.switch(load)
+      scene_control.switch("load")
     else
       local scene_path = resolveScenePath(action_cfg.scene)
       local scene = require(scene_path)
       scene_control.switch(scene)
     end
+
+  elseif action_cfg.action == "start_new_game" then
+    -- Start new game (with intro cutscene and is_new_game flag)
+    local cutscene = require "engine.scenes.cutscene"
+    scene_control.switch(cutscene,
+      "level1",
+      constants.GAME_START.DEFAULT_MAP,
+      constants.GAME_START.DEFAULT_SPAWN_X,
+      constants.GAME_START.DEFAULT_SPAWN_Y,
+      1,     -- Default to slot 1 (will be saved on first save)
+      true)  -- is_new_game = true
 
   elseif action_cfg.action == "load_recent_save" then
     local recent_slot = save_sys:getMostRecentSlot()
@@ -88,23 +100,23 @@ local function executeAction(action_cfg, previous_scene)
       local save_data = save_sys:loadGame(recent_slot)
       if save_data then
         local gameplay = require "engine.scenes.gameplay"
-        scene_control.switch(gameplay, save_data.map, save_data.x, save_data.y, recent_slot)
+        scene_control.switch(gameplay, save_data.map, save_data.x, save_data.y, recent_slot, false)  -- is_new_game = false
       else
         sound:playSFX("menu", "error")
       end
     end
 
   elseif action_cfg.action == "restart_current" then
-    local restart_util = require "engine.utils.restart"
+    local restart_util = require "engine.core.restart"
     local gameplay = require "engine.scenes.gameplay"
     local map, x, y, slot = restart_util:fromCurrentMap(previous_scene)
-    scene_control.switch(gameplay, map, x, y, slot)
+    scene_control.switch(gameplay, map, x, y, slot, false)  -- is_new_game = false
 
   elseif action_cfg.action == "restart_from_save" then
-    local restart_util = require "engine.utils.restart"
+    local restart_util = require "engine.core.restart"
     local gameplay = require "engine.scenes.gameplay"
     local map, x, y, slot = restart_util:fromLastSave(previous_scene)
-    scene_control.switch(gameplay, map, x, y, slot)
+    scene_control.switch(gameplay, map, x, y, slot, false)  -- is_new_game = false
   end
 end
 
@@ -127,10 +139,7 @@ function builder:buildMenu(cfg)
 
     -- Play BGM
     if cfg.bgm then
-      dprint("[SCENE BUILDER] Playing BGM: " .. cfg.bgm)
       sound:playBGM(cfg.bgm, 1.0, true)
-    else
-      dprint("[SCENE BUILDER] No BGM configured for this scene")
     end
   end
 

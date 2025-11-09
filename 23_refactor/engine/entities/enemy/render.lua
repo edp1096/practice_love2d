@@ -40,8 +40,7 @@ function render.draw(enemy)
     -- Ensure shader is loaded
     render.initialize_shader()
 
-    local collider_center_x = enemy.x + enemy.collider_offset_x
-    local collider_center_y = enemy.y + enemy.collider_offset_y
+    local collider_center_x, collider_center_y = enemy:getColliderCenter()
 
     -- Debug: detection and attack ranges
     if debug.enabled then
@@ -56,8 +55,9 @@ function render.draw(enemy)
         love.graphics.circle("line", collider_center_x, collider_center_y, enemy.attack_range)
     end
 
-    local sprite_draw_x = collider_center_x + enemy.sprite_draw_offset_x + enemy.hit_shake_x
-    local sprite_draw_y = collider_center_y + enemy.sprite_draw_offset_y + enemy.hit_shake_y
+    local sprite_draw_x, sprite_draw_y = enemy:getSpritePosition()
+    sprite_draw_x = sprite_draw_x + enemy.hit_shake_x
+    sprite_draw_y = sprite_draw_y + enemy.hit_shake_y
 
     -- Shadow (positioned at bottom of collider)
     local shadow_y = collider_center_y + (enemy.collider_height / 2) - 2
@@ -72,7 +72,7 @@ function render.draw(enemy)
         draw_color = { 1, 1, 1, 1 }
     elseif enemy.state == constants.ENEMY_STATES.DEAD then
         draw_color = { 0.5, 0.5, 0.5, 0.5 }
-    elseif enemy.stunned then
+    elseif enemy.is_stunned then
         -- Stunned: pulsing yellow
         local pulse = 0.7 + 0.3 * math.sin(love.timer.getTime() * 8)
         draw_color = { 1, 1, pulse, 1 }
@@ -126,7 +126,7 @@ function render.draw(enemy)
     end
 
     -- Stun stars effect
-    if enemy.stunned then
+    if enemy.is_stunned then
         local star_offset = 40
         local star_size = 8
         local time = love.timer.getTime()
@@ -199,7 +199,7 @@ function render.draw(enemy)
     if debug.enabled then
         love.graphics.setColor(1, 1, 1, 1)
         local status = enemy.type .. " " .. enemy.state .. " (" .. enemy.direction .. ")"
-        if enemy.stunned then
+        if enemy.is_stunned then
             status = status .. " STUNNED"
         end
         text_ui:draw(status, collider_center_x - 40, collider_center_y + 30, {1, 1, 1, 1})

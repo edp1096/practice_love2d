@@ -9,10 +9,8 @@ save.RECENT_SLOT_FILE = "recent_slot.txt"
 
 function save:init()
     local success = love.filesystem.createDirectory(self.SAVE_DIRECTORY)
-    if success then
-        dprint("Save system initialized: " .. love.filesystem.getSaveDirectory())
-    else
-        dprint("Warning: Could not create save directory")
+    if not success then
+        print("Warning: Could not create save directory")
     end
 end
 
@@ -38,10 +36,7 @@ function save:formatMapInfo(map_path)
 end
 
 function save:saveRecentSlot(slot)
-    local success = love.filesystem.write(self.RECENT_SLOT_FILE, tostring(slot))
-    if success then
-        dprint("Recent slot saved: " .. slot)
-    end
+    love.filesystem.write(self.RECENT_SLOT_FILE, tostring(slot))
 end
 
 function save:loadRecentSlot()
@@ -154,13 +149,13 @@ function save:deserialize(str)
 
     local func, err = load("return " .. str)
     if not func then
-        dprint("ERROR: Failed to deserialize: " .. tostring(err))
+        print("ERROR: Failed to deserialize: " .. tostring(err))
         return nil
     end
 
     local success, result = pcall(func)
     if not success then
-        dprint("ERROR: Failed to execute deserialized data: " .. tostring(result))
+        print("ERROR: Failed to execute deserialized data: " .. tostring(result))
         return nil
     end
 
@@ -169,7 +164,7 @@ end
 
 function save:saveGame(slot, data)
     if slot < 1 or slot > self.MAX_SLOTS then
-        dprint("ERROR: Invalid save slot: " .. slot)
+        print("ERROR: Invalid save slot: " .. slot)
         return false
     end
 
@@ -178,7 +173,7 @@ function save:saveGame(slot, data)
 
     local serialized = self:serialize(data)
     if not serialized then
-        dprint("ERROR: Failed to serialize save data")
+        print("ERROR: Failed to serialize save data")
         return false
     end
 
@@ -186,41 +181,38 @@ function save:saveGame(slot, data)
     local success, message = love.filesystem.write(filepath, serialized)
 
     if success then
-        dprint("Game saved to slot " .. slot)
         self:saveRecentSlot(slot)
         return true
     else
-        dprint("ERROR: Failed to save game: " .. tostring(message))
+        print("ERROR: Failed to save game: " .. tostring(message))
         return false
     end
 end
 
 function save:loadGame(slot)
     if slot < 1 or slot > self.MAX_SLOTS then
-        dprint("ERROR: Invalid save slot: " .. slot)
+        print("ERROR: Invalid save slot: " .. slot)
         return nil
     end
 
     local filepath = self:getSlotPath(slot)
 
     if not love.filesystem.getInfo(filepath) then
-        dprint("No save file found for slot " .. slot)
-        return nil
+        return nil  -- No save file - normal case, no need to print
     end
 
     local contents, size = love.filesystem.read(filepath)
     if not contents then
-        dprint("ERROR: Failed to read save file")
+        print("ERROR: Failed to read save file")
         return nil
     end
 
     local data = self:deserialize(contents)
     if not data then
-        dprint("ERROR: Failed to deserialize save data")
+        print("ERROR: Failed to deserialize save data")
         return nil
     end
 
-    dprint("Game loaded from slot " .. slot)
     self:saveRecentSlot(slot)
     return data
 end
@@ -263,20 +255,12 @@ end
 
 function save:deleteSlot(slot)
     if slot < 1 or slot > self.MAX_SLOTS then
-        dprint("ERROR: Invalid save slot: " .. slot)
+        print("ERROR: Invalid save slot: " .. slot)
         return false
     end
 
     local filepath = self:getSlotPath(slot)
-    local success = love.filesystem.remove(filepath)
-
-    if success then
-        dprint("Deleted save slot " .. slot)
-        return true
-    else
-        dprint("Failed to delete save slot " .. slot)
-        return false
-    end
+    return love.filesystem.remove(filepath)
 end
 
 function save:deleteAllSlots()
@@ -289,8 +273,6 @@ function save:deleteAllSlots()
     end
 
     love.filesystem.remove(self.RECENT_SLOT_FILE)
-
-    dprint("Deleted " .. deleted_count .. " save files")
     return deleted_count
 end
 
@@ -309,8 +291,8 @@ function save:openSaveFolder()
     elseif os_name == "OS X" then
         os.execute('open "' .. save_dir .. '"')
     else
-        dprint("Cannot open folder on this OS: " .. os_name)
-        dprint("Save directory: " .. save_dir)
+        print("Cannot open folder on this OS: " .. os_name)
+        print("Save directory: " .. save_dir)
     end
 end
 

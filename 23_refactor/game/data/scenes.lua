@@ -17,7 +17,7 @@ scenes.menu = {
   -- Actions (declarative)
   actions = {
     ["Continue"] = { action = "load_recent_save" },
-    ["New Game"] = { action = "switch_scene", scene = "intro", params = "level1_start" },
+    ["New Game"] = { action = "start_new_game" },  -- Start new game with intro
     ["Load Game"] = { action = "switch_scene", scene = "load" },
     ["Settings"] = { action = "switch_scene", scene = "settings" },
     ["Quit"] = { action = "quit" }

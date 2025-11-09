@@ -2,10 +2,16 @@
 -- Base NPC class: stationary, interactive entities
 
 local anim8 = require "vendor.anim8"
-local text_ui = require "engine.utils.text"
+local prompt = require "engine.ui.prompt"
+local entity_base = require "engine.entities.base.entity"
 
 local npc = {}
 npc.__index = npc
+
+-- Inherit base entity methods
+npc.getColliderCenter = entity_base.getColliderCenter
+npc.getSpritePosition = entity_base.getSpritePosition
+npc.getColliderBounds = entity_base.getColliderBounds
 
 -- Class-level type registry (injected from game)
 npc.type_registry = {}
@@ -34,27 +40,12 @@ function npc:new(x, y, npc_type, npc_id, config)
     instance.interaction_range = config.interaction_range or 80
     instance.dialogue = config.dialogue or { "Hello!" }
 
-    -- Collision properties
-    instance.collider_width = config.collider_width or 32
-    instance.collider_height = config.collider_height or 32
-    instance.collider_offset_x = config.collider_offset_x or 0
-    instance.collider_offset_y = config.collider_offset_y or 0
+    -- Initialize collision and sprite properties using base class
+    entity_base.initializeCollider(instance, config)
+    entity_base.initializeSprite(instance, config)
 
-    -- Sprite properties
-    instance.sprite_width = config.sprite_width or 16
-    instance.sprite_height = config.sprite_height or 32
-    instance.sprite_scale = config.sprite_scale or 4
-    instance.sprite_draw_offset_x = config.sprite_draw_offset_x or (-(instance.sprite_width * instance.sprite_scale / 2))
-    instance.sprite_draw_offset_y = config.sprite_draw_offset_y or (-(instance.sprite_height * instance.sprite_scale))
-
-    -- Animation setup
-    instance.spriteSheet = love.graphics.newImage(config.sprite_sheet)
-    instance.grid = anim8.newGrid(
-        instance.sprite_width,
-        instance.sprite_height,
-        instance.spriteSheet:getWidth(),
-        instance.spriteSheet:getHeight()
-    )
+    -- Animation setup using base class
+    instance.grid, instance.spriteSheet = entity_base.createAnimationGrid(config)
 
     instance.animations = {}
     -- 4-direction idle animations
@@ -90,8 +81,7 @@ function npc:update(dt, player_x, player_y)
     self.anim:update(dt)
 
     -- Check if player is in interaction range (using collider center)
-    local collider_center_x = self.x + self.collider_offset_x
-    local collider_center_y = self.y + self.collider_offset_y
+    local collider_center_x, collider_center_y = self:getColliderCenter()
     local dx = player_x - collider_center_x
     local dy = player_y - collider_center_y
     local distance = math.sqrt(dx * dx + dy * dy)
@@ -136,13 +126,9 @@ function npc:interact()
 end
 
 function npc:draw()
-    -- Use collider center as reference point (like Enemy does)
-    local collider_center_x = self.x + self.collider_offset_x
-    local collider_center_y = self.y + self.collider_offset_y
-
-    -- Sprite position = collider center + sprite offset
-    local sprite_draw_x = collider_center_x + self.sprite_draw_offset_x
-    local sprite_draw_y = collider_center_y + self.sprite_draw_offset_y
+    -- Use base class helpers for positions
+    local collider_center_x, collider_center_y = self:getColliderCenter()
+    local sprite_draw_x, sprite_draw_y = self:getSpritePosition()
 
     -- Shadow (at bottom of collider)
     local shadow_y = collider_center_y + (self.collider_height / 2) - 2
@@ -165,17 +151,14 @@ function npc:draw()
 
     -- Draw interaction indicator (using collider center)
     if self.can_interact then
-        love.graphics.setColor(1, 1, 0, 1)
-        love.graphics.circle("line", collider_center_x, collider_center_y - 60, 20)
-        text_ui:draw("F", collider_center_x - 5, collider_center_y - 65, {1, 1, 0, 1})
+        prompt:draw("interact", collider_center_x, collider_center_y, -60)
     end
 
     love.graphics.setColor(1, 1, 1, 1)
 end
 
 function npc:drawDebug()
-    local collider_center_x = self.x + self.collider_offset_x
-    local collider_center_y = self.y + self.collider_offset_y
+    local collider_center_x, collider_center_y = self:getColliderCenter()
 
     -- Draw interaction range (using collider center)
     love.graphics.setColor(0, 1, 1, 0.3)

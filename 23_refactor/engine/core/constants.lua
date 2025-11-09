@@ -98,6 +98,24 @@ constants.COLLISION_CLASSES = {
     ITEM = "Item",
 }
 
+-- Combat System
+constants.COMBAT = {
+    -- Attack distance calculations
+    VERTICAL_ATTACK_LIMIT = 50,  -- Max vertical distance for platformer attacks
+    HUMANOID_WIDTH_RADIUS = 45,  -- Edge-to-edge distance for humanoid (horizontal/platformer)
+    HUMANOID_HEIGHT_RADIUS = 90, -- Edge-to-edge distance for humanoid (vertical)
+    SLIME_COLLIDER_WIDTH = 40,   -- Collider width for slime enemies
+    DEFAULT_ATTACK_RANGE = 60,   -- Default enemy attack range
+
+    -- Camera effects on parry
+    PARRY_SHAKE_INTENSITY = 8,
+    PARRY_SHAKE_DURATION = 0.2,
+    PERFECT_PARRY_SLOW_MO = 0.3,    -- Slow-motion factor (0.3 = 30% speed)
+    PERFECT_PARRY_SLOW_DURATION = 0.2,
+    NORMAL_PARRY_SLOW_MO = 0.2,     -- Slow-motion factor (0.2 = 20% speed)
+    NORMAL_PARRY_SLOW_DURATION = 0.4,
+}
+
 -- Enemy States
 constants.ENEMY_STATES = {
     IDLE = "idle",

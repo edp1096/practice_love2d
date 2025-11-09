@@ -65,7 +65,6 @@ function shaders.init()
     shaders.vignette = love.graphics.newShader(shaders.vignette_code)
     shaders.overlay = love.graphics.newShader(shaders.overlay_code)
 
-    dprint("Screen effect shaders initialized")
 end
 
 return shaders

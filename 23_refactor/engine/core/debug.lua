@@ -362,7 +362,7 @@ function debug:IsHandMarkingActive()
 end
 
 -- === Debug Info Panel ===
-function debug:drawInfo(display, player, current_save_slot)
+function debug:drawInfo(display, player, current_save_slot, effects_sys)
     if not self.enabled then return end
 
     local sw, sh = display:GetScreenDimensions()
@@ -371,12 +371,13 @@ function debug:drawInfo(display, player, current_save_slot)
     local offset_x, offset_y = display:GetOffset()
     local vmx, vmy = display:GetVirtualMousePosition()
 
-    -- Get effects and input info (if available)
+    -- Get effects count (if available)
     local effects_count = 0
-    local has_effects = pcall(function()
-        local effects = require "engine.systems.effects"
-        effects_count = effects:getCount()
-    end)
+    local has_effects = false
+    if effects_sys then
+        has_effects = true
+        effects_count = effects_sys:getCount()
+    end
 
     local gamepad_info = nil
     local has_gamepad = pcall(function()

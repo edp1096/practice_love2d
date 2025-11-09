@@ -48,6 +48,12 @@ function lighting:init()
     end
 
     self.light_image = love.graphics.newImage(imageData)
+
+    -- Register resize callback with lifecycle
+    local lifecycle = require "engine.core.lifecycle"
+    lifecycle:registerResizeCallback("lighting", function(w, h)
+        lighting:resize(w, h)
+    end)
 end
 
 -- Set ambient light color
@@ -58,7 +64,7 @@ function lighting:setAmbient(preset_or_color, g, b)
         if preset then
             self.ambient_color = {preset[1], preset[2], preset[3]}
         else
-            dprint("WARNING: Unknown ambient preset: " .. preset_or_color)
+            print("WARNING: Unknown ambient preset: " .. preset_or_color)
         end
     elseif type(preset_or_color) == "table" then
         -- Direct color table
@@ -176,7 +182,7 @@ function lighting:drawLight(light, camera)
 
     elseif light.type == "spotlight" then
         -- TODO: Implement spotlight using image or shader
-        dprint("WARNING: Spotlight not implemented yet")
+        print("WARNING: Spotlight not implemented yet")
     end
 end
 

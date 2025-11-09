@@ -22,20 +22,20 @@ function SkipButton:new(options)
     -- Add charge system properties
     instance.charge = 0
     instance.charge_max = options.charge_max or 1.0  -- 1 second default
-    instance.charging = false
+    instance.is_charging = false
 
     return instance
 end
 
 -- Update charge system
 function SkipButton:update(dt)
-    if self.pressed then
+    if self.is_pressed then
         -- Charge when pressed
-        self.charging = true
+        self.is_charging = true
         self.charge = math.min(self.charge_max, self.charge + dt)
     else
         -- Decay charge when not pressed
-        self.charging = false
+        self.is_charging = false
         self.charge = math.max(0, self.charge - dt * 2)
     end
 end
@@ -53,7 +53,6 @@ function SkipButton:touchReleased(id, x, y)
 
     -- Only process if this touch/click started on the button
     if self.touch_id ~= id then
-        dprint("[SKIP_BUTTON] Touch ID mismatch: expected " .. tostring(self.touch_id) .. ", got " .. tostring(id))
         return false
     end
 
@@ -61,19 +60,17 @@ function SkipButton:touchReleased(id, x, y)
     local coords = require "engine.core.coords"
     local vx, vy = coords:physicalToVirtual(x, y, self.display)
 
-    local was_pressed = self.pressed
+    local was_pressed = self.is_pressed
     local was_fully_charged = self:isFullyCharged()
-    self.pressed = false
+    self.is_pressed = false
     self.touch_id = nil
 
     -- Check if fully charged and released inside button
     if was_pressed and was_fully_charged and self:isInside(vx, vy) then
-        dprint("[SKIP_BUTTON] Button skip triggered (fully charged)")
         self.charge = 0  -- Reset charge
         return true  -- Skip triggered!
     end
 
-    dprint("[SKIP_BUTTON] Released without full charge or outside button area")
     return false
 end
 
@@ -85,7 +82,7 @@ function SkipButton:draw()
 
     -- Select background color based on state
     local bg_color = self.bg_color
-    if self.hovered or self.pressed then
+    if self.is_hovered or self.is_pressed then
         bg_color = self.bg_hover_color
     end
 
@@ -127,7 +124,7 @@ end
 function SkipButton:reset()
     BaseButton.reset(self)
     self.charge = 0
-    self.charging = false
+    self.is_charging = false
 end
 
 return SkipButton

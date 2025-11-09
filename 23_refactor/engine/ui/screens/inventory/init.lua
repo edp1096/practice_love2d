@@ -8,7 +8,7 @@ local sound = require "engine.core.sound"
 local slot_renderer = require "engine.ui.screens.inventory.inventory_renderer"
 local input_handler = require "engine.ui.screens.inventory.input"
 local fonts = require "engine.utils.fonts"
-local shapes = require "engine.ui.shapes"
+local shapes = require "engine.utils.shapes"
 local text_ui = require "engine.utils.text"
 
 -- Safe sound wrapper
@@ -37,6 +37,7 @@ function inventory:enter(previous, player_inventory, player)
     -- Close button settings
     self.close_button_size = 30
     self.close_button_padding = 15
+    self.close_button_hovered = false  -- Track close button hover state
 
     play_sound("ui", "open")
 end
@@ -46,7 +47,19 @@ function inventory:exit()
 end
 
 function inventory:update(dt)
-    -- No gameplay update while in inventory
+    -- Update close button hover state
+    local coords = require "engine.core.coords"
+    local mx, my = love.mouse.getPosition()
+    local vmx, vmy = coords:physicalToVirtual(mx, my, display)
+
+    self.close_button_hovered = false
+    if self.close_button_bounds then
+        local btn = self.close_button_bounds
+        if vmx >= btn.x and vmx <= btn.x + btn.size and
+           vmy >= btn.y and vmy <= btn.y + btn.size then
+            self.close_button_hovered = true
+        end
+    end
 end
 
 -- Delegate input handling to input module
@@ -99,7 +112,8 @@ function inventory:draw()
     -- Draw close button (top-right corner)
     self.close_button_bounds = slot_renderer.renderCloseButton(
         window_x, window_y, window_w,
-        self.close_button_size, self.close_button_padding
+        self.close_button_size, self.close_button_padding,
+        self.close_button_hovered
     )
 
     -- Draw close instruction

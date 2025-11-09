@@ -115,9 +115,6 @@ function display:Initialize(config)
     else
         -- Mobile: always fullscreen
         self.is_fullscreen = true
-        dprint("Running on mobile platform: " .. love.system.getOS())
-        dprint("Screen dimensions: " .. self.screen_wh.w .. "x" .. self.screen_wh.h)
-        dprint("DPI scale: " .. self.dpi_scale)
     end
 
     self:CalculateScale()
@@ -363,9 +360,8 @@ end
 -- ShowDebugInfo moved to engine/debug.lua (better architecture)
 -- lib should not depend on engine modules
 
-function display:ShowGridVisualization()
-    local debug = require "engine.core.debug"
-    if not debug.show_colliders then return end
+function display:ShowGridVisualization(enabled)
+    if not enabled then return end
 
     -- Get virtual dimensions
     local vw, vh = self:GetVirtualDimensions()
@@ -400,9 +396,8 @@ function display:ShowGridVisualization()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function display:ShowVirtualMouse()
-    local debug = require "engine.core.debug"
-    if not debug.show_virtual_mouse then return end
+function display:ShowVirtualMouse(enabled)
+    if not enabled then return end
 
     local vmx, vmy, mx, my = self:GetVirtualMousePosition()
 

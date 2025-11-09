@@ -86,7 +86,6 @@ function dialogue:update(dt)
 
         -- Check if skip was triggered (fully charged)
         if self.skip_button:isFullyCharged() then
-            dprint("[DIALOGUE] SKIP button fully charged - clearing all dialogue")
             self:clear()
             self.skip_button:reset()
         end
@@ -211,7 +210,6 @@ function dialogue:touchReleased(id, x, y)
 
     -- Priority 1: NEXT button - advances to next message
     if self.next_button and self.next_button:touchReleased(id, x, y) then
-        dprint("[DIALOGUE] NEXT button clicked - advancing dialogue")
         self:onAction()  -- Advance dialogue
         return true  -- Consumed
     end
@@ -219,7 +217,6 @@ function dialogue:touchReleased(id, x, y)
     -- Priority 2: SKIP button - clears all dialogue (only if fully charged)
     if self.skip_button and self.skip_button:touchReleased(id, x, y) then
         -- touchReleased returns true only if fully charged
-        dprint("[DIALOGUE] SKIP button fully charged - clearing all dialogue")
         self:clear()  -- Clear all dialogue
         return true  -- Consumed
     end

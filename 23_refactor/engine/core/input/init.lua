@@ -43,7 +43,7 @@ end
 -- Initialize input system
 function input:init(input_config)
     if not input_config then
-        dprint("Warning: No input config provided to input:init()")
+        print("Warning: No input config provided to input:init()")
         return
     end
 
@@ -64,7 +64,6 @@ function input:init(input_config)
         self.settings.vibration_enabled = GameConfig.input.vibration_enabled
         self.settings.vibration_strength = GameConfig.input.vibration_strength
         self.settings.mobile_vibration_enabled = GameConfig.input.mobile_vibration_enabled
-        dprint("Loaded input settings from GameConfig")
     end
 
     self:detectJoystick()
@@ -73,13 +72,6 @@ function input:init(input_config)
     local input_mapper = require "engine.core.input.input_mapper"
     self.mapper = input_mapper
     input_mapper:init(self.joystick, self.virtual_gamepad, self.settings, input_config)
-
-    dprint("Input system initialized")
-    if self.joystick then
-        dprint("  Controller: " .. self.joystick_name)
-        dprint("  Buttons: " .. self.joystick:getButtonCount())
-        dprint("  Axes: " .. self.joystick:getAxisCount())
-    end
 end
 
 function input:setVirtualGamepad(vgp)
@@ -107,7 +99,6 @@ function input:joystickAdded(joystick)
     if not self.joystick then
         self.joystick = joystick
         self.joystick_name = joystick:getName()
-        dprint("Controller connected: " .. self.joystick_name)
 
         if self.mapper then
             self.mapper:setJoystick(joystick, self.settings)
@@ -117,7 +108,6 @@ end
 
 function input:joystickRemoved(joystick)
     if self.joystick == joystick then
-        dprint("Controller disconnected: " .. self.joystick_name)
         self.joystick = nil
         self.joystick_name = "No Controller"
 

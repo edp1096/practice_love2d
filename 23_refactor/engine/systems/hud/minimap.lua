@@ -9,14 +9,79 @@ minimap.__index = minimap
 
 -- Configuration constants
 local ZOOM_FACTOR = 2                    -- Minimap zoom level (2x = more detail, smaller area)
-local MINIMAP_LIGHTING_BRIGHTNESS = 0.3  -- How much to brighten lighting for minimap visibility (0 = full dark, 1 = no lighting)
+local MINIMAP_LIGHTING_BRIGHTNESS = 0.2  -- How much to brighten lighting for minimap visibility (0 = full dark, 1 = no lighting)
+
+-- Color swap shader for enemy sprites (same as enemy/render.lua)
+local color_swap_shader = nil
+local outline_shader = nil
+
+local function initialize_shader()
+    if not color_swap_shader then
+        local shader_code = [[
+            extern vec3 target_color;
+
+            vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
+            {
+                vec4 pixel = Texel(texture, texture_coords);
+
+                if (pixel.a > 0.0 && pixel.r > 0.1) {
+                    if (pixel.r > pixel.g * 1.5 && pixel.r > pixel.b * 1.5) {
+                        float original_brightness = max(max(pixel.r, pixel.g), pixel.b);
+                        pixel.rgb = target_color * (original_brightness * 0.8);
+                    }
+                }
+
+                return pixel * color;
+            }
+        ]]
+        color_swap_shader = love.graphics.newShader(shader_code)
+    end
+
+    if not outline_shader then
+        local outline_code = [[
+            extern vec3 outline_color;
+            extern vec2 stepSize;
+
+            vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
+            {
+                vec4 pixel = Texel(texture, texture_coords);
+
+                // If pixel is already opaque, return it as-is
+                if (pixel.a > 0.1) {
+                    return pixel * color;
+                }
+
+                // Check neighboring pixels for outline
+                float outline = 0.0;
+                for (float x = -2.0; x <= 2.0; x += 1.0) {
+                    for (float y = -2.0; y <= 2.0; y += 1.0) {
+                        if (x != 0.0 || y != 0.0) {
+                            vec2 offset = vec2(x, y) * stepSize;
+                            float alpha = Texel(texture, texture_coords + offset).a;
+                            if (alpha > 0.1) {
+                                outline = 1.0;
+                            }
+                        }
+                    }
+                }
+
+                if (outline > 0.0) {
+                    return vec4(outline_color, 0.8);
+                }
+
+                return vec4(0.0);
+            }
+        ]]
+        outline_shader = love.graphics.newShader(outline_code)
+    end
+end
 
 function minimap:new()
     local instance = setmetatable({
         enabled = true,
 
         -- Minimap display settings
-        size = 180,           -- Minimap size (width and height)
+        size = 126,           -- Minimap size (width and height) - 70% of original 180
         padding = 10,         -- Padding from screen edge
         border_width = 2,
         zoom_factor = ZOOM_FACTOR,
@@ -26,8 +91,6 @@ function minimap:new()
         bg_color = { 0, 0, 0, 0.7 },
         border_color = { 0.3, 0.3, 0.3, 0.9 },
         player_color = { 1, 1, 0, 1 },
-        enemy_color = { 1, 0.2, 0.2, 0.8 },
-        npc_color = { 0.2, 0.8, 1, 0.8 },
         portal_color = { 0.5, 1, 0.5, 0.6 },
 
         -- Canvas for rendering minimap
@@ -91,23 +154,19 @@ function minimap:updateMinimapCanvas()
     self.world:drawLayer("Ground")
     self.world:drawLayer("Trees")
 
+    -- Draw portals before pop (inside scale transformation)
+    if self.world.transitions then
+        love.graphics.setColor(self.portal_color)
+        for _, transition in ipairs(self.world.transitions) do
+            love.graphics.rectangle("fill", transition.x, transition.y, transition.width, transition.height)
+        end
+    end
+
     love.graphics.pop()
 
     -- Restore graphics state
     love.graphics.setColor(prev_color)
     love.graphics.setBlendMode(prev_blend_mode, prev_blend_alpha)
-
-    -- Draw portals on top (already scaled)
-    if self.world.transitions then
-        love.graphics.setColor(self.portal_color)
-        for _, transition in ipairs(self.world.transitions) do
-            local x = transition.x * self.scale
-            local y = transition.y * self.scale
-            local w = transition.width * self.scale
-            local h = transition.height * self.scale
-            love.graphics.rectangle("fill", x, y, w, h)
-        end
-    end
 
     love.graphics.setCanvas()
     self.needs_update = false
@@ -170,24 +229,119 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
 
     -- Draw NPCs with offset
     if npcs then
-        love.graphics.setColor(self.npc_color)
+        -- Ensure shader is initialized
+        initialize_shader()
+
         for _, npc in ipairs(npcs) do
-            if npc.x and npc.y then
+            if npc.x and npc.y and npc.spriteSheet and npc.grid then
                 local nx = x + canvas_offset_x + (npc.x * self.scale)
                 local ny = y + canvas_offset_y + (npc.y * self.scale)
-                love.graphics.circle("fill", nx, ny, 2)
+
+                -- Draw first frame of sprite (1,1)
+                -- grid(1,1) returns a table, so get the first element
+                local frames = npc.grid(1, 1)
+                local quad = frames[1]
+                local sprite_scale = self.scale * npc.sprite_scale
+
+                -- Draw green outline using shader
+                if outline_shader then
+                    love.graphics.setShader(outline_shader)
+                    local w, h = npc.spriteSheet:getDimensions()
+                    outline_shader:send("outline_color", {0.2, 1, 0.3})
+                    outline_shader:send("stepSize", {1/w, 1/h})
+
+                    love.graphics.setColor(1, 1, 1, 1)
+                    love.graphics.draw(
+                        npc.spriteSheet,
+                        quad,
+                        nx,
+                        ny,
+                        0,
+                        sprite_scale,
+                        sprite_scale,
+                        npc.sprite_width / 2,
+                        npc.sprite_height / 2
+                    )
+                    love.graphics.setShader()
+                end
+
+                -- Draw main sprite
+                love.graphics.setColor(1, 1, 1, 1)
+                love.graphics.draw(
+                    npc.spriteSheet,
+                    quad,
+                    nx,
+                    ny,
+                    0,
+                    sprite_scale,
+                    sprite_scale,
+                    npc.sprite_width / 2,
+                    npc.sprite_height / 2
+                )
             end
         end
     end
 
     -- Draw enemies with offset
     if enemies then
-        love.graphics.setColor(self.enemy_color)
+        -- Ensure shader is initialized
+        initialize_shader()
+
         for _, enemy in ipairs(enemies) do
-            if enemy.x and enemy.y and enemy.health > 0 then
+            if enemy.x and enemy.y and enemy.health > 0 and enemy.spriteSheet and enemy.grid then
                 local ex = x + canvas_offset_x + (enemy.x * self.scale)
                 local ey = y + canvas_offset_y + (enemy.y * self.scale)
-                love.graphics.circle("fill", ex, ey, 2)
+
+                -- Draw first frame of sprite (1,1)
+                -- grid(1,1) returns a table, so get the first element
+                local frames = enemy.grid(1, 1)
+                local quad = frames[1]
+                local sprite_scale = self.scale * enemy.sprite_scale
+
+                -- Draw red outline using shader
+                if outline_shader then
+                    love.graphics.setShader(outline_shader)
+                    local w, h = enemy.spriteSheet:getDimensions()
+                    outline_shader:send("outline_color", {1, 0.2, 0.2})
+                    outline_shader:send("stepSize", {1/w, 1/h})
+
+                    love.graphics.setColor(1, 1, 1, 1)
+                    love.graphics.draw(
+                        enemy.spriteSheet,
+                        quad,
+                        ex,
+                        ey,
+                        0,
+                        sprite_scale,
+                        sprite_scale,
+                        enemy.sprite_width / 2,
+                        enemy.sprite_height / 2
+                    )
+                    love.graphics.setShader()
+                end
+
+                -- Draw main sprite
+                -- Apply color swap shader if enemy has target_color (e.g., green slime)
+                if enemy.target_color and color_swap_shader then
+                    love.graphics.setShader(color_swap_shader)
+                    color_swap_shader:send("target_color", enemy.target_color)
+                end
+
+                love.graphics.setColor(1, 1, 1, 1)
+                love.graphics.draw(
+                    enemy.spriteSheet,
+                    quad,
+                    ex,
+                    ey,
+                    0,
+                    sprite_scale,
+                    sprite_scale,
+                    enemy.sprite_width / 2,
+                    enemy.sprite_height / 2
+                )
+
+                -- Reset shader
+                love.graphics.setShader()
             end
         end
     end

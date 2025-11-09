@@ -33,11 +33,15 @@ local render_module = require "engine.scenes.gameplay.render"
 -- Check if on mobile OS
 local is_mobile = (love.system.getOS() == "Android" or love.system.getOS() == "iOS")
 
-function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot)
+function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
     mapPath = mapPath or constants.GAME_START.DEFAULT_MAP
     spawn_x = spawn_x or constants.GAME_START.DEFAULT_SPAWN_X
     spawn_y = spawn_y or constants.GAME_START.DEFAULT_SPAWN_Y
     save_slot = save_slot or 1
+    -- Explicit nil check: nil defaults to false, but explicit false/true values are preserved
+    if is_new_game == nil then
+        is_new_game = false
+    end
 
     self.current_map_path = mapPath
 
@@ -46,7 +50,7 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     local sw, sh = display:GetScreenDimensions()
     local scale_x = sw / vw
     local scale_y = sh / vh
-    local cam_scale = math.min(scale_x, scale_y)
+    local cam_scale = math.min(scale_x, scale_y) * 1.4  -- 1.4x zoom for closer view
 
     self.cam = camera(0, 0, cam_scale, 0, 0)
 
@@ -64,10 +68,14 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot)
 
     self.current_save_slot = save_slot
 
-    local save_data = save_sys:loadGame(save_slot)
-    if save_data and save_data.hp then
-        self.player.health = save_data.hp
-        self.player.max_health = save_data.max_hp
+    -- Only load save data if NOT starting a new game
+    local save_data = nil
+    if not is_new_game then
+        save_data = save_sys:loadGame(save_slot)
+        if save_data and save_data.hp then
+            self.player.health = save_data.hp
+            self.player.max_health = save_data.max_hp
+        end
     end
 
     self.world:addEntity(self.player)
@@ -79,11 +87,11 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot)
     -- Initialize inventory with item_class injection
     self.inventory = inventory_class:new(item_class)
 
-    -- Load inventory from save data
+    -- Load inventory from save data (reuse already loaded save_data)
     if save_data and save_data.inventory then
         self.inventory:load(save_data.inventory)
     else
-        -- Give starting items for testing
+        -- Give starting items (for both new game and no save data)
         self.inventory:addItem("small_potion", 3)
         self.inventory:addItem("large_potion", 1)
     end
@@ -101,6 +109,9 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot)
         duration = 2.0,
         text = "Game Saved!"
     }
+
+    -- Track gamepad skip button state
+    self.skip_button_held = false
 
     dialogue:initialize()
     dialogue:setDisplay(display)
@@ -340,7 +351,7 @@ function gameplay:resize(w, h)
     local sw, sh = display:GetScreenDimensions()
     local scale_x = sw / vw
     local scale_y = sh / vh
-    local cam_scale = math.min(scale_x, scale_y)
+    local cam_scale = math.min(scale_x, scale_y) * 1.4  -- 1.4x zoom for closer view
 
     self.cam:zoomTo(cam_scale)
 
@@ -349,8 +360,9 @@ function gameplay:resize(w, h)
         self.minimap:setMap(self.world)
     end
 
-    -- Recreate lighting canvas after resize
-    lighting:resize(w, h)
+    -- Recreate lighting canvas after resize (use actual screen dimensions)
+    local real_w, real_h = love.graphics.getDimensions()
+    lighting:resize(real_w, real_h)
 end
 
 -- Input handlers delegate to input module
@@ -368,6 +380,10 @@ end
 
 function gameplay:gamepadpressed(joystick, button)
     return input_module.gamepadpressed(self, joystick, button)
+end
+
+function gameplay:gamepadreleased(joystick, button)
+    return input_module.gamepadreleased(self, joystick, button)
 end
 
 function gameplay:gamepadaxis(joystick, axis, value)

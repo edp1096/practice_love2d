@@ -49,7 +49,6 @@ end
 
 -- Switch to a new scene (accepts scene object or string name)
 function scene_control.switch(scene_or_name, ...)
-    dprint("[SCENE_CONTROL] Switching to scene: " .. tostring(scene_or_name))
     local scene = load_scene(scene_or_name)
 
     -- Call exit callback on current scene
@@ -62,10 +61,9 @@ function scene_control.switch(scene_or_name, ...)
 
     -- Call enter callback on new scene
     if scene_control.current and scene_control.current.enter then
-        dprint("[SCENE_CONTROL] Calling enter on new scene")
         scene_control.current:enter(scene_control.previous, ...)
     else
-        dprint("[SCENE_CONTROL] WARNING: New scene has no enter callback")
+        print("WARNING: New scene has no enter callback")
     end
 end
 
@@ -130,6 +128,12 @@ function scene_control.keypressed(key)
     end
 end
 
+function scene_control.keyreleased(key)
+    if scene_control.current and scene_control.current.keyreleased then
+        scene_control.current:keyreleased(key)
+    end
+end
+
 function scene_control.mousepressed(x, y, button)
     if scene_control.current and scene_control.current.mousepressed then
         scene_control.current:mousepressed(x, y, button)
@@ -139,6 +143,24 @@ end
 function scene_control.mousereleased(x, y, button)
     if scene_control.current and scene_control.current.mousereleased then
         scene_control.current:mousereleased(x, y, button)
+    end
+end
+
+function scene_control.gamepadpressed(joystick, button)
+    if scene_control.current and scene_control.current.gamepadpressed then
+        scene_control.current:gamepadpressed(joystick, button)
+    end
+end
+
+function scene_control.gamepadreleased(joystick, button)
+    if scene_control.current and scene_control.current.gamepadreleased then
+        scene_control.current:gamepadreleased(joystick, button)
+    end
+end
+
+function scene_control.gamepadaxis(joystick, axis, value)
+    if scene_control.current and scene_control.current.gamepadaxis then
+        scene_control.current:gamepadaxis(joystick, axis, value)
     end
 end
 

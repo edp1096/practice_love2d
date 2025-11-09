@@ -13,8 +13,17 @@ lifecycle.fonts = nil
 lifecycle.scene_control = nil
 lifecycle.utils = nil
 lifecycle.sound = nil
+lifecycle.effects = nil
 lifecycle.GameConfig = nil
 lifecycle.is_mobile = false
+
+-- Resize callback registry (for systems to register themselves)
+lifecycle.resize_callbacks = {}
+
+-- Register a resize callback (called by systems during initialization)
+function lifecycle:registerResizeCallback(name, callback)
+    self.resize_callbacks[name] = callback
+end
 
 -- === Initialization ===
 
@@ -23,14 +32,14 @@ function lifecycle:initialize(initial_scene)
     if self.locker then
         local success, err = pcall(self.locker.ProcInit, self.locker)
         if not success then
-            dprint("Warning: Locker init failed: " .. tostring(err))
+            print("Warning: Locker init failed: " .. tostring(err))
         end
     end
 
     -- 2. Initialize display system
     local success, err = pcall(self.display.Initialize, self.display, self.GameConfig)
     if not success then
-        dprint("ERROR: Display initialization failed: " .. tostring(err))
+        print("ERROR: Display initialization failed: " .. tostring(err))
         -- Fallback initialization
         self.display.screen_wh = { w = 0, h = 0 }
         self.display.render_wh = { w = 960, h = 540 }
@@ -50,7 +59,6 @@ function lifecycle:initialize(initial_scene)
     if self.virtual_gamepad then
         self.virtual_gamepad:init()
         self.input:setVirtualGamepad(self.virtual_gamepad)
-        dprint("Virtual gamepad enabled for mobile OS")
     end
 
     -- 6. Switch to initial scene
@@ -87,15 +95,17 @@ function lifecycle:draw()
     if self.display then
         local debug = require "engine.core.debug"
 
-        self.display:ShowGridVisualization() -- F2: Grid visualization
+        -- F2: Grid visualization
+        self.display:ShowGridVisualization(debug.show_colliders)
 
         -- F1: Unified debug info window
         local current_scene = self.scene_control.current
         local player = current_scene and current_scene.player
         local save_slot = current_scene and current_scene.current_save_slot
-        debug:drawInfo(self.display, player, save_slot)
+        debug:drawInfo(self.display, player, save_slot, self.effects)
 
-        self.display:ShowVirtualMouse() -- F3: Virtual mouse cursor
+        -- F3: Virtual mouse cursor
+        self.display:ShowVirtualMouse(debug.show_virtual_mouse)
     end
 end
 
@@ -112,13 +122,10 @@ function lifecycle:resize(w, h)
     -- Recalculate display scale
     pcall(self.display.CalculateScale, self.display)
 
-    -- Resize lighting system
-    local lighting = require "engine.systems.lighting"
-    pcall(lighting.resize, lighting, w, h)
-
-    -- Resize screen effects
-    local effects = require "engine.systems.effects"
-    pcall(effects.screen.resize, effects.screen, w, h)
+    -- Call all registered resize callbacks (systems register themselves during init)
+    for name, callback in pairs(self.resize_callbacks) do
+        pcall(callback, w, h)
+    end
 
     -- Notify current scene
     self.scene_control.resize(w, h)

@@ -67,6 +67,7 @@ local lifecycle = require "engine.core.lifecycle"
 local sound = require "engine.core.sound"
 local fonts = require "engine.utils.fonts"
 local coords = require "engine.core.coords"
+local effects = require "engine.systems.effects"
 local menu = require "game.scenes.menu"
 
 -- Always load virtual_gamepad (needed for PC debug mode testing)
@@ -129,7 +130,7 @@ function love.load()
     input:init(input_config)
 
     -- Inject entity type data into engine classes (dependency injection)
-    local entity_types = require "game.data.entity_types"
+    local entity_types = require "game.data.entities.types"
     local enemy_class = require "engine.entities.enemy"
     local npc_class = require "engine.entities.npc"
     local weapon_class = require "engine.entities.weapon"
@@ -141,7 +142,7 @@ function love.load()
 
     -- Inject game data into engine systems
     local game_config = require "game.data.game_config"
-    local entity_defaults = require "game.data.entity_defaults"
+    local entity_defaults = require "game.data.entities.defaults"
     local player_config = require "game.data.player"
     local cutscene_configs = require "game.data.cutscenes"
 
@@ -170,6 +171,11 @@ function love.load()
     -- Inject cutscene configs
     cutscene_scene.configs = cutscene_configs
 
+    -- Inject game scene path prefix into builder
+    local builder = require "engine.scenes.builder"
+    local game_scene_prefix = "game.scenes."
+    builder.game_scene_prefix = game_scene_prefix
+
     -- Setup scene loader (inject scene loading into engine)
     scene_control.scene_loader = function(scene_name)
         -- Engine UI screens
@@ -196,8 +202,8 @@ function love.load()
             return require(engine_scene_paths[scene_name])
         end
 
-        -- Fall back to game scenes (menu, pause, gameover)
-        return require("game.scenes." .. scene_name)
+        -- Fall back to game scenes (menu, pause, gameover) - uses configured prefix
+        return require(game_scene_prefix .. scene_name)
     end
 
     -- Setup input dispatcher
@@ -215,6 +221,7 @@ function love.load()
     lifecycle.scene_control = scene_control
     lifecycle.utils = utils
     lifecycle.sound = sound
+    lifecycle.effects = effects
     lifecycle.GameConfig = GameConfig
     lifecycle.is_mobile = is_mobile
 
@@ -246,6 +253,10 @@ function love.keypressed(key)
 
     -- Delegate all other input to dispatcher
     input_dispatcher:keypressed(key)
+end
+
+function love.keyreleased(key)
+    input_dispatcher:keyreleased(key)
 end
 
 function love.mousepressed(x, y, button) input_dispatcher:mousepressed(x, y, button) end

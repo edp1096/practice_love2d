@@ -39,10 +39,8 @@ sound.pitch_variations = {}
 sound.CATEGORY = {}
 
 function sound:init(sound_data)
-    dprint("Sound system initializing...")
-
     if not sound_data then
-        dprint("Warning: No sound data provided to sound:init()")
+        print("Warning: No sound data provided to sound:init()")
         return
     end
 
@@ -63,7 +61,6 @@ function sound:init(sound_data)
         self.settings.bgm_volume = GameConfig.sound.bgm_volume
         self.settings.sfx_volume = GameConfig.sound.sfx_volume
         self.settings.muted = GameConfig.sound.muted
-        dprint("Loaded sound settings from config")
     end
 
     -- Load BGM
@@ -91,9 +88,6 @@ function sound:init(sound_data)
             end
         end
     end
-
-    dprint("Sound system initialized")
-    self:printStatus()
 end
 
 function sound:_loadBGM(name, config)
@@ -102,9 +96,8 @@ function sound:_loadBGM(name, config)
         self.bgm[name] = love.audio.newSource(config.path, "stream")
         self.bgm[name]:setLooping(config.loop or true)
         self.bgm[name]:setVolume((config.volume or 1.0) * self.settings.bgm_volume * self.settings.master_volume)
-        dprint("  Loaded BGM: " .. name)
     else
-        dprint("  WARNING: BGM not found: " .. config.path)
+        print("WARNING: BGM not found: " .. config.path)
     end
 end
 
@@ -113,16 +106,15 @@ function sound:_loadSFX(category, name, config)
     if info then
         self.sfx[category][name] = love.audio.newSource(config.path, "static")
         self.sfx[category][name]:setVolume((config.volume or 1.0) * self.settings.sfx_volume * self.settings.master_volume)
-        dprint("  Loaded SFX: " .. category .. "/" .. name)
     else
-        dprint("  WARNING: SFX not found: " .. config.path)
+        print("WARNING: SFX not found: " .. config.path)
     end
 end
 
 function sound:_createPool(category, name, config)
     local info = love.filesystem.getInfo(config.path)
     if not info then
-        dprint("  WARNING: Cannot create pool for missing file: " .. config.path)
+        print("WARNING: Cannot create pool for missing file: " .. config.path)
         return
     end
 
@@ -139,8 +131,6 @@ function sound:_createPool(category, name, config)
         source:setVolume(self.pools[pool_key].base_volume * self.settings.sfx_volume * self.settings.master_volume)
         table.insert(self.pools[pool_key].sources, source)
     end
-
-    dprint("  Created pool: " .. pool_key .. " (size: " .. config.size .. ")")
 end
 
 -- Get pitch value from variation preset name
@@ -187,7 +177,7 @@ end
 -- Force cleanup if too many active sources
 function sound:_forceCleanup()
     if #self.active_sources >= self.max_active_sources then
-        dprint("WARNING: Max active sources reached (" .. self.max_active_sources .. "), forcing cleanup")
+        print("WARNING: Max active sources reached (" .. self.max_active_sources .. "), forcing cleanup")
 
         -- Stop oldest sources first
         local to_remove = math.ceil(#self.active_sources * 0.3) -- Remove 30%
@@ -220,7 +210,7 @@ function sound:_checkMemory()
     -- Warning threshold: 50MB
     if mem_mb > 50 then
         self.memory_stats.warnings = self.memory_stats.warnings + 1
-        dprint(string.format("WARNING: High memory usage: %.2f MB (Peak: %.2f MB)",
+        print(string.format("WARNING: High memory usage: %.2f MB (Peak: %.2f MB)",
             mem_mb, self.memory_stats.peak_memory))
 
         -- Emergency cleanup
@@ -246,14 +236,13 @@ function sound:createPool(category, name, path, size, pitch_variation)
 
     local info = love.filesystem.getInfo(path)
     if not info then
-        dprint("WARNING: Cannot create pool for missing file: " .. path)
+        print("WARNING: Cannot create pool for missing file: " .. path)
         return false
     end
 
     local pool_key = category .. "_" .. name
 
     if self.pools[pool_key] then
-        dprint("Pool already exists: " .. pool_key)
         return true
     end
 
@@ -270,7 +259,6 @@ function sound:createPool(category, name, path, size, pitch_variation)
         table.insert(self.pools[pool_key].sources, source)
     end
 
-    dprint("Created pool: " .. pool_key .. " (size: " .. size .. ")")
     return true
 end
 
@@ -279,7 +267,7 @@ function sound:playBGM(name, fade_time, rewind)
     rewind = rewind == nil and false or rewind
 
     if not self.bgm[name] then
-        dprint("WARNING: BGM not found: " .. name)
+        print("WARNING: BGM not found: " .. name)
         return
     end
 
@@ -301,8 +289,6 @@ function sound:playBGM(name, fade_time, rewind)
     if not self.settings.muted then
         self.current_bgm:play()
     end
-
-    dprint("Playing BGM: " .. name .. (rewind and " (rewound)" or ""))
 end
 
 function sound:stopBGM(fade_time)
@@ -334,7 +320,7 @@ function sound:playSFX(category, name, pitch_override, volume_multiplier)
     if self.settings.muted then return end
 
     if not self.sfx[category] or not self.sfx[category][name] then
-        dprint("WARNING: SFX not found: " .. category .. "/" .. name)
+        print("WARNING: SFX not found: " .. category .. "/" .. name)
         return
     end
 
@@ -362,7 +348,7 @@ function sound:playPooled(category, name, pitch_override, volume_multiplier)
     local pool = self.pools[pool_key]
 
     if not pool then
-        dprint("WARNING: Pool not found: " .. pool_key)
+        print("WARNING: Pool not found: " .. pool_key)
         return
     end
 
@@ -442,8 +428,6 @@ function sound:cleanup()
     for _, bgm in pairs(self.bgm) do
         bgm:stop()
     end
-
-    dprint("Sound system cleaned up")
 end
 
 function sound:printStatus()

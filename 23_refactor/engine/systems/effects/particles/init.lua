@@ -20,13 +20,12 @@ function particles:init()
         dust = systems.createDustSystem(),
         slash = systems.createSlashSystem()
     }
-    dprint("Particle effects system initialized")
 end
 
 -- Spawn an effect at a position
 function particles:spawn(effect_type, x, y, angle, particle_count)
     if not self.particle_systems[effect_type] then
-        dprint("WARNING: Unknown effect type: " .. tostring(effect_type))
+        print("WARNING: Unknown effect type: " .. tostring(effect_type))
         return
     end
 

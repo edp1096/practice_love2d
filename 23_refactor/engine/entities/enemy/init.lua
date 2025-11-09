@@ -7,9 +7,15 @@ local render = require "engine.entities.enemy.render"
 local enemy_sound = require "engine.entities.enemy.sound"
 local weapon_class = require "engine.entities.weapon"
 local constants = require "engine.core.constants"
+local entity_base = require "engine.entities.base.entity"
 
 local enemy = {}
 enemy.__index = enemy
+
+-- Inherit base entity methods
+enemy.getColliderCenter = entity_base.getColliderCenter
+enemy.getSpritePosition = entity_base.getSpritePosition
+enemy.getColliderBounds = entity_base.getColliderBounds
 
 -- Class-level type registry (injected from game)
 enemy.type_registry = {}
@@ -76,20 +82,9 @@ function enemy:new(x, y, enemy_type, config)
     instance.source_color = config.source_color
     instance.target_color = config.target_color
 
-    -- Collision properties
-    instance.collider_width = config.collider_width or 40
-    instance.collider_height = config.collider_height or 40
-    instance.collider_offset_x = config.collider_offset_x or 0
-    instance.collider_offset_y = config.collider_offset_y or 0
-
-    -- Sprite properties
-    instance.sprite_width = config.sprite_width or 16
-    instance.sprite_height = config.sprite_height or 32
-    instance.sprite_scale = config.sprite_scale or 4
-    instance.sprite_draw_offset_x = config.sprite_draw_offset_x or (-(instance.sprite_width * instance.sprite_scale / 2))
-    instance.sprite_draw_offset_y = config.sprite_draw_offset_y or (-(instance.sprite_height * instance.sprite_scale))
-    instance.sprite_origin_x = config.sprite_origin_x or 0
-    instance.sprite_origin_y = config.sprite_origin_y or 0
+    -- Initialize collision and sprite properties using base class
+    entity_base.initializeCollider(instance, config)
+    entity_base.initializeSprite(instance, config)
 
     -- AI state
     instance.state = constants.ENEMY_STATES.IDLE
@@ -113,7 +108,7 @@ function enemy:new(x, y, enemy_type, config)
     instance.hit_shake_intensity = 4
 
     -- Stun system
-    instance.stunned = false
+    instance.is_stunned = false
     instance.stun_timer = 0
 
     -- Sound
@@ -220,10 +215,10 @@ function enemy:update(dt, player_x, player_y)
     end
 
     -- Update stun
-    if self.stunned then
+    if self.is_stunned then
         self.stun_timer = self.stun_timer - dt
         if self.stun_timer <= 0 then
-            self.stunned = false
+            self.is_stunned = false
             ai.setState(self, "idle")
         end
     end
@@ -238,7 +233,7 @@ function enemy:update(dt, player_x, player_y)
     end
 
     -- Movement sound
-    if (self.state == "walk" or self.state == constants.ENEMY_STATES.CHASE) and not self.stunned and self.state ~= constants.ENEMY_STATES.DEAD then
+    if (self.state == "walk" or self.state == constants.ENEMY_STATES.CHASE) and not self.is_stunned and self.state ~= constants.ENEMY_STATES.DEAD then
         self.move_sound_timer = self.move_sound_timer + dt
 
         if self.move_sound_timer >= self.move_sound_interval then
@@ -250,7 +245,7 @@ function enemy:update(dt, player_x, player_y)
     end
 
     -- If stunned, skip AI
-    if self.stunned then
+    if self.is_stunned then
         return 0, 0
     end
 
@@ -270,10 +265,7 @@ function enemy:update(dt, player_x, player_y)
         local anim_name = anim_base .. "_" .. self.direction
         local frame_index = math.floor(self.anim.position) + 1
 
-        local collider_center_x = self.x + self.collider_offset_x
-        local collider_center_y = self.y + self.collider_offset_y
-        local sprite_x = collider_center_x + self.sprite_draw_offset_x
-        local sprite_y = collider_center_y + self.sprite_draw_offset_y
+        local sprite_x, sprite_y = self:getSpritePosition()
 
         self.weapon:update(dt, sprite_x, sprite_y, 0, self.direction, anim_name, frame_index, false)
     end
@@ -300,7 +292,7 @@ function enemy:takeDamage(damage)
 end
 
 function enemy:stun(duration, is_perfect)
-    self.stunned = true
+    self.is_stunned = true
     self.stun_timer = duration or (is_perfect and 1.5 or 0.5)
     self.state = "stunned"
     self.hit_flash_timer = 0.3
@@ -310,8 +302,7 @@ function enemy:stun(duration, is_perfect)
 end
 
 function enemy:getDistanceToPoint(x, y)
-    local collider_center_x = self.x + self.collider_offset_x
-    local collider_center_y = self.y + self.collider_offset_y
+    local collider_center_x, collider_center_y = self:getColliderCenter()
     local dx = x - collider_center_x
     local dy = y - collider_center_y
     return math.sqrt(dx * dx + dy * dy)
