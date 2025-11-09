@@ -71,17 +71,18 @@ zip -9 -r game.love .
 - **F5** - Toggle Effects Debug
 - **F6** - Test Effects at Mouse Position
 
-**Gamepad:**
+**Gamepad (Xbox / DualSense):**
 - **Left Stick / D-Pad** - Move / Aim
 - **Right Stick** - Aim
-- **A Button** - Attack / Interact
-- **B Button** - Jump (Platformer only)
-- **X Button** - Parry
-- **L1** - Use item
-- **L2** - Next item
-- **R1** - Dodge
-- **R2** - Open/Close Inventory
-- **Start** - Pause
+- **A / Cross (✕)** - Attack / Interact
+- **B / Circle (○)** - Jump (Platformer only) / Skip dialogue (hold 0.5s)
+- **X / Square (□)** - Parry
+- **Y / Triangle (△)** - Interact with NPCs/Save Points
+- **LB / L1** - Use item
+- **LT / L2** - Next item
+- **RB / R1** - Dodge
+- **RT / R2** - Open/Close Inventory
+- **Start / Options** - Pause
 
 **Mobile (Touch):**
 - **Virtual Gamepad** - On-screen controls
