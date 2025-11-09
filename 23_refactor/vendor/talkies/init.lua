@@ -358,6 +358,8 @@ function Talkies.draw()
 
   local tempPosition = 1
   local lineNum = 1
+  local lastDisplayedText = ""
+  local lastLineY = textY
 
   while tempPosition < currentMessage.position and utf8.len(currentMessage.strip) > 0 do
     local displayLine = modmsg[lineNum]
@@ -369,7 +371,26 @@ function Talkies.draw()
 
     love.graphics.print(display, textX, textY + textH * (lineNum - 1))
 
+    -- Track last displayed line for indicator placement
+    lastDisplayedText = display
+    lastLineY = textY + textH * (lineNum - 1)
+
     lineNum = lineNum + 1
+  end
+
+  -- Show indicator at the end of the last displayed text
+  if Talkies.showIndicator and lastDisplayedText ~= "" then
+    local textWidth = currentDialog.font:getWidth(lastDisplayedText)
+    local spaceWidth = currentDialog.font:getWidth(" ")
+
+    -- Draw filled rectangle cursor instead of character
+    local cursorX = textX + textWidth + spaceWidth
+    local cursorY = lastLineY
+    local cursorWidth = 8
+    local cursorHeight = currentDialog.fontHeight
+
+    love.graphics.setColor(currentDialog.messageColor)
+    love.graphics.rectangle("fill", cursorX, cursorY, cursorWidth, cursorHeight)
   end
 
   -- Message options (when shown)
@@ -411,10 +432,7 @@ function Talkies.draw()
     end
   end
 
-  -- Next message/continue indicator
-  if Talkies.showIndicator then
-    love.graphics.print(currentDialog.indicatorCharacter, boxX + boxW - (2.5 * currentDialog.padding), boxY + boxH - currentDialog.fontHeight)
-  end
+  -- Next message/continue indicator (moved to end of text - see line 382)
 
   love.graphics.pop()
 

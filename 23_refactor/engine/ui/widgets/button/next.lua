@@ -26,7 +26,7 @@ function NextButton:new(options)
     local instance = BaseButton.new(self, options)
 
     -- Add spacing for positioning relative to skip button
-    instance.button_spacing = options.button_spacing or 10
+    instance.button_spacing = options.button_spacing
 
     return instance
 end

@@ -1,5 +1,7 @@
 /compile
 /dist
-icon.ico
 config.ini
+icon.ico
+
 .claude
+CLAUDE.md

@@ -108,7 +108,7 @@ function render.draw(self)
 
     -- Draw minimap
     if self.minimap then
-        self.minimap:draw(vw, vh, self.player.x, self.player.y, self.world.enemies, self.world.npcs)
+        self.minimap:draw(vw, vh, self.player, self.world.enemies, self.world.npcs)
     end
 
     -- Draw dialogue (inside virtual coordinates for proper scaling)

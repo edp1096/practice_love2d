@@ -62,49 +62,22 @@ function minimap:updateMinimapCanvas()
     if not self.canvas or not self.world then return end
 
     love.graphics.setCanvas(self.canvas)
-    love.graphics.clear(self.ground_color)
+    love.graphics.clear(0, 0, 0, 1)  -- Clear to black
 
-    -- Draw walls on minimap
-    if self.world.walls then
-        love.graphics.setColor(self.wall_color)
-        for _, wall in ipairs(self.world.walls) do
-            if wall.body then
-                -- Draw all fixtures (polygon may be split into multiple triangles)
-                local fixtures = wall.body:getFixtures()
-                for _, fixture in ipairs(fixtures) do
-                    local shape = fixture:getShape()
-                    local shape_type = shape:getType()
+    -- Save current graphics state
+    love.graphics.push()
 
-                    if shape_type == "polygon" or shape_type == "chain" then
-                        -- Get polygon points in local coordinates
-                        local points = {shape:getPoints()}
-                        local scaled_points = {}
+    -- Apply scale transformation
+    love.graphics.scale(self.scale, self.scale)
 
-                        -- Convert to world coordinates
-                        for i = 1, #points, 2 do
-                            local wx, wy = wall.body:getWorldPoints(points[i], points[i + 1])
-                            table.insert(scaled_points, wx * self.scale)
-                            table.insert(scaled_points, wy * self.scale)
-                        end
+    -- Draw actual map layers using world's drawLayer method
+    self.world:drawLayer("Background_Near")
+    self.world:drawLayer("Ground")
+    self.world:drawLayer("Trees")
 
-                        if #scaled_points >= 6 then  -- Need at least 3 points (6 coordinates)
-                            love.graphics.polygon("fill", scaled_points)
-                        end
-                    else
-                        -- Rectangle or other shapes: use bounding box
-                        local x1, y1, x2, y2 = fixture:getBoundingBox()
-                        local x = x1 * self.scale
-                        local y = y1 * self.scale
-                        local w = (x2 - x1) * self.scale
-                        local h = (y2 - y1) * self.scale
-                        love.graphics.rectangle("fill", x, y, w, h)
-                    end
-                end
-            end
-        end
-    end
+    love.graphics.pop()
 
-    -- Draw portals on minimap
+    -- Draw portals on top (already scaled)
     if self.world.transitions then
         love.graphics.setColor(self.portal_color)
         for _, transition in ipairs(self.world.transitions) do
@@ -124,7 +97,7 @@ function minimap:update(dt)
     -- Could add animations or dynamic updates here
 end
 
-function minimap:draw(screen_width, screen_height, player_x, player_y, enemies, npcs)
+function minimap:draw(screen_width, screen_height, player, enemies, npcs)
     if not self.enabled or not self.canvas then return end
 
     -- Calculate minimap position (top-right corner)
@@ -163,16 +136,30 @@ function minimap:draw(screen_width, screen_height, player_x, player_y, enemies, 
         end
     end
 
-    -- Draw player
-    if player_x and player_y then
+    -- Draw player as arrow pointing in facing direction
+    if player and player.x and player.y then
         love.graphics.setColor(self.player_color)
-        local px = x + (player_x * self.scale)
-        local py = y + (player_y * self.scale)
-        love.graphics.circle("fill", px, py, 3)
+        local px = x + (player.x * self.scale)
+        local py = y + (player.y * self.scale)
 
-        -- Draw direction indicator
-        love.graphics.setLineWidth(1)
-        love.graphics.line(px, py, px, py - 5)
+        -- Arrow shape
+        local arrow_size = 5
+        local angle = player.facing_angle or 0
+
+        -- Arrow vertices (pointing right by default)
+        local points = {
+            arrow_size, 0,      -- tip
+            -arrow_size, -arrow_size * 0.6,   -- top back
+            -arrow_size * 0.5, 0,  -- middle back
+            -arrow_size, arrow_size * 0.6    -- bottom back
+        }
+
+        -- Transform and draw arrow
+        love.graphics.push()
+        love.graphics.translate(px, py)
+        love.graphics.rotate(angle)
+        love.graphics.polygon("fill", points)
+        love.graphics.pop()
     end
 
     -- Draw border

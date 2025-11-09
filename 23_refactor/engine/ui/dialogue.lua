@@ -11,7 +11,7 @@ function dialogue:initialize()
     -- Configure Talkies
     Talkies.backgroundColor = { 0, 0, 0, 0.8 }
     Talkies.textSpeed = "fast"
-    Talkies.indicatorCharacter = ">"
+    Talkies.indicatorCharacter = "█"  -- Filled box cursor
 
     -- Set fixed font size (will be scaled by virtual coordinates)
     -- Use 18pt as base size for 960x540 virtual resolution
@@ -22,8 +22,8 @@ function dialogue:initialize()
         label = "SKIP",
         width = 100,
         height = 45,
-        padding_x = 15,
-        padding_y = 15,
+        padding_x = 20,  -- Increased to move button to the left (was 15)
+        padding_y = 20,
         charge_max = 0.5,
     })
     self.skip_button.visible = false  -- Hidden by default
@@ -33,9 +33,9 @@ function dialogue:initialize()
         label = "NEXT",
         width = 100,
         height = 45,
-        padding_x = 15,
-        padding_y = 15,
-        button_spacing = 10,  -- Space between NEXT and SKIP
+        padding_x = 10,
+        padding_y = 20,
+        button_spacing = 0,  -- Space between NEXT and SKIP
     })
     self.next_button.visible = false  -- Hidden by default
 end
