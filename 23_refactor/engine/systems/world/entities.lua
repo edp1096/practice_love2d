@@ -10,7 +10,7 @@ function entities.addEntity(self, entity)
     if not entity.collider then
         entity.collider = self.physicsWorld:newBSGRectangleCollider(
             entity.x, entity.y,
-            entity.width, entity.height,
+            entity.collider_width, entity.collider_height,
             10
         )
         entity.collider:setFixedRotation(true)

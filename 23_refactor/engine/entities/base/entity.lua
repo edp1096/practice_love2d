@@ -11,10 +11,6 @@ function entity_base.initializeCollider(instance, config)
     instance.collider_height = config.collider_height or 32
     instance.collider_offset_x = config.collider_offset_x or 0
     instance.collider_offset_y = config.collider_offset_y or 0
-
-    -- Legacy width/height (some code still uses these)
-    instance.width = instance.collider_width
-    instance.height = instance.collider_height
 end
 
 -- Initialize sprite properties

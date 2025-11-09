@@ -21,8 +21,8 @@ function render.draw(player)
         shadow_y = player.ground_y
 
         -- Calculate height difference (distance from player's feet to ground)
-        -- Player's feet are at: player.y + (player.height / 2)
-        local player_feet_y = player.y + (player.height / 2)
+        -- Player's feet are at: player.y + (player.collider_height / 2)
+        local player_feet_y = player.y + (player.collider_height / 2)
         local height_diff = player.ground_y - player_feet_y
 
         -- Scale shadow based on height (gets smaller when higher)
@@ -111,7 +111,7 @@ function render.draw(player)
     -- Debug hitbox
     if debug.show_colliders and player.collider then
         love.graphics.setColor(0, 1, 0, 0.3)
-        love.graphics.rectangle("fill", player.x - player.width / 2, player.y - player.height / 2, player.width, player.height)
+        love.graphics.rectangle("fill", player.x - player.collider_width / 2, player.y - player.collider_height / 2, player.collider_width, player.collider_height)
         love.graphics.setColor(1, 1, 1, 1)
     end
 end

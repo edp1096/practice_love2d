@@ -121,14 +121,14 @@ function update.updateGroundDetection(self)
     if self.player.game_mode ~= "platformer" then return end
 
     local px, py = self.player.x, self.player.y
-    local half_height = self.player.height / 2
+    local half_height = self.player.collider_height / 2
 
     -- If player is grounded (from PreSolve), use contact surface for shadow
     if self.player.is_grounded and self.player.contact_surface_y then
         self.player.ground_y = self.player.contact_surface_y
     else
         -- Player is in air - use raycast to find ground below for shadow
-        local half_width = self.player.width / 2
+        local half_width = self.player.collider_width / 2
         local ray_length = constants.PLAYER.RAYCAST_LENGTH
         local closest_ground_y = nil
 
@@ -202,7 +202,7 @@ local function getPlayerFootPosition(player)
     -- In topdown mode, check foot position (center Y + half height)
     -- This represents where the shadow/feet are touching the ground
     if player.game_mode == "topdown" then
-        py = py + player.height / 2
+        py = py + player.collider_height / 2
     end
 
     return px, py

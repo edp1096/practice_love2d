@@ -39,8 +39,8 @@ function player:new(x, y, config)
     combat.initialize(instance, config.combat)
 
     instance.collider = nil
-    instance.width = constants.PLAYER.DEFAULT_WIDTH
-    instance.height = constants.PLAYER.DEFAULT_HEIGHT
+    instance.collider_width = constants.PLAYER.DEFAULT_WIDTH
+    instance.collider_height = constants.PLAYER.DEFAULT_HEIGHT
 
     return instance
 end

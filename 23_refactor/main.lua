@@ -190,7 +190,6 @@ function love.load()
         -- Engine scenes
         local engine_scene_paths = {
             cutscene = "engine.scenes.cutscene",
-            intro = "engine.scenes.cutscene",  -- legacy
             gameplay = "engine.scenes.gameplay"
         }
 

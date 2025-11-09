@@ -26,7 +26,6 @@ local function resolveScenePath(scene_name)
   -- Engine scenes
   local engine_scene_paths = {
     cutscene = "engine.scenes.cutscene",
-    intro = "engine.scenes.cutscene",  -- legacy
     gameplay = "engine.scenes.gameplay"
   }
 
@@ -64,8 +63,7 @@ local function executeAction(action_cfg, previous_scene)
     scene_control.push(scene)
 
   elseif action_cfg.action == "switch_scene" then
-    if action_cfg.scene == "cutscene" or action_cfg.scene == "intro" then
-      -- Support both "cutscene" and "intro" (legacy)
+    if action_cfg.scene == "cutscene" then
       local cutscene = require "engine.scenes.cutscene"
       scene_control.switch(cutscene,
         "level1",

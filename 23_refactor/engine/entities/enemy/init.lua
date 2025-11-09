@@ -183,9 +183,6 @@ function enemy:new(x, y, enemy_type, config)
     -- Collider (set by world)
     instance.collider = nil
 
-    instance.width = instance.collider_width
-    instance.height = instance.collider_height
-
     return instance
 end
 
