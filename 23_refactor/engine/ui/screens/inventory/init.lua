@@ -10,6 +10,7 @@ local input_handler = require "engine.ui.screens.inventory.input"
 local fonts = require "engine.utils.fonts"
 local shapes = require "engine.utils.shapes"
 local text_ui = require "engine.utils.text"
+local input = require "engine.core.input"
 
 -- Safe sound wrapper
 local function play_sound(category, name)
@@ -116,8 +117,11 @@ function inventory:draw()
         self.close_button_hovered
     )
 
-    -- Draw close instruction
-    text_ui:draw("Press [I] or [ESC] to close", window_x + 20, window_y + 20, {0.7, 0.7, 0.7, 1}, self.desc_font)
+    -- Draw close instruction with dynamic input prompts
+    local close_prompt1 = input:getPrompt("open_inventory") or "I"
+    local close_prompt2 = input:getPrompt("menu_back") or "ESC"
+    local close_text = string.format("Press %s or %s to close", close_prompt1, close_prompt2)
+    text_ui:draw(close_text, window_x + 20, window_y + 20, {0.7, 0.7, 0.7, 1}, self.desc_font)
 
     -- Draw items in grid
     slot_renderer.renderItemGrid(

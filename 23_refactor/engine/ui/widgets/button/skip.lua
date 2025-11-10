@@ -3,6 +3,7 @@
 
 local BaseButton = require "engine.ui.widgets.button.base"
 local text_ui = require "engine.utils.text"
+local input = require "engine.core.input"
 
 local SkipButton = setmetatable({}, { __index = BaseButton })
 SkipButton.__index = SkipButton
@@ -108,12 +109,18 @@ function SkipButton:draw()
     love.graphics.setLineWidth(2)
     love.graphics.rectangle("line", self.x, self.y, self.width, self.height, 8, 8)
 
-    -- Draw text
-    local text_width = self.font:getWidth(self.label)
+    -- Draw text with shortcut hint (only for physical gamepad)
+    local label_text = self.label
+    if input.joystick then
+        local button_prompt = input:getPrompt("menu_back") or "B"
+        label_text = string.format("%s [%s]", self.label, button_prompt)
+    end
+
+    local text_width = self.font:getWidth(label_text)
     local text_height = self.font:getHeight()
     local text_x = self.x + (self.width - text_width) / 2
     local text_y = self.y + (self.height - text_height) / 2
-    text_ui:draw(self.label, text_x, text_y, self.text_color, self.font)
+    text_ui:draw(label_text, text_x, text_y, self.text_color, self.font)
 
     -- Reset
     love.graphics.setColor(1, 1, 1, 1)

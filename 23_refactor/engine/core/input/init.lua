@@ -230,6 +230,40 @@ function input:hasGamepad()
     return self.joystick ~= nil
 end
 
+-- Helper function to convert gamepad button names to readable format
+local function formatGamepadButton(button)
+    local button_names = {
+        -- Shoulder buttons
+        leftshoulder = "L1",
+        rightshoulder = "R1",
+        lefttrigger = "L2",
+        righttrigger = "R2",
+
+        -- Face buttons
+        a = "A",
+        b = "B",
+        x = "X",
+        y = "Y",
+
+        -- D-pad
+        dpup = "D-Up",
+        dpdown = "D-Down",
+        dpleft = "D-Left",
+        dpright = "D-Right",
+
+        -- System buttons
+        start = "START",
+        back = "SELECT",
+        guide = "HOME",
+
+        -- Stick buttons
+        leftstick = "L3",
+        rightstick = "R3"
+    }
+
+    return button_names[button:lower()] or button:upper()
+end
+
 function input:getPrompt(action)
     local mapping = getActionMapping(action)
     if not mapping then return "?" end
@@ -237,28 +271,36 @@ function input:getPrompt(action)
     -- Virtual gamepad prompts
     if self.virtual_gamepad and self.virtual_gamepad.enabled then
         if action == "attack" then
-            return "[A]"
+            return "A"
         elseif action == "dodge" then
-            return "[B]"
+            return "B"
         elseif action == "parry" then
-            return "[X]"
+            return "X"
         elseif action == "interact" then
-            return "[Y]"
+            return "Y"
         elseif action == "pause" then
-            return "[START]"
+            return "START"
+        elseif action == "use_item" then
+            return "L1"
+        elseif action == "menu_select" then
+            return "A"
+        elseif action == "open_inventory" then
+            return "R2"
+        elseif action == "menu_back" then
+            return "B"
         end
     end
 
     -- Physical gamepad prompts
     if self.joystick then
         if mapping.gamepad then
-            return "[" .. mapping.gamepad:upper() .. "]"
+            return formatGamepadButton(mapping.gamepad)
         end
     end
 
     -- Keyboard prompts
     if mapping.keyboard and #mapping.keyboard > 0 then
-        return "[" .. mapping.keyboard[1]:upper() .. "]"
+        return mapping.keyboard[1]:upper()
     end
 
     return "?"
@@ -269,7 +311,6 @@ function input:getDebugInfo()
     info = info .. "  Joystick: " .. self.joystick_name .. "\n"
     info = info .. "  Deadzone: " .. string.format("%.2f", self.settings.deadzone) .. "\n"
     info = info .. "  Vibration: " .. tostring(self.settings.vibration_enabled) .. "\n"
-    info = info .. "  Last Aim: " .. self.last_aim_source .. "\n"
 
     if self.mapper then
         info = info .. "  Coordinator: Active\n"

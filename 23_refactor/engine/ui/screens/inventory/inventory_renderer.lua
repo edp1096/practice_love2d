@@ -4,6 +4,10 @@
 local slot_renderer = {}
 local shapes = require "engine.utils.shapes"
 local text_ui = require "engine.utils.text"
+local input = require "engine.core.input"
+
+-- Constants
+local SLOTS_PER_ROW = 5
 
 -- Render the close button in the top-right corner
 function slot_renderer.renderCloseButton(window_x, window_y, window_w, close_button_size, close_button_padding, is_hovered)
@@ -27,12 +31,12 @@ function slot_renderer.renderItemGrid(inventory, selected_slot, slot_size, slot_
         return
     end
 
-    local start_x = (vw - (slot_size + slot_spacing) * math.min(#inventory.items, 5)) / 2
+    local start_x = (vw - (slot_size + slot_spacing) * math.min(#inventory.items, SLOTS_PER_ROW)) / 2
     local start_y = 150
 
     for i, item in ipairs(inventory.items) do
-        local row = math.floor((i - 1) / 5)
-        local col = (i - 1) % 5
+        local row = math.floor((i - 1) / SLOTS_PER_ROW)
+        local col = (i - 1) % SLOTS_PER_ROW
         local x = start_x + col * (slot_size + slot_spacing)
         local y = start_y + row * (slot_size + slot_spacing)
 
@@ -68,13 +72,15 @@ function slot_renderer.renderItemDetails(inventory, selected_slot, player, windo
 
     local item = inventory.items[selected_slot]
     local start_y = 150
-    local detail_y = start_y + math.ceil(#inventory.items / 5) * (slot_size + slot_spacing) + 30
+    local detail_y = start_y + math.ceil(#inventory.items / SLOTS_PER_ROW) * (slot_size + slot_spacing) + 30
 
     text_ui:draw(item.name, window_x + 30, detail_y, {1, 1, 1, 1}, item_font)
     text_ui:draw(item.description, window_x + 30, detail_y + 25, {0.8, 0.8, 0.8, 1}, desc_font)
 
-    -- Draw usage instructions
-    text_ui:draw("Press [E], [Q], [Space] or [Enter] to use", window_x + 30, detail_y + 50, {0.6, 0.8, 1, 1}, desc_font)
+    -- Draw usage instructions with dynamic input prompts
+    local use_prompt = input:getPrompt("use_item") or input:getPrompt("menu_select") or "ENTER"
+    local instruction_text = string.format("Press %s to use", use_prompt)
+    text_ui:draw(instruction_text, window_x + 30, detail_y + 50, {0.6, 0.8, 1, 1}, desc_font)
 
     -- Can use indicator
     if item:canUse(player) then

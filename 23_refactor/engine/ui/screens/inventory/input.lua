@@ -8,6 +8,9 @@ local input = require "engine.core.input"
 local sound = require "engine.core.sound"
 local coords = require "engine.core.coords"
 
+-- Constants
+local SLOTS_PER_ROW = 5
+
 -- Safe sound wrapper
 local function play_sound(category, name)
     if sound and sound.playSFX then
@@ -56,7 +59,7 @@ function input_handler.gamepadpressed(self, joystick, button)
         local scene_control = require "engine.core.scene_control"
         scene_control.pop()
     elseif input:wasPressed("open_inventory", "gamepad", button) then
-        -- R2 to close inventory (toggle behavior)
+        -- "open_inventory" action to close inventory (toggle behavior)
         local scene_control = require "engine.core.scene_control"
         scene_control.pop()
     elseif input:wasPressed("menu_left", "gamepad", button) then
@@ -66,7 +69,7 @@ function input_handler.gamepadpressed(self, joystick, button)
     elseif input:wasPressed("menu_select", "gamepad", button) then
         input_handler.useSelectedItem(self)
     elseif input:wasPressed("use_item", "gamepad", button) then
-        -- L1 to use item (configurable via input_config)
+        -- "use_item" action (configurable via input_config)
         input_handler.useSelectedItem(self)
     end
 end
@@ -78,11 +81,11 @@ function input_handler.gamepadaxis(self, joystick, axis, value)
     local action = input_sys:handleGamepadAxis(joystick, axis, value)
 
     if action == "open_inventory" then
-        -- RT trigger pressed - close inventory (toggle behavior)
+        -- "open_inventory" trigger pressed - close inventory (toggle behavior)
         local scene_control = require "engine.core.scene_control"
         scene_control.pop()
     elseif action == "next_item" then
-        -- LT trigger pressed - move selection
+        -- "next_item" trigger pressed - move selection
         input_handler.moveSelection(self, 1)
     end
 end
@@ -99,12 +102,12 @@ end
 
 -- Handle touch input
 function input_handler.touchpressed(self, id, x, y, dx, dy, pressure)
-    -- Check if touch is in virtual gamepad area FIRST (let it handle R2)
+    -- Check if touch is in virtual gamepad area FIRST
     local is_mobile = (love.system.getOS() == "Android" or love.system.getOS() == "iOS")
     if is_mobile then
         local virtual_gamepad = require "engine.core.input.virtual_gamepad"
         if virtual_gamepad and virtual_gamepad:isInVirtualPadArea(x, y) then
-            -- Let virtual gamepad handle it (R2 button, etc.)
+            -- Let virtual gamepad handle it
             -- Return false immediately without processing the touch
             return false
         end
@@ -140,12 +143,12 @@ function input_handler.handleClick(self, x, y)
     local vw, vh = display:GetVirtualDimensions()
 
     -- Check if clicked on a slot
-    local start_x = (vw - (self.slot_size + self.slot_spacing) * math.min(#self.inventory.items, 5)) / 2
+    local start_x = (vw - (self.slot_size + self.slot_spacing) * math.min(#self.inventory.items, SLOTS_PER_ROW)) / 2
     local start_y = 150
 
     for i, item in ipairs(self.inventory.items) do
-        local row = math.floor((i - 1) / 5)
-        local col = (i - 1) % 5
+        local row = math.floor((i - 1) / SLOTS_PER_ROW)
+        local col = (i - 1) % SLOTS_PER_ROW
         local slot_x = start_x + col * (self.slot_size + self.slot_spacing)
         local slot_y = start_y + row * (self.slot_size + self.slot_spacing)
 
