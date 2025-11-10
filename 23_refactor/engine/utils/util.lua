@@ -31,7 +31,7 @@ function utils:DeepCopy(obj, seen)
     return res
 end
 
-function utils:SaveConfig(GameConfig, sound_settings, input_settings, resolution_override)
+function utils:SaveConfig(APP_CONFIG, sound_settings, input_settings, resolution_override)
     local os_name = love.system.getOS()
     local is_mobile = (os_name == "Android" or os_name == "iOS")
 
@@ -95,20 +95,20 @@ function utils:SaveConfig(GameConfig, sound_settings, input_settings, resolution
             if resolution_override then
                 width = resolution_override.w
                 height = resolution_override.h
-            elseif GameConfig.windowed_width and GameConfig.windowed_height then
+            elseif APP_CONFIG.windowed_width and APP_CONFIG.windowed_height then
                 -- Use stored windowed resolution
-                width = GameConfig.windowed_width
-                height = GameConfig.windowed_height
+                width = APP_CONFIG.windowed_width
+                height = APP_CONFIG.windowed_height
             else
-                -- Fallback to GameConfig values
-                width = GameConfig.width
-                height = GameConfig.height
+                -- Fallback to APP_CONFIG values
+                width = APP_CONFIG.width
+                height = APP_CONFIG.height
             end
             file:write("Width = " .. width .. "\n")
             file:write("Height = " .. height .. "\n")
-            file:write("FullScreen = " .. tostring(GameConfig.fullscreen) .. "\n")
+            file:write("FullScreen = " .. tostring(APP_CONFIG.fullscreen) .. "\n")
             -- Monitor: ensure it's a valid number, default to 1
-            local monitor = GameConfig.monitor or 1
+            local monitor = APP_CONFIG.monitor or 1
             if type(monitor) ~= "number" then monitor = 1 end
             file:write("Monitor = " .. monitor .. "\n")
 

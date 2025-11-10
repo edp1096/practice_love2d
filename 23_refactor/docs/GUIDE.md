@@ -203,6 +203,233 @@ coords:debugPoint(player.x, player.y, cam, display, "Player")
 
 ---
 
+## Entity Coordinate System
+
+When defining entities in `game/data/entities/types.lua`, you need to understand three coordinate offset fields that control entity positioning and rendering.
+
+### Coordinate Hierarchy
+
+Entity positioning uses a three-level coordinate system:
+
+```
+Tiled Object (x, y)  ← Top-left origin from Tiled map editor
+    ↓ + collider_offset_x/y
+Collider Center (cx, cy)  ← Box2D physics uses center-origin
+    ↓ + sprite_draw_offset_x/y
+Sprite Draw Position  ← Where the sprite image is actually drawn
+```
+
+**Why Three Levels?**
+- **Tiled** uses top-left origin (standard for tile-based editors)
+- **Box2D** (physics engine) uses center origin (standard for physics)
+- **Sprites** can be any size, need manual positioning relative to collider
+
+### Field Definitions
+
+#### `collider_offset_x/y`
+**Purpose:** Offset from Tiled object position (top-left) to collider center.
+
+**When to use:**
+- Usually `0, 0` if you want the collider at the object's exact position
+- Non-zero if Tiled object and collider center should be different
+
+**Example:**
+```lua
+collider_offset_x = 0   -- Collider center at Tiled object X
+collider_offset_y = 0   -- Collider center at Tiled object Y
+```
+
+**Code reference:** `engine/entities/base/entity.lua:47-49` (getColliderCenter)
+
+#### `sprite_draw_offset_x/y`
+**Purpose:** Offset from collider center to sprite draw position.
+
+**Why negative values?**
+- Sprites are usually larger than colliders
+- Negative values draw sprite to the left/above collider
+- This centers the sprite on the collider
+
+**Auto-calculation:**
+If not specified, engine calculates (see `engine/entities/base/entity.lua:22-27`):
+```lua
+sprite_draw_offset_x = -(sprite_width * sprite_scale - collider_width) / 2
+sprite_draw_offset_y = -(sprite_height * sprite_scale - collider_height)
+```
+
+**Example:**
+```lua
+-- For 16x32 sprite at scale 4 (64x128 render) with 32x32 collider:
+sprite_draw_offset_x = -32   -- (64 - 32) / 2 = 16, but we want -32 for positioning
+sprite_draw_offset_y = -112  -- Position sprite above collider bottom
+```
+
+**Code reference:** `engine/entities/base/entity.lua:53-56` (getSpritePosition)
+
+#### `sprite_origin_x/y`
+**Purpose:** Pivot point within the sprite image (for rotation).
+
+**Coordinate system:** Pixels within the sprite (0,0 = top-left corner of the sprite image)
+
+**Common values:**
+```lua
+-- No rotation (default)
+sprite_origin_x = 0
+sprite_origin_y = 0
+
+-- Center pivot (for rotating entities like weapons)
+sprite_origin_x = sprite_width / 2
+sprite_origin_y = sprite_height / 2
+```
+
+**Example:**
+```lua
+-- For 48x48 sprite with center rotation:
+sprite_origin_x = 24  -- Center X (48/2)
+sprite_origin_y = 24  -- Center Y (48/2)
+```
+
+### Finding Correct Offset Values
+
+Use the **Hand Marking** debug tool to find correct offset values:
+
+**Step 1: Enable Debug Mode**
+```
+1. Set IsDebug=true in config.ini
+2. Run game with: love .
+3. Press F1 to enable debug mode
+```
+
+**Step 2: Activate Hand Marking**
+```
+Press H - Pauses animation, enters hand marking mode
+Console shows:
+  === HAND MARKING MODE ENABLED ===
+  Animation PAUSED
+  Current animation: walk_right
+  Current frame: 1
+```
+
+**Step 3: Navigate Animation Frames**
+```
+PgUp  - Go to previous frame
+PgDn  - Go to next frame
+
+Console shows frame info:
+  walk_right Frame: 2 / 6
+```
+
+**Step 4: Mark Positions**
+```
+1. Move mouse to desired position (e.g., hand position for weapon anchor)
+2. Press P to mark the position
+
+Console outputs Lua code:
+  MARKED: walk_right[2] = {x = 10, y = -5, angle = math.pi / 4},
+```
+
+**Step 5: Copy to Config**
+```
+When all frames marked, console outputs complete table:
+  === COMPLETE walk_right ===
+  walk_right = {
+      {x = 8, y = -3, angle = 0},
+      {x = 10, y = -5, angle = math.pi / 4},
+      ...
+  },
+
+Copy this to your config file (e.g., game/data/entities/types.lua or weapon hand_anchors.lua)
+```
+
+**Tips:**
+- Mark all frames in an animation for complete coverage
+- Console shows progress (e.g., "marked 3 / 6 frames")
+- Use this for weapon hand positions, sprite offsets, attachment points, etc.
+
+### Complete Entity Example
+
+```lua
+-- game/data/entities/types.lua
+red_slime = {
+    -- Basic stats
+    sprite_sheet = "assets/images/enemy-sheet-slime-red.png",
+    health = 100,
+    damage = 10,
+    speed = 100,
+    attack_cooldown = 1.0,
+    detection_range = 200,
+    attack_range = 50,
+
+    -- Sprite dimensions
+    sprite_width = 16,
+    sprite_height = 32,
+    sprite_scale = 4,  -- Renders at 64x128 pixels (16*4 x 32*4)
+
+    -- Physics collider (Box2D uses center-origin)
+    collider_width = 32,
+    collider_height = 32,
+    collider_offset_x = 0,   -- Collider center at Tiled object position
+    collider_offset_y = 0,
+
+    -- Sprite positioning (relative to collider center)
+    sprite_draw_offset_x = -32,   -- Draw sprite 32px left of collider center
+    sprite_draw_offset_y = -112,  -- Draw sprite 112px above collider center
+
+    -- Rotation pivot (0,0 = top-left, for non-rotating entities)
+    sprite_origin_x = 0,
+    sprite_origin_y = 0,
+
+    -- Optional: color swap (change red slime to green)
+    source_color = nil,  -- No color swap for red slime
+    target_color = nil,
+}
+```
+
+### Common Pitfalls
+
+1. **Forgetting scale factor:**
+   - `sprite_width * sprite_scale` is the actual render size
+   - Example: 16px sprite at scale 4 = 64px on screen
+
+2. **Wrong coordinate system:**
+   - Tiled objects use top-left origin
+   - Box2D colliders use center origin
+   - Always add `collider_offset` to convert between them
+
+3. **Ignoring auto-calculation:**
+   - If offsets seem wrong, try omitting `sprite_draw_offset_x/y`
+   - Engine will calculate sensible defaults (center sprite on collider)
+
+4. **Rotation without pivot:**
+   - If entity rotates (e.g., weapons), set `sprite_origin` to center
+   - Non-rotating entities can use (0, 0)
+
+5. **Mismatched collider and sprite sizes:**
+   - Collider should match gameplay hitbox (not sprite size)
+   - Example: Large sprite with small collider for pixel-perfect collision
+
+### Reference: Coordinate Transform Functions
+
+From `engine/entities/base/entity.lua`:
+
+```lua
+-- Get collider center position (Tiled position + offset)
+function entity:getColliderCenter()
+    return self.x + self.collider_offset_x,
+           self.y + self.collider_offset_y
+end
+
+-- Get sprite draw position (collider center + sprite offset)
+function entity:getSpritePosition()
+    local cx, cy = self:getColliderCenter()
+    return cx + self.sprite_draw_offset_x,
+           cy + self.sprite_draw_offset_y
+end
+```
+
+These functions implement the three-level coordinate hierarchy described above.
+
+---
+
 ## Camera System
 
 ### `engine/core/camera.lua`
@@ -743,7 +970,7 @@ Debug overlay and visualization controlled by config.ini.
 
 **States:**
 ```lua
-debug.allowed = true/false   -- From GameConfig.is_debug (allows F1-F6)
+debug.allowed = true/false   -- From APP_CONFIG.is_debug (allows F1-F6)
 debug.enabled = true/false   -- Debug UI visibility (toggled with F1)
 
 -- F1: Toggle debug UI (requires allowed = true)

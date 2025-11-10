@@ -106,8 +106,8 @@ function render.draw(self)
     -- Draw inventory
     hud:draw_inventory(self.inventory, vw, vh)
 
-    -- Draw minimap (will be affected by lighting)
-    if self.minimap then
+    -- Draw minimap (check game config and map properties)
+    if self.minimap and self:shouldShowMinimap() then
         self.minimap:draw(vw, vh, self.player, self.world.enemies, self.world.npcs)
     end
 

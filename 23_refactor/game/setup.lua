@@ -8,7 +8,7 @@ local setup = {}
 function setup.configure()
     -- Load game data
     local entity_types = require "game.data.entities.types"
-    local game_config = require "game.data.game_config"
+    local start_config = require "game.data.start"
     local entity_defaults = require "game.data.entities.defaults"
     local player_config = require "game.data.player"
     local cutscene_configs = require "game.data.cutscenes"
@@ -35,9 +35,9 @@ function setup.configure()
     weapon_class.effects_config = entity_types.weapon_effects
 
     -- Inject game start defaults
-    constants.GAME_START.DEFAULT_MAP = game_config.start.map
-    constants.GAME_START.DEFAULT_SPAWN_X = game_config.start.spawn_x
-    constants.GAME_START.DEFAULT_SPAWN_Y = game_config.start.spawn_y
+    constants.GAME_START.DEFAULT_MAP = start_config.map
+    constants.GAME_START.DEFAULT_SPAWN_X = start_config.spawn_x
+    constants.GAME_START.DEFAULT_SPAWN_Y = start_config.spawn_y
 
     -- Inject entity factory defaults
     factory.DEFAULTS = entity_defaults

@@ -81,7 +81,7 @@ function helpers.drawControlHints(font, layout, width, custom_text)
         hint_text = custom_text
     else
         -- Always show version instead of control hints
-        hint_text = "v" .. (GameConfig.version or "0.0.1")
+        hint_text = "v" .. (APP_CONFIG.version or "0.0.1")
     end
 
     text_ui:drawCentered(hint_text, layout.hint_y - 10, width, {0.5, 0.5, 0.5, 1}, font)

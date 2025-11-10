@@ -13,7 +13,7 @@ lifecycle.scene_control = nil
 lifecycle.utils = nil
 lifecycle.sound = nil
 lifecycle.effects = nil
-lifecycle.GameConfig = nil
+lifecycle.app_config = nil
 lifecycle.is_mobile = false
 
 -- Resize callback registry (for systems to register themselves)
@@ -28,7 +28,7 @@ end
 
 function lifecycle:initialize(initial_scene)
     -- 1. Initialize display system
-    local success, err = pcall(self.display.Initialize, self.display, self.GameConfig)
+    local success, err = pcall(self.display.Initialize, self.display, self.app_config)
     if not success then
         print("ERROR: Display initialization failed: " .. tostring(err))
         -- Fallback initialization
@@ -108,11 +108,11 @@ end
 
 function lifecycle:resize(w, h)
     -- Update config
-    self.GameConfig.width = w
-    self.GameConfig.height = h
+    self.app_config.width = w
+    self.app_config.height = h
 
     -- Save config to file
-    pcall(self.utils.SaveConfig, self.utils, self.GameConfig, self.sound.settings, self.input.settings, nil)
+    pcall(self.utils.SaveConfig, self.utils, self.app_config, self.sound.settings, self.input.settings, nil)
 
     -- Recalculate display scale
     pcall(self.display.CalculateScale, self.display)
@@ -137,16 +137,16 @@ function lifecycle:quit()
     -- Save window size if not fullscreen
     local current_w, current_h, current_flags = love.window.getMode()
     if not self.is_mobile and not self.display.is_fullscreen then
-        self.GameConfig.width = current_w
-        self.GameConfig.height = current_h
+        self.app_config.width = current_w
+        self.app_config.height = current_h
         if current_flags.display then
-            self.GameConfig.monitor = current_flags.display
+            self.app_config.monitor = current_flags.display
         end
-        self.GameConfig.monitor = self.GameConfig.monitor or 1
+        self.app_config.monitor = self.app_config.monitor or 1
     end
 
     -- Save config
-    pcall(self.utils.SaveConfig, self.utils, self.GameConfig, self.sound.settings, self.input.settings, nil)
+    pcall(self.utils.SaveConfig, self.utils, self.app_config, self.sound.settings, self.input.settings, nil)
 end
 
 return lifecycle

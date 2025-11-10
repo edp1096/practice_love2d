@@ -4,7 +4,7 @@ local startup = require "startup"
 -- Detect platform early
 local is_mobile = startup.detectPlatform_early()
 
-GameConfig = {
+APP_CONFIG = {
     version = "0.0.1", -- Hardcoded version (not saved to config.ini)
     is_debug = true,   -- Temporarily enabled for debugging
 
@@ -34,7 +34,10 @@ GameConfig = {
         vibration_enabled = true,
         vibration_strength = 1.0,
         mobile_vibration_enabled = true
-    }
+    },
+
+    -- HUD settings (game-specific, injected from game/data/hud.lua)
+    hud = nil  -- Will be loaded in startup.lua
 }
 
 -- Load desktop config (mobile config loaded in main.lua)
@@ -65,12 +68,12 @@ function love.conf(t)
     t.window.vsync = 1
     if not is_mobile then
         -- Desktop: use config
-        t.window.width = GameConfig.width
-        t.window.height = GameConfig.height
-        t.window.resizable = GameConfig.resizable
-        t.window.vsync = GameConfig.vsync and 1 or 0
-        t.window.minwidth = GameConfig.min_width
-        t.window.minheight = GameConfig.min_height
+        t.window.width = APP_CONFIG.width
+        t.window.height = APP_CONFIG.height
+        t.window.resizable = APP_CONFIG.resizable
+        t.window.vsync = APP_CONFIG.vsync and 1 or 0
+        t.window.minwidth = APP_CONFIG.min_width
+        t.window.minheight = APP_CONFIG.min_height
     end
 
     t.modules.audio = true

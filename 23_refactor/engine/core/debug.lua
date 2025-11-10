@@ -18,7 +18,7 @@ local function get_effects()
 end
 
 -- === Master Control ===
-debug.allowed = false  -- Whether F1-F6 keys are allowed (set from GameConfig.is_debug)
+debug.allowed = false  -- Whether F1-F6 keys are allowed (set from APP_CONFIG.is_debug)
 debug.enabled = false  -- Whether debug UI is currently shown (toggled with F1)
 
 -- === Gameplay Debug ===
@@ -148,7 +148,7 @@ function debug:handleInput(key, context)
     -- context = { player, world, camera } (optional)
     context = context or {}
 
-    -- All debug keys only work when allowed (GameConfig.is_debug = true)
+    -- All debug keys only work when allowed (APP_CONFIG.is_debug = true)
     if not self.allowed then
         return
     end

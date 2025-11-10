@@ -131,8 +131,8 @@ function display:EnableFullScreen()
 
     self.previous_screen_wh.w, self.previous_screen_wh.h = self.screen_wh.w, self.screen_wh.h
 
-    -- Use monitor from GameConfig if available (allows monitor switching in settings)
-    local target_monitor = (GameConfig and GameConfig.monitor) or self.window.monitor or 1
+    -- Use monitor from APP_CONFIG if available (allows monitor switching in settings)
+    local target_monitor = (APP_CONFIG and APP_CONFIG.monitor) or self.window.monitor or 1
     self.window.monitor = target_monitor
 
     local success2, w, h = pcall(love.window.getDesktopDimensions, target_monitor)
@@ -163,15 +163,15 @@ function display:DisableFullScreen()
         -- Use stored previous size (from before fullscreen)
         self.screen_wh.w, self.screen_wh.h = self.previous_screen_wh.w, self.previous_screen_wh.h
         self.window.x, self.window.y = self.previous_xy.x, self.previous_xy.y
-        -- Restore resizable setting from GameConfig (default: false)
-        self.window.resizable = GameConfig and GameConfig.resizable or false
+        -- Restore resizable setting from APP_CONFIG (default: false)
+        self.window.resizable = APP_CONFIG and APP_CONFIG.resizable or false
         self.window.borderless = false
     else
         -- Fallback: use virtual resolution
         self.window.x = 0
         self.window.y = 0
         self.screen_wh.w, self.screen_wh.h = self.render_wh.w, self.render_wh.h
-        self.window.resizable = GameConfig and GameConfig.resizable or false
+        self.window.resizable = APP_CONFIG and APP_CONFIG.resizable or false
         self.window.borderless = false
         self.window.centered = true
     end

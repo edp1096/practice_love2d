@@ -203,6 +203,233 @@ coords:debugPoint(player.x, player.y, cam, display, "Player")
 
 ---
 
+## 엔티티 좌표계 시스템
+
+`game/data/entities/types.lua`에서 엔티티를 정의할 때, 엔티티 위치와 렌더링을 제어하는 세 가지 좌표 오프셋 필드를 이해해야 합니다.
+
+### 좌표 계층 구조
+
+엔티티 위치 지정은 3단계 좌표 시스템을 사용합니다:
+
+```
+Tiled 객체 (x, y)  ← Tiled 맵 에디터의 top-left 원점
+    ↓ + collider_offset_x/y
+Collider 중심 (cx, cy)  ← Box2D 물리 엔진은 center 원점 사용
+    ↓ + sprite_draw_offset_x/y
+Sprite 그리기 위치  ← 스프라이트 이미지가 실제로 그려지는 위치
+```
+
+**왜 3단계인가?**
+- **Tiled**는 top-left 원점 사용 (타일 기반 에디터 표준)
+- **Box2D** (물리 엔진)는 center 원점 사용 (물리 엔진 표준)
+- **Sprite**는 임의의 크기, collider 기준으로 수동 위치 지정 필요
+
+### 필드 정의
+
+#### `collider_offset_x/y`
+**목적:** Tiled 객체 위치(top-left)에서 collider 중심까지의 오프셋.
+
+**사용 시기:**
+- collider를 객체의 정확한 위치에 배치하려면 보통 `0, 0`
+- Tiled 객체와 collider 중심이 달라야 하면 0이 아닌 값
+
+**예시:**
+```lua
+collider_offset_x = 0   -- Collider 중심이 Tiled 객체 X 위치
+collider_offset_y = 0   -- Collider 중심이 Tiled 객체 Y 위치
+```
+
+**코드 참조:** `engine/entities/base/entity.lua:47-49` (getColliderCenter)
+
+#### `sprite_draw_offset_x/y`
+**목적:** Collider 중심에서 sprite 그리기 위치까지의 오프셋.
+
+**왜 음수 값인가?**
+- 스프라이트가 보통 collider보다 큼
+- 음수 값은 sprite를 collider 왼쪽/위쪽에 그림
+- 이를 통해 sprite가 collider 중심에 오도록 함
+
+**자동 계산:**
+지정하지 않으면 엔진이 자동 계산 (`engine/entities/base/entity.lua:22-27` 참조):
+```lua
+sprite_draw_offset_x = -(sprite_width * sprite_scale - collider_width) / 2
+sprite_draw_offset_y = -(sprite_height * sprite_scale - collider_height)
+```
+
+**예시:**
+```lua
+-- 16x32 sprite를 scale 4 (64x128 렌더)로, 32x32 collider인 경우:
+sprite_draw_offset_x = -32   -- (64 - 32) / 2 = 16, 하지만 위치 지정을 위해 -32
+sprite_draw_offset_y = -112  -- Sprite를 collider 하단 위에 위치
+```
+
+**코드 참조:** `engine/entities/base/entity.lua:53-56` (getSpritePosition)
+
+#### `sprite_origin_x/y`
+**목적:** 스프라이트 이미지 내부의 피벗 포인트 (회전용).
+
+**좌표계:** 스프라이트 내부 픽셀 (0,0 = 스프라이트 이미지의 top-left 모서리)
+
+**일반적인 값:**
+```lua
+-- 회전 없음 (기본값)
+sprite_origin_x = 0
+sprite_origin_y = 0
+
+-- 중심 피벗 (무기 같은 회전 엔티티)
+sprite_origin_x = sprite_width / 2
+sprite_origin_y = sprite_height / 2
+```
+
+**예시:**
+```lua
+-- 48x48 sprite의 중심 회전:
+sprite_origin_x = 24  -- 중심 X (48/2)
+sprite_origin_y = 24  -- 중심 Y (48/2)
+```
+
+### 올바른 오프셋 값 찾기
+
+**Hand Marking** 디버그 도구를 사용하여 올바른 오프셋 값을 찾으세요:
+
+**1단계: 디버그 모드 활성화**
+```
+1. config.ini에서 IsDebug=true 설정
+2. 게임 실행: love .
+3. F1 키를 눌러 디버그 모드 활성화
+```
+
+**2단계: Hand Marking 활성화**
+```
+H 키 누르기 - 애니메이션 일시정지, hand marking 모드 진입
+콘솔 출력:
+  === HAND MARKING MODE ENABLED ===
+  Animation PAUSED
+  Current animation: walk_right
+  Current frame: 1
+```
+
+**3단계: 애니메이션 프레임 이동**
+```
+PgUp  - 이전 프레임
+PgDn  - 다음 프레임
+
+콘솔 프레임 정보 표시:
+  walk_right Frame: 2 / 6
+```
+
+**4단계: 위치 마킹**
+```
+1. 마우스를 원하는 위치로 이동 (예: 무기 앵커용 손 위치)
+2. P 키를 눌러 위치 마킹
+
+콘솔 Lua 코드 출력:
+  MARKED: walk_right[2] = {x = 10, y = -5, angle = math.pi / 4},
+```
+
+**5단계: 설정 파일에 복사**
+```
+모든 프레임 마킹 완료 시, 콘솔에 완전한 테이블 출력:
+  === COMPLETE walk_right ===
+  walk_right = {
+      {x = 8, y = -3, angle = 0},
+      {x = 10, y = -5, angle = math.pi / 4},
+      ...
+  },
+
+이 코드를 설정 파일에 복사 (예: game/data/entities/types.lua 또는 weapon hand_anchors.lua)
+```
+
+**팁:**
+- 완전한 커버리지를 위해 애니메이션의 모든 프레임 마킹
+- 콘솔에서 진행 상황 표시 (예: "marked 3 / 6 frames")
+- 무기 손 위치, 스프라이트 오프셋, 부착점 등에 사용
+
+### 전체 엔티티 예시
+
+```lua
+-- game/data/entities/types.lua
+red_slime = {
+    -- 기본 스탯
+    sprite_sheet = "assets/images/enemy-sheet-slime-red.png",
+    health = 100,
+    damage = 10,
+    speed = 100,
+    attack_cooldown = 1.0,
+    detection_range = 200,
+    attack_range = 50,
+
+    -- 스프라이트 크기
+    sprite_width = 16,
+    sprite_height = 32,
+    sprite_scale = 4,  -- 64x128 픽셀로 렌더 (16*4 x 32*4)
+
+    -- 물리 collider (Box2D는 center 원점 사용)
+    collider_width = 32,
+    collider_height = 32,
+    collider_offset_x = 0,   -- Collider 중심이 Tiled 객체 위치
+    collider_offset_y = 0,
+
+    -- 스프라이트 위치 지정 (collider 중심 기준)
+    sprite_draw_offset_x = -32,   -- Sprite를 collider 중심 왼쪽 32px에 그림
+    sprite_draw_offset_y = -112,  -- Sprite를 collider 중심 위 112px에 그림
+
+    -- 회전 피벗 (0,0 = top-left, 회전하지 않는 엔티티용)
+    sprite_origin_x = 0,
+    sprite_origin_y = 0,
+
+    -- 선택사항: 색상 교체 (빨간 슬라임을 초록으로 변경)
+    source_color = nil,  -- 빨간 슬라임은 색상 교체 없음
+    target_color = nil,
+}
+```
+
+### 일반적인 함정
+
+1. **스케일 팩터 잊음:**
+   - `sprite_width * sprite_scale`이 실제 렌더 크기
+   - 예: 16px 스프라이트 scale 4 = 화면에 64px
+
+2. **잘못된 좌표계:**
+   - Tiled 객체는 top-left 원점 사용
+   - Box2D collider는 center 원점 사용
+   - 변환을 위해 항상 `collider_offset` 추가
+
+3. **자동 계산 무시:**
+   - 오프셋이 이상하면 `sprite_draw_offset_x/y` 생략 시도
+   - 엔진이 합리적인 기본값 계산 (sprite를 collider에 중심 배치)
+
+4. **피벗 없이 회전:**
+   - 엔티티가 회전하면 (예: 무기), `sprite_origin`을 중심으로 설정
+   - 회전하지 않는 엔티티는 (0, 0) 사용 가능
+
+5. **Collider와 sprite 크기 불일치:**
+   - Collider는 게임플레이 히트박스에 맞춰야 함 (sprite 크기 아님)
+   - 예: 픽셀 단위 충돌을 위해 큰 sprite에 작은 collider
+
+### 참조: 좌표 변환 함수
+
+`engine/entities/base/entity.lua`에서:
+
+```lua
+-- Collider 중심 위치 얻기 (Tiled 위치 + offset)
+function entity:getColliderCenter()
+    return self.x + self.collider_offset_x,
+           self.y + self.collider_offset_y
+end
+
+-- Sprite 그리기 위치 얻기 (collider 중심 + sprite offset)
+function entity:getSpritePosition()
+    local cx, cy = self:getColliderCenter()
+    return cx + self.sprite_draw_offset_x,
+           cy + self.sprite_draw_offset_y
+end
+```
+
+이 함수들이 위에서 설명한 3단계 좌표 계층 구조를 구현합니다.
+
+---
+
 ## 카메라 시스템
 
 ### `engine/core/camera.lua`
@@ -691,7 +918,7 @@ config.ini로 제어되는 디버그 오버레이 및 시각화.
 
 **상태:**
 ```lua
-debug.allowed = true/false   -- GameConfig.is_debug에서 설정 (F1-F6 허용 여부)
+debug.allowed = true/false   -- APP_CONFIG.is_debug에서 설정 (F1-F6 허용 여부)
 debug.enabled = true/false   -- 디버그 UI 표시 여부 (F1로 토글)
 
 -- F1: 디버그 UI 토글 (allowed = true 필요)

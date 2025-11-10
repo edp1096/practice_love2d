@@ -55,12 +55,12 @@ function sound:init(sound_data)
         self.CATEGORY = sound_data.categories
     end
 
-    -- Load settings from GameConfig if available
-    if GameConfig and GameConfig.sound then
-        self.settings.master_volume = GameConfig.sound.master_volume
-        self.settings.bgm_volume = GameConfig.sound.bgm_volume
-        self.settings.sfx_volume = GameConfig.sound.sfx_volume
-        self.settings.muted = GameConfig.sound.muted
+    -- Load settings from APP_CONFIG if available
+    if APP_CONFIG and APP_CONFIG.sound then
+        self.settings.master_volume = APP_CONFIG.sound.master_volume
+        self.settings.bgm_volume = APP_CONFIG.sound.bgm_volume
+        self.settings.sfx_volume = APP_CONFIG.sound.sfx_volume
+        self.settings.muted = APP_CONFIG.sound.muted
     end
 
     -- Load BGM

@@ -81,8 +81,8 @@ end
 
 -- Find current resolution index
 function options:findCurrentResolution()
-    local current_w = GameConfig.width
-    local current_h = GameConfig.height
+    local current_w = APP_CONFIG.width
+    local current_h = APP_CONFIG.height
 
     for i, res in ipairs(self.resolutions) do
         if res.w == current_w and res.h == current_h then return i end
@@ -127,7 +127,7 @@ function options:getOptionValue(state, index)
     if option.name == "Resolution" then
         return state.resolutions and state.resolutions[state.current_resolution_index] and state.resolutions[state.current_resolution_index].name or "N/A"
     elseif option.name == "Fullscreen" then
-        return GameConfig.fullscreen and "On" or "Off"
+        return APP_CONFIG.fullscreen and "On" or "Off"
     elseif option.name == "Monitor" then
         return state.monitors and state.monitors[state.current_monitor_index] and state.monitors[state.current_monitor_index].name or "N/A"
     elseif option.name == "Master Volume" then
@@ -166,20 +166,20 @@ end
 
 -- Helper: Sync and save sound config
 local function syncAndSaveSoundConfig()
-    GameConfig.sound.master_volume = sound.settings.master_volume
-    GameConfig.sound.bgm_volume = sound.settings.bgm_volume
-    GameConfig.sound.sfx_volume = sound.settings.sfx_volume
-    GameConfig.sound.muted = sound.settings.muted
-    utils:SaveConfig(GameConfig, sound.settings, nil, nil)
+    APP_CONFIG.sound.master_volume = sound.settings.master_volume
+    APP_CONFIG.sound.bgm_volume = sound.settings.bgm_volume
+    APP_CONFIG.sound.sfx_volume = sound.settings.sfx_volume
+    APP_CONFIG.sound.muted = sound.settings.muted
+    utils:SaveConfig(APP_CONFIG, sound.settings, nil, nil)
 end
 
 -- Helper: Sync and save input config
 local function syncAndSaveInputConfig()
-    GameConfig.input.vibration_enabled = input.settings.vibration_enabled
-    GameConfig.input.mobile_vibration_enabled = input.settings.mobile_vibration_enabled
-    GameConfig.input.vibration_strength = input.settings.vibration_strength
-    GameConfig.input.deadzone = input.settings.deadzone
-    utils:SaveConfig(GameConfig, sound.settings, input.settings, nil)
+    APP_CONFIG.input.vibration_enabled = input.settings.vibration_enabled
+    APP_CONFIG.input.mobile_vibration_enabled = input.settings.mobile_vibration_enabled
+    APP_CONFIG.input.vibration_strength = input.settings.vibration_strength
+    APP_CONFIG.input.deadzone = input.settings.deadzone
+    utils:SaveConfig(APP_CONFIG, sound.settings, input.settings, nil)
 end
 
 -- Option change handlers (data-driven)
@@ -190,11 +190,11 @@ local option_handlers = {
         state.current_resolution_index = cycleIndex(state.current_resolution_index, state.resolutions, direction)
 
         local res = state.resolutions[state.current_resolution_index]
-        GameConfig.width, GameConfig.height = res.w, res.h
-        GameConfig.windowed_width, GameConfig.windowed_height = res.w, res.h
-        if not GameConfig.fullscreen then
+        APP_CONFIG.width, APP_CONFIG.height = res.w, res.h
+        APP_CONFIG.windowed_width, APP_CONFIG.windowed_height = res.w, res.h
+        if not APP_CONFIG.fullscreen then
             love.window.updateMode(res.w, res.h, {
-                resizable = GameConfig.resizable,
+                resizable = APP_CONFIG.resizable,
                 display = state.current_monitor_index
             })
             display:CalculateScale()
@@ -203,28 +203,28 @@ local option_handlers = {
             display.previous_screen_wh.w = res.w
             display.previous_screen_wh.h = res.h
         end
-        utils:SaveConfig(GameConfig, sound.settings, input.settings, state.resolutions[state.current_resolution_index])
+        utils:SaveConfig(APP_CONFIG, sound.settings, input.settings, state.resolutions[state.current_resolution_index])
         sound:playSFX("menu", "navigate")
     end,
 
     ["Fullscreen"] = function(self, state, direction)
         display:ToggleFullScreen()
-        GameConfig.fullscreen = display.is_fullscreen
+        APP_CONFIG.fullscreen = display.is_fullscreen
 
         local current_w, current_h
-        if GameConfig.fullscreen then
+        if APP_CONFIG.fullscreen then
             current_w, current_h = love.window.getDesktopDimensions(state.current_monitor_index)
         else
-            current_w, current_h = GameConfig.width, GameConfig.height
+            current_w, current_h = APP_CONFIG.width, APP_CONFIG.height
             love.window.updateMode(current_w, current_h, {
-                resizable = GameConfig.resizable,
+                resizable = APP_CONFIG.resizable,
                 display = state.current_monitor_index
             })
         end
 
         display:CalculateScale()
         if state.resize then state:resize(current_w, current_h) end
-        utils:SaveConfig(GameConfig, sound.settings, input.settings, state.resolutions[state.current_resolution_index])
+        utils:SaveConfig(APP_CONFIG, sound.settings, input.settings, state.resolutions[state.current_resolution_index])
         sound:playSFX("menu", "navigate")
     end,
 
@@ -233,27 +233,27 @@ local option_handlers = {
 
         state.current_monitor_index = cycleIndex(state.current_monitor_index, state.monitors, direction)
 
-        GameConfig.monitor = state.current_monitor_index
+        APP_CONFIG.monitor = state.current_monitor_index
         display.window.display = state.current_monitor_index
 
-        if GameConfig.fullscreen then
+        if APP_CONFIG.fullscreen then
             display:DisableFullScreen()
             display:EnableFullScreen()
         else
             local dx, dy = love.window.getDesktopDimensions(state.current_monitor_index)
-            local x = dx / 2 - GameConfig.width / 2
-            local y = dy / 2 - GameConfig.height / 2
+            local x = dx / 2 - APP_CONFIG.width / 2
+            local y = dy / 2 - APP_CONFIG.height / 2
             display.window.x = x
             display.window.y = y
-            love.window.updateMode(GameConfig.width, GameConfig.height, {
-                resizable = GameConfig.resizable,
+            love.window.updateMode(APP_CONFIG.width, APP_CONFIG.height, {
+                resizable = APP_CONFIG.resizable,
                 display = state.current_monitor_index
             })
         end
 
         display:CalculateScale()
-        if state.resize then state:resize(GameConfig.width, GameConfig.height) end
-        utils:SaveConfig(GameConfig, sound.settings, input.settings, state.resolutions[state.current_resolution_index])
+        if state.resize then state:resize(APP_CONFIG.width, APP_CONFIG.height) end
+        utils:SaveConfig(APP_CONFIG, sound.settings, input.settings, state.resolutions[state.current_resolution_index])
         sound:playSFX("menu", "navigate")
     end,
 

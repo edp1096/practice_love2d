@@ -78,7 +78,7 @@ function settings:enter(previous, ...)
     -- Current values indices (desktop only)
     if not is_mobile then
         self.current_resolution_index = options_module:findCurrentResolution()
-        self.current_monitor_index = convert:toInt(GameConfig.monitor, 1)
+        self.current_monitor_index = convert:toInt(APP_CONFIG.monitor, 1)
     else
         -- Set default monitor index for mobile (always 1)
         self.current_monitor_index = 1
@@ -113,8 +113,8 @@ function settings:leave()
     local utils = require "engine.utils.util"
     local sound = require "engine.core.sound"
 
-    -- Don't pass resolution_override - use already-set GameConfig values
-    utils:SaveConfig(GameConfig, sound.settings, input.settings, nil)
+    -- Don't pass resolution_override - use already-set APP_CONFIG values
+    utils:SaveConfig(APP_CONFIG, sound.settings, input.settings, nil)
 end
 
 function settings:exit()

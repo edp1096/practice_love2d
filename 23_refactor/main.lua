@@ -11,7 +11,7 @@ local is_mobile = startup.detectPlatform_runtime()
 system.preventDuplicateInstance(is_mobile) -- Prevent duplicate game instances
 
 local debug = require "engine.core.debug"
-debug.allowed = GameConfig.is_debug -- Allow F1-F6 keys if true
+debug.allowed = APP_CONFIG.is_debug -- Allow F1-F6 keys if true
 debug.enabled = false               -- Debug UI starts OFF, user must press F1 to enable
 _G.dprint = function(...) debug:dprint(...) end
 

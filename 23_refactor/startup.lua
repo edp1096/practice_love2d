@@ -69,52 +69,52 @@ function startup.loadDesktopConfig()
             -- Version is hardcoded in conf.lua, not loaded from config.ini
             if config.Game.IsDebug ~= nil then
                 -- ini parser already converts "true"/"false" to boolean
-                GameConfig.is_debug = config.Game.IsDebug
+                APP_CONFIG.is_debug = config.Game.IsDebug
             end
         end
 
         -- Load Window settings (properly handle nil vs false)
         if config.Window then
             if config.Window.Width then
-                GameConfig.width = config.Window.Width
-                GameConfig.windowed_width = config.Window.Width
+                APP_CONFIG.width = config.Window.Width
+                APP_CONFIG.windowed_width = config.Window.Width
             end
             if config.Window.Height then
-                GameConfig.height = config.Window.Height
-                GameConfig.windowed_height = config.Window.Height
+                APP_CONFIG.height = config.Window.Height
+                APP_CONFIG.windowed_height = config.Window.Height
             end
             if config.Window.Resizable ~= nil then
-                GameConfig.resizable = config.Window.Resizable
+                APP_CONFIG.resizable = config.Window.Resizable
             end
             if config.Window.FullScreen ~= nil then
-                GameConfig.fullscreen = config.Window.FullScreen
+                APP_CONFIG.fullscreen = config.Window.FullScreen
             end
             if config.Window.Monitor then
-                GameConfig.monitor = config.Window.Monitor
+                APP_CONFIG.monitor = config.Window.Monitor
             end
         end
 
         -- Load Sound settings if available
         if config.Sound then
-            GameConfig.sound.master_volume = convert:toPercent(config.Sound.MasterVolume, GameConfig.sound.master_volume)
-            GameConfig.sound.bgm_volume = convert:toPercent(config.Sound.BGMVolume, GameConfig.sound.bgm_volume)
-            GameConfig.sound.sfx_volume = convert:toPercent(config.Sound.SFXVolume, GameConfig.sound.sfx_volume)
-            GameConfig.sound.muted = convert:toBool(config.Sound.Muted, GameConfig.sound.muted)
+            APP_CONFIG.sound.master_volume = convert:toPercent(config.Sound.MasterVolume, APP_CONFIG.sound.master_volume)
+            APP_CONFIG.sound.bgm_volume = convert:toPercent(config.Sound.BGMVolume, APP_CONFIG.sound.bgm_volume)
+            APP_CONFIG.sound.sfx_volume = convert:toPercent(config.Sound.SFXVolume, APP_CONFIG.sound.sfx_volume)
+            APP_CONFIG.sound.muted = convert:toBool(config.Sound.Muted, APP_CONFIG.sound.muted)
         end
 
         -- Load Input settings if available
         if config.Input then
             if config.Input.Deadzone then
-                GameConfig.input.deadzone = convert:toNumberClamped(config.Input.Deadzone, 0.05, 0.30, 0.15)
+                APP_CONFIG.input.deadzone = convert:toNumberClamped(config.Input.Deadzone, 0.05, 0.30, 0.15)
             end
             if config.Input.VibrationEnabled ~= nil then
-                GameConfig.input.vibration_enabled = convert:toBool(config.Input.VibrationEnabled)
+                APP_CONFIG.input.vibration_enabled = convert:toBool(config.Input.VibrationEnabled)
             end
             if config.Input.VibrationStrength then
-                GameConfig.input.vibration_strength = convert:toPercent(config.Input.VibrationStrength, 1.0)
+                APP_CONFIG.input.vibration_strength = convert:toPercent(config.Input.VibrationStrength, 1.0)
             end
             if config.Input.MobileVibrationEnabled ~= nil then
-                GameConfig.input.mobile_vibration_enabled = convert:toBool(config.Input.MobileVibrationEnabled)
+                APP_CONFIG.input.mobile_vibration_enabled = convert:toBool(config.Input.MobileVibrationEnabled)
             end
         end
     end
@@ -136,30 +136,30 @@ function startup.loadMobileConfig()
     if success and mobile_config then
         if mobile_config.sound then
             if mobile_config.sound.master_volume ~= nil then
-                GameConfig.sound.master_volume = mobile_config.sound.master_volume
+                APP_CONFIG.sound.master_volume = mobile_config.sound.master_volume
             end
             if mobile_config.sound.bgm_volume ~= nil then
-                GameConfig.sound.bgm_volume = mobile_config.sound.bgm_volume
+                APP_CONFIG.sound.bgm_volume = mobile_config.sound.bgm_volume
             end
             if mobile_config.sound.sfx_volume ~= nil then
-                GameConfig.sound.sfx_volume = mobile_config.sound.sfx_volume
+                APP_CONFIG.sound.sfx_volume = mobile_config.sound.sfx_volume
             end
             if mobile_config.sound.muted ~= nil then
-                GameConfig.sound.muted = mobile_config.sound.muted
+                APP_CONFIG.sound.muted = mobile_config.sound.muted
             end
         end
         if mobile_config.input then
             if mobile_config.input.deadzone ~= nil then
-                GameConfig.input.deadzone = mobile_config.input.deadzone
+                APP_CONFIG.input.deadzone = mobile_config.input.deadzone
             end
             if mobile_config.input.vibration_enabled ~= nil then
-                GameConfig.input.vibration_enabled = mobile_config.input.vibration_enabled
+                APP_CONFIG.input.vibration_enabled = mobile_config.input.vibration_enabled
             end
             if mobile_config.input.vibration_strength ~= nil then
-                GameConfig.input.vibration_strength = mobile_config.input.vibration_strength
+                APP_CONFIG.input.vibration_strength = mobile_config.input.vibration_strength
             end
             if mobile_config.input.mobile_vibration_enabled ~= nil then
-                GameConfig.input.mobile_vibration_enabled = mobile_config.input.mobile_vibration_enabled
+                APP_CONFIG.input.mobile_vibration_enabled = mobile_config.input.mobile_vibration_enabled
             end
         end
     end
@@ -180,6 +180,10 @@ function startup.initialize(is_mobile, modules)
     -- Initialize input system with config
     local input_config = require "game.data.input_config"
     modules.input:init(input_config)
+
+    -- Load HUD configuration
+    local hud_config = require "game.data.hud"
+    APP_CONFIG.hud = hud_config
 
     -- Configure game-specific dependencies (delegated to game/setup.lua)
     local game_setup = require "game.setup"
@@ -203,7 +207,7 @@ function startup.initialize(is_mobile, modules)
     modules.lifecycle.utils = modules.utils
     modules.lifecycle.sound = modules.sound
     modules.lifecycle.effects = modules.effects
-    modules.lifecycle.GameConfig = GameConfig
+    modules.lifecycle.app_config = APP_CONFIG
     modules.lifecycle.is_mobile = is_mobile
 
     -- Initialize coordinate system (must be after display initialization)

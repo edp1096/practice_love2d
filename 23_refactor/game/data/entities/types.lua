@@ -1,6 +1,32 @@
 -- game/data/entity_types.lua
 -- Centralized entity type definitions for all game entities
 -- Engine uses this data via dependency injection (no engine -> game imports)
+--
+-- ========================================
+-- COORDINATE SYSTEM GUIDE
+-- ========================================
+--
+-- Entity positioning uses three offset fields:
+--
+-- 1. collider_offset_x/y
+--    Offset from Tiled object position (top-left) → Collider center
+--    Usually (0, 0) to place collider at Tiled object position
+--
+-- 2. sprite_draw_offset_x/y
+--    Offset from Collider center → Sprite draw position
+--    Usually negative to center large sprite on small collider
+--    Auto-calculated if omitted: -(sprite_size*scale - collider_size)/2
+--
+-- 3. sprite_origin_x/y
+--    Pivot point within sprite image (for rotation)
+--    (0, 0) = top-left corner
+--    (sprite_width/2, sprite_height/2) = center
+--
+-- TIP: Use Hand Marking tool to find correct values:
+--   F1 (debug) → H (hand marking) → PgUp/PgDn (navigate frames) → P (mark position)
+--
+-- For detailed explanation, see: docs/GUIDE.md "Entity Coordinate System"
+-- ========================================
 
 local entity_types = {}
 

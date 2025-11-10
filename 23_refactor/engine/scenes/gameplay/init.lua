@@ -401,4 +401,22 @@ function gameplay:touchmoved(id, x, y, dx, dy, pressure)
     return input_module.touchmoved(self, id, x, y, dx, dy, pressure)
 end
 
+-- Check if minimap should be shown (game config + map override)
+function gameplay:shouldShowMinimap()
+    -- 1. Check game default setting
+    if not APP_CONFIG.hud or not APP_CONFIG.hud.minimap_enabled then
+        return false
+    end
+
+    -- 2. Check map property override (if explicitly set to false, hide minimap)
+    if self.world and self.world.map and self.world.map.properties then
+        if self.world.map.properties.minimap == false then
+            return false
+        end
+    end
+
+    -- 3. Default: show minimap
+    return true
+end
+
 return gameplay

@@ -58,12 +58,12 @@ function input:init(input_config)
         self.settings.mobile_vibration_enabled = input_config.gamepad_settings.mobile_vibration_enabled
     end
 
-    -- Override with GameConfig if available
-    if GameConfig and GameConfig.input then
-        self.settings.deadzone = GameConfig.input.deadzone
-        self.settings.vibration_enabled = GameConfig.input.vibration_enabled
-        self.settings.vibration_strength = GameConfig.input.vibration_strength
-        self.settings.mobile_vibration_enabled = GameConfig.input.mobile_vibration_enabled
+    -- Override with APP_CONFIG if available
+    if APP_CONFIG and APP_CONFIG.input then
+        self.settings.deadzone = APP_CONFIG.input.deadzone
+        self.settings.vibration_enabled = APP_CONFIG.input.vibration_enabled
+        self.settings.vibration_strength = APP_CONFIG.input.vibration_strength
+        self.settings.mobile_vibration_enabled = APP_CONFIG.input.mobile_vibration_enabled
     end
 
     self:detectJoystick()
