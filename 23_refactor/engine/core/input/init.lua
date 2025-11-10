@@ -300,7 +300,22 @@ function input:getPrompt(action)
 
     -- Keyboard prompts
     if mapping.keyboard and #mapping.keyboard > 0 then
-        return mapping.keyboard[1]:upper()
+        local key = mapping.keyboard[1]:lower()
+
+        -- Shorten long key names
+        local key_names = {
+            escape = "ESC",
+            ["return"] = "ENTER",
+            space = "SPACE",
+            lshift = "SHIFT",
+            rshift = "SHIFT",
+            lctrl = "CTRL",
+            rctrl = "CTRL",
+            lalt = "ALT",
+            ralt = "ALT"
+        }
+
+        return key_names[key] or mapping.keyboard[1]:upper()
     end
 
     return "?"

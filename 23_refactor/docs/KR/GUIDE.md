@@ -304,8 +304,8 @@ input_dispatcher.virtual_gamepad = virtual_gamepad
 input_dispatcher.input = input
 ```
 
-**가상 게임패드 (`engine/input/virtual_gamepad.lua`):**
-터치 컨트롤이 있는 모바일 온스크린 게임패드:
+**가상 게임패드 (`engine/core/input/virtual_gamepad/`):**
+터치 컨트롤이 있는 모바일 온스크린 게임패드 (모듈화 구현):
 - **D-pad** (좌하단): 이동 (8방향 입력)
 - **조준 스틱** (중앙 우측): 조준 방향
 - **액션 버튼** (우하단): A, B, X, Y (다이아몬드 레이아웃)

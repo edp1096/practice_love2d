@@ -109,9 +109,13 @@ function SkipButton:draw()
     love.graphics.setLineWidth(2)
     love.graphics.rectangle("line", self.x, self.y, self.width, self.height, 8, 8)
 
-    -- Draw text with shortcut hint (only for physical gamepad)
+    -- Draw text with shortcut hint (only for physical gamepad, not keyboard/virtual gamepad)
     local label_text = self.label
-    if input.joystick then
+    local virtual_gamepad = input.virtual_gamepad
+    local is_virtual_active = virtual_gamepad and virtual_gamepad.enabled
+
+    -- Show button prompt only for physical gamepad (not keyboard or virtual gamepad)
+    if input.joystick and not is_virtual_active then
         local button_prompt = input:getPrompt("menu_back") or "B"
         label_text = string.format("%s [%s]", self.label, button_prompt)
     end

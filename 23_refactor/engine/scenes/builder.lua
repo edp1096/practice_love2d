@@ -129,8 +129,8 @@ function builder:buildMenu(cfg)
       self.flash_color = cfg.flash.color or { 1, 1, 1 }
     end
 
-    -- Play BGM
-    if cfg.bgm then sound:playBGM(cfg.bgm, 1.0, true) end
+    -- Play BGM (rewind=false to avoid restarting same BGM)
+    if cfg.bgm then sound:playBGM(cfg.bgm, 1.0, false) end
   end
 
   -- Select handler

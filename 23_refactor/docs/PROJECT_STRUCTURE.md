@@ -50,13 +50,16 @@ engine/
 │   │
 │   └── input/            - Input system
 │       ├── dispatcher.lua              - Input event dispatcher
-│       ├── virtual_gamepad.lua         - Virtual on-screen gamepad (mobile)
-│       └── sources/
-│           ├── base_input.lua          - Base class
-│           ├── keyboard_input.lua      - Keyboard handling
-│           ├── mouse_input.lua         - Mouse/aim handling
-│           ├── gamepad.lua             - Physical controller
-│           └── virtual_pad.lua         - Virtual gamepad adapter
+│       ├── sources/                    - Query-based input sources
+│       │   ├── base_input.lua          - Base class
+│       │   ├── keyboard_input.lua      - Keyboard handling
+│       │   ├── mouse_input.lua         - Mouse/aim handling
+│       │   ├── gamepad.lua             - Physical controller
+│       │   └── virtual_pad.lua         - Virtual gamepad adapter
+│       └── virtual_gamepad/            - Event-based input (mobile touch)
+│           ├── init.lua                - Main coordinator
+│           ├── renderer.lua            - Drawing functions
+│           └── touch.lua               - Touch event handling
 │
 ├── systems/              - **Engine subsystems (Layer 2)**
 │   ├── world/            - Physics & world system
@@ -81,6 +84,7 @@ engine/
 │   │   └── source.lua    - Individual light source object (LightSource class)
 │   │
 │   └── hud/              - In-game HUD system
+│       ├── init.lua      - HUD module bundle
 │       ├── status.lua    - Health bars, cooldowns, status indicators
 │       └── minimap.lua   - Minimap rendering
 │

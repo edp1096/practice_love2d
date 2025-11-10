@@ -90,7 +90,8 @@ function minimap:new()
         -- Colors
         bg_color = { 0, 0, 0, 0.7 },
         border_color = { 0.3, 0.3, 0.3, 0.9 },
-        player_color = { 1, 1, 0, 1 },
+        player_color = { 0.2, 0.5, 0.2, 1 },  -- Dark green
+        player_outline_color = { 0.15, 0.15, 0.15, 1 },  -- Dark gray (almost black)
         portal_color = { 0.5, 1, 0.5, 0.6 },
 
         -- Canvas for rendering minimap
@@ -359,27 +360,41 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
 
     -- Draw player as arrow at center
     if player and player.x and player.y then
-        love.graphics.setColor(self.player_color)
         local px = x + center_x
         local py = y + center_y
 
-        -- Arrow shape (1.3x larger for better visibility)
-        local arrow_size = 5 * 1.3
+        -- Arrow shape (shorter length, wider width)
+        local arrow_length = 5 * 1.3 * 0.8  -- 4/5 of original length (80%)
+        local arrow_width = 5 * 1.3 * 0.6 * 1.3  -- 1.3x wider
         local angle = player.facing_angle or 0
 
         -- Arrow vertices (pointing right by default)
         local points = {
-            arrow_size, 0,      -- tip
-            -arrow_size, -arrow_size * 0.6,   -- top back
-            -arrow_size * 0.5, 0,  -- middle back
-            -arrow_size, arrow_size * 0.6    -- bottom back
+            arrow_length, 0,      -- tip
+            -arrow_length, -arrow_width,   -- top back
+            -arrow_length * 0.5, 0,  -- middle back
+            -arrow_length, arrow_width    -- bottom back
         }
 
-        -- Transform and draw arrow
+        -- Transform and draw arrow with metallic gradient
         love.graphics.push()
         love.graphics.translate(px, py)
         love.graphics.rotate(angle)
-        love.graphics.polygon("fill", points)
+
+        -- Draw metallic gradient (vertical: bright on top, dark on bottom)
+        local mesh = love.graphics.newMesh({
+            {arrow_length, 0, 0, 0, 0.3, 0.7, 0.3, 1},  -- tip (mid-tone)
+            {-arrow_length, -arrow_width, 0, 0, 0.5, 0.9, 0.5, 1},  -- top back (bright highlight)
+            {-arrow_length * 0.5, 0, 0, 0, 0.3, 0.6, 0.3, 1},  -- middle (mid-tone)
+            {-arrow_length, arrow_width, 0, 0, 0.08, 0.25, 0.08, 1},  -- bottom back (dark shadow)
+        }, "fan", "static")
+        love.graphics.draw(mesh, 0, 0)
+
+        -- Draw thin outline
+        love.graphics.setColor(self.player_outline_color)
+        love.graphics.setLineWidth(1)
+        love.graphics.polygon("line", points)
+
         love.graphics.pop()
     end
 

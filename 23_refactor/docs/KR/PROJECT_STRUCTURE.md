@@ -44,9 +44,12 @@ engine/
 │   ├── constants.lua     - 엔진 상수
 │   ├── display/          - 가상 화면 시스템
 │   └── input/            - 입력 시스템
-│       ├── dispatcher.lua
-│       ├── virtual_gamepad.lua
-│       └── sources/
+│       ├── dispatcher.lua              - 입력 이벤트 디스패처
+│       ├── sources/                    - 쿼리 기반 입력 소스 (키보드, 마우스, 게임패드)
+│       └── virtual_gamepad/            - 이벤트 기반 입력 (모바일 터치)
+│           ├── init.lua                - 메인 코디네이터
+│           ├── renderer.lua            - 렌더링 함수
+│           └── touch.lua               - 터치 이벤트 핸들링
 │
 ├── systems/              - **엔진 서브시스템 (Layer 2)**
 │   ├── world/            - 물리 & 월드 시스템

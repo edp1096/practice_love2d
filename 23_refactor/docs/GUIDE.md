@@ -315,8 +315,8 @@ end
 - Coordinates between virtual gamepad, scene input, and mouse fallback
 - Handles all LÖVE input callbacks (keyboard, mouse, touch, gamepad)
 
-**Virtual Gamepad (`engine/core/input/virtual_gamepad.lua`):**
-Mobile on-screen gamepad with touch controls:
+**Virtual Gamepad (`engine/core/input/virtual_gamepad/`):**
+Mobile on-screen gamepad with touch controls (modular implementation):
 - **D-pad** (bottom-left): Movement (8-way directional input)
 - **Aim stick** (center-right): Aiming direction
 - **Action buttons** (bottom-right): A, B, X, Y (diamond layout)
