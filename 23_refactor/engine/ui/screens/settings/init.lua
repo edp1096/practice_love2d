@@ -124,6 +124,7 @@ end
 function settings:update(dt)
     local vmx, vmy = display:GetVirtualMousePosition()
 
+    local previous_mouse_over = self.mouse_over
     self.mouse_over = 0
     love.graphics.setFont(self.labelFont)
 
@@ -137,6 +138,12 @@ function settings:update(dt)
             self.mouse_over = i
             break
         end
+    end
+
+    -- Update selection when mouse hovers over a different option
+    if self.mouse_over ~= previous_mouse_over and self.mouse_over > 0 then
+        self.selected = self.mouse_over
+        require("engine.core.sound"):playSFX("menu", "navigate")
     end
 
     -- Check gamepad axis input for menu navigation (left stick)

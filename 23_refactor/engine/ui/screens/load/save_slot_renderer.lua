@@ -68,7 +68,7 @@ end
 -- Render all slots
 function slot_renderer.drawAllSlots(load_scene)
     for i, slot in ipairs(load_scene.slots) do
-        local is_selected = (i == load_scene.selected or i == load_scene.mouse_over)
+        local is_selected = (i == load_scene.selected)
         slot_renderer.drawSlot(load_scene, slot, i, is_selected)
     end
 end
@@ -104,7 +104,7 @@ function slot_renderer.drawConfirmButtons(load_scene)
 
     -- No button (left)
     local no_x = load_scene.virtual_width / 2 - button_width - button_spacing / 2
-    local is_no_selected = (load_scene.confirm_selected == 1 or load_scene.confirm_mouse_over == 1)
+    local is_no_selected = (load_scene.confirm_selected == 1)
 
     local no_state = is_no_selected and "selected" or "normal"
     shapes:drawButton(no_x, button_y, button_width, button_height, no_state, 0)
@@ -119,7 +119,7 @@ function slot_renderer.drawConfirmButtons(load_scene)
 
     -- Yes button (right)
     local yes_x = load_scene.virtual_width / 2 + button_spacing / 2
-    local is_yes_selected = (load_scene.confirm_selected == 2 or load_scene.confirm_mouse_over == 2)
+    local is_yes_selected = (load_scene.confirm_selected == 2)
 
     -- Custom red color for Yes button
     if is_yes_selected then

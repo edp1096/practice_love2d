@@ -34,7 +34,7 @@ function render:draw(state)
     -- Draw settings options
     for i, option in ipairs(state.options) do
         local y = state.layout.options_start_y + (i - 1) * state.layout.option_spacing
-        local is_selected = (i == state.selected or i == state.mouse_over)
+        local is_selected = (i == state.selected)
 
         -- Draw label
         text_ui:drawOptionAligned(option.name, 0, y, state.layout.label_x, "right", is_selected, state.labelFont)

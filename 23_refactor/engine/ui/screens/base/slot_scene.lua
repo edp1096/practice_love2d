@@ -82,6 +82,7 @@ end
 function slot_scene:update(dt)
     local vmx, vmy = display:GetVirtualMousePosition()
 
+    local previous_mouse_over = self.mouse_over
     self.mouse_over = 0
 
     for i, slot in ipairs(self.slots) do
@@ -93,6 +94,11 @@ function slot_scene:update(dt)
             self.mouse_over = i
             break
         end
+    end
+
+    -- Update selection when mouse hovers over a different slot
+    if self.mouse_over ~= previous_mouse_over and self.mouse_over > 0 then
+        self.selected = self.mouse_over
     end
 end
 
@@ -147,7 +153,7 @@ function slot_scene:draw()
     -- Draw slots
     for i, slot in ipairs(self.slots) do
         local y = self.layout.slots_start_y + (i - 1) * self.layout.slot_spacing
-        local is_selected = (i == self.selected or i == self.mouse_over)
+        local is_selected = (i == self.selected)
         self:drawSlot(slot, i, y, is_selected)
     end
 

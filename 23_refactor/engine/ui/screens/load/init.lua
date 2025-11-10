@@ -60,8 +60,9 @@ end
 
 function load:update(dt)
     if self.confirm_delete then
-        -- Check Yes/No button hover
+        -- Check Yes/No button hover and update selection automatically
         local vmx, vmy = display:GetVirtualMousePosition()
+        local previous_mouse_over = self.confirm_mouse_over
         self.confirm_mouse_over = 0
 
         local button_y = self.virtual_height / 2 + 60
@@ -83,11 +84,17 @@ function load:update(dt)
             self.confirm_mouse_over = 2
         end
 
+        -- Update selection when mouse hovers over a different button
+        if self.confirm_mouse_over ~= previous_mouse_over and self.confirm_mouse_over > 0 then
+            self.confirm_selected = self.confirm_mouse_over
+        end
+
         return
     end
 
     local vmx, vmy = display:GetVirtualMousePosition()
 
+    local previous_mouse_over = self.mouse_over
     self.mouse_over = 0
     self.mouse_over_delete = 0
 
@@ -114,6 +121,11 @@ function load:update(dt)
                 self.mouse_over = i
             end
         end
+    end
+
+    -- Update selection when mouse hovers over a different slot
+    if self.mouse_over ~= previous_mouse_over and self.mouse_over > 0 then
+        self.selected = self.mouse_over
     end
 end
 

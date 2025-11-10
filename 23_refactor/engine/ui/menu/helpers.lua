@@ -46,7 +46,7 @@ end
 function helpers.drawOptions(options, selected, mouse_over, font, layout, width)
     for i, option in ipairs(options) do
         local y = layout.options_start_y + (i - 1) * layout.option_spacing
-        local is_selected = (i == selected or i == mouse_over)
+        local is_selected = (i == selected)
         local display_text = is_selected and ("> " .. option) or option
 
         text_ui:drawOptionCentered(display_text, y, width, is_selected, font)
@@ -189,7 +189,7 @@ function helpers.drawConfirmDialog(title, subtitle, button_labels, selected, mou
     for i = 1, #button_labels do
         local button_x = width / 2 - (#button_labels * button_width + (#button_labels - 1) * button_spacing) / 2 +
             (i - 1) * (button_width + button_spacing)
-        local is_selected = (i == selected or i == mouse_over)
+        local is_selected = (i == selected)
 
         -- Button background
         if i == 2 then -- Yes button (dangerous action)

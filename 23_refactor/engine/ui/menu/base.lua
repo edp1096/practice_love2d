@@ -72,12 +72,14 @@ function MenuSceneBase:create(config)
             self.overlay_alpha = math.min(self.overlay_alpha + dt * 2, self.target_alpha)
         end
 
-        -- Mouse hover with sound feedback
+        -- Mouse hover with sound feedback and automatic selection update
         self.previous_mouse_over = self.mouse_over
         self.mouse_over = ui_helpers.updateMouseOver(self.options, self.layout, self.virtual_width, self.fonts.option)
 
+        -- Update selected when mouse hovers over a different option
         if self.mouse_over ~= self.previous_mouse_over and self.mouse_over > 0 then
             sound:playSFX("menu", "navigate")
+            self.selected = self.mouse_over  -- Unify mouse hover with keyboard selection
         end
 
         -- Gamepad navigation

@@ -80,7 +80,7 @@ function saveslot:draw()
     -- Draw slots
     for i, slot in ipairs(self.slots) do
         local y = self.layout.slots_start_y + (i - 1) * self.layout.slot_spacing
-        local is_selected = (i == self.selected or i == self.mouse_over)
+        local is_selected = (i == self.selected)
         self:drawSlot(slot, i, y, is_selected)
     end
 

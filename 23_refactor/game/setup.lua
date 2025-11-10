@@ -25,6 +25,8 @@ function setup.configure()
     local gameplay_scene = require "engine.scenes.gameplay"
     local cutscene_scene = require "engine.scenes.cutscene"
     local builder = require "engine.scenes.builder"
+    local dialogue = require "engine.ui.dialogue"
+    local prompt = require "engine.ui.prompt"
 
     -- Inject entity type registries
     enemy_class.type_registry = entity_types.enemies
@@ -52,6 +54,9 @@ function setup.configure()
 
     -- Inject game scene path prefix
     builder.game_scene_prefix = "game.scenes."
+
+    -- Inject dialogue reference into prompt (so prompts hide during dialogue)
+    prompt.dialogue = dialogue
 end
 
 -- Return scene loader function for engine's scene_control
