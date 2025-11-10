@@ -192,6 +192,8 @@ function cutscene:draw()
 end
 
 function cutscene:keypressed(key)
+    local input = require "engine.core.input"
+
     -- Handle debug keys first
     debug:handleInput(key, {})
 
@@ -200,19 +202,23 @@ function cutscene:keypressed(key)
         return
     end
 
-    if key == "return" or key == "space" or key == "z" then
+    if input:wasPressed("menu_select", "keyboard", key) then
         dialogue:handleInput("keyboard")
     end
 
-    -- Start charging skip with ESC key
-    if key == "escape" and dialogue.skip_button then
-        dialogue.skip_button.is_pressed = true
+    -- Start charging skip with menu_back
+    if input:wasPressed("menu_back", "keyboard", key) then
+        if dialogue.skip_button then
+            dialogue.skip_button.is_pressed = true
+        end
     end
 end
 
 function cutscene:keyreleased(key)
+    local input = require "engine.core.input"
+
     -- Stop charging skip
-    if key == "escape" and dialogue.skip_button then
+    if input:wasPressed("menu_back", "keyboard", key) and dialogue.skip_button then
         dialogue.skip_button.is_pressed = false
         -- Force charge decay when key is released
         if not dialogue.skip_button:isFullyCharged() then
@@ -222,19 +228,23 @@ function cutscene:keyreleased(key)
 end
 
 function cutscene:gamepadpressed(joystick, button)
-    if button == "a" then
+    local input = require "engine.core.input"
+
+    if input:wasPressed("menu_select", "gamepad", button) then
         dialogue:handleInput("keyboard")
     end
 
-    -- Start charging skip with B or start button
-    if button == "b" or button == "start" then
+    -- Start charging skip with menu_back or pause button
+    if input:wasPressed("menu_back", "gamepad", button) or input:wasPressed("pause", "gamepad", button) then
         self.skip_button_held = true
     end
 end
 
 function cutscene:gamepadreleased(joystick, button)
+    local input = require "engine.core.input"
+
     -- Stop charging skip
-    if button == "b" or button == "start" then
+    if input:wasPressed("menu_back", "gamepad", button) or input:wasPressed("pause", "gamepad", button) then
         self.skip_button_held = false
         if dialogue.skip_button then
             dialogue.skip_button.is_pressed = false

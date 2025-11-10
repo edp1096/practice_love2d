@@ -205,15 +205,15 @@ function slot_scene:keypressed(key)
         return
     end
 
-    if key == "up" or key == "w" then
+    if input:wasPressed("menu_up", "keyboard", key) then
         self.selected = self.selected - 1
         if self.selected < 1 then self.selected = #self.slots end
-    elseif key == "down" or key == "s" then
+    elseif input:wasPressed("menu_down", "keyboard", key) then
         self.selected = self.selected + 1
         if self.selected > #self.slots then self.selected = 1 end
-    elseif key == "return" or key == "space" then
+    elseif input:wasPressed("menu_select", "keyboard", key) then
         self:selectSlot(self.selected)
-    elseif key == "escape" then
+    elseif input:wasPressed("menu_back", "keyboard", key) then
         self:onBack()
     end
 end

@@ -52,38 +52,39 @@ function input_handler.keypressed(load_scene, key)
 
     if load_scene.confirm_delete then
         -- Delete confirmation dialog
-        if key == "left" or key == "a" then
+        if input:wasPressed("menu_left", "keyboard", key) then
             load_scene.confirm_selected = 1 -- No
-        elseif key == "right" or key == "d" then
+        elseif input:wasPressed("menu_right", "keyboard", key) then
             load_scene.confirm_selected = 2 -- Yes
-        elseif key == "return" or key == "space" then
+        elseif input:wasPressed("menu_select", "keyboard", key) then
             if load_scene.confirm_selected == 2 then
                 performDelete(load_scene)
             else
                 cancelDelete(load_scene)
             end
-        elseif key == "escape" then
+        elseif input:wasPressed("menu_back", "keyboard", key) then
             cancelDelete(load_scene)
         end
         return
     end
 
     -- Normal navigation
-    if key == "up" or key == "w" then
+    if input:wasPressed("menu_up", "keyboard", key) then
         load_scene.selected = load_scene.selected - 1
         if load_scene.selected < 1 then
             load_scene.selected = #load_scene.slots
         end
-    elseif key == "down" or key == "s" then
+    elseif input:wasPressed("menu_down", "keyboard", key) then
         load_scene.selected = load_scene.selected + 1
         if load_scene.selected > #load_scene.slots then
             load_scene.selected = 1
         end
-    elseif key == "return" or key == "space" then
+    elseif input:wasPressed("menu_select", "keyboard", key) then
         input_handler.selectSlot(load_scene, load_scene.selected)
-    elseif key == "escape" then
+    elseif input:wasPressed("menu_back", "keyboard", key) then
         scene_control.switch("menu")
     elseif key == "delete" then
+        -- Keep delete key hardcoded as it's specific to this screen
         local slot = load_scene.slots[load_scene.selected]
         if slot and slot.exists and slot.slot ~= "back" then
             load_scene.confirm_delete = true
@@ -128,23 +129,13 @@ function input_handler.gamepadpressed(load_scene, joystick, button)
         input_handler.selectSlot(load_scene, load_scene.selected)
     elseif input:wasPressed("menu_back", "gamepad", button) then
         scene_control.switch("menu")
-    elseif input:wasPressed("quicksave_1", "gamepad", button) then
-        -- L1 - delete slot 1 (if exists)
-        local slot = load_scene.slots[1]
+    elseif input:wasPressed("interact", "gamepad", button) then
+        -- Y button - delete selected slot (if exists)
+        local slot = load_scene.slots[load_scene.selected]
         if slot and slot.exists and slot.slot ~= "back" then
-            load_scene.selected = 1
             load_scene.confirm_delete = true
             load_scene.delete_slot = slot.slot
-            load_scene.confirm_selected = 1
-        end
-    elseif input:wasPressed("quicksave_2", "gamepad", button) then
-        -- R1 - delete slot 2 (if exists)
-        local slot = load_scene.slots[2]
-        if slot and slot.exists and slot.slot ~= "back" then
-            load_scene.selected = 2
-            load_scene.confirm_delete = true
-            load_scene.delete_slot = slot.slot
-            load_scene.confirm_selected = 1
+            load_scene.confirm_selected = 1 -- Default to No
         end
     end
 end

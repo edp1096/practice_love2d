@@ -38,8 +38,8 @@ function input_handler.keypressed(self, key)
         if self.player.game_mode == "platformer" then
             -- Platformer: space/w/up = jump (B button on gamepad)
             self.player:jump()
-        elseif key == "space" then
-            -- Topdown: only space = dodge (W/Up is for movement)
+        else
+            -- Topdown: jump action becomes dodge (W/Up is for movement)
             self.player:startDodge()
         end
     elseif input:wasPressed("use_item", "keyboard", key) then
@@ -117,11 +117,11 @@ end
 function input_handler.gamepadpressed(self, joystick, button)
     -- Dialogue takes priority
     if dialogue:isOpen() then
-        if button == "a" or button == "y" then
+        if input:wasPressed("menu_select", "gamepad", button) or input:wasPressed("interact", "gamepad", button) then
             dialogue:onAction()
         end
-        -- Start charging skip with B button
-        if button == "b" then
+        -- Start charging skip with menu_back button
+        if input:wasPressed("menu_back", "gamepad", button) then
             self.skip_button_held = true
         end
         return
@@ -227,7 +227,7 @@ end
 -- Gamepad release handler
 function input_handler.gamepadreleased(self, joystick, button)
     -- Handle skip button release (regardless of dialogue state)
-    if button == "b" then
+    if input:wasPressed("menu_back", "gamepad", button) then
         self.skip_button_held = false
         if dialogue.skip_button then
             dialogue.skip_button.is_pressed = false

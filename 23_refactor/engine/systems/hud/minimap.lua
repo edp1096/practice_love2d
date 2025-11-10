@@ -363,8 +363,8 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
         local px = x + center_x
         local py = y + center_y
 
-        -- Arrow shape
-        local arrow_size = 5
+        -- Arrow shape (1.3x larger for better visibility)
+        local arrow_size = 5 * 1.3
         local angle = player.facing_angle or 0
 
         -- Arrow vertices (pointing right by default)

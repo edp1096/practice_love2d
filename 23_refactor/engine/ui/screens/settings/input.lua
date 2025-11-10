@@ -19,7 +19,7 @@ function input_handler:keypressed(state, key)
         return
     end
 
-    if key == "escape" then
+    if input:wasPressed("menu_back", "keyboard", key) then
         sound:playSFX("menu", "back")
         scene_control.pop()
     elseif input:wasPressed("menu_up", "keyboard", key) then

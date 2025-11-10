@@ -117,7 +117,7 @@ function saveslot:drawSlot(slot, i, y, is_selected)
     end
 end
 
--- Override hints to show quicksave shortcuts
+-- Override hints
 function saveslot:drawHints()
     love.graphics.setFont(self.hintFont)
     love.graphics.setColor(0.5, 0.5, 0.5, 1)
@@ -126,20 +126,16 @@ function saveslot:drawHints()
         love.graphics.printf("D-Pad: Navigate | " ..
             input:getPrompt("menu_select") .. ": Save | " ..
             input:getPrompt("menu_back") .. ": Cancel",
-            0, self.layout.hint_y - 40, self.virtual_width, "center")
-        love.graphics.printf("Keyboard: Arrow/WASD | Enter: Save | ESC/F: Cancel",
             0, self.layout.hint_y - 20, self.virtual_width, "center")
-        love.graphics.printf("F1/F2/F3: Quick Save to Slot | Mouse: Hover & Click",
+        love.graphics.printf("Keyboard: Arrow/WASD | Enter: Save | ESC: Cancel | Mouse: Hover & Click",
             0, self.layout.hint_y, self.virtual_width, "center")
     else
-        love.graphics.printf("Arrow Keys / WASD: Navigate | Enter: Save | ESC/F: Cancel",
-            0, self.layout.hint_y - 20, self.virtual_width, "center")
-        love.graphics.printf("F1/F2/F3: Quick Save to Slot | Mouse: Hover & Click",
+        love.graphics.printf("Arrow Keys / WASD: Navigate | Enter: Save | ESC: Cancel | Mouse: Hover & Click",
             0, self.layout.hint_y, self.virtual_width, "center")
     end
 end
 
--- Override keyboard input for quicksave and ESC/F cancel
+-- Override keyboard input
 function saveslot:keypressed(key)
     local debug = require "engine.core.debug"
     debug:handleInput(key, {})
@@ -148,26 +144,20 @@ function saveslot:keypressed(key)
         return
     end
 
-    if key == "up" or key == "w" then
+    if input:wasPressed("menu_up", "keyboard", key) then
         self.selected = self.selected - 1
         if self.selected < 1 then self.selected = #self.slots end
-    elseif key == "down" or key == "s" then
+    elseif input:wasPressed("menu_down", "keyboard", key) then
         self.selected = self.selected + 1
         if self.selected > #self.slots then self.selected = 1 end
-    elseif key == "return" or key == "space" then
+    elseif input:wasPressed("menu_select", "keyboard", key) then
         self:selectSlot(self.selected)
-    elseif key == "escape" or key == "f" then
+    elseif input:wasPressed("menu_back", "keyboard", key) then
         scene_control.pop()
-    elseif key == "f1" then
-        self:selectSlot(1)
-    elseif key == "f2" then
-        self:selectSlot(2)
-    elseif key == "f3" then
-        self:selectSlot(3)
     end
 end
 
--- Override gamepad input for quicksave
+-- Override gamepad input
 function saveslot:gamepadpressed(joystick, button)
     if input:wasPressed("menu_up", "gamepad", button) then
         self.selected = self.selected - 1
@@ -179,10 +169,6 @@ function saveslot:gamepadpressed(joystick, button)
         self:selectSlot(self.selected)
     elseif input:wasPressed("menu_back", "gamepad", button) then
         scene_control.pop()
-    elseif input:wasPressed("quicksave_1", "gamepad", button) then
-        self:selectSlot(1)
-    elseif input:wasPressed("quicksave_2", "gamepad", button) then
-        self:selectSlot(2)
     end
 end
 

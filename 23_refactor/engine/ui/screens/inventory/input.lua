@@ -26,17 +26,18 @@ function input_handler.keypressed(self, key)
         return
     end
 
-    if key == "i" or key == "escape" or input:wasPressed("pause", "keyboard", key) then
-        -- I key or ESC to close (toggle behavior)
+    if input:wasPressed("open_inventory", "keyboard", key) or input:wasPressed("menu_back", "keyboard", key) or input:wasPressed("pause", "keyboard", key) then
+        -- I key, menu_back, or pause to close (toggle behavior)
         local scene_control = require "engine.core.scene_control"
         scene_control.pop()
-    elseif key == "left" or key == "a" then
+    elseif input:wasPressed("menu_left", "keyboard", key) then
         input_handler.moveSelection(self, -1)
-    elseif key == "right" or key == "d" then
+    elseif input:wasPressed("menu_right", "keyboard", key) then
         input_handler.moveSelection(self, 1)
-    elseif key == "return" or key == "space" or key == "e" then
+    elseif input:wasPressed("menu_select", "keyboard", key) then
         input_handler.useSelectedItem(self)
-    elseif key == "q" then
+    elseif input:wasPressed("use_item", "keyboard", key) then
+        -- Use item (Q key by default, configurable via input_config)
         input_handler.useSelectedItem(self)
     elseif tonumber(key) then
         local slot_num = tonumber(key)
@@ -50,22 +51,22 @@ end
 
 -- Handle gamepad input
 function input_handler.gamepadpressed(self, joystick, button)
-    if button == "b" or button == "start" then
+    if input:wasPressed("menu_back", "gamepad", button) or input:wasPressed("pause", "gamepad", button) then
         -- B button or Start to close inventory
         local scene_control = require "engine.core.scene_control"
         scene_control.pop()
-    elseif button == "righttrigger" then
+    elseif input:wasPressed("open_inventory", "gamepad", button) then
         -- R2 to close inventory (toggle behavior)
         local scene_control = require "engine.core.scene_control"
         scene_control.pop()
-    elseif button == "dpleft" then
+    elseif input:wasPressed("menu_left", "gamepad", button) then
         input_handler.moveSelection(self, -1)
-    elseif button == "dpright" then
+    elseif input:wasPressed("menu_right", "gamepad", button) then
         input_handler.moveSelection(self, 1)
-    elseif button == "a" or button == "x" then
+    elseif input:wasPressed("menu_select", "gamepad", button) then
         input_handler.useSelectedItem(self)
-    elseif button == "leftshoulder" then
-        -- L1 to use item
+    elseif input:wasPressed("use_item", "gamepad", button) then
+        -- L1 to use item (configurable via input_config)
         input_handler.useSelectedItem(self)
     end
 end

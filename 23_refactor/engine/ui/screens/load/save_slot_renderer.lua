@@ -174,12 +174,12 @@ function slot_renderer.drawInputHints(load_scene)
 
     local input = require "engine.core.input"
     if input:hasGamepad() then
-        love.graphics.printf("D-Pad: Navigate | " .. input:getPrompt("menu_select") .. ": Load | " .. input:getPrompt("menu_back") .. ": Back | " .. input:getPrompt("quicksave_1") .. input:getPrompt("quicksave_2") .. ": Quick Delete",
+        love.graphics.printf("D-Pad: Navigate | " .. input:getPrompt("menu_select") .. ": Load | " .. input:getPrompt("interact") .. ": Delete | " .. input:getPrompt("menu_back") .. ": Back",
             0, load_scene.layout.hint_y - 20, load_scene.virtual_width, "center")
-        love.graphics.printf("Keyboard: Arrow Keys / WASD | Enter: Load | ESC: Back | Delete: Delete | Mouse: Hover & Click [X]",
+        love.graphics.printf("Keyboard: Arrow/WASD | Enter: Load | Delete: Delete | ESC: Back | Mouse: Hover & Click [X]",
             0, load_scene.layout.hint_y, load_scene.virtual_width, "center")
     else
-        love.graphics.printf("Arrow Keys / WASD: Navigate | Enter: Select | ESC: Back | Delete: Delete Save",
+        love.graphics.printf("Arrow Keys / WASD: Navigate | Enter: Select | Delete: Delete | ESC: Back",
             0, load_scene.layout.hint_y - 20, load_scene.virtual_width, "center")
         love.graphics.printf("Mouse: Hover and Click | Click [X] button to delete",
             0, load_scene.layout.hint_y, load_scene.virtual_width, "center")

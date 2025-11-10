@@ -79,10 +79,8 @@ function helpers.drawControlHints(font, layout, width, custom_text)
     local hint_text
     if custom_text then
         hint_text = custom_text
-    elseif input:hasGamepad() then
-        hint_text = "D-Pad: Navigate | " .. input:getPrompt("menu_select") .. ": Select | " ..
-            input:getPrompt("menu_back") .. ": Back"
     else
+        -- Always show version instead of control hints
         hint_text = "v" .. (GameConfig.version or "0.0.1")
     end
 
@@ -104,7 +102,7 @@ function helpers.handleKeyboardNav(key, current_selection, option_count)
     elseif input:wasPressed("menu_select", "keyboard", key) then
         sound:playSFX("menu", "select")
         return { action = "select" }
-    elseif key == "escape" then
+    elseif input:wasPressed("menu_back", "keyboard", key) then
         return { action = "back" }
     end
 
