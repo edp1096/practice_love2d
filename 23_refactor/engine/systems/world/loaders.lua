@@ -54,8 +54,71 @@ local shapeHandlers = {
     end
 }
 
+function loaders.loadTreeTiles(self)
+    if not self.map.layers["Trees"] then return end
+
+    -- Initialize drawable tiles array for Y-sorting
+    if not self.drawable_tiles then
+        self.drawable_tiles = {}
+    end
+
+    local layer = self.map.layers["Trees"]
+    local tile_width = self.map.tilewidth
+    local tile_height = self.map.tileheight
+
+    -- Iterate through all tiles in the layer
+    for y = 1, layer.height do
+        for x = 1, layer.width do
+            local tile_data = layer.data[y] and layer.data[y][x]
+            if tile_data and tile_data.gid and tile_data.gid > 0 then
+                -- Get tile info from map's tiles table
+                local tile_info = self.map.tiles[tile_data.gid]
+                if not tile_info then
+                    goto continue
+                end
+
+                -- Get tileset
+                local tileset = self.map.tilesets[tile_info.tileset]
+                if not tileset or not tileset.image then
+                    goto continue
+                end
+
+                -- Calculate world position
+                local world_x = (x - 1) * tile_width
+                local world_y = (y - 1) * tile_height
+
+                -- Add to drawable tiles for Y-sorting
+                table.insert(self.drawable_tiles, {
+                    x = world_x,
+                    y = world_y + tile_height,  -- Bottom Y for sorting
+                    tile_info = tile_info,
+                    tileset = tileset,
+                    world_x = world_x,
+                    world_y = world_y,
+                    draw = function(self_tile)
+                        -- Draw the tile using tileset image and quad
+                        love.graphics.draw(
+                            self_tile.tileset.image,
+                            self_tile.tile_info.quad,
+                            self_tile.world_x,
+                            self_tile.world_y
+                        )
+                    end
+                })
+
+                ::continue::
+            end
+        end
+    end
+end
+
 function loaders.loadWalls(self)
     if not self.map.layers["Walls"] then return end
+
+    -- Initialize drawable walls array for Y-sorting
+    if not self.drawable_walls then
+        self.drawable_walls = {}
+    end
 
     for _, obj in ipairs(self.map.layers["Walls"].objects) do
         -- Get shape handler
@@ -65,7 +128,7 @@ function loaders.loadWalls(self)
             goto continue
         end
 
-        -- Create collider using handler
+        -- Create main wall collider (combat, platformer physics)
         local success, wall = handler(self.physicsWorld, obj)
 
         if success and wall then
@@ -73,6 +136,36 @@ function loaders.loadWalls(self)
             wall:setCollisionClass(constants.COLLISION_CLASSES.WALL)
             wall:setFriction(0.0)  -- No friction for smooth platformer movement
             table.insert(self.walls, wall)
+
+            -- Topdown mode: Create bottom collider for wall surface + drawable for Y-sorting
+            if self.game_mode == "topdown" and obj.shape == "rectangle" then
+                local bottom_height = math.max(8, obj.height * 0.15)  -- Bottom 15%, min 8px
+                local bottom_collider = self.physicsWorld:newRectangleCollider(
+                    obj.x,
+                    obj.y + obj.height - bottom_height,  -- Position at bottom
+                    obj.width,
+                    bottom_height
+                )
+                bottom_collider:setType("static")
+                bottom_collider:setCollisionClass(constants.COLLISION_CLASSES.WALL_MOVEMENT)
+                bottom_collider:setFriction(0.0)
+
+                -- Store reference for cleanup
+                table.insert(self.walls, bottom_collider)
+
+                -- Add drawable wall data for Y-sorting (use bottom Y position)
+                table.insert(self.drawable_walls, {
+                    x = obj.x,
+                    y = obj.y + obj.height,  -- Bottom Y position for sorting
+                    width = obj.width,
+                    height = obj.height,
+                    full_y = obj.y,  -- Top Y position for drawing
+                    draw = function(self)
+                        -- Draw nothing (graphics are in tile layer)
+                        -- This is just for Y-sorting
+                    end
+                })
+            end
         end
 
         ::continue::

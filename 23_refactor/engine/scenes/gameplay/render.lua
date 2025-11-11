@@ -31,7 +31,9 @@ function render.draw(self)
         self.player:drawDebug()
     end
 
-    self.world:drawLayer("Trees", self.cam)
+    -- TODO: Trees layer disabled for Y-sorting testing
+    -- Walls in Trees layer need to be converted to Image Objects for proper Y-sorting
+    -- self.world:drawLayer("Trees", self.cam)
 
     -- Draw healing points
     self.world:drawHealingPoints()

@@ -50,7 +50,9 @@ function world:new(map_path, entity_classes)
 
     instance.physicsWorld:addCollisionClass("Player")
     instance.physicsWorld:addCollisionClass("PlayerDodging")
+    instance.physicsWorld:addCollisionClass("PlayerMovement")  -- Topdown bottom collider
     instance.physicsWorld:addCollisionClass("Wall")
+    instance.physicsWorld:addCollisionClass("WallMovement")    -- Topdown bottom surface
     instance.physicsWorld:addCollisionClass("Portals")
     instance.physicsWorld:addCollisionClass("Enemy")
     instance.physicsWorld:addCollisionClass("Item")
@@ -59,10 +61,21 @@ function world:new(map_path, entity_classes)
 
     instance.physicsWorld.collision_classes.PlayerDodging.ignores = { "Enemy" }
 
+    -- PlayerMovement collides with Wall and WallMovement (for topdown collision)
+    instance.physicsWorld.collision_classes.PlayerMovement.ignores = { "Player", "PlayerDodging", "Enemy", "Portals", "Item", "DeathZone", "DamageZone" }
+
+    -- WallMovement only collides with PlayerMovement (not with combat or other systems)
+    instance.physicsWorld.collision_classes.WallMovement.ignores = { "Player", "PlayerDodging", "Enemy", "Wall", "Portals", "Item", "DeathZone", "DamageZone" }
+
     instance.physicsWorld:collisionClassesSet()
 
     instance.walls = {}
     loaders.loadWalls(instance)
+
+    -- Load Trees layer tiles for Y-sorting (topdown mode only)
+    if instance.game_mode == "topdown" then
+        loaders.loadTreeTiles(instance)
+    end
 
     loaders.loadTransitions(instance)
 

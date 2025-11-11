@@ -8,6 +8,7 @@ local entities = {}
 
 function entities.addEntity(self, entity)
     if not entity.collider then
+        -- Main collider (combat, platformer physics)
         entity.collider = self.physicsWorld:newBSGRectangleCollider(
             entity.x, entity.y,
             entity.collider_width, entity.collider_height,
@@ -18,6 +19,24 @@ function entities.addEntity(self, entity)
 
         -- Reduce friction for better platformer feel
         entity.collider:setFriction(0.0)  -- No friction to prevent wall sliding issues
+
+        -- Topdown mode: Add movement collider (bottom only)
+        if entity.game_mode == "topdown" then
+            local bottom_height = entity.collider_height * 0.25  -- Bottom 25%
+            local bottom_y_offset = entity.collider_height * 0.375  -- Position at 75% down
+
+            entity.movement_collider = self.physicsWorld:newBSGRectangleCollider(
+                entity.x,
+                entity.y + bottom_y_offset,
+                entity.collider_width,
+                bottom_height,
+                5  -- Smaller corner radius
+            )
+            entity.movement_collider:setFixedRotation(true)
+            entity.movement_collider:setCollisionClass(constants.COLLISION_CLASSES.PLAYER_MOVEMENT)
+            entity.movement_collider:setFriction(0.0)
+            entity.movement_collider:setObject(entity)  -- Link back to player
+        end
 
         -- Platformer grounded detection using PreSolve (called every frame during contact)
         entity.collider:setPreSolve(function(collider_1, collider_2, contact)
@@ -104,8 +123,13 @@ function entities.moveEntity(self, entity, vx, vy, dt)
             entity.collider:setLinearVelocity(vx, current_vy)
         end
     else
-        -- Topdown mode: set both velocities
-        entity.collider:setLinearVelocity(vx, vy)
+        -- Topdown mode: use movement_collider for wall collision
+        if entity.movement_collider then
+            entity.movement_collider:setLinearVelocity(vx, vy)
+        else
+            -- Fallback: use main collider
+            entity.collider:setLinearVelocity(vx, vy)
+        end
     end
 end
 

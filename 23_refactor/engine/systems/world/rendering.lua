@@ -32,17 +32,38 @@ function rendering.drawEntitiesYSorted(self, player)
         table.insert(drawables, npc)
     end
 
+    -- Include drawable walls for Y-sorting (topdown mode only)
+    if self.drawable_walls then
+        for _, wall in ipairs(self.drawable_walls) do
+            table.insert(drawables, wall)
+        end
+    end
+
+    -- Include drawable tiles (Trees layer) for Y-sorting (topdown mode only)
+    if self.drawable_tiles then
+        for _, tile in ipairs(self.drawable_tiles) do
+            table.insert(drawables, tile)
+        end
+    end
+
     -- Sort by Y coordinate (foot position for accurate depth)
     table.sort(drawables, function(a, b)
         local a_y = a.y
         local b_y = b.y
 
-        -- Use foot position if collider info is available
+        -- For entities with collider_offset, use foot position
         if a.collider_offset_y and a.collider_height then
-            a_y = a_y + a.collider_offset_y + a.collider_height / 2
+            a_y = a_y + a.collider_offset_y + a.collider_height
+        elseif a == player and a.collider_height then
+            -- Player: collider center is at a.y, so foot is at a.y + height/2
+            a_y = a_y + a.collider_height / 2
         end
+
         if b.collider_offset_y and b.collider_height then
-            b_y = b_y + b.collider_offset_y + b.collider_height / 2
+            b_y = b_y + b.collider_offset_y + b.collider_height
+        elseif b == player and b.collider_height then
+            -- Player: collider center is at b.y, so foot is at b.y + height/2
+            b_y = b_y + b.collider_height / 2
         end
 
         return a_y < b_y
@@ -52,7 +73,7 @@ function rendering.drawEntitiesYSorted(self, player)
     for _, entity in ipairs(drawables) do
         if entity == player then
             entity:drawAll()
-        else
+        elseif entity.draw then
             entity:draw()
         end
     end

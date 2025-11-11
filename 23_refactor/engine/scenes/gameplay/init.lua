@@ -249,6 +249,17 @@ function gameplay:setupLighting()
 end
 
 function gameplay:switchMap(new_map_path, spawn_x, spawn_y)
+    -- Clean up old colliders BEFORE destroying world
+    if self.player.collider then
+        self.player.collider:destroy()
+        self.player.collider = nil
+    end
+    if self.player.movement_collider then
+        self.player.movement_collider:destroy()
+        self.player.movement_collider = nil
+    end
+
+    -- Now destroy world
     if self.world then self.world:destroy() end
 
     self.current_map_path = new_map_path
@@ -261,8 +272,6 @@ function gameplay:switchMap(new_map_path, spawn_x, spawn_y)
 
     self.player.x = spawn_x
     self.player.y = spawn_y
-
-    self.player.collider = nil
 
     self.world:addEntity(self.player)
 
