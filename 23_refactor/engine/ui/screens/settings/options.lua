@@ -211,15 +211,12 @@ local option_handlers = {
         display:ToggleFullScreen()
         APP_CONFIG.fullscreen = display.is_fullscreen
 
+        -- Get current dimensions for resize callback
         local current_w, current_h
         if APP_CONFIG.fullscreen then
             current_w, current_h = love.window.getDesktopDimensions(state.current_monitor_index)
         else
-            current_w, current_h = APP_CONFIG.width, APP_CONFIG.height
-            love.window.updateMode(current_w, current_h, {
-                resizable = APP_CONFIG.resizable,
-                display = state.current_monitor_index
-            })
+            current_w, current_h = display.screen_wh.w, display.screen_wh.h
         end
 
         display:CalculateScale()

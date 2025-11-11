@@ -156,18 +156,14 @@ function display:DisableFullScreen()
     if self.is_mobile then return end -- Can't exit fullscreen on mobile
     if not self.is_fullscreen then return end
 
-    -- ALWAYS use previous_screen_wh (saved before entering fullscreen)
-    -- This ensures we return to the resolution that was set in settings,
-    -- not the fullscreen resolution that might be saved in config.ini
+    -- Restore previous windowed resolution
     if self.previous_screen_wh.w > 0 and self.previous_screen_wh.h > 0 then
-        -- Use stored previous size (from before fullscreen)
         self.screen_wh.w, self.screen_wh.h = self.previous_screen_wh.w, self.previous_screen_wh.h
         self.window.x, self.window.y = self.previous_xy.x, self.previous_xy.y
-        -- Restore resizable setting from APP_CONFIG (default: false)
         self.window.resizable = APP_CONFIG and APP_CONFIG.resizable or false
         self.window.borderless = false
     else
-        -- Fallback: use virtual resolution
+        -- Fallback to virtual resolution
         self.window.x = 0
         self.window.y = 0
         self.screen_wh.w, self.screen_wh.h = self.render_wh.w, self.render_wh.h
@@ -177,6 +173,7 @@ function display:DisableFullScreen()
     end
 
     updateMode(self.screen_wh.w, self.screen_wh.h, self.window)
+
     self.is_fullscreen = false
 
     self:CalculateScale()
@@ -209,33 +206,35 @@ function display:GetScreenDimensions()
 end
 
 function display:CalculateScale()
-    self.screen_wh.w = love.graphics.getWidth()
-    self.screen_wh.h = love.graphics.getHeight()
+    -- Don't overwrite screen_wh - it's set by Enable/DisableFullScreen
+    -- Use actual dimensions for calculation
+    local actual_w = love.graphics.getWidth()
+    local actual_h = love.graphics.getHeight()
 
     local virtual_aspect = self.render_wh.w / self.render_wh.h
-    local screen_aspect = self.screen_wh.w / self.screen_wh.h
+    local screen_aspect = actual_w / actual_h
 
     if self.scale_mode == "stretch" then
-        self.scale = math.min(self.screen_wh.w / self.render_wh.w, self.screen_wh.h / self.render_wh.h)
+        self.scale = math.min(actual_w / self.render_wh.w, actual_h / self.render_wh.h)
         self.offset_x = 0
         self.offset_y = 0
     elseif self.scale_mode == "fill" then
         if screen_aspect > virtual_aspect then
-            self.scale = self.screen_wh.w / self.render_wh.w
+            self.scale = actual_w / self.render_wh.w
         else
-            self.scale = self.screen_wh.h / self.render_wh.h
+            self.scale = actual_h / self.render_wh.h
         end
-        self.offset_x = (self.screen_wh.w - self.render_wh.w * self.scale) / 2
-        self.offset_y = (self.screen_wh.h - self.render_wh.h * self.scale) / 2
+        self.offset_x = (actual_w - self.render_wh.w * self.scale) / 2
+        self.offset_y = (actual_h - self.render_wh.h * self.scale) / 2
     else -- "fit" mode (default for mobile)
         if screen_aspect > virtual_aspect then
-            self.scale = self.screen_wh.h / self.render_wh.h
-            self.offset_x = (self.screen_wh.w - self.render_wh.w * self.scale) / 2
+            self.scale = actual_h / self.render_wh.h
+            self.offset_x = (actual_w - self.render_wh.w * self.scale) / 2
             self.offset_y = 0
         else
-            self.scale = self.screen_wh.w / self.render_wh.w
+            self.scale = actual_w / self.render_wh.w
             self.offset_x = 0
-            self.offset_y = (self.screen_wh.h - self.render_wh.h * self.scale) / 2
+            self.offset_y = (actual_h - self.render_wh.h * self.scale) / 2
         end
     end
 
