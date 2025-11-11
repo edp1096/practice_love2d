@@ -987,10 +987,23 @@ Topdown vs Platformer 모드 관리.
 - Y-정렬 불필요 (고정 레이어 순서)
 - Trees 레이어를 SpriteBatch로 일반 렌더링
 
+**점프 시스템:**
+- **Platformer 모드:** 물리 기반 점프
+  - 콜라이더에 상향 속도 적용
+  - 중력이 플레이어를 아래로 끌어당김
+  - 그림자는 지면에 유지 (raycast 감지)
+- **Topdown 모드:** 시각 전용 점프 (충돌 변경 없음)
+  - 상태: `topdown_is_jumping`, `topdown_jump_height` (0~-50px), `topdown_jump_velocity`
+  - 플레이어 스프라이트와 무기가 함께 위로 이동
+  - 그림자가 높이에 따라 축소되고 희미해짐
+
 **구현:**
 - `engine/systems/collision.lua` - 콜라이더 생성 함수
 - `engine/systems/world/rendering.lua` - Y-정렬 로직
 - `engine/systems/world/loaders.lua` - Trees 타일 추출 (topdown 전용)
+- `engine/entities/player/init.lua` - 두 모드의 점프 로직
+- `engine/entities/player/render.lua` - Topdown 점프 시각 오프셋
+- `engine/entities/player/animation.lua` - 점프 오프셋이 적용된 무기 위치
 
 ---
 

@@ -45,7 +45,7 @@ virtual_gamepad.dpad = {
 virtual_gamepad.buttons = {
     -- Face buttons (diamond layout)
     a = { x = 0, y = 0, pressed = false, label = "A", action = "attack_or_interact" },  -- Attack / Interact (context)
-    b = { x = 0, y = 0, pressed = false, label = "B", action = "jump" },                -- Jump (platformer only)
+    b = { x = 0, y = 0, pressed = false, label = "B", action = "jump" },                -- Jump (physics/visual depending on mode)
     x = { x = 0, y = 0, pressed = false, label = "X", action = "parry" },               -- Parry
     y = { x = 0, y = 0, pressed = false, label = "Y", action = "reserved" },            -- Reserved for future use
 

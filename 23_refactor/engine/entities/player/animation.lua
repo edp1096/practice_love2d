@@ -7,6 +7,19 @@ local input = require "engine.core.input"
 
 local animation = {}
 
+-- Helper: Get weapon position with jump offset applied
+local function getWeaponPosition(player)
+    local weapon_x = player.x
+    local weapon_y = player.y
+
+    -- Apply topdown jump offset for weapon positioning
+    if player.game_mode == "topdown" and player.topdown_is_jumping then
+        weapon_y = weapon_y + player.topdown_jump_height
+    end
+
+    return weapon_x, weapon_y
+end
+
 function animation.initialize(player, sprite_sheet)
     player.spriteSheet = love.graphics.newImage(sprite_sheet)
     player.grid = anim8.newGrid(48, 48, player.spriteSheet:getWidth(), player.spriteSheet:getHeight())
@@ -102,7 +115,9 @@ function animation.update(player, dt, cam, dialogue_open)
 
         if player.weapon then
             current_frame_index = player.anim and math.floor(player.anim.position) or 1
-            player.weapon:update(dt, player.x, player.y, player.facing_angle,
+            local weapon_x, weapon_y = getWeaponPosition(player)
+
+            player.weapon:update(dt, weapon_x, weapon_y, player.facing_angle,
                 player.direction, player.current_anim_name, current_frame_index, debug:IsHandMarkingActive())
         end
 
@@ -239,7 +254,9 @@ function animation.update(player, dt, cam, dialogue_open)
     end
 
     if player.weapon then
-        player.weapon:update(dt, player.x, player.y, player.facing_angle,
+        local weapon_x, weapon_y = getWeaponPosition(player)
+
+        player.weapon:update(dt, weapon_x, weapon_y, player.facing_angle,
             player.direction, player.current_anim_name, current_frame_index, debug:IsHandMarkingActive())
     end
 

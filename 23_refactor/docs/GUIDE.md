@@ -1045,10 +1045,23 @@ Map Properties:
 - No Y-sorting needed (fixed layer order)
 - Trees layer drawn normally as SpriteBatch
 
+**Jump System:**
+- **Platformer mode:** Physics-based jump
+  - Applies upward velocity to collider
+  - Gravity pulls player down
+  - Shadow stays at ground level (raycast detection)
+- **Topdown mode:** Visual-only jump (no collision changes)
+  - State: `topdown_is_jumping`, `topdown_jump_height` (0 to -50px), `topdown_jump_velocity`
+  - Player sprite and weapon move up together
+  - Shadow scales down and fades based on height
+
 **Implementation:**
 - `engine/systems/collision.lua` - Collider creation functions
 - `engine/systems/world/rendering.lua` - Y-sorting logic
 - `engine/systems/world/loaders.lua` - Trees tile extraction (topdown only)
+- `engine/entities/player/init.lua` - Jump logic for both modes
+- `engine/entities/player/render.lua` - Topdown jump visual offset
+- `engine/entities/player/animation.lua` - Weapon position with jump offset
 
 ---
 

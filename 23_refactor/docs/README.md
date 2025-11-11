@@ -75,7 +75,7 @@ zip -9 -r game.love .
 - **Left Stick / D-Pad** - Move / Aim
 - **Right Stick** - Aim
 - **A / Cross (✕)** - Attack / Interact
-- **B / Circle (○)** - Jump (Platformer only) / Skip dialogue (hold 0.5s)
+- **B / Circle (○)** - Jump (physics in platformer, visual in topdown) / Skip dialogue (hold 0.5s)
 - **X / Square (□)** - Parry
 - **Y / Triangle (△)** - Interact with NPCs/Save Points
 - **LB / L1** - Use item
