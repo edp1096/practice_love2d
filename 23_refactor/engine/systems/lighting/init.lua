@@ -49,6 +49,46 @@ function lighting:init()
 
     self.light_image = love.graphics.newImage(imageData)
 
+    -- Create cone gradient image for spotlights
+    local cone_width = 256
+    local cone_height = 512  -- Taller for directional cone
+    local coneData = love.image.newImageData(cone_width, cone_height)
+    local cone_center_x = cone_width / 2
+
+    for y = 0, cone_height - 1 do
+        for x = 0, cone_width - 1 do
+            -- Calculate distance from center line
+            local dx = x - cone_center_x
+            -- Cone widens as it goes down (y increases)
+            local cone_radius = (y / cone_height) * (cone_width / 2)
+
+            if cone_radius > 0 then
+                local dist_from_center = math.abs(dx)
+                local normalized = dist_from_center / cone_radius
+
+                if normalized > 1.0 then
+                    coneData:setPixel(x, y, 0, 0, 0, 0)  -- Outside cone
+                else
+                    -- Falloff: both radial (from center line) and longitudinal (along cone)
+                    local radial_falloff = (1.0 - normalized) ^ 2
+                    local longitudinal_falloff = (1.0 - y / cone_height) ^ 1.5
+                    local alpha = radial_falloff * longitudinal_falloff
+                    coneData:setPixel(x, y, 1, 1, 1, alpha)
+                end
+            else
+                -- Top of cone (y = 0), small bright spot
+                local dist = math.abs(dx)
+                if dist < 2 then
+                    coneData:setPixel(x, y, 1, 1, 1, 1.0)
+                else
+                    coneData:setPixel(x, y, 0, 0, 0, 0)
+                end
+            end
+        end
+    end
+
+    self.spotlight_image = love.graphics.newImage(coneData)
+
     -- Register resize callback with lifecycle
     local lifecycle = require "engine.core.lifecycle"
     lifecycle:registerResizeCallback("lighting", function(w, h)
@@ -169,8 +209,32 @@ function lighting:drawLight(light, camera)
         love.graphics.setColor(1, 1, 1, 1)
 
     elseif light.type == "spotlight" then
-        -- TODO: Implement spotlight using image or shader
-        print("WARNING: Spotlight not implemented yet")
+        -- Spotlight: cone-shaped directional light
+        if not light.enabled or not self.spotlight_image then return end
+
+        -- Apply light color and intensity
+        love.graphics.setColor(
+            light.color[1] * intensity,
+            light.color[2] * intensity,
+            light.color[3] * intensity,
+            1
+        )
+
+        -- Draw cone in world space
+        -- radius controls the length/width of the cone
+        -- angle controls the direction (0 = pointing down, -π/2 = right, etc.)
+        love.graphics.draw(
+            self.spotlight_image,
+            world_x,
+            world_y,
+            light.angle,  -- Rotation angle
+            light.radius * 2 / self.spotlight_image:getWidth(),   -- Scale X
+            light.radius * 2 / self.spotlight_image:getHeight(),  -- Scale Y
+            self.spotlight_image:getWidth() / 2,  -- Origin X (center)
+            0  -- Origin Y (top of cone at light source)
+        )
+
+        love.graphics.setColor(1, 1, 1, 1)
     end
 end
 

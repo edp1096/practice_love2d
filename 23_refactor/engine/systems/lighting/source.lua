@@ -1,5 +1,13 @@
 -- engine/lighting/source.lua
 -- Individual light source object
+--
+-- Usage examples:
+--   Point light:
+--     lighting:addLight({ type = "point", x = 100, y = 200, radius = 150, color = {1, 0.8, 0.6} })
+--
+--   Spotlight:
+--     lighting:addLight({ type = "spotlight", x = 100, y = 200, radius = 200, angle = math.pi/2, color = {1, 1, 0.8} })
+--     (angle: 0 = down, -π/2 = right, π = up, π/2 = left)
 
 local LightSource = {}
 LightSource.__index = LightSource

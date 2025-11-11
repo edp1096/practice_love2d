@@ -62,11 +62,18 @@ engine/
 │           └── touch.lua               - Touch event handling
 │
 ├── systems/              - **Engine subsystems (Layer 2)**
+│   ├── collision.lua     - **Collision system** (dual collider, Y-sorting)
+│   │                       - setupCollisionClasses() - Collision class registration
+│   │                       - createPlayerColliders() - Main + foot collider (topdown)
+│   │                       - createWallColliders() - Main wall + base collider
+│   │                       - createEnemyCollider(), createNPCCollider() - Entity colliders
+│   │                       - createDeathZoneCollider(), createDamageZoneCollider() - Hazards
+│   │
 │   ├── world/            - Physics & world system
-│   │   ├── init.lua      - World coordinator (Windfield wrapper)
-│   │   ├── loaders.lua   - Map loading (Tiled TMX + entity factory)
+│   │   ├── init.lua      - World coordinator (Windfield wrapper, collision setup)
+│   │   ├── loaders.lua   - Map loading (Tiled TMX + entity factory + Trees tiles)
 │   │   ├── entities.lua  - Entity management (add, remove, update)
-│   │   └── rendering.lua - Y-sorted rendering
+│   │   └── rendering.lua - Y-sorted rendering (entities + Trees tiles by foot)
 │   │
 │   ├── effects/          - Visual effects system
 │   │   ├── init.lua      - Effects coordinator

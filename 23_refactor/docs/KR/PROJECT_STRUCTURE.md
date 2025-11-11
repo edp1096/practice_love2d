@@ -52,7 +52,12 @@ engine/
 │           └── touch.lua               - 터치 이벤트 핸들링
 │
 ├── systems/              - **엔진 서브시스템 (Layer 2)**
-│   ├── world/            - 물리 & 월드 시스템
+│   ├── collision.lua     - **충돌 시스템** (이중 콜라이더, Y-정렬)
+│   ├── world/            - 물리 & 월드 시스템 (Windfield/STI)
+│   │   ├── init.lua      - 월드 코디네이터, 충돌 설정
+│   │   ├── loaders.lua   - 맵 로딩 (Tiled TMX + Trees 타일)
+│   │   ├── entities.lua  - 엔티티 관리
+│   │   └── rendering.lua - Y-정렬 렌더링 (엔티티 + Trees 타일)
 │   ├── effects/          - 시각 효과 시스템
 │   ├── lighting/         - 라이팅 시스템
 │   └── hud/              - 인게임 HUD 시스템

@@ -78,7 +78,17 @@ function settings:enter(previous, ...)
     -- Current values indices (desktop only)
     if not is_mobile then
         self.current_resolution_index = options_module:findCurrentResolution()
-        self.current_monitor_index = convert:toInt(APP_CONFIG.monitor, 1)
+
+        -- Validate monitor index (reset to 1 if out of range)
+        local monitor_index = convert:toInt(APP_CONFIG.monitor, 1)
+        if monitor_index > self.monitor_count or monitor_index < 1 then
+            monitor_index = 1
+            APP_CONFIG.monitor = 1  -- Reset to valid value
+            -- Save config immediately
+            local ini = require "engine.utils.ini"
+            ini:save_config(APP_CONFIG)
+        end
+        self.current_monitor_index = monitor_index
     else
         -- Set default monitor index for mobile (always 1)
         self.current_monitor_index = 1

@@ -3,56 +3,9 @@
 
 local factory = require "engine.entities.factory"
 local constants = require "engine.core.constants"
+local collision = require "engine.systems.collision"
 
 local loaders = {}
-
--- Shape handlers for wall creation
-local shapeHandlers = {
-    rectangle = function(physicsWorld, obj)
-        local wall = physicsWorld:newRectangleCollider(obj.x, obj.y, obj.width, obj.height)
-        return true, wall
-    end,
-
-    polygon = function(physicsWorld, obj)
-        if not obj.polygon then return false, nil end
-
-        local vertices = {}
-        for _, point in ipairs(obj.polygon) do
-            table.insert(vertices, point.x)
-            table.insert(vertices, point.y)
-        end
-
-        return pcall(physicsWorld.newPolygonCollider, physicsWorld, vertices, {
-            body_type = 'static',
-            collision_class = 'Wall'
-        })
-    end,
-
-    polyline = function(physicsWorld, obj)
-        if not obj.polyline then return false, nil end
-
-        local vertices = {}
-        for _, point in ipairs(obj.polyline) do
-            table.insert(vertices, obj.x + point.x)
-            table.insert(vertices, obj.y + point.y)
-        end
-
-        return pcall(physicsWorld.newChainCollider, physicsWorld, vertices, false, {
-            body_type = 'static',
-            collision_class = 'Wall'
-        })
-    end,
-
-    ellipse = function(physicsWorld, obj)
-        local radius = math.min(obj.width, obj.height) / 2
-        local wall = physicsWorld:newCircleCollider(
-            obj.x + obj.width / 2,
-            obj.y + obj.height / 2,
-            radius
-        )
-        return true, wall
-    end
-}
 
 function loaders.loadTreeTiles(self)
     if not self.map.layers["Trees"] then return end
@@ -121,54 +74,28 @@ function loaders.loadWalls(self)
     end
 
     for _, obj in ipairs(self.map.layers["Walls"].objects) do
-        -- Get shape handler
-        local handler = shapeHandlers[obj.shape]
-        if not handler then
-            print("Warning: Unknown shape type '" .. tostring(obj.shape) .. "' in Walls layer")
-            goto continue
+        -- Create wall colliders using collision module
+        local colliders = collision.createWallColliders(obj, self.physicsWorld, self.game_mode)
+
+        -- Store all colliders for cleanup
+        for _, collider in ipairs(colliders) do
+            table.insert(self.walls, collider)
         end
 
-        -- Create main wall collider (combat, platformer physics)
-        local success, wall = handler(self.physicsWorld, obj)
-
-        if success and wall then
-            wall:setType("static")
-            wall:setCollisionClass(constants.COLLISION_CLASSES.WALL)
-            wall:setFriction(0.0)  -- No friction for smooth platformer movement
-            table.insert(self.walls, wall)
-
-            -- Topdown mode: Create bottom collider for wall surface + drawable for Y-sorting
-            if self.game_mode == "topdown" and obj.shape == "rectangle" then
-                local bottom_height = math.max(8, obj.height * 0.15)  -- Bottom 15%, min 8px
-                local bottom_collider = self.physicsWorld:newRectangleCollider(
-                    obj.x,
-                    obj.y + obj.height - bottom_height,  -- Position at bottom
-                    obj.width,
-                    bottom_height
-                )
-                bottom_collider:setType("static")
-                bottom_collider:setCollisionClass(constants.COLLISION_CLASSES.WALL_MOVEMENT)
-                bottom_collider:setFriction(0.0)
-
-                -- Store reference for cleanup
-                table.insert(self.walls, bottom_collider)
-
-                -- Add drawable wall data for Y-sorting (use bottom Y position)
-                table.insert(self.drawable_walls, {
-                    x = obj.x,
-                    y = obj.y + obj.height,  -- Bottom Y position for sorting
-                    width = obj.width,
-                    height = obj.height,
-                    full_y = obj.y,  -- Top Y position for drawing
-                    draw = function(self)
-                        -- Draw nothing (graphics are in tile layer)
-                        -- This is just for Y-sorting
-                    end
-                })
-            end
+        -- Topdown mode: Add drawable wall data for Y-sorting
+        if self.game_mode == "topdown" and obj.shape == "rectangle" and #colliders > 0 then
+            table.insert(self.drawable_walls, {
+                x = obj.x,
+                y = obj.y + obj.height,  -- Bottom Y position for sorting
+                width = obj.width,
+                height = obj.height,
+                full_y = obj.y,  -- Top Y position for drawing
+                draw = function(self)
+                    -- Draw nothing (graphics are in tile layer)
+                    -- This is just for Y-sorting
+                end
+            })
         end
-
-        ::continue::
     end
 end
 
@@ -283,27 +210,8 @@ function loaders.loadEnemies(self)
                 })
             end
 
-            local bounds = new_enemy:getColliderBounds()
-            new_enemy.collider = self.physicsWorld:newBSGRectangleCollider(
-                bounds.x, bounds.y,
-                bounds.width, bounds.height,
-                8
-            )
-            new_enemy.collider:setFixedRotation(true)
-            new_enemy.collider:setCollisionClass(constants.COLLISION_CLASSES.ENEMY)
-            new_enemy.collider:setObject(new_enemy)
-
-            -- Platformer mode: remove air resistance for faster falling
-            if self.game_mode == "platformer" then
-                new_enemy.collider:setLinearDamping(0)
-                -- Also set gravity scale to ensure full gravity effect
-                new_enemy.collider:setGravityScale(1)
-                -- Get the underlying Box2D body and set damping there too
-                local body = new_enemy.collider.body
-                if body then
-                    body:setLinearDamping(0)
-                end
-            end
+            -- Create enemy collider using collision module
+            collision.createEnemyCollider(new_enemy, self.physicsWorld, self.game_mode)
 
             table.insert(self.enemies, new_enemy)
         end
@@ -322,20 +230,8 @@ function loaders.loadNPCs(self)
             local new_npc = factory:createNPC(obj, self.npc_class)
             new_npc.world = self
 
-            local bounds = new_npc:getColliderBounds()
-            new_npc.collider = self.physicsWorld:newBSGRectangleCollider(
-                bounds.x, bounds.y,
-                bounds.width, bounds.height,
-                8
-            )
-            new_npc.collider:setFixedRotation(true)
-            new_npc.collider:setType("static")
-            new_npc.collider:setCollisionClass(constants.COLLISION_CLASSES.WALL)
-            new_npc.collider:setObject(new_npc)
-
-            -- Update NPC position to match Enemy pattern (x,y = reference point)
-            new_npc.x = new_npc.collider:getX() - new_npc.collider_offset_x
-            new_npc.y = new_npc.collider:getY() - new_npc.collider_offset_y
+            -- Create NPC collider using collision module
+            collision.createNPCCollider(new_npc, self.physicsWorld)
 
             table.insert(self.npcs, new_npc)
         end
@@ -371,39 +267,9 @@ function loaders.loadDeathZones(self)
     if not self.map.layers["DeathZones"] then return end
 
     for _, obj in ipairs(self.map.layers["DeathZones"].objects) do
-        local zone
-
-        if obj.shape == "rectangle" then
-            zone = self.physicsWorld:newRectangleCollider(obj.x, obj.y, obj.width, obj.height)
-        elseif obj.shape == "polygon" and obj.polygon then
-            local vertices = {}
-            for _, point in ipairs(obj.polygon) do
-                table.insert(vertices, point.x)
-                table.insert(vertices, point.y)
-            end
-
-            local success
-            success, zone = pcall(self.physicsWorld.newPolygonCollider, self.physicsWorld, vertices, {
-                body_type = 'static',
-                collision_class = 'DeathZone'
-            })
-
-            if not success then
-                zone = nil
-            end
-        elseif obj.shape == "ellipse" then
-            local radius = math.min(obj.width, obj.height) / 2
-            zone = self.physicsWorld:newCircleCollider(
-                obj.x + obj.width / 2,
-                obj.y + obj.height / 2,
-                radius
-            )
-        end
-
+        -- Create death zone collider using collision module
+        local zone = collision.createDeathZoneCollider(obj, self.physicsWorld)
         if zone then
-            zone:setType("static")
-            zone:setCollisionClass("DeathZone")
-            zone:setSensor(true)  -- Sensor = no physical collision, only detection
             table.insert(self.death_zones, zone)
         end
     end
@@ -415,49 +281,10 @@ function loaders.loadDamageZones(self)
     end
 
     for _, obj in ipairs(self.map.layers["DamageZones"].objects) do
-        local zone
-
-        if obj.shape == "rectangle" then
-            zone = self.physicsWorld:newRectangleCollider(obj.x, obj.y, obj.width, obj.height)
-        elseif obj.shape == "polygon" and obj.polygon then
-            local vertices = {}
-            for _, point in ipairs(obj.polygon) do
-                table.insert(vertices, point.x)
-                table.insert(vertices, point.y)
-            end
-
-            local success
-            success, zone = pcall(self.physicsWorld.newPolygonCollider, self.physicsWorld, vertices, {
-                body_type = 'static',
-                collision_class = 'DamageZone'
-            })
-
-            if not success then
-                zone = nil
-            end
-        elseif obj.shape == "ellipse" then
-            local radius = math.min(obj.width, obj.height) / 2
-            zone = self.physicsWorld:newCircleCollider(
-                obj.x + obj.width / 2,
-                obj.y + obj.height / 2,
-                radius
-            )
-        end
-
-        if zone then
-            zone:setType("static")
-            zone:setCollisionClass("DamageZone")
-            zone:setSensor(true)  -- Sensor = no physical collision, only detection
-
-            -- Store zone properties
-            zone.damage = obj.properties.damage or 10
-            zone.damage_cooldown = obj.properties.cooldown or 1.0  -- Damage interval (seconds)
-
-            table.insert(self.damage_zones, {
-                collider = zone,
-                damage = zone.damage,
-                damage_cooldown = zone.damage_cooldown
-            })
+        -- Create damage zone collider using collision module
+        local zone_data = collision.createDamageZoneCollider(obj, self.physicsWorld)
+        if zone_data then
+            table.insert(self.damage_zones, zone_data)
         end
     end
 end

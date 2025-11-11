@@ -9,12 +9,25 @@ function render.draw(player)
     local draw_x = player.x + player.hit_shake_x
     local draw_y = player.y + player.hit_shake_y
 
+    -- Apply topdown jump offset (visual only, moves sprite up)
+    -- topdown_jump_height is negative when jumping (starts at 0, goes to -50, back to 0)
+    if player.game_mode == "topdown" and player.topdown_is_jumping then
+        draw_y = draw_y + player.topdown_jump_height
+    end
+
     -- Shadow (stays on ground in platformer mode with dynamic scaling)
-    local shadow_y = draw_y + 50  -- Topdown: shadow below player
+    local shadow_y = player.y + 50  -- Topdown: shadow below player (stays at ground level)
     local shadow_scale = 1.0
     local shadow_alpha = 0.4
 
-    if player.game_mode == "platformer" and player.ground_y then
+    -- Handle topdown jump shadow scaling
+    if player.game_mode == "topdown" and player.topdown_is_jumping then
+        -- Scale shadow based on jump height (gets smaller when higher)
+        -- topdown_jump_height is negative, so use abs() for scaling
+        local height = math.abs(player.topdown_jump_height)
+        shadow_scale = math.max(0.3, 1.0 - (height / 100))
+        shadow_alpha = math.max(0.1, 0.4 - (height / 125))
+    elseif player.game_mode == "platformer" and player.ground_y then
         -- In platformer mode, shadow stays at ground level
         -- ground_y is the Y coordinate of the ground surface from raycast
         -- We want shadow ON the ground, not below it

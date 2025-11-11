@@ -7,6 +7,8 @@ local scene_control = require "engine.core.scene_control"
 local save_sys = require "engine.core.save"
 local input = require "engine.core.input"
 local debug = require "engine.core.debug"
+local coords = require "engine.core.coords"
+local display = require "engine.core.display"
 
 -- Select a slot (load game or go back)
 function input_handler.selectSlot(load_scene, slot_index)
@@ -177,8 +179,6 @@ end
 -- Touch pressed
 function input_handler.touchpressed(load_scene, id, x, y, dx, dy, pressure)
     -- Convert physical touch to virtual coordinates
-    local coords = require "engine.core.coords"
-    local display = require "engine.core.display"
     local vx, vy = coords:physicalToVirtual(x, y, display)
 
     input_handler.mousepressed(load_scene, vx, vy, 1)
@@ -188,8 +188,6 @@ end
 -- Touch released
 function input_handler.touchreleased(load_scene, id, x, y, dx, dy, pressure)
     -- Convert physical touch to virtual coordinates
-    local coords = require "engine.core.coords"
-    local display = require "engine.core.display"
     local vx, vy = coords:physicalToVirtual(x, y, display)
 
     input_handler.mousereleased(load_scene, vx, vy, 1)

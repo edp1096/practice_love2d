@@ -426,22 +426,22 @@ function update.update(self, dt)
 
     self.world:update(scaled_dt)
 
-    -- Sync player position from movement_collider in topdown mode
-    if self.player.game_mode == "topdown" and self.player.movement_collider then
-        self.player.x = self.player.movement_collider:getX()
-        self.player.y = self.player.movement_collider:getY() - self.player.collider_height * 0.375
+    -- Sync player position from foot_collider in topdown mode
+    if self.player.game_mode == "topdown" and self.player.foot_collider then
+        self.player.x = self.player.foot_collider:getX()
+        self.player.y = self.player.foot_collider:getY() - self.player.collider_height * 0.4375
 
-        -- Sync main collider to movement_collider
+        -- Sync main collider to foot_collider
         self.player.collider:setPosition(self.player.x, self.player.y)
     else
-        -- Platformer mode or no movement_collider: use main collider
+        -- Platformer mode or no foot_collider: use main collider
         self.player.x = self.player.collider:getX()
         self.player.y = self.player.collider:getY()
 
-        -- Sync movement_collider if exists (when switching modes)
-        if self.player.movement_collider then
+        -- Sync foot_collider if exists (when switching modes)
+        if self.player.foot_collider then
             local bottom_y_offset = self.player.collider_height * 0.375
-            self.player.movement_collider:setPosition(
+            self.player.foot_collider:setPosition(
                 self.player.x,
                 self.player.y + bottom_y_offset
             )

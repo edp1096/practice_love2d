@@ -145,11 +145,20 @@ function World:draw(alpha)
     local line_width = math.max(1.0, 1.5 / scale)
     love.graphics.setLineWidth(line_width)
 
-    love.graphics.setColor(1, 0, 0, alpha)
     local bodies = self.box2d_world:getBodies()
     for _, body in ipairs(bodies) do
         local fixtures = body:getFixtures()
         for _, fixture in ipairs(fixtures) do
+            -- Get collision class from fixture's user data
+            local collider = fixture:getUserData()
+            local draw_color = {1, 0, 0}  -- Default red
+            if collider and collider.collision_class then
+                local cc = self.collision_classes[collider.collision_class]
+                if cc and cc.draw_color then
+                    draw_color = cc.draw_color
+                end
+            end
+            love.graphics.setColor(draw_color[1], draw_color[2], draw_color[3], alpha)
             if fixture:getShape():type() == 'PolygonShape' then
                 love.graphics.polygon('line', body:getWorldPoints(fixture:getShape():getPoints()))
             elseif fixture:getShape():type() == 'EdgeShape' or fixture:getShape():type() == 'ChainShape' then

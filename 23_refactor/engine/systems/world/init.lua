@@ -5,6 +5,7 @@ local sti = require "vendor.sti"
 local windfield = require "vendor.windfield"
 local effects = require "engine.systems.effects"
 local game_mode = require "engine.systems.game_mode"
+local collision = require "engine.systems.collision"
 
 local loaders = require "engine.systems.world.loaders"
 local entities = require "engine.systems.world.entities"
@@ -48,26 +49,15 @@ function world:new(map_path, entity_classes)
     local gx, gy = game_mode:getGravity()
     instance.physicsWorld = windfield.newWorld(gx, gy, true)
 
-    instance.physicsWorld:addCollisionClass("Player")
-    instance.physicsWorld:addCollisionClass("PlayerDodging")
-    instance.physicsWorld:addCollisionClass("PlayerMovement")  -- Topdown bottom collider
-    instance.physicsWorld:addCollisionClass("Wall")
-    instance.physicsWorld:addCollisionClass("WallMovement")    -- Topdown bottom surface
-    instance.physicsWorld:addCollisionClass("Portals")
-    instance.physicsWorld:addCollisionClass("Enemy")
-    instance.physicsWorld:addCollisionClass("Item")
-    instance.physicsWorld:addCollisionClass("DeathZone")
-    instance.physicsWorld:addCollisionClass("DamageZone")
+    -- Setup collision classes and ignore rules
+    collision.setupCollisionClasses(instance.physicsWorld, mode)
 
-    instance.physicsWorld.collision_classes.PlayerDodging.ignores = { "Enemy" }
-
-    -- PlayerMovement collides with Wall and WallMovement (for topdown collision)
-    instance.physicsWorld.collision_classes.PlayerMovement.ignores = { "Player", "PlayerDodging", "Enemy", "Portals", "Item", "DeathZone", "DamageZone" }
-
-    -- WallMovement only collides with PlayerMovement (not with combat or other systems)
-    instance.physicsWorld.collision_classes.WallMovement.ignores = { "Player", "PlayerDodging", "Enemy", "Wall", "Portals", "Item", "DeathZone", "DamageZone" }
-
-    instance.physicsWorld:collisionClassesSet()
+    -- Set debug draw colors for collision classes
+    instance.physicsWorld:setQueryDebugDrawing(true)
+    -- PlayerFoot: Deep pink
+    if instance.physicsWorld.collision_classes.PlayerFoot then
+        instance.physicsWorld.collision_classes.PlayerFoot.draw_color = {1.0, 0.08, 0.58}  -- Deep pink
+    end
 
     instance.walls = {}
     loaders.loadWalls(instance)

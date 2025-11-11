@@ -254,9 +254,9 @@ function gameplay:switchMap(new_map_path, spawn_x, spawn_y)
         self.player.collider:destroy()
         self.player.collider = nil
     end
-    if self.player.movement_collider then
-        self.player.movement_collider:destroy()
-        self.player.movement_collider = nil
+    if self.player.foot_collider then
+        self.player.foot_collider:destroy()
+        self.player.foot_collider = nil
     end
 
     -- Now destroy world

@@ -3,94 +3,18 @@
 
 local effects = require "engine.systems.effects"
 local constants = require "engine.core.constants"
+local collision = require "engine.systems.collision"
 
 local entities = {}
 
 function entities.addEntity(self, entity)
-    if not entity.collider then
-        -- Main collider (combat, platformer physics)
-        entity.collider = self.physicsWorld:newBSGRectangleCollider(
-            entity.x, entity.y,
-            entity.collider_width, entity.collider_height,
-            10
-        )
-        entity.collider:setFixedRotation(true)
-        entity.collider:setCollisionClass(constants.COLLISION_CLASSES.PLAYER)
-
-        -- Reduce friction for better platformer feel
-        entity.collider:setFriction(0.0)  -- No friction to prevent wall sliding issues
-
-        -- Topdown mode: Add movement collider (bottom only)
-        if entity.game_mode == "topdown" then
-            local bottom_height = entity.collider_height * 0.25  -- Bottom 25%
-            local bottom_y_offset = entity.collider_height * 0.375  -- Position at 75% down
-
-            entity.movement_collider = self.physicsWorld:newBSGRectangleCollider(
-                entity.x,
-                entity.y + bottom_y_offset,
-                entity.collider_width,
-                bottom_height,
-                5  -- Smaller corner radius
-            )
-            entity.movement_collider:setFixedRotation(true)
-            entity.movement_collider:setCollisionClass(constants.COLLISION_CLASSES.PLAYER_MOVEMENT)
-            entity.movement_collider:setFriction(0.0)
-            entity.movement_collider:setObject(entity)  -- Link back to player
-        end
-
-        -- Platformer grounded detection using PreSolve (called every frame during contact)
-        entity.collider:setPreSolve(function(collider_1, collider_2, contact)
-            if entity.game_mode == "platformer" then
-                local nx, ny = contact:getNormal()
-
-                -- Check both normal directions (collision order is not guaranteed)
-                -- If normal is mostly vertical (player on top or bottom of object)
-                if math.abs(ny) > 0.7 then
-                    local _, vy = entity.collider:getLinearVelocity()
-
-                    -- Player is on ground if:
-                    -- 1. Normal points up (ny < 0) OR
-                    -- 2. Normal points down (ny > 0) AND player is falling (vy > 0)
-                    if ny < 0 or (ny > 0 and vy >= 0) then
-                        entity.is_grounded = true
-                        entity.can_jump = true
-                        entity.is_jumping = false
-
-                        -- Store contact surface Y position for shadow rendering
-                        -- Get contact point world coordinates
-                        local points = {contact:getPositions()}
-                        if #points >= 2 then
-                            -- Use first contact point's Y coordinate
-                            entity.contact_surface_y = points[2]
-                        end
-                    end
-                end
-            end
-        end)
-    end
+    -- Create player colliders using collision module
+    collision.createPlayerColliders(entity, self.physicsWorld)
 end
 
 function entities.addEnemy(self, enemy)
-    local bounds = enemy:getColliderBounds()
-    enemy.collider = self.physicsWorld:newBSGRectangleCollider(
-        bounds.x, bounds.y,
-        bounds.width, bounds.height,
-        8
-    )
-    enemy.collider:setFixedRotation(true)
-    enemy.collider:setCollisionClass(constants.COLLISION_CLASSES.ENEMY)
-    enemy.collider:setObject(enemy)
-
-    -- Platformer mode: remove air resistance for faster falling
-    if self.game_mode == "platformer" then
-        enemy.collider:setLinearDamping(0)
-        enemy.collider:setGravityScale(1)
-        local body = enemy.collider.body
-        if body then
-            body:setLinearDamping(0)
-        end
-    end
-
+    -- Create enemy collider using collision module
+    collision.createEnemyCollider(enemy, self.physicsWorld, self.game_mode)
     table.insert(self.enemies, enemy)
 end
 
@@ -123,9 +47,9 @@ function entities.moveEntity(self, entity, vx, vy, dt)
             entity.collider:setLinearVelocity(vx, current_vy)
         end
     else
-        -- Topdown mode: use movement_collider for wall collision
-        if entity.movement_collider then
-            entity.movement_collider:setLinearVelocity(vx, vy)
+        -- Topdown mode: use foot_collider for wall collision
+        if entity.foot_collider then
+            entity.foot_collider:setLinearVelocity(vx, vy)
         else
             -- Fallback: use main collider
             entity.collider:setLinearVelocity(vx, vy)

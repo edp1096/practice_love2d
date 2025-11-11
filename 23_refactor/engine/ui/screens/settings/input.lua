@@ -8,6 +8,7 @@ local input = require "engine.core.input"
 local sound = require "engine.core.sound"
 local options_module = require "engine.ui.screens.settings.options"
 local coords = require "engine.core.coords"
+local display = require "engine.core.display"
 local debug = require "engine.core.debug"
 
 function input_handler:keypressed(state, key)
@@ -101,7 +102,6 @@ function input_handler:touchpressed(state, id, x, y, dx, dy, pressure) end
 
 function input_handler:touchreleased(state, id, x, y, dx, dy, pressure)
     -- Convert touch to virtual coordinates for hit detection using coords module
-    local display = require "engine.core.display"
     local vx, vy = coords:physicalToVirtual(x, y, display)
 
     -- Treat touch release like left mouse click

@@ -1005,6 +1005,41 @@ Map Properties:
   game_mode = "topdown"  (or "platformer")
 ```
 
+### Dual Collider System (Topdown)
+
+**Topdown mode** uses dual colliders for proper wall collision and depth sorting:
+
+**Player Colliders:**
+- `player.collider` - Main collider (center-origin, full body for combat)
+- `player.foot_collider` - Bottom 25% collider for wall collision (movement)
+
+**Wall Colliders:**
+- Main collider - Full wall body for combat/physics
+- `base_collider` - Bottom 15% surface for foot collision
+
+**Collision Rules:**
+- `PlayerFoot` (foot_collider) collides with:
+  - `Wall` (main wall) - Blocks from all sides
+  - `WallBase` (base_collider) - Surface collision
+- Main player collider used for combat, enemy detection
+
+**Y-Sorting:**
+- Entities sorted by **foot position** for proper depth rendering
+- Player: `y + collider_height / 2` (center + half = bottom)
+- Enemies/NPCs: `y + collider_offset_y + collider_height`
+- Trees tiles extracted from Tiled map and Y-sorted with entities
+- Result: Proper visual depth (entities behind walls appear behind)
+
+**Platformer mode:**
+- Uses only main collider (no foot_collider)
+- No Y-sorting needed (fixed layer order)
+- Trees layer drawn normally as SpriteBatch
+
+**Implementation:**
+- `engine/systems/collision.lua` - Collider creation functions
+- `engine/systems/world/rendering.lua` - Y-sorting logic
+- `engine/systems/world/loaders.lua` - Trees tile extraction (topdown only)
+
 ---
 
 ## Utilities
@@ -1156,10 +1191,27 @@ end
 
 ### Spotlights
 
+**Directional cone-shaped light:**
+
 ```lua
--- Spotlight (not yet implemented)
--- TODO: Implement spotlight using image or shader
+local torch = lighting:addLight({
+    type = "spotlight",
+    x = 100,
+    y = 200,
+    radius = 200,              -- Cone length/width
+    angle = math.pi / 2,       -- Direction (0 = down, -π/2 = right, π = up, π/2 = left)
+    color = {1, 0.9, 0.7},     -- Warm torch color
+    intensity = 1.0,
+    flicker = true,            -- Optional flickering
+    flicker_speed = 5.0,
+    flicker_amount = 0.2
+})
+
+-- Rotate spotlight (e.g., follow player direction)
+torch.angle = player.facing_angle
 ```
+
+**Implementation:** Uses cone-shaped gradient image with rotation for direction
 
 ### Light Control
 

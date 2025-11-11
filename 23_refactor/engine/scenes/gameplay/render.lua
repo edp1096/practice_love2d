@@ -31,9 +31,11 @@ function render.draw(self)
         self.player:drawDebug()
     end
 
-    -- TODO: Trees layer disabled for Y-sorting testing
-    -- Walls in Trees layer need to be converted to Image Objects for proper Y-sorting
-    -- self.world:drawLayer("Trees", self.cam)
+    -- Platformer mode: Draw Trees layer normally (no Y-sorting needed)
+    -- Topdown mode: Trees tiles are drawn via Y-sorting in drawEntitiesYSorted()
+    if self.player.game_mode == "platformer" then
+        self.world:drawLayer("Trees")
+    end
 
     -- Draw healing points
     self.world:drawHealingPoints()

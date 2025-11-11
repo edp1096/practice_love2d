@@ -947,6 +947,41 @@ Topdown vs Platformer 모드 관리.
 - **topdown:** 자유로운 2D 이동, 중력 없음
 - **platformer:** 수평 이동 + 점프, 중력 활성화
 
+### 이중 콜라이더 시스템 (Topdown)
+
+**Topdown 모드**는 벽 충돌과 깊이 정렬을 위해 이중 콜라이더를 사용합니다:
+
+**플레이어 콜라이더:**
+- `player.collider` - 메인 콜라이더 (중앙 원점, 전신, 전투용)
+- `player.foot_collider` - 하단 25% 콜라이더 (벽 충돌, 이동용)
+
+**벽 콜라이더:**
+- 메인 콜라이더 - 전체 벽 몸체 (전투/물리용)
+- `base_collider` - 하단 15% 표면 (발 충돌용)
+
+**충돌 규칙:**
+- `PlayerFoot` (foot_collider)가 충돌하는 대상:
+  - `Wall` (메인 벽) - 모든 방향에서 차단
+  - `WallBase` (base_collider) - 표면 충돌
+- 메인 플레이어 콜라이더는 전투, 적 감지에 사용
+
+**Y-정렬:**
+- 엔티티들을 **발 위치** 기준으로 정렬하여 올바른 깊이 렌더링
+- 플레이어: `y + collider_height / 2` (중앙 + 절반 = 하단)
+- 적/NPC: `y + collider_offset_y + collider_height`
+- Trees 타일을 Tiled 맵에서 추출하여 엔티티와 함께 Y-정렬
+- 결과: 올바른 시각적 깊이 (벽 뒤 엔티티가 뒤에 표시됨)
+
+**Platformer 모드:**
+- 메인 콜라이더만 사용 (foot_collider 없음)
+- Y-정렬 불필요 (고정 레이어 순서)
+- Trees 레이어를 SpriteBatch로 일반 렌더링
+
+**구현:**
+- `engine/systems/collision.lua` - 콜라이더 생성 함수
+- `engine/systems/world/rendering.lua` - Y-정렬 로직
+- `engine/systems/world/loaders.lua` - Trees 타일 추출 (topdown 전용)
+
 ---
 
 ## 유틸리티
@@ -1078,10 +1113,27 @@ end
 
 ### 스포트라이트
 
+**방향성 원뿔 모양 조명:**
+
 ```lua
--- 스포트라이트 (미구현)
--- TODO: 이미지 또는 셰이더를 사용하여 스포트라이트 구현
+local torch = lighting:addLight({
+    type = "spotlight",
+    x = 100,
+    y = 200,
+    radius = 200,              -- 원뿔 길이/너비
+    angle = math.pi / 2,       -- 방향 (0 = 아래, -π/2 = 오른쪽, π = 위, π/2 = 왼쪽)
+    color = {1, 0.9, 0.7},     -- 따뜻한 횃불 색상
+    intensity = 1.0,
+    flicker = true,            -- 선택사항: 깜빡임 효과
+    flicker_speed = 5.0,
+    flicker_amount = 0.2
+})
+
+-- 스포트라이트 회전 (예: 플레이어 방향 추적)
+torch.angle = player.facing_angle
 ```
+
+**구현 방식:** 원뿔 모양 그라디언트 이미지를 회전하여 방향 제어
 
 ### 광원 제어
 

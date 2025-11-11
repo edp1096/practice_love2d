@@ -34,12 +34,10 @@ function input_handler.keypressed(self, key)
         -- Dodge (lshift key or R1 on gamepad) - works in both modes
         self.player:startDodge()
     elseif input:wasPressed("jump", "keyboard", key) then
-        -- Jump only works in platformer mode
-        if self.player.game_mode == "platformer" then
-            -- Platformer: space/w/up = jump (B button on gamepad)
-            self.player:jump()
-        end
-        -- Topdown: W/Up/Space are used for movement only, not dodge
+        -- Jump works in both modes
+        -- Platformer: physics-based jump
+        -- Topdown: visual jump (no physics collision)
+        self.player:jump()
     elseif input:wasPressed("use_item", "keyboard", key) then
         -- Use selected item from inventory (Q key or L1 on gamepad)
         self.inventory:useSelectedItem(self.player)
@@ -155,9 +153,7 @@ function input_handler.gamepadpressed(self, joystick, button)
         self.player:attack()
 
     elseif action == "jump" then
-        if self.player.game_mode == "platformer" then
-            self.player:jump()
-        end
+        self.player:jump()
 
     elseif action == "parry" then
         self.player:startParry()
