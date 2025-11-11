@@ -1,0 +1,234 @@
+# LÖVE2D Game Engine
+
+A LÖVE2D game project with a clean **Engine/Game separation architecture**.
+
+---
+
+## 🎯 Project Philosophy
+
+This project follows a **modular architecture**:
+
+### **Engine (100% Reusable)** ⭐
+The `engine/` folder contains **ALL** game systems AND entities:
+- **Core systems:** lifecycle, input, display, sound, save, camera, debug
+- **Subsystems:** world (physics), effects, lighting, HUD
+- **Entities:** player, enemy, weapon, NPC, item, healing_point (**ALL in engine!**)
+- **UI:** menu system, screens, dialogue, widgets
+- **Scene builders:** data-driven scene factory, cutscene, gameplay
+
+### **Game (Data + Minimal Code)**
+The `game/` folder contains **only** game-specific content:
+- **Scenes:** 4 data-driven menus (6 lines each!), complex scenes (play, settings, inventory, load)
+- **Data configs:** player stats, enemy types, menu configs, sounds, input mappings
+- **No entities folder!** (moved to engine)
+
+### **Benefits**
+- **Easy to create new games**: Copy `engine/` folder, create new `game/` content
+- **Clean separation**: Engine code vs Game content
+- **Easy maintenance**: Find files quickly with clear structure
+- **Content-focused workflow**: Focus on game content, not engine code
+
+---
+
+## 🚀 Quick Start
+
+### Running the Game
+
+**Desktop:**
+```bash
+love .
+```
+
+**Build for Distribution:**
+```bash
+# Windows
+zip -9 -r game.love .
+cat love.exe game.love > mygame.exe
+
+# macOS / Linux
+zip -9 -r game.love .
+```
+
+### Controls
+
+**Desktop:**
+- **WASD / Arrow Keys** - Move (Topdown) / Move left/right + Jump (Platformer)
+- **Mouse** - Aim
+- **Left Click / Z** - Attack
+- **Right Click / X** - Parry
+- **Shift / C** - Dodge
+- **F** - Interact (NPCs, Save Points)
+- **I** - Open Inventory
+- **Q** - Use selected item
+- **Tab** - Cycle items
+- **1-5** - Quick select inventory slot
+- **Escape** - Pause
+- **F11** - Toggle Fullscreen
+- **F1** - Toggle Debug Mode (requires IsDebug=true in config.ini)
+- **F2** - Toggle Grid Visualization
+- **F3** - Toggle Virtual Mouse
+- **F4** - Toggle Virtual Gamepad (PC only, for testing)
+- **F5** - Toggle Effects Debug
+- **F6** - Test Effects at Mouse Position
+
+**Gamepad (Xbox / DualSense):**
+- **Left Stick / D-Pad** - Move / Aim
+- **Right Stick** - Aim
+- **A / Cross (✕)** - Attack / Interact
+- **B / Circle (○)** - Jump (physics in platformer, visual in topdown) / Skip dialogue (hold 0.5s)
+- **X / Square (□)** - Parry
+- **Y / Triangle (△)** - Interact with NPCs/Save Points
+- **LB / L1** - Use item
+- **LT / L2** - Next item
+- **RB / R1** - Dodge
+- **RT / R2** - Open/Close Inventory
+- **Start / Options** - Pause
+
+**Mobile (Touch):**
+- **Virtual Gamepad** - On-screen controls
+- **Touch anywhere** - Navigate menus / Advance dialogue
+
+---
+
+## 📁 Project Structure
+
+```
+23_refactor/
+├── engine/       - Reusable game engine (systems + entities)
+├── game/         - Game content (scenes, data configs)
+├── assets/       - Resources (maps, images, sounds)
+├── vendor/       - External libraries
+└── docs/         - Documentation
+```
+
+**Key Concepts:**
+- **engine/** = "How it works" (100% reusable - includes ALL entities!)
+- **game/** = "What it shows" (data configs + game-specific scenes)
+- **Dependency Injection** = Game configs injected into engine via `main.lua`
+
+---
+
+## 🎮 First Steps
+
+### 1. Explore the Game
+- Start game with `love .`
+- Try New Game → Create save slot
+- Walk around with WASD
+- Attack enemies with Left Click
+- Find NPCs and press F to talk
+- Find Save Points (glowing circles) and press F to save
+
+### 2. Try Different Game Modes
+- **Topdown mode** (level1/area1-3): Free 2D movement
+- **Platformer mode** (level2/area1): Horizontal movement + jump
+
+### 3. Test Combat
+- Attack: Left Click / A button
+- Parry: Right Click / X button (press RIGHT when enemy attacks for slow-motion)
+- Dodge: Shift / R1 button (invincibility frames)
+
+### 4. Inventory System
+- Press I to open inventory
+- Use items with Q / L1
+- Cycle items with Tab / L2
+- Quick-select with 1-5 keys
+
+---
+
+## 🛠️ Creating Content
+
+### Add a New Enemy ⭐ (Data-Driven - No Code!)
+1. Create sprite: `assets/images/enemies/yourenemy.png`
+2. Open map in Tiled, add enemy object
+3. Set properties: `type = "yourenemy"`, `hp = 50`, `dmg = 10`, `spd = 100`, `spr = "assets/images/enemies/yourenemy.png"`
+4. Export map to Lua - Done! (Entity factory handles the rest)
+
+**Or:** Add to `game/data/entity_types.lua` for reusable enemy types:
+```lua
+enemies = {
+  yourenemy = {
+    hp = 50,
+    damage = 10,
+    speed = 100,
+    sprite = "assets/images/enemies/yourenemy.png"
+  }
+}
+```
+
+### Add a New Menu ⭐ (Data-Driven - 6 lines!)
+1. Add config to `game/data/scenes.lua`:
+```lua
+scenes.mymenu = {
+  type = "menu",
+  title = "My Menu",
+  options = {"Play", "Quit"},
+  actions = {
+    ["Play"] = {action = "switch_scene", scene = "play"},
+    ["Quit"] = {action = "quit"}
+  }
+}
+```
+2. Create `game/scenes/mymenu.lua`:
+```lua
+local builder = require "engine.scenes.builder"
+local configs = require "game.data.scenes"
+return builder:build("mymenu", configs)
+```
+
+### Add a New Item
+1. Create icon: `assets/images/items/youritem.png`
+2. Create type: `engine/entities/item/types/youritem.lua` (copy from `small_potion.lua`)
+3. Add to inventory in code: `inventory:addItem("youritem", 1)`
+
+### Add a New Map
+1. Create `.tmx` in Tiled: `assets/maps/level1/newarea.tmx`
+2. Set map property: `game_mode = "topdown"` (or "platformer")
+3. Export to Lua: `assets/maps/level1/newarea.lua`
+4. Create portal object in previous map: `target_map = "assets/maps/level1/newarea.lua"`
+
+### Add Background Music
+1. Place file: `assets/bgm/yourmusic.ogg`
+2. Register in `game/data/sounds.lua`:
+   ```lua
+   bgm = {
+       yourmusic = { path = "assets/bgm/yourmusic.ogg", volume = 0.7, loop = true }
+   }
+   ```
+3. Set in Tiled map property: `bgm = "yourmusic"`
+
+---
+
+## 📚 Documentation
+
+- **[GUIDE.md](GUIDE.md)** - Complete guide (Engine + Game + Development + Effects)
+- **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - Full project structure
+
+---
+
+## 🐛 Troubleshooting
+
+### Game won't start
+- Check `love --version` (need LÖVE 11.5)
+- Check `lua -v` (need Lua 5.1 compatible)
+- Look for errors in console
+
+### Files not found errors
+- Check all `require` paths use dots: `require "engine.core.sound"`
+- Check file paths use forward slashes: `"assets/maps/level1/area1.lua"`
+- Remember engine paths: `engine.core.*`, `engine.systems.*`, `engine.entities.*`
+
+### No sound
+- Check `config.ini` has non-zero volumes
+- Check sound files exist in `assets/bgm/` and `assets/sound/`
+- Check sound definitions in `game/data/sounds.lua`
+
+### Map won't load
+- Check Tiled map is exported to Lua format (`.lua` file)
+- Check map has required layers (Ground, Walls, etc.)
+- Check map property `game_mode` is set
+
+---
+
+**Framework:** LÖVE 11.5 + Lua 5.1
+**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven
+**Last Updated:** 2025-11-09
