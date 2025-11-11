@@ -4,6 +4,7 @@
 -- @copyright 2019
 -- @license MIT/X11
 
+---@diagnostic disable-next-line: undefined-field
 local love  = _G.love
 local utils = require((...):gsub('plugins.box2d', 'utils'))
 local lg    = require((...):gsub('plugins.box2d', 'graphics'))
