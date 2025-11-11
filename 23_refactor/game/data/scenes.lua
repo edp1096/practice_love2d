@@ -21,9 +21,9 @@ scenes.menu = {
     ["Load Game"] = { action = "switch_scene", scene = "load" },
     ["Settings"] = { action = "switch_scene", scene = "settings" },
     ["Quit"] = { action = "quit" }
-  },
+  }
 
-  back_action = { action = "quit" }
+  -- No back_action - ESC disabled on main menu (use Quit option instead)
 }
 
 -- Pause Menu
