@@ -58,6 +58,10 @@ function world:new(map_path, entity_classes)
     if instance.physicsWorld.collision_classes.PlayerFoot then
         instance.physicsWorld.collision_classes.PlayerFoot.draw_color = {1.0, 0.08, 0.58}  -- Deep pink
     end
+    -- EnemyFoot: Orange
+    if instance.physicsWorld.collision_classes.EnemyFoot then
+        instance.physicsWorld.collision_classes.EnemyFoot.draw_color = {1.0, 0.5, 0.0}  -- Orange
+    end
 
     instance.walls = {}
     loaders.loadWalls(instance)

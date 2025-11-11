@@ -62,11 +62,12 @@ engine/
 │           └── touch.lua               - Touch event handling
 │
 ├── systems/              - **Engine subsystems (Layer 2)**
-│   ├── collision.lua     - **Collision system** (dual collider, Y-sorting)
-│   │                       - setupCollisionClasses() - Collision class registration
-│   │                       - createPlayerColliders() - Main + foot collider (topdown)
+│   ├── collision.lua     - **Collision system** (dual collider for topdown mode)
+│   │                       - setupCollisionClasses() - Collision rules (Player/Enemy main ignore in topdown)
+│   │                       - createPlayerColliders() - Main + foot collider (18.75% height, topdown)
+│   │                       - createEnemyCollider() - Main + foot (humanoid: 12.5%, slime: 60%)
 │   │                       - createWallColliders() - Main wall + base collider
-│   │                       - createEnemyCollider(), createNPCCollider() - Entity colliders
+│   │                       - createNPCCollider() - NPC collider
 │   │                       - createDeathZoneCollider(), createDamageZoneCollider() - Hazards
 │   │
 │   ├── world/            - Physics & world system

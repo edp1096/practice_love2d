@@ -52,7 +52,10 @@ engine/
 │           └── touch.lua               - 터치 이벤트 핸들링
 │
 ├── systems/              - **엔진 서브시스템 (Layer 2)**
-│   ├── collision.lua     - **충돌 시스템** (이중 콜라이더, Y-정렬)
+│   ├── collision.lua     - **충돌 시스템** (topdown 이중 콜라이더)
+│   │                       - 플레이어: 18.75% 발 콜라이더
+│   │                       - 적: 인간형 12.5%, 슬라임 60%
+│   │                       - Topdown: Player/Enemy 메인 무시 규칙
 │   ├── world/            - 물리 & 월드 시스템 (Windfield/STI)
 │   │   ├── init.lua      - 월드 코디네이터, 충돌 설정
 │   │   ├── loaders.lua   - 맵 로딩 (Tiled TMX + Trees 타일)

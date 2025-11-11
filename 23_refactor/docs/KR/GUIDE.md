@@ -953,22 +953,32 @@ Topdown vs Platformer 모드 관리.
 
 **플레이어 콜라이더:**
 - `player.collider` - 메인 콜라이더 (중앙 원점, 전신, 전투용)
-- `player.foot_collider` - 하단 25% 콜라이더 (벽 충돌, 이동용)
+- `player.foot_collider` - 하단 18.75% 콜라이더 (벽 충돌, 이동용)
+
+**적 콜라이더:**
+- `enemy.collider` - 메인 콜라이더 (전신, 전투용)
+- `enemy.foot_collider` - 타입별:
+  - 인간형 적 (bandit, rogue, warrior, guard): 하단 12.5% 높이
+  - 슬라임 적 (red/green/blue/purple_slime): 하단 60% 높이
 
 **벽 콜라이더:**
 - 메인 콜라이더 - 전체 벽 몸체 (전투/물리용)
 - `base_collider` - 하단 15% 표면 (발 충돌용)
 
-**충돌 규칙:**
-- `PlayerFoot` (foot_collider)가 충돌하는 대상:
+**충돌 규칙 (Topdown 전용):**
+- Player 메인 ↔ Enemy 메인: **무시** (서로 통과)
+- `PlayerFoot` ↔ `EnemyFoot`: **충돌** (벽 충돌)
+- `PlayerFoot`/`EnemyFoot`가 충돌하는 대상:
   - `Wall` (메인 벽) - 모든 방향에서 차단
   - `WallBase` (base_collider) - 표면 충돌
-- 메인 플레이어 콜라이더는 전투, 적 감지에 사용
+- 메인 콜라이더는 전투 감지 전용
 
 **Y-정렬:**
-- 엔티티들을 **발 위치** 기준으로 정렬하여 올바른 깊이 렌더링
-- 플레이어: `y + collider_height / 2` (중앙 + 절반 = 하단)
-- 적/NPC: `y + collider_offset_y + collider_height`
+- 엔티티들을 **foot_collider 하단 모서리** 기준으로 정확한 깊이 렌더링
+- 플레이어: `foot_collider:getY() + (collider_height * 0.1875) / 2`
+- 인간형 적: `foot_collider:getY() + (collider_height * 0.125) / 2`
+- 슬라임 적: `foot_collider:getY() + (collider_height * 0.6) / 2`
+- NPC: `y + collider_offset_y + collider_height`
 - Trees 타일을 Tiled 맵에서 추출하여 엔티티와 함께 Y-정렬
 - 결과: 올바른 시각적 깊이 (벽 뒤 엔티티가 뒤에 표시됨)
 

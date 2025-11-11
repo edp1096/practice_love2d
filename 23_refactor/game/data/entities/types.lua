@@ -39,7 +39,7 @@ entity_types.enemies = {
         damage = 10,
         speed = 100,
         attack_cooldown = 1.0,
-        detection_range = 200,
+        detection_range = 240,
         attack_range = 50,
 
         sprite_width = 16,
@@ -67,7 +67,7 @@ entity_types.enemies = {
         damage = 8,
         speed = 120,
         attack_cooldown = 0.8,
-        detection_range = 180,
+        detection_range = 220,
         attack_range = 50,
 
         sprite_width = 16,
@@ -95,7 +95,7 @@ entity_types.enemies = {
         damage = 12,
         speed = 80,
         attack_cooldown = 1.2,
-        detection_range = 220,
+        detection_range = 260,
         attack_range = 50,
 
         sprite_width = 16,
@@ -123,7 +123,7 @@ entity_types.enemies = {
         damage = 15,
         speed = 90,
         attack_cooldown = 1.5,
-        detection_range = 250,
+        detection_range = 290,
         attack_range = 60,
 
         sprite_width = 16,
@@ -152,7 +152,7 @@ entity_types.enemies = {
         damage = 15,
         speed = 120,
         attack_cooldown = 1.2,
-        detection_range = 250,
+        detection_range = 290,
         attack_range = 35,
 
         sprite_width = 48,
@@ -190,7 +190,7 @@ entity_types.enemies = {
         damage = 12,
         speed = 150,
         attack_cooldown = 0.9,
-        detection_range = 280,
+        detection_range = 320,
         attack_range = 35,
 
         sprite_width = 48,
@@ -227,7 +227,7 @@ entity_types.enemies = {
         damage = 20,
         speed = 100,
         attack_cooldown = 1.5,
-        detection_range = 230,
+        detection_range = 270,
         attack_range = 35,
 
         sprite_width = 48,
@@ -264,7 +264,7 @@ entity_types.enemies = {
         damage = 18,
         speed = 110,
         attack_cooldown = 1.3,
-        detection_range = 240,
+        detection_range = 280,
         attack_range = 35,
 
         sprite_width = 48,

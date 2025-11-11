@@ -16,16 +16,26 @@ function collision.setupCollisionClasses(physicsWorld, game_mode)
     physicsWorld:addCollisionClass("WallBase")    -- Topdown base surface
     physicsWorld:addCollisionClass("Portals")
     physicsWorld:addCollisionClass("Enemy")
+    physicsWorld:addCollisionClass("EnemyFoot")   -- Topdown enemy foot collider
     physicsWorld:addCollisionClass("Item")
     physicsWorld:addCollisionClass("DeathZone")
     physicsWorld:addCollisionClass("DamageZone")
 
-    physicsWorld.collision_classes.PlayerDodging.ignores = { "Enemy" }
+    physicsWorld.collision_classes.PlayerDodging.ignores = { "Enemy", "EnemyFoot" }
 
-    -- PlayerFoot collides with Wall and WallBase (for topdown collision)
+    -- Topdown mode: Player and Enemy main colliders ignore each other (only foot colliders collide)
+    if game_mode == "topdown" then
+        physicsWorld.collision_classes.Player.ignores = { "Enemy" }
+        physicsWorld.collision_classes.Enemy.ignores = { "Player" }
+    end
+
+    -- PlayerFoot: only collides with Wall, WallBase, and EnemyFoot (ignores Enemy main collider!)
     physicsWorld.collision_classes.PlayerFoot.ignores = { "Player", "PlayerDodging", "Enemy", "Portals", "Item", "DeathZone", "DamageZone" }
 
-    -- WallBase only collides with PlayerFoot (not with combat or other systems)
+    -- EnemyFoot: only collides with Wall, WallBase, and PlayerFoot (ignores Player main collider!)
+    physicsWorld.collision_classes.EnemyFoot.ignores = { "Player", "PlayerDodging", "Enemy", "Portals", "Item", "DeathZone", "DamageZone" }
+
+    -- WallBase only collides with PlayerFoot and EnemyFoot (not with combat or other systems)
     physicsWorld.collision_classes.WallBase.ignores = { "Player", "PlayerDodging", "Enemy", "Wall", "Portals", "Item", "DeathZone", "DamageZone" }
 
     physicsWorld:collisionClassesSet()
@@ -51,8 +61,8 @@ function collision.createPlayerColliders(player, physicsWorld)
 
     -- Topdown mode: Add foot collider (bottom only)
     if player.game_mode == "topdown" then
-        local bottom_height = player.collider_height * 0.125  -- Bottom 12.5% (half of original)
-        local bottom_y_offset = player.collider_height * 0.4375  -- Position at 87.5% down
+        local bottom_height = player.collider_height * 0.1875  -- Bottom 18.75% (1.5x of 12.5%)
+        local bottom_y_offset = player.collider_height * 0.40625  -- Position at 81.25% down
 
         player.foot_collider = physicsWorld:newBSGRectangleCollider(
             player.x,
@@ -190,7 +200,16 @@ end
 -- @param physicsWorld The Windfield physics world
 -- @param game_mode The game mode ("topdown" or "platformer")
 function collision.createEnemyCollider(enemy, physicsWorld, game_mode)
+    if enemy.collider then
+        return  -- Already has colliders
+    end
+
+    -- Store game mode for later use
+    enemy.game_mode = game_mode
+
     local bounds = enemy:getColliderBounds()
+
+    -- Main collider (combat, physics)
     enemy.collider = physicsWorld:newBSGRectangleCollider(
         bounds.x, bounds.y,
         bounds.width, bounds.height,
@@ -199,6 +218,43 @@ function collision.createEnemyCollider(enemy, physicsWorld, game_mode)
     enemy.collider:setFixedRotation(true)
     enemy.collider:setCollisionClass(constants.COLLISION_CLASSES.ENEMY)
     enemy.collider:setObject(enemy)
+
+    -- Topdown mode: Add foot collider based on enemy type
+    if game_mode == "topdown" then
+        if enemy.is_humanoid then
+            -- Humanoid enemies: foot collider like player (12.5% height at bottom)
+            local bottom_height = enemy.collider_height * 0.125  -- Bottom 12.5%
+            local bottom_y_offset = enemy.collider_height * 0.4375  -- Position at 87.5% down
+
+            enemy.foot_collider = physicsWorld:newBSGRectangleCollider(
+                bounds.x,
+                bounds.y + bottom_y_offset,
+                enemy.collider_width,
+                bottom_height,
+                5  -- Smaller corner radius
+            )
+            enemy.foot_collider:setFixedRotation(true)
+            enemy.foot_collider:setCollisionClass(constants.COLLISION_CLASSES.ENEMY_FOOT)
+            enemy.foot_collider:setFriction(0.0)
+            enemy.foot_collider:setObject(enemy)  -- Link back to enemy
+        else
+            -- Slime enemies: bottom 60% collision (no visible feet)
+            local bottom_height = enemy.collider_height * 0.6  -- Bottom 60%
+            local bottom_y_offset = enemy.collider_height * 0.2  -- Position at 40% down
+
+            enemy.foot_collider = physicsWorld:newBSGRectangleCollider(
+                bounds.x,
+                bounds.y + bottom_y_offset,
+                enemy.collider_width,
+                bottom_height,
+                5
+            )
+            enemy.foot_collider:setFixedRotation(true)
+            enemy.foot_collider:setCollisionClass(constants.COLLISION_CLASSES.ENEMY_FOOT)
+            enemy.foot_collider:setFriction(0.0)
+            enemy.foot_collider:setObject(enemy)
+        end
+    end
 
     -- Platformer mode: remove air resistance for faster falling
     if game_mode == "platformer" then

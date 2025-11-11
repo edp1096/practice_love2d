@@ -91,6 +91,14 @@ function enemy:new(x, y, enemy_type, config)
     instance.state_timer = 0
     instance.previous_state = constants.ENEMY_STATES.IDLE
 
+    -- Search state (when lost sight of player)
+    instance.last_seen_x = nil
+    instance.last_seen_y = nil
+    instance.search_distance_traveled = 0
+    instance.search_max_distance = 150  -- Maximum distance to search before giving up
+    instance.detour_direction_x = 0     -- Detour direction when blocked
+    instance.detour_direction_y = 0
+
     -- Patrol
     instance.patrol_points = {}
     instance.current_patrol_index = 1
@@ -182,6 +190,8 @@ function enemy:new(x, y, enemy_type, config)
 
     -- Collider (set by world)
     instance.collider = nil
+    instance.foot_collider = nil  -- Topdown mode only
+    instance.game_mode = nil  -- Set by world when creating collider
 
     return instance
 end

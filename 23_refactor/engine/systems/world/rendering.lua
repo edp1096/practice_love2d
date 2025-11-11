@@ -7,6 +7,33 @@ local text_ui = require "engine.utils.text"
 
 local rendering = {}
 
+-- Helper: Calculate Y position for sorting (foot bottom edge)
+local function getEntitySortY(entity, game_mode)
+    local y = entity.y
+
+    -- Check if foot_collider exists and is valid
+    if game_mode == "topdown" and entity.foot_collider and entity.foot_collider.body then
+        -- Use foot_collider bottom edge
+        local foot_height
+        if entity.is_humanoid ~= nil then
+            -- Enemy
+            foot_height = entity.is_humanoid and (entity.collider_height * 0.125) or (entity.collider_height * 0.6)
+        else
+            -- Player (18.75% height)
+            foot_height = entity.collider_height * 0.1875
+        end
+        y = entity.foot_collider:getY() + foot_height / 2
+    elseif entity.collider_offset_y and entity.collider_height then
+        -- Fallback: collider bottom
+        y = y + entity.collider_offset_y + entity.collider_height
+    elseif entity.collider_height then
+        -- Simple collider
+        y = y + entity.collider_height / 2
+    end
+
+    return y
+end
+
 function rendering.draw(self)
     self.map:draw()
 end
@@ -48,25 +75,7 @@ function rendering.drawEntitiesYSorted(self, player)
 
     -- Sort by Y coordinate (foot position for accurate depth)
     table.sort(drawables, function(a, b)
-        local a_y = a.y
-        local b_y = b.y
-
-        -- For entities with collider_offset, use foot position
-        if a.collider_offset_y and a.collider_height then
-            a_y = a_y + a.collider_offset_y + a.collider_height
-        elseif a == player and a.collider_height then
-            -- Player: collider center is at a.y, so foot is at a.y + height/2
-            a_y = a_y + a.collider_height / 2
-        end
-
-        if b.collider_offset_y and b.collider_height then
-            b_y = b_y + b.collider_offset_y + b.collider_height
-        elseif b == player and b.collider_height then
-            -- Player: collider center is at b.y, so foot is at b.y + height/2
-            b_y = b_y + b.collider_height / 2
-        end
-
-        return a_y < b_y
+        return getEntitySortY(a, self.game_mode) < getEntitySortY(b, self.game_mode)
     end)
 
     -- Draw in sorted order

@@ -1011,22 +1011,32 @@ Map Properties:
 
 **Player Colliders:**
 - `player.collider` - Main collider (center-origin, full body for combat)
-- `player.foot_collider` - Bottom 25% collider for wall collision (movement)
+- `player.foot_collider` - Bottom 18.75% collider for wall collision (movement)
+
+**Enemy Colliders:**
+- `enemy.collider` - Main collider (full body for combat)
+- `enemy.foot_collider` - Type-specific:
+  - Humanoid enemies (bandit, rogue, warrior, guard): 12.5% height at bottom
+  - Slime enemies (red/green/blue/purple_slime): 60% height at bottom
 
 **Wall Colliders:**
 - Main collider - Full wall body for combat/physics
 - `base_collider` - Bottom 15% surface for foot collision
 
-**Collision Rules:**
-- `PlayerFoot` (foot_collider) collides with:
+**Collision Rules (Topdown only):**
+- Player main ↔ Enemy main: **IGNORE** (pass through each other)
+- `PlayerFoot` ↔ `EnemyFoot`: **COLLIDE** (wall collision)
+- `PlayerFoot`/`EnemyFoot` collides with:
   - `Wall` (main wall) - Blocks from all sides
   - `WallBase` (base_collider) - Surface collision
-- Main player collider used for combat, enemy detection
+- Main colliders used for combat detection only
 
 **Y-Sorting:**
-- Entities sorted by **foot position** for proper depth rendering
-- Player: `y + collider_height / 2` (center + half = bottom)
-- Enemies/NPCs: `y + collider_offset_y + collider_height`
+- Entities sorted by **foot_collider bottom edge** for accurate depth rendering
+- Player: `foot_collider:getY() + (collider_height * 0.1875) / 2`
+- Humanoid enemy: `foot_collider:getY() + (collider_height * 0.125) / 2`
+- Slime enemy: `foot_collider:getY() + (collider_height * 0.6) / 2`
+- NPCs: `y + collider_offset_y + collider_height`
 - Trees tiles extracted from Tiled map and Y-sorted with entities
 - Result: Proper visual depth (entities behind walls appear behind)
 

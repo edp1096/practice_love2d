@@ -429,7 +429,7 @@ function update.update(self, dt)
     -- Sync player position from foot_collider in topdown mode
     if self.player.game_mode == "topdown" and self.player.foot_collider then
         self.player.x = self.player.foot_collider:getX()
-        self.player.y = self.player.foot_collider:getY() - self.player.collider_height * 0.4375
+        self.player.y = self.player.foot_collider:getY() - self.player.collider_height * 0.40625
 
         -- Sync main collider to foot_collider
         self.player.collider:setPosition(self.player.x, self.player.y)

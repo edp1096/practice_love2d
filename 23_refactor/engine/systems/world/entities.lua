@@ -65,21 +65,54 @@ function entities.updateEnemies(self, dt, player_x, player_y)
             enemy.death_timer = (enemy.death_timer or 0) + dt
             if enemy.death_timer > 2 then
                 if enemy.collider then enemy.collider:destroy() end
+                if enemy.foot_collider then enemy.foot_collider:destroy() end
                 table.remove(self.enemies, i)
             end
         else
             local vx, vy = enemy:update(dt, player_x, player_y)
 
-            if enemy.collider then
-                -- In platformer mode, preserve vertical velocity (gravity)
-                -- Only set horizontal velocity from AI
-                if self.game_mode == "platformer" then
-                    _, vy = enemy.collider:getLinearVelocity()
-                end
-                enemy.collider:setLinearVelocity(vx, vy)
+            if self.game_mode == "topdown" then
+                -- Topdown mode: use foot_collider for wall collision
+                if enemy.foot_collider then
+                    enemy.foot_collider:setLinearVelocity(vx, vy)
 
-                enemy.x = enemy.collider:getX() - enemy.collider_offset_x
-                enemy.y = enemy.collider:getY() - enemy.collider_offset_y
+                    -- Sync enemy position from foot_collider
+                    -- Calculate offset based on enemy type
+                    local y_offset
+                    if enemy.is_humanoid then
+                        y_offset = enemy.collider_height * 0.4375  -- Same as player
+                    else
+                        y_offset = enemy.collider_height * 0.2  -- Slime offset
+                    end
+
+                    enemy.x = enemy.foot_collider:getX() - enemy.collider_offset_x
+                    enemy.y = enemy.foot_collider:getY() - enemy.collider_offset_y - y_offset
+
+                    -- Sync main collider position with foot_collider
+                    if enemy.collider then
+                        enemy.collider:setPosition(
+                            enemy.x + enemy.collider_offset_x,
+                            enemy.y + enemy.collider_offset_y
+                        )
+                        -- Set velocity to 0 so main collider doesn't drift
+                        enemy.collider:setLinearVelocity(0, 0)
+                    end
+                else
+                    -- Fallback: use main collider
+                    enemy.collider:setLinearVelocity(vx, vy)
+                    enemy.x = enemy.collider:getX() - enemy.collider_offset_x
+                    enemy.y = enemy.collider:getY() - enemy.collider_offset_y
+                end
+            else
+                -- Platformer mode: preserve vertical velocity (gravity)
+                -- Only set horizontal velocity from AI
+                if enemy.collider then
+                    _, vy = enemy.collider:getLinearVelocity()
+                    enemy.collider:setLinearVelocity(vx, vy)
+
+                    enemy.x = enemy.collider:getX() - enemy.collider_offset_x
+                    enemy.y = enemy.collider:getY() - enemy.collider_offset_y
+                end
             end
         end
     end

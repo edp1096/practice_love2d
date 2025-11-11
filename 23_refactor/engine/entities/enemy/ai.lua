@@ -6,6 +6,34 @@ local constants = require "engine.core.constants"
 
 local ai = {}
 
+-- Calculate detour direction when blocked by wall
+-- Returns detour_x, detour_y (unit vector)
+local function calculateDetour(move_dx, move_dy, wall_normal_x, wall_normal_y)
+    -- Determine if wall is horizontal or vertical based on normal vector
+    local is_horizontal_wall = math.abs(wall_normal_y) > math.abs(wall_normal_x)
+
+    if is_horizontal_wall then
+        -- Horizontal wall (normal points up/down)
+        -- Check which quadrant we're moving in
+        if move_dy < 0 then
+            -- Moving up (quadrant 1 or 2) -> detour right
+            return 1, 0
+        else
+            -- Moving down (quadrant 3 or 4) -> detour left
+            return -1, 0
+        end
+    else
+        -- Vertical wall (normal points left/right)
+        if move_dx > 0 then
+            -- Moving right (quadrant 1 or 4) -> detour up
+            return 0, -1
+        else
+            -- Moving left (quadrant 2 or 3) -> detour down
+            return 0, 1
+        end
+    end
+end
+
 function ai.update(enemy, dt, player_x, player_y)
     -- State machine
     if enemy.state == constants.ENEMY_STATES.IDLE then
@@ -14,6 +42,8 @@ function ai.update(enemy, dt, player_x, player_y)
         ai.updatePatrol(enemy, dt, player_x, player_y)
     elseif enemy.state == constants.ENEMY_STATES.CHASE then
         ai.updateChase(enemy, dt, player_x, player_y)
+    elseif enemy.state == constants.ENEMY_STATES.SEARCH then
+        ai.updateSearch(enemy, dt, player_x, player_y)
     elseif enemy.state == constants.ENEMY_STATES.ATTACK_WINDUP then
         ai.updateAttackWindup(enemy, dt, player_x, player_y)
     elseif enemy.state == constants.ENEMY_STATES.ATTACK then
@@ -26,7 +56,7 @@ function ai.update(enemy, dt, player_x, player_y)
 
     -- Calculate movement
     local vx, vy = 0, 0
-    if (enemy.state == constants.ENEMY_STATES.PATROL or enemy.state == constants.ENEMY_STATES.CHASE) and enemy.target_x and enemy.target_y then
+    if (enemy.state == constants.ENEMY_STATES.PATROL or enemy.state == constants.ENEMY_STATES.CHASE or enemy.state == constants.ENEMY_STATES.SEARCH) and enemy.target_x and enemy.target_y then
         -- Check if we're in platformer mode
         local is_platformer = enemy.world and enemy.world.game_mode == "platformer"
 
@@ -217,12 +247,20 @@ function ai.updateChase(enemy, dt, player_x, player_y)
     -- Lost line of sight
     local collider_center_x, collider_center_y = enemy:getColliderCenter()
     if enemy.world and not enemy.world:checkLineOfSight(collider_center_x, collider_center_y, player_x, player_y) then
-        ai.setState(enemy, "idle")
+        -- Transition to search state instead of giving up immediately
+        enemy.last_seen_x = player_x
+        enemy.last_seen_y = player_y
+        enemy.search_distance_traveled = 0
+        enemy.detour_direction_x = 0
+        enemy.detour_direction_y = 0
+        ai.setState(enemy, "search")
         return
     end
 
-    -- Chase player
+    -- Chase player (save position as last seen)
     local is_platformer = enemy.world and enemy.world.game_mode == "platformer"
+    enemy.last_seen_x = player_x
+    enemy.last_seen_y = player_y
     enemy.target_x = player_x
     enemy.target_y = is_platformer and enemy.y or player_y -- Keep current Y in platformer mode
 end
@@ -298,6 +336,65 @@ function ai.updateAttack(enemy, dt, player_x, player_y)
     if enemy.state_timer <= 0 then
         ai.setState(enemy, "chase")
     end
+end
+
+function ai.updateSearch(enemy, dt, player_x, player_y)
+    enemy.anim = enemy.animations["walk_" .. enemy.direction]
+
+    local is_platformer = enemy.world and enemy.world.game_mode == "platformer"
+
+    -- Check if player is back in sight
+    local distance
+    if is_platformer then
+        local dx = player_x - (enemy.x + enemy.collider_offset_x)
+        distance = math.abs(dx)
+    else
+        distance = enemy:getDistanceToPoint(player_x, player_y)
+    end
+
+    if distance < enemy.detection_range then
+        local collider_center_x, collider_center_y = enemy:getColliderCenter()
+        if enemy.world and enemy.world:checkLineOfSight(collider_center_x, collider_center_y, player_x, player_y) then
+            -- Found player again! Resume chase
+            ai.setState(enemy, "chase")
+            return
+        end
+    end
+
+    -- Give up if traveled too far or too far from last seen position
+    local dist_from_last_seen = enemy:getDistanceToPoint(enemy.last_seen_x, enemy.last_seen_y)
+    if enemy.search_distance_traveled > enemy.search_max_distance or dist_from_last_seen > enemy.detection_range * 1.5 then
+        ai.setState(enemy, "idle")
+        return
+    end
+
+    -- Move toward last seen position or detour around obstacles
+    if enemy.detour_direction_x ~= 0 or enemy.detour_direction_y ~= 0 then
+        -- Currently detouring around obstacle
+        enemy.target_x = enemy.x + enemy.detour_direction_x * 50
+        enemy.target_y = is_platformer and enemy.y or (enemy.y + enemy.detour_direction_y * 50)
+
+        -- Check if reached detour target or found line of sight
+        local dist_to_detour = enemy:getDistanceToPoint(enemy.target_x, enemy.target_y)
+        if dist_to_detour < 10 then
+            -- Finished detour, reset and try direct path again
+            enemy.detour_direction_x = 0
+            enemy.detour_direction_y = 0
+        end
+    else
+        -- Try direct path to last seen position
+        enemy.target_x = enemy.last_seen_x
+        enemy.target_y = is_platformer and enemy.y or enemy.last_seen_y
+
+        -- Check if we're blocked (would need collision detection)
+        -- For now, we'll rely on the enemy getting stuck and timeout
+    end
+
+    -- Track distance traveled
+    local move_dx = enemy.target_x - enemy.x
+    local move_dy = is_platformer and 0 or (enemy.target_y - enemy.y)
+    local move_dist = math.sqrt(move_dx * move_dx + move_dy * move_dy)
+    enemy.search_distance_traveled = enemy.search_distance_traveled + math.min(move_dist, enemy.speed * dt)
 end
 
 function ai.updateHit(enemy, dt)
