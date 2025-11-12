@@ -438,15 +438,19 @@ Camera effects system (shake, slow-motion).
 **Key Functions:**
 ```lua
 camera_sys:shake(intensity, duration)    -- Screen shake effect
-camera_sys:setTimeScale(scale)           -- Slow-motion (0.0-1.0)
+camera_sys:activate_slow_motion(duration, time_scale)  -- Slow-motion effect
 camera_sys:get_scaled_dt(dt)             -- Get time-scaled delta time
+camera_sys:reset()                       -- Reset all camera effects
 ```
 
 **Usage Example:**
 ```lua
 -- Parry hit effect
 camera_sys:shake(5, 0.2)
-camera_sys:setTimeScale(0.3)  -- 30% speed (slow-motion)
+camera_sys:activate_slow_motion(0.5, 0.3)  -- 30% speed for 0.5s
+
+-- Reset on gameplay scene enter
+camera_sys:reset()  -- Called automatically in gameplay:enter()
 ```
 
 ---

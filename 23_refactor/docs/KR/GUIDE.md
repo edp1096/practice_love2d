@@ -438,15 +438,19 @@ end
 **주요 함수:**
 ```lua
 camera_sys:shake(intensity, duration)    -- 화면 흔들림 효과
-camera_sys:setTimeScale(scale)           -- 슬로우 모션 (0.0-1.0)
+camera_sys:activate_slow_motion(duration, time_scale)  -- 슬로우 모션 효과
 camera_sys:get_scaled_dt(dt)             -- 시간 스케일이 적용된 델타 타임 얻기
+camera_sys:reset()                       -- 모든 카메라 효과 리셋
 ```
 
 **사용 예시:**
 ```lua
 -- 패리 히트 효과
 camera_sys:shake(5, 0.2)
-camera_sys:setTimeScale(0.3)  -- 30% 속도 (슬로우 모션)
+camera_sys:activate_slow_motion(0.5, 0.3)  -- 0.5초 동안 30% 속도
+
+-- 게임플레이 씬 진입 시 리셋
+camera_sys:reset()  -- gameplay:enter()에서 자동 호출됨
 ```
 
 ---

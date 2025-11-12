@@ -12,8 +12,8 @@ local instance_lock = nil
 function system.handleHotkey(key, is_mobile, modules)
     -- F11: Toggle fullscreen
     if key == "f11" and not is_mobile then
+        -- ToggleFullScreen now handles windowed resolution management internally
         modules.display:ToggleFullScreen()
-        APP_CONFIG.fullscreen = modules.display.is_fullscreen
         pcall(modules.utils.SaveConfig, modules.utils, APP_CONFIG, modules.sound.settings, modules.input.settings, nil)
         modules.lifecycle:resize(love.graphics.getWidth(), love.graphics.getHeight())
         return true

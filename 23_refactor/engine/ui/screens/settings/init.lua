@@ -38,25 +38,6 @@ function settings:enter(previous, ...)
     -- Detect mobile platform
     local is_mobile = (love._os == "Android" or love._os == "iOS")
 
-    -- Resolution presets (desktop only)
-    if not is_mobile then
-        self.resolutions = {}
-        for i, res in ipairs(options_module.resolutions) do
-            table.insert(self.resolutions, { w = res.w, h = res.h, name = res.name })
-        end
-
-        -- Filter resolutions by monitor size
-        options_module:filterResolutions()
-        -- Also filter our copy
-        for i = #self.resolutions, 1, -1 do
-            local res = self.resolutions[i]
-            local w, h = love.window.getDesktopDimensions()
-            if res.w > w or res.h > h then
-                table.remove(self.resolutions, i)
-            end
-        end
-    end
-
     -- Get monitor information (desktop only)
     if not is_mobile then
         self.monitor_count = love.window.getDisplayCount()
@@ -69,16 +50,9 @@ function settings:enter(previous, ...)
         self.monitor_count = 1
     end
 
-    -- Build options list
-    self.options = options_module:buildOptions(is_mobile, self.monitor_count)
-
-    self.selected = 1
-    self.mouse_over = 0
-
-    -- Current values indices (desktop only)
+    -- Determine current monitor index first
+    local current_monitor = 1
     if not is_mobile then
-        self.current_resolution_index = options_module:findCurrentResolution()
-
         -- Validate monitor index (reset to 1 if out of range)
         local monitor_index = convert:toInt(APP_CONFIG.monitor, 1)
         if monitor_index > self.monitor_count or monitor_index < 1 then
@@ -88,10 +62,33 @@ function settings:enter(previous, ...)
             local ini = require "engine.utils.ini"
             ini:save_config(APP_CONFIG)
         end
-        self.current_monitor_index = monitor_index
-    else
-        -- Set default monitor index for mobile (always 1)
-        self.current_monitor_index = 1
+        current_monitor = monitor_index
+    end
+    self.current_monitor_index = current_monitor
+
+    -- Resolution presets (desktop only) - filter by CURRENT monitor
+    if not is_mobile then
+        self.resolutions = {}
+        -- Get current monitor's desktop dimensions
+        local max_w, max_h = love.window.getDesktopDimensions(self.current_monitor_index)
+
+        -- Copy and filter resolutions based on current monitor
+        for i, res in ipairs(options_module.resolutions) do
+            if res.w <= max_w and res.h <= max_h then
+                table.insert(self.resolutions, { w = res.w, h = res.h, name = res.name })
+            end
+        end
+    end
+
+    -- Build options list
+    self.options = options_module:buildOptions(is_mobile, self.monitor_count)
+
+    self.selected = 1
+    self.mouse_over = 0
+
+    -- Current values indices (desktop only)
+    if not is_mobile then
+        self.current_resolution_index = options_module:findCurrentResolution(self.resolutions)
     end
 
     -- Volume indices

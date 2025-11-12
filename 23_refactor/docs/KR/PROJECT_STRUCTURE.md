@@ -35,14 +35,14 @@ engine/
 ├── core/                 - **핵심 엔진 시스템 (Layer 1)**
 │   ├── lifecycle.lua     - 애플리케이션 생명주기
 │   ├── scene_control.lua - 씬 스택 관리
-│   ├── camera.lua        - 카메라 효과
+│   ├── camera.lua        - 카메라 효과 (셰이크, 슬로우모션, reset())
 │   ├── coords.lua        - **통합 좌표계 시스템**
 │   ├── sound.lua         - 오디오 시스템
 │   ├── save.lua          - 저장/로드 시스템
 │   ├── inventory.lua     - 인벤토리 시스템
 │   ├── debug.lua         - 디버그 오버레이
 │   ├── constants.lua     - 엔진 상수
-│   ├── display/          - 가상 화면 시스템
+│   ├── display/          - 가상 화면 시스템 (ToggleFullScreen: windowed 해상도 관리)
 │   └── input/            - 입력 시스템
 │       ├── dispatcher.lua              - 입력 이벤트 디스패처
 │       ├── sources/                    - 쿼리 기반 입력 소스 (키보드, 마우스, 게임패드)

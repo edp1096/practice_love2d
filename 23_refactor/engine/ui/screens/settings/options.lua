@@ -68,27 +68,27 @@ function options:buildOptions(is_mobile, monitor_count)
     return option_list
 end
 
--- Filter resolutions by monitor size
-function options:filterResolutions()
-    for i = #self.resolutions, 1, -1 do
-        local res = self.resolutions[i]
-        local w, h = love.window.getDesktopDimensions()
-        if res.w > w or res.h > h then
-            table.remove(self.resolutions, i)
-        end
+-- Find current resolution index in provided resolution list
+function options:findCurrentResolution(resolutions)
+    -- When in fullscreen, read windowed resolution (what user selected)
+    -- When in windowed mode, read current window size
+    local current_w, current_h
+    if APP_CONFIG.fullscreen then
+        current_w = APP_CONFIG.windowed_width or APP_CONFIG.width
+        current_h = APP_CONFIG.windowed_height or APP_CONFIG.height
+    else
+        current_w = APP_CONFIG.width
+        current_h = APP_CONFIG.height
     end
-end
 
--- Find current resolution index
-function options:findCurrentResolution()
-    local current_w = APP_CONFIG.width
-    local current_h = APP_CONFIG.height
+    -- Use provided resolutions or fall back to default list
+    local res_list = resolutions or self.resolutions
 
-    for i, res in ipairs(self.resolutions) do
+    for i, res in ipairs(res_list) do
         if res.w == current_w and res.h == current_h then return i end
     end
 
-    return 3 -- Default to 960x540
+    return 3 -- Default to index 3 (usually 960x540)
 end
 
 -- Find volume level index
@@ -190,9 +190,12 @@ local option_handlers = {
         state.current_resolution_index = cycleIndex(state.current_resolution_index, state.resolutions, direction)
 
         local res = state.resolutions[state.current_resolution_index]
-        APP_CONFIG.width, APP_CONFIG.height = res.w, res.h
+        -- Always update windowed resolution (what user selected)
         APP_CONFIG.windowed_width, APP_CONFIG.windowed_height = res.w, res.h
+
         if not APP_CONFIG.fullscreen then
+            -- Windowed mode: apply resolution immediately
+            APP_CONFIG.width, APP_CONFIG.height = res.w, res.h
             love.window.updateMode(res.w, res.h, {
                 resizable = APP_CONFIG.resizable,
                 display = state.current_monitor_index
@@ -200,6 +203,8 @@ local option_handlers = {
             display:CalculateScale()
             if state.resize then state:resize(res.w, res.h) end
         else
+            -- Fullscreen mode: don't change width/height (keep monitor resolution)
+            -- But update previous_screen_wh for when user exits fullscreen
             display.previous_screen_wh.w = res.w
             display.previous_screen_wh.h = res.h
         end
@@ -208,16 +213,11 @@ local option_handlers = {
     end,
 
     ["Fullscreen"] = function(self, state, direction)
+        -- ToggleFullScreen now handles windowed resolution management internally
         display:ToggleFullScreen()
-        APP_CONFIG.fullscreen = display.is_fullscreen
 
-        -- Get current dimensions for resize callback
-        local current_w, current_h
-        if APP_CONFIG.fullscreen then
-            current_w, current_h = love.window.getDesktopDimensions(state.current_monitor_index)
-        else
-            current_w, current_h = display.screen_wh.w, display.screen_wh.h
-        end
+        -- Get dimensions for resize callback
+        local current_w, current_h = display:GetScreenDimensions()
 
         display:CalculateScale()
         if state.resize then state:resize(current_w, current_h) end

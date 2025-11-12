@@ -37,7 +37,7 @@ engine/
 ├── core/                 - **Core engine systems (Layer 1)**
 │   ├── lifecycle.lua     - Application lifecycle (init, update, draw, resize, quit)
 │   ├── scene_control.lua - Scene stack management (switch, push, pop)
-│   ├── camera.lua        - Camera effects (shake, slow-motion)
+│   ├── camera.lua        - Camera effects (shake, slow-motion, reset())
 │   ├── coords.lua        - **Unified coordinate system** (World, Camera, Virtual, Physical)
 │   ├── sound.lua         - Audio system (BGM, SFX, volume control)
 │   ├── save.lua          - Save/Load system (slot-based)
@@ -46,7 +46,7 @@ engine/
 │   ├── constants.lua     - Engine constants
 │   │
 │   ├── display/          - Virtual screen system
-│   │   └── init.lua      - Scaling, letterboxing, coordinate transform
+│   │   └── init.lua      - Scaling, letterboxing, ToggleFullScreen (manages windowed_width/height)
 │   │
 │   └── input/            - Input system
 │       ├── dispatcher.lua              - Input event dispatcher

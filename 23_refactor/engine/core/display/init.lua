@@ -184,11 +184,32 @@ end
 function display:ToggleFullScreen()
     if self.is_mobile then return end -- Can't toggle on mobile
 
+    -- Save current windowed resolution before toggling
+    if not self.is_fullscreen then
+        -- About to go fullscreen - save current window size
+        APP_CONFIG.windowed_width = APP_CONFIG.width
+        APP_CONFIG.windowed_height = APP_CONFIG.height
+    end
+
     if self.is_fullscreen then
         self:DisableFullScreen()
     else
         self:EnableFullScreen()
     end
+
+    -- Update APP_CONFIG dimensions after toggle
+    if self.is_fullscreen then
+        -- In fullscreen: set width/height to monitor resolution
+        APP_CONFIG.width = self.screen_wh.w
+        APP_CONFIG.height = self.screen_wh.h
+    else
+        -- Back to windowed: restore windowed resolution
+        APP_CONFIG.width = APP_CONFIG.windowed_width
+        APP_CONFIG.height = APP_CONFIG.windowed_height
+    end
+
+    -- Update config flag
+    APP_CONFIG.fullscreen = self.is_fullscreen
 end
 
 function display:GetScale()
