@@ -57,12 +57,12 @@ local display = {
 -- LÖVE API expects 'display' field, but we use 'monitor' internally
 local function updateMode(w, h, window_table)
     local flags = {}
-    for k, v in pairs(window_table) do
-        flags[k] = v
-    end
+    for k, v in pairs(window_table) do flags[k] = v end
+
     -- Map our 'monitor' field to LÖVE's 'display' field
     flags.display = flags.monitor
     flags.monitor = nil
+
     return pcall(love.window.updateMode, w, h, flags)
 end
 
@@ -75,9 +75,7 @@ function display:DetectPlatform()
     -- Get DPI scale for high-resolution displays
     if self.is_mobile then
         local dpi_scale = love.window.getDPIScale()
-        if dpi_scale and dpi_scale > 0 then
-            self.dpi_scale = dpi_scale
-        end
+        if dpi_scale and dpi_scale > 0 then self.dpi_scale = dpi_scale end
     end
 end
 
