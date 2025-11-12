@@ -4,9 +4,20 @@
 local item = {}
 item.__index = item
 
-function item:new(item_type, quantity)
+-- UUID generation counter
+local uuid_counter = 0
+
+-- Generate unique ID for item instances
+local function generate_uuid()
+    uuid_counter = uuid_counter + 1
+    return string.format("item_%d_%d", os.time(), uuid_counter)
+end
+
+function item:new(item_type, quantity, uuid)
     local instance = setmetatable({}, item)
 
+    -- Generate or use provided UUID
+    instance.uuid = uuid or generate_uuid()
     instance.type = item_type
     instance.quantity = quantity or 1
 
@@ -16,6 +27,16 @@ function item:new(item_type, quantity)
     instance.name = item_config.name
     instance.description = item_config.description
     instance.max_stack = item_config.max_stack or 99
+
+    -- Get item size from config (default 1x1)
+    instance.size = item_config.size or { width = 1, height = 1 }
+
+    -- Copy equipment properties (if this is equipment)
+    instance.item_type = item_config.item_type  -- "equipment" or nil
+    instance.equipment_slot = item_config.equipment_slot  -- "weapon", "helmet", etc.
+    instance.weapon_type = item_config.weapon_type  -- "sword", "axe", etc.
+    instance.sprite = item_config.sprite  -- Sprite info for rendering
+    instance.stats = item_config.stats  -- Equipment stats
 
     return instance
 end

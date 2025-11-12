@@ -65,10 +65,30 @@ end
 -- Draw a slot (for inventory, save slots, etc.)
 -- is_selected: boolean
 -- is_hovered: boolean
-function shapes:drawSlot(x, y, size, is_selected, is_hovered, rounding)
-    rounding = rounding or 5
-    local state = is_selected and "selected" or (is_hovered and "hover" or "normal")
-    self:drawButton(x, y, size, size, state, rounding)
+-- Supports both square (width only) and rectangular (width, height)
+function shapes:drawSlot(x, y, width, height_or_selected, is_selected_or_hovered, is_hovered_or_rounding, rounding)
+    -- Handle backward compatibility: drawSlot(x, y, size, is_selected, is_hovered, rounding)
+    local w, h, selected, hovered, round
+
+    if type(height_or_selected) == "boolean" then
+        -- Old signature: (x, y, size, is_selected, is_hovered, rounding)
+        w = width
+        h = width
+        selected = height_or_selected
+        hovered = is_selected_or_hovered
+        round = is_hovered_or_rounding
+    else
+        -- New signature: (x, y, width, height, is_selected, is_hovered, rounding)
+        w = width
+        h = height_or_selected or width  -- default to square if height not provided
+        selected = is_selected_or_hovered
+        hovered = is_hovered_or_rounding
+        round = rounding
+    end
+
+    round = round or 5
+    local state = selected and "selected" or (hovered and "hover" or "normal")
+    self:drawButton(x, y, w, h, state, round)
 end
 
 -- Draw an overlay (dark transparent layer)

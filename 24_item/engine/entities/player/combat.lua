@@ -357,4 +357,65 @@ function combat.isDodgeInvincible(player)
     return player.dodge_invincible_timer > 0
 end
 
+-- ============================================================================
+-- Equipment System Functions
+-- ============================================================================
+
+-- Equip a weapon (called when equipping from inventory)
+function combat.equipWeapon(player, weapon_type)
+    if not weapon_type then
+        print("Warning: equipWeapon called with nil weapon_type")
+        return false
+    end
+
+    -- Create new weapon of specified type
+    player.weapon = weapon_class:new(weapon_type)
+
+    -- Reset weapon state
+    player.weapon_drawn = false
+    player.last_action_time = 0
+
+    return true
+end
+
+-- Apply equipment stats to player
+function combat.applyEquipmentStats(player, stats)
+    if not stats then
+        return
+    end
+
+    -- Store base stats if not already stored (first equipment)
+    if not player.base_stats then
+        player.base_stats = {
+            damage = player.weapon and player.weapon.config.damage or 0,
+            attack_speed = 1.0
+        }
+    end
+
+    -- Apply stat bonuses (additive for now, could be multiplicative)
+    if stats.damage and player.weapon then
+        player.weapon.config.damage = (player.base_stats.damage or 0) + stats.damage
+    end
+
+    if stats.attack_speed then
+        player.attack_cooldown_max = player.attack_cooldown_max / (stats.attack_speed or 1.0)
+    end
+end
+
+-- Remove equipment stats from player
+function combat.removeEquipmentStats(player, stats)
+    if not stats or not player.base_stats then
+        return
+    end
+
+    -- Restore base stats
+    if stats.damage and player.weapon then
+        player.weapon.config.damage = player.base_stats.damage or 0
+    end
+
+    if stats.attack_speed then
+        player.attack_cooldown_max = player.attack_cooldown_max * (stats.attack_speed or 1.0)
+    end
+end
+
 return combat

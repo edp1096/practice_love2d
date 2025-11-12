@@ -101,6 +101,7 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
         -- Give starting items (for both new game and no save data)
         self.inventory:addItem("small_potion", 3)
         self.inventory:addItem("large_potion", 1)
+        self.inventory:addItem("iron_sword", 1)  -- Test weapon for equipment system
     end
 
 

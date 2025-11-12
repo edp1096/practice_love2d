@@ -4,6 +4,7 @@
 local large_potion = {
     name = "Large Health Potion",
     description = "Restores 60 HP",
+    size = { width = 1, height = 2 },  -- Grid size: 1x2 (tall bottle)
     max_stack = 10,
     heal_amount = 60
 }

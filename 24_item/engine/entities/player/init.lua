@@ -128,4 +128,11 @@ function player:drawAll() render.drawAll(self) end
 
 function player:drawDebug() render.drawDebug(self) end
 
+-- Equipment system wrappers
+function player:equipWeapon(weapon_type) return combat.equipWeapon(self, weapon_type) end
+
+function player:applyEquipmentStats(stats) return combat.applyEquipmentStats(self, stats) end
+
+function player:removeEquipmentStats(stats) return combat.removeEquipmentStats(self, stats) end
+
 return player
