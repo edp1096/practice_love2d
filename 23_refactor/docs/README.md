@@ -143,7 +143,7 @@ zip -9 -r game.love .
 3. Set properties: `type = "yourenemy"`, `hp = 50`, `dmg = 10`, `spd = 100`, `spr = "assets/images/enemies/yourenemy.png"`
 4. Export map to Lua - Done! (Entity factory handles the rest)
 
-**Or:** Add to `game/data/entity_types.lua` for reusable enemy types:
+**Or:** Add to `game/data/entities/types.lua` for reusable enemy types:
 ```lua
 enemies = {
   yourenemy = {

@@ -608,7 +608,7 @@ save_sys:deleteSave(slot)                -- 세이브 슬롯 삭제
 
 ## 인벤토리 시스템
 
-### `engine/inventory.lua`
+### `engine/systems/inventory.lua`
 아이템 관리 시스템.
 
 **주요 함수:**
@@ -785,8 +785,8 @@ ui_scene.updateConfirmMouseOver(width, height, button_count)
 
 **사용 예시 (메뉴 씬):**
 ```lua
-local ui_scene = require "engine.ui.menu"
-local display = require "engine.display"
+local ui_scene = require "engine.ui.menu.helpers"
+local display = require "engine.core.display"
 local sound = require "engine.sound"
 
 function menu:enter(previous)
@@ -883,14 +883,14 @@ end
 
 ## 미니맵 시스템
 
-### `engine/minimap.lua`
+### `engine/systems/hud/minimap.lua`
 미니맵 렌더링 시스템.
 
 ---
 
 ## HUD 시스템
 
-### `engine/hud.lua`
+### `engine/systems/hud/status.lua`
 헤드업 디스플레이 렌더링.
 
 ---
@@ -940,8 +940,8 @@ debug:toggleLayer("effects")           -- F5: 효과 디버그
 
 ## 게임 모드 시스템
 
-### `engine/game_mode.lua`
-Topdown vs Platformer 모드 관리.
+### 맵 속성 (`game_mode`)
+Topdown vs Platformer 모드 관리 (별도 파일 없음, 맵 속성으로 관리).
 
 **모드:**
 - **topdown:** 자유로운 2D 이동, 중력 없음
@@ -1012,13 +1012,13 @@ Topdown vs Platformer 모드 관리.
 ### `engine/utils/util.lua`
 일반 유틸리티 함수.
 
-### `engine/utils/restart.lua`
+### `engine/core/restart.lua`
 게임 재시작 로직.
 
 ### `engine/utils/fonts.lua`
 폰트 관리 시스템.
 
-### `engine/constants.lua`
+### `engine/core/constants.lua`
 엔진 전체 상수.
 
 ---
@@ -1037,7 +1037,7 @@ Topdown vs Platformer 모드 관리.
 ### 파티클 효과
 
 ```lua
-local effects = require "engine.effects"
+local effects = require "engine.systems.effects"
 
 -- 파티클 생성
 effects:spawn("blood", x, y)                  -- 피 튀김
@@ -1089,7 +1089,7 @@ effects.screen:draw()
 ### 주변광
 
 ```lua
-local lighting = require "engine.lighting"
+local lighting = require "engine.systems.lighting"
 
 -- 프리셋
 lighting:setAmbient("day")        -- 밝음 (0.95, 0.95, 1.0)
@@ -1355,33 +1355,49 @@ game/scenes/shop/
 ### 적 타입 예제
 
 ```lua
--- engine/entities/enemy/types/goblin.lua
+-- game/data/entities/types.lua
 return {
-    name = "Goblin",
-    max_health = 50,
-    damage = 10,
-    speed = 120,
-    sprite_path = "assets/images/enemies/goblin.png",
-    ai_type = "aggressive",
-    animations = {
-        idle = { frames = "1-4", fps = 8 },
-        walk = { frames = "5-8", fps = 12 }
+    enemies = {
+        goblin = {
+            name = "Goblin",
+            health = 50,
+            damage = 10,
+            speed = 120,
+            sprite_sheet = "assets/images/enemies/goblin.png",
+            sprite_width = 32,
+            sprite_height = 32,
+            collider_width = 28,
+            collider_height = 28,
+            ai_type = "aggressive",
+            detection_range = 200,
+            attack_range = 40
+        }
     }
 }
 ```
 
+**참고:** 적 타입은 `game/data/entities/types.lua`에 정의되고 의존성 주입을 통해 엔진에 주입됩니다.
+
 ### 아이템 타입 예제
 
 ```lua
--- engine/item/types/potion.lua
+-- engine/entities/item/types/small_potion.lua
 return {
-    id = "potion",
-    name = "Potion",
-    icon = "assets/images/items/potion.png",
+    id = "small_potion",
+    name = "Small Potion",
+    description = "30 HP 회복",
+    icon = "assets/images/items/small_potion.png",
     max_stack = 99,
     use = function(player)
-        player.health = math.min(player.health + 30, player.max_health)
-        return true
+        local sound = require "engine.core.sound"
+        if player.health < player.max_health then
+            player.health = math.min(player.health + 30, player.max_health)
+            sound:playSFX("player", "heal")
+            return true
+        else
+            sound:playSFX("ui", "error")
+            return false
+        end
     end
 }
 ```
@@ -1515,7 +1531,7 @@ return {
 
 ### 게임 저장
 ```lua
-local save_sys = require "engine.save"
+local save_sys = require "engine.core.save"
 
 function play:saveGame()
     local save_data = {
@@ -1556,12 +1572,12 @@ end
 
 ### 새 적 추가
 1. 스프라이트: `assets/images/enemies/dragon.png`
-2. 타입: `engine/entities/enemy/types/dragon.lua`
+2. `game/data/entities/types.lua`에 추가: dragon 적 타입 정의
 3. Tiled 맵에 배치: `type = "dragon"`
 
 ### 새 아이템 추가
 1. 아이콘: `assets/images/items/sword.png`
-2. 타입: `engine/item/types/sword.lua`
+2. 타입: `engine/entities/item/types/sword.lua`
 3. 인벤토리에 추가: `inventory:addItem("sword", 1)`
 
 ---
@@ -1624,7 +1640,7 @@ end
 ### 네이밍 규칙
 ```lua
 -- 모듈: 언더스코어를 사용한 소문자
-local scene_control = require "engine.scene.control"
+local scene_control = require "engine.core.scene_control"
 
 -- 함수: camelCase
 function player:updateAnimation(dt)

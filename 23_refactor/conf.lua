@@ -44,7 +44,7 @@ APP_CONFIG = {
 if not is_mobile then startup.loadDesktopConfig() end
 
 function love.conf(t)
-    t.identity = "hello_love2d"
+    t.identity = "hello_love2d" -- Save directory
     -- t.version = "11.5"
     t.console = false
 

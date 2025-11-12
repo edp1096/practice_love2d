@@ -619,7 +619,7 @@ save_sys:deleteSave(slot)                -- Delete save slot
 
 ## Inventory System
 
-### `engine/inventory.lua`
+### `engine/systems/inventory.lua`
 Item management system.
 
 **Key Functions:**
@@ -824,8 +824,8 @@ ui_scene.updateConfirmMouseOver(width, height, button_count)
 **Usage Example (Menu Scene):**
 ```lua
 local ui_helpers = require "engine.ui.menu.helpers"
-local display = require "engine.display"
-local sound = require "engine.sound"
+local display = require "engine.core.display"
+local sound = require "engine.core.sound"
 
 function menu:enter(previous)
     self.options = {"Continue", "New Game", "Settings", "Quit"}
@@ -921,7 +921,7 @@ end
 
 ## Minimap System
 
-### `engine/minimap.lua`
+### `engine/systems/hud/minimap.lua`
 Minimap rendering system.
 
 **Key Functions:**
@@ -935,7 +935,7 @@ minimap:draw(player_x, player_y)             -- Draw minimap
 
 ## HUD System
 
-### `engine/hud.lua`
+### `engine/systems/hud/status.lua`
 Heads-up display rendering.
 
 **Key Functions:**
@@ -992,8 +992,8 @@ debug:toggleLayer("effects")           -- F5: Effects debug
 
 ## Game Mode System
 
-### `engine/game_mode.lua`
-Topdown vs Platformer mode management.
+### Map properties (`game_mode`)
+Topdown vs Platformer mode management (no separate file, managed via map properties).
 
 **Modes:**
 - **topdown:** Free 2D movement, no gravity
@@ -1070,13 +1070,13 @@ Map Properties:
 ### `engine/utils/util.lua`
 General utility functions.
 
-### `engine/utils/restart.lua`
+### `engine/core/restart.lua`
 Game restart logic (from save/from current position).
 
 ### `engine/utils/fonts.lua`
 Font management system.
 
-### `engine/constants.lua`
+### `engine/core/constants.lua`
 Engine-wide constants (vibration patterns, input timings, defaults).
 
 ---
@@ -1095,7 +1095,7 @@ Visual effects system with particles and screen effects.
 ### Particle Effects
 
 ```lua
-local effects = require "engine.effects"
+local effects = require "engine.systems.effects"
 
 -- Spawn particles
 effects:spawn("blood", x, y)                  -- Blood splash
@@ -1167,7 +1167,7 @@ Dynamic lighting with ambient and light sources using image-based rendering.
 ### Ambient Light
 
 ```lua
-local lighting = require "engine.lighting"
+local lighting = require "engine.systems.lighting"
 
 -- Presets
 lighting:setAmbient("day")        -- Bright (0.95, 0.95, 1.0)
@@ -1404,8 +1404,8 @@ Scenes go in `game/scenes/`. Simple scenes can be single files, complex scenes s
 -- game/scenes/credits.lua
 local credits = {}
 
-local scene_control = require "engine.scene.control"
-local display = require "engine.display"
+local scene_control = require "engine.core.scene_control"
+local display = require "engine.core.display"
 
 function credits:enter(previous, ...)
     self.text = "Thanks for playing!"
@@ -1441,10 +1441,10 @@ game/scenes/shop/
 ### Using Engine Systems in Scenes
 ```lua
 -- game/scenes/yourscene.lua
-local scene_control = require "engine.scene.control"
-local sound = require "engine.sound"
-local input = require "engine.input"
-local save_sys = require "engine.save"
+local scene_control = require "engine.core.scene_control"
+local sound = require "engine.core.sound"
+local input = require "engine.core.input"
+local save_sys = require "engine.core.save"
 
 function yourscene:enter()
     sound:playBGM("menu", 1.0, true)  -- Play menu music
@@ -1464,42 +1464,33 @@ end
 
 ### Enemy Type Example
 ```lua
--- engine/entities/enemy/types/goblin.lua
+-- game/data/entities/types.lua
 return {
-    -- Stats
-    name = "Goblin",
-    max_health = 50,
-    damage = 10,
-    speed = 120,
+    enemies = {
+        goblin = {
+            -- Stats
+            name = "Goblin",
+            health = 50,
+            damage = 10,
+            speed = 120,
 
-    -- Visuals
-    sprite_path = "assets/images/enemies/goblin.png",
-    sprite_width = 32,
-    sprite_height = 32,
-    collider_width = 28,
-    collider_height = 28,
+            -- Visuals
+            sprite_sheet = "assets/images/enemies/goblin.png",
+            sprite_width = 32,
+            sprite_height = 32,
+            collider_width = 28,
+            collider_height = 28,
 
-    -- AI
-    ai_type = "aggressive",
-    chase_range = 200,
-    attack_range = 40,
-    patrol_speed = 60,
-
-    -- Animation
-    animations = {
-        idle = { frames = "1-4", fps = 8 },
-        walk = { frames = "5-8", fps = 12 },
-        attack = { frames = "9-12", fps = 16 }
-    },
-
-    -- Sounds
-    sounds = {
-        hurt = "enemy_hurt",
-        death = "enemy_death",
-        attack = "enemy_attack"
+            -- AI
+            ai_type = "aggressive",
+            detection_range = 200,
+            attack_range = 40
+        }
     }
 }
 ```
+
+**Note:** Enemy types are defined in `game/data/entities/types.lua` and injected into engine via dependency injection.
 
 ### NPC Type Example
 ```lua
@@ -1534,7 +1525,7 @@ return {
     max_stack = 50,
 
     use = function(player)
-        local sound = require "engine.sound"
+        local sound = require "engine.core.sound"
 
         if player.health < player.max_health then
             player.health = math.min(player.health + 100, player.max_health)
@@ -1597,7 +1588,7 @@ return {
 
 ### 3. Play in Game
 ```lua
-local sound = require "engine.sound"
+local sound = require "engine.core.sound"
 sound:playBGM("dungeon")              -- Play dungeon BGM
 sound:playSFX("player", "magic_cast") -- Play magic cast sound
 sound:playSFX("ui", "coin")           -- Play coin sound
@@ -1706,7 +1697,7 @@ return {
 
 ### Use in Game
 ```lua
-local input = require "engine.input"
+local input = require "engine.core.input"
 
 function play:update(dt)
     if input:wasPressed("magic") then
@@ -1742,7 +1733,7 @@ return {
 
 ### 2. Trigger Cutscene
 ```lua
-local scene_control = require "engine.scene.control"
+local scene_control = require "engine.core.scene_control"
 local intro = require "game.scenes.intro"
 
 -- Show intro, then go to play scene
@@ -1761,7 +1752,7 @@ scene_control.switch(
 
 ### Save Game
 ```lua
-local save_sys = require "engine.save"
+local save_sys = require "engine.core.save"
 
 function play:saveGame()
     local save_data = {
@@ -1779,7 +1770,7 @@ end
 
 ### Load Game
 ```lua
-local save_sys = require "engine.save"
+local save_sys = require "engine.core.save"
 
 function menu:loadGame(slot)
     local save_data = save_sys:loadGame(slot)
@@ -1804,7 +1795,7 @@ end
 
 ### Add a New Enemy
 1. Create sprite: `assets/images/enemies/dragon.png`
-2. Create type: `engine/entities/enemy/types/dragon.lua`
+2. Add to `game/data/entities/types.lua`: Define dragon enemy type
 3. Place in Tiled map: Object type = "dragon"
 
 ### Add a New Item
@@ -1840,7 +1831,7 @@ local game_sounds = require "game.data.sounds"  -- NO!
 
 -- ✅ GOOD: Game passes data to engine
 -- game/scenes/menu.lua
-local sound = require "engine.sound"
+local sound = require "engine.core.sound"
 local sounds_config = require "game.data.sounds"
 sound:init(sounds_config)  -- Pass config to engine
 ```
@@ -1943,7 +1934,7 @@ end
 
 3. **Connect to scene control:**
    ```lua
-   local scene_control = require "engine.scene.control"
+   local scene_control = require "engine.core.scene_control"
    local yourscene = require "game.scenes.yourscene"
    scene_control.switch(yourscene)
    ```
@@ -1995,7 +1986,7 @@ end
 
 3. **Play in game:**
    ```lua
-   local sound = require "engine.sound"
+   local sound = require "engine.core.sound"
    sound:playSFX("category", "soundname")
    ```
 
@@ -2006,7 +1997,7 @@ end
 ### Naming Conventions
 ```lua
 -- Modules: lowercase with underscores
-local scene_control = require "engine.scene.control"
+local scene_control = require "engine.core.scene_control"
 
 -- Classes/Objects: PascalCase (rare in Lua)
 local Player = require "game.entities.player"
