@@ -142,9 +142,12 @@ function display:EnableFullScreen()
         self.screen_wh.w, self.screen_wh.h = love.graphics.getDimensions()
     end
 
-    self.window.x, self.window.y = 0, 0
+    -- self.window.x, self.window.y = 0, 0
+    self.window.x, self.window.y = 0, -1
     self.window.resizable = false
+
     self.window.borderless = false
+    self.window.fullscreentype = "exclusive"
 
     updateMode(self.screen_wh.w, self.screen_wh.h, self.window)
     self.is_fullscreen = true
@@ -161,16 +164,17 @@ function display:DisableFullScreen()
         self.screen_wh.w, self.screen_wh.h = self.previous_screen_wh.w, self.previous_screen_wh.h
         self.window.x, self.window.y = self.previous_xy.x, self.previous_xy.y
         self.window.resizable = APP_CONFIG and APP_CONFIG.resizable or false
-        self.window.borderless = false
     else
         -- Fallback to virtual resolution
         self.window.x = 0
         self.window.y = 0
         self.screen_wh.w, self.screen_wh.h = self.render_wh.w, self.render_wh.h
         self.window.resizable = APP_CONFIG and APP_CONFIG.resizable or false
-        self.window.borderless = false
         self.window.centered = true
     end
+
+    self.window.borderless = false
+    self.window.fullscreentype = "desktop"
 
     updateMode(self.screen_wh.w, self.screen_wh.h, self.window)
 
