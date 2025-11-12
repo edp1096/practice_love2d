@@ -98,43 +98,85 @@ function slot_renderer.renderItemGrid(inventory, selected_item_id, title_font, i
         if (drag_state and drag_state.active and item_id == drag_state.item_id) or
            (gamepad_drag and gamepad_drag.active and item_id == gamepad_drag.item_id) then
             -- Don't render in grid, will be rendered at drag position
+        -- Skip if this item is equipped (no grid position)
+        elseif item_data.equipped or not item_data.x or not item_data.y then
+            -- Don't render equipped items in grid
         else
             local screen_x, screen_y = slot_renderer.gridToScreen(item_data.x, item_data.y, start_x, start_y)
             local item_w = item_data.width * CELL_SIZE + (item_data.width - 1) * CELL_SPACING
             local item_h = item_data.height * CELL_SIZE + (item_data.height - 1) * CELL_SPACING
 
-            -- Draw item background (covers multiple cells)
+            -- Draw item border (olive drab, different from gamepad cursor)
             local is_selected = (item_id == selected_item_id)
-            shapes:drawSlot(screen_x, screen_y, item_w, item_h, is_selected, true, 5)
+            if is_selected then
+                -- Selected item: blue border
+                love.graphics.setColor(0.5, 0.8, 1, 1)
+                love.graphics.setLineWidth(2)
+            else
+                -- Normal item: olive drab border
+                love.graphics.setColor(0.3, 0.5, 0.2, 0.8)
+                love.graphics.setLineWidth(1)
+            end
+            love.graphics.rectangle("line", screen_x, screen_y, item_w, item_h, 5, 5)
+            love.graphics.setLineWidth(1)
+            love.graphics.setColor(1, 1, 1, 1)
 
-        -- Draw item icon (colored box with type indicator)
+        -- Draw item icon/sprite
         local item = item_data.item
-        local icon_text = "HP"  -- All potions show "HP"
-        local icon_color
 
-        if item.type == "small_potion" then
-            icon_color = {0.5, 1, 0.5, 1}  -- Green
-        elseif item.type == "large_potion" then
-            icon_color = {0.3, 1, 0.8, 1}  -- Cyan
+        -- If item has sprite data, render the actual sprite
+        if item.sprite and item.sprite.file then
+            -- Load sprite sheet (cached by LÖVE)
+            local sprite_sheet = love.graphics.newImage(item.sprite.file)
+
+            -- Create quad for item sprite
+            local quad = love.graphics.newQuad(
+                item.sprite.x,
+                item.sprite.y,
+                item.sprite.w,
+                item.sprite.h,
+                sprite_sheet:getWidth(),
+                sprite_sheet:getHeight()
+            )
+
+            -- Calculate centered position
+            local sprite_w = item.sprite.w * item.sprite.scale
+            local sprite_h = item.sprite.h * item.sprite.scale
+            local sprite_x = screen_x + (item_w - sprite_w) / 2
+            local sprite_y = screen_y + (item_h - sprite_h) / 2
+
+            -- Draw sprite
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.draw(sprite_sheet, quad, sprite_x, sprite_y, 0, item.sprite.scale, item.sprite.scale)
         else
-            icon_color = {1, 1, 1, 1}  -- White
-        end
+            -- Fallback: text icon (for potions without sprites)
+            local icon_text = "HP"  -- Default for potions
+            local icon_color
 
-        -- Center icon in item area
-        local icon_w = title_font:getWidth(icon_text)
-        local icon_x = screen_x + (item_w - icon_w) / 2
-        local icon_y = screen_y + (item_h - title_font:getHeight()) / 2
-        text_ui:draw(icon_text, icon_x, icon_y, icon_color, title_font)
+            if item.type == "small_potion" then
+                icon_color = {0.5, 1, 0.5, 1}  -- Green
+            elseif item.type == "large_potion" then
+                icon_color = {0.3, 1, 0.8, 1}  -- Cyan
+            else
+                icon_color = {1, 1, 1, 1}  -- White
+            end
+
+            -- Center icon in item area
+            local icon_w = title_font:getWidth(icon_text)
+            local icon_x = screen_x + (item_w - icon_w) / 2
+            local icon_y = screen_y + (item_h - title_font:getHeight()) / 2
+            text_ui:draw(icon_text, icon_x, icon_y, icon_color, title_font)
+        end
 
         -- Draw quantity (bottom-left corner)
         if item.quantity > 1 then
             text_ui:draw("x" .. item.quantity, screen_x + 5, screen_y + item_h - 20, {1, 1, 1, 1}, desc_font)
         end
 
-            -- Draw size indicator (top-right corner, for debugging)
-            local size_text = string.format("%dx%d", item_data.width, item_data.height)
-            local size_w = desc_font:getWidth(size_text)
-            text_ui:draw(size_text, screen_x + item_w - size_w - 5, screen_y + 5, {0.7, 0.7, 0.7, 0.7}, desc_font)
+        -- Draw size indicator (top-right corner, for debugging)
+        local size_text = string.format("%dx%d", item_data.width, item_data.height)
+        local size_w = desc_font:getWidth(size_text)
+        text_ui:draw(size_text, screen_x + item_w - size_w - 5, screen_y + 5, {0.7, 0.7, 0.7, 0.7}, desc_font)
         end
     end
 
@@ -216,22 +258,44 @@ function slot_renderer.renderDraggedItem(inventory, drag_state, grid_start_x, gr
     love.graphics.setColor(1, 1, 1, 0.7)
     shapes:drawSlot(item_screen_x, item_screen_y, item_w, item_h, false, true, 5)
 
-    -- Draw item icon
-    local icon_text = "HP"
-    local icon_color
+    -- Draw item icon/sprite
+    if item_obj.sprite and item_obj.sprite.file then
+        -- Draw sprite for equipment
+        local sprite_sheet = love.graphics.newImage(item_obj.sprite.file)
+        local quad = love.graphics.newQuad(
+            item_obj.sprite.x,
+            item_obj.sprite.y,
+            item_obj.sprite.w,
+            item_obj.sprite.h,
+            sprite_sheet:getWidth(),
+            sprite_sheet:getHeight()
+        )
 
-    if item_obj.type == "small_potion" then
-        icon_color = {0.5, 1, 0.5, 0.7}  -- Green, semi-transparent
-    elseif item_obj.type == "large_potion" then
-        icon_color = {0.3, 1, 0.8, 0.7}  -- Cyan, semi-transparent
+        local sprite_w = item_obj.sprite.w * item_obj.sprite.scale
+        local sprite_h = item_obj.sprite.h * item_obj.sprite.scale
+        local sprite_x = item_screen_x + (item_w - sprite_w) / 2
+        local sprite_y = item_screen_y + (item_h - sprite_h) / 2
+
+        love.graphics.setColor(1, 1, 1, 0.7)  -- Semi-transparent
+        love.graphics.draw(sprite_sheet, quad, sprite_x, sprite_y, 0, item_obj.sprite.scale, item_obj.sprite.scale)
     else
-        icon_color = {1, 1, 1, 0.7}
-    end
+        -- Fallback: text icon for potions
+        local icon_text = "HP"
+        local icon_color
 
-    local icon_w = title_font:getWidth(icon_text)
-    local icon_x = item_screen_x + (item_w - icon_w) / 2
-    local icon_y = item_screen_y + (item_h - title_font:getHeight()) / 2
-    text_ui:draw(icon_text, icon_x, icon_y, icon_color, title_font)
+        if item_obj.type == "small_potion" then
+            icon_color = {0.5, 1, 0.5, 0.7}  -- Green, semi-transparent
+        elseif item_obj.type == "large_potion" then
+            icon_color = {0.3, 1, 0.8, 0.7}  -- Cyan, semi-transparent
+        else
+            icon_color = {1, 1, 1, 0.7}
+        end
+
+        local icon_w = title_font:getWidth(icon_text)
+        local icon_x = item_screen_x + (item_w - icon_w) / 2
+        local icon_y = item_screen_y + (item_h - title_font:getHeight()) / 2
+        text_ui:draw(icon_text, icon_x, icon_y, icon_color, title_font)
+    end
 
     -- Draw quantity
     if item_obj.quantity > 1 then
@@ -285,23 +349,46 @@ function slot_renderer.renderGamepadDraggedItem(inventory, gamepad_drag, cursor_
     local shapes = require "engine.utils.shapes"
     shapes:drawSlot(item_screen_x, item_screen_y, item_w, item_h, false, true, 5)
 
-    -- Draw item icon
-    local icon_text = "HP"
-    local icon_color
-
-    if item_obj.type == "small_potion" then
-        icon_color = {0.5, 1, 0.5, 0.7}  -- Green, semi-transparent
-    elseif item_obj.type == "large_potion" then
-        icon_color = {0.3, 1, 0.8, 0.7}  -- Cyan, semi-transparent
-    else
-        icon_color = {1, 1, 1, 0.7}
-    end
-
-    local icon_w = title_font:getWidth(icon_text)
-    local icon_x = item_screen_x + (item_w - icon_w) / 2
-    local icon_y = item_screen_y + (item_h - title_font:getHeight()) / 2
     local text_ui = require "engine.utils.text"
-    text_ui:draw(icon_text, icon_x, icon_y, icon_color, title_font)
+
+    -- Draw item icon/sprite
+    if item_obj.sprite and item_obj.sprite.file then
+        -- Draw sprite for equipment
+        local sprite_sheet = love.graphics.newImage(item_obj.sprite.file)
+        local quad = love.graphics.newQuad(
+            item_obj.sprite.x,
+            item_obj.sprite.y,
+            item_obj.sprite.w,
+            item_obj.sprite.h,
+            sprite_sheet:getWidth(),
+            sprite_sheet:getHeight()
+        )
+
+        local sprite_w = item_obj.sprite.w * item_obj.sprite.scale
+        local sprite_h = item_obj.sprite.h * item_obj.sprite.scale
+        local sprite_x = item_screen_x + (item_w - sprite_w) / 2
+        local sprite_y = item_screen_y + (item_h - sprite_h) / 2
+
+        love.graphics.setColor(1, 1, 1, 0.7)  -- Semi-transparent
+        love.graphics.draw(sprite_sheet, quad, sprite_x, sprite_y, 0, item_obj.sprite.scale, item_obj.sprite.scale)
+    else
+        -- Fallback: text icon for potions
+        local icon_text = "HP"
+        local icon_color
+
+        if item_obj.type == "small_potion" then
+            icon_color = {0.5, 1, 0.5, 0.7}  -- Green, semi-transparent
+        elseif item_obj.type == "large_potion" then
+            icon_color = {0.3, 1, 0.8, 0.7}  -- Cyan, semi-transparent
+        else
+            icon_color = {1, 1, 1, 0.7}
+        end
+
+        local icon_w = title_font:getWidth(icon_text)
+        local icon_x = item_screen_x + (item_w - icon_w) / 2
+        local icon_y = item_screen_y + (item_h - title_font:getHeight()) / 2
+        text_ui:draw(icon_text, icon_x, icon_y, icon_color, title_font)
+    end
 
     -- Draw quantity
     if item_obj.quantity > 1 then
@@ -333,7 +420,12 @@ function slot_renderer.renderItemDetails(inventory, selected_item_id, player, wi
     -- Line 2: Position | Size | Status (all in one line)
     local status_text
     local status_color
-    if item:canUse(player) then
+
+    -- Check if this is equipment
+    if item.item_type == "equipment" then
+        status_text = "⚔ Equipment (drag to slot)"
+        status_color = {0.8, 0.7, 1, 1}  -- Purple for equipment
+    elseif item:canUse(player) then
         status_text = "✓ Can use"
         status_color = {0.3, 1, 0.3, 1}
     else
@@ -341,8 +433,20 @@ function slot_renderer.renderItemDetails(inventory, selected_item_id, player, wi
         status_color = {1, 0.3, 0.3, 1}
     end
 
-    local line2 = string.format("Pos: (%d,%d) | Size: %dx%d | ",
-        item_data.x, item_data.y, item_data.width, item_data.height)
+    -- Build line2 (position/size info)
+    local line2
+    if item_data.equipped then
+        -- Equipped item: show slot and size only
+        line2 = string.format("Equipped: %s | Size: %dx%d | ",
+            item_data.slot or "unknown", item_data.width, item_data.height)
+    elseif item_data.x and item_data.y then
+        -- Grid item: show position and size
+        line2 = string.format("Pos: (%d,%d) | Size: %dx%d | ",
+            item_data.x, item_data.y, item_data.width, item_data.height)
+    else
+        -- Fallback: size only
+        line2 = string.format("Size: %dx%d | ", item_data.width, item_data.height)
+    end
 
     -- Draw position/size in gray
     text_ui:draw(line2, window_x + 30, detail_y + 22, {0.6, 0.6, 0.6, 1}, desc_font)
@@ -358,7 +462,7 @@ function slot_renderer.getGridConstants()
 end
 
 -- Render equipment slots panel (left side of inventory)
-function slot_renderer.renderEquipmentSlots(inventory, window_x, window_y, title_font, item_font, desc_font)
+function slot_renderer.renderEquipmentSlots(inventory, window_x, window_y, title_font, item_font, desc_font, equipment_mode, equipment_cursor_x, equipment_cursor_y)
     local SLOT_SIZE = 60
     local SLOT_SPACING = 10
     local panel_x = window_x + 20
@@ -380,8 +484,13 @@ function slot_renderer.renderEquipmentSlots(inventory, window_x, window_y, title
         local slot_x = panel_x + slot_info.x * (SLOT_SIZE + SLOT_SPACING)
         local slot_y = panel_y + slot_info.y * (SLOT_SIZE + SLOT_SPACING)
 
-        -- Draw slot background
-        shapes:drawSlot(slot_x, slot_y, SLOT_SIZE, SLOT_SIZE, false, false, 5)
+        -- Check if cursor is on this slot
+        local is_cursor_here = equipment_mode and
+                                equipment_cursor_x == slot_info.x and
+                                equipment_cursor_y == slot_info.y
+
+        -- Draw slot background (highlight if cursor is here)
+        shapes:drawSlot(slot_x, slot_y, SLOT_SIZE, SLOT_SIZE, false, is_cursor_here, 5)
 
         -- Draw slot label above
         local label_w = desc_font:getWidth(slot_info.label)

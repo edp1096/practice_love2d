@@ -443,8 +443,8 @@ entity_types.weapons = {
 
     axe = {
         sprite_file = "assets/images/steel-weapons.png",
-        sprite_x = 0,
-        sprite_y = 160,
+        sprite_x = 0,    -- 1x11: Row 1 (y coordinate)
+        sprite_y = 160,  -- 1x11: Column 11 (x coordinate)
         sprite_w = 16,
         sprite_h = 16,
         scale = 3,
@@ -458,6 +458,25 @@ entity_types.weapons = {
 
         hit_start = 0.35,
         hit_end = 0.75
+    },
+
+    club = {
+        sprite_file = "assets/images/steel-weapons.png",
+        sprite_x = 48,   -- 4x11: Row 4 (y coordinate)
+        sprite_y = 160,  -- 4x11: Column 11 (x coordinate)
+        sprite_w = 16,
+        sprite_h = 16,
+        scale = 3,
+
+        attack_duration = 0.25,  -- Fast attack
+        swing_radius = 30,
+
+        damage = 20,  -- Lower damage
+        range = 75,
+        knockback = 80,
+
+        hit_start = 0.25,
+        hit_end = 0.65
     }
 }
 

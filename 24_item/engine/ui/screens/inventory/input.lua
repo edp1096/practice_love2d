@@ -9,6 +9,28 @@ local sound = require "engine.core.sound"
 local coords = require "engine.core.coords"
 local slot_renderer = require "engine.ui.screens.inventory.inventory_renderer"
 
+-- Equipment slot layout (2x4 grid)
+local EQUIPMENT_LAYOUT = {
+    {name = "helmet", x = 0, y = 0},
+    {name = "weapon", x = 1, y = 0},
+    {name = "chest", x = 0, y = 1},
+    {name = "shield", x = 1, y = 1},
+    {name = "gloves", x = 0, y = 2},
+    {name = "ring1", x = 1, y = 2},
+    {name = "boots", x = 0, y = 3},
+    {name = "ring2", x = 1, y = 3}
+}
+
+-- Get equipment slot name from cursor position
+local function getEquipmentSlotName(cursor_x, cursor_y)
+    for _, slot_info in ipairs(EQUIPMENT_LAYOUT) do
+        if slot_info.x == cursor_x and slot_info.y == cursor_y then
+            return slot_info.name
+        end
+    end
+    return nil
+end
+
 -- Safe sound wrapper
 local function play_sound(category, name)
     if sound and sound.playSFX then
@@ -48,37 +70,70 @@ end
 
 -- Handle gamepad input
 function input_handler.gamepadpressed(self, joystick, button)
-    -- Direction pad: Move cursor (1 step at a time, wrap around at edges)
+    -- Direction pad: Move cursor (1 step at a time, with equipment mode support)
     if input:wasPressed("menu_up", "gamepad", button) then
         self.cursor_mode = true
-        self.cursor_y = self.cursor_y == 1 and self.inventory.grid_height or self.cursor_y - 1
+        if self.equipment_mode then
+            self.equipment_cursor_y = (self.equipment_cursor_y - 1 + 4) % 4
+        else
+            self.cursor_y = self.cursor_y == 1 and self.inventory.grid_height or self.cursor_y - 1
+        end
         play_sound("ui", "move")
         return
     elseif input:wasPressed("menu_down", "gamepad", button) then
         self.cursor_mode = true
-        self.cursor_y = self.cursor_y == self.inventory.grid_height and 1 or self.cursor_y + 1
+        if self.equipment_mode then
+            self.equipment_cursor_y = (self.equipment_cursor_y + 1) % 4
+        else
+            self.cursor_y = self.cursor_y == self.inventory.grid_height and 1 or self.cursor_y + 1
+        end
         play_sound("ui", "move")
         return
     elseif input:wasPressed("menu_left", "gamepad", button) then
         self.cursor_mode = true
-        self.cursor_x = self.cursor_x == 1 and self.inventory.grid_width or self.cursor_x - 1
+        if self.equipment_mode then
+            -- Toggle equipment X (0 <-> 1)
+            self.equipment_cursor_x = (self.equipment_cursor_x == 0) and 1 or 0
+        else
+            if self.cursor_x == 1 then
+                -- Switch to equipment mode
+                self.equipment_mode = true
+                self.equipment_cursor_x = 1
+            else
+                self.cursor_x = self.cursor_x - 1
+            end
+        end
         play_sound("ui", "move")
         return
     elseif input:wasPressed("menu_right", "gamepad", button) then
         self.cursor_mode = true
-        self.cursor_x = self.cursor_x == self.inventory.grid_width and 1 or self.cursor_x + 1
+        if self.equipment_mode then
+            -- Switch to grid mode
+            self.equipment_mode = false
+            self.cursor_x = 1
+        else
+            self.cursor_x = self.cursor_x == self.inventory.grid_width and 1 or self.cursor_x + 1
+        end
         play_sound("ui", "move")
         return
     end
 
-    -- A button: Pickup/Drop item (toggle)
+    -- A button: Pickup/Drop/Equip item (toggle)
     if input:wasPressed("menu_select", "gamepad", button) or input:wasPressed("attack", "gamepad", button) then
         if self.gamepad_drag.active then
-            -- Drop item at cursor
-            input_handler.gamepadDropItem(self)
+            -- Drop/Equip item at cursor
+            if self.equipment_mode then
+                input_handler.gamepadEquipToSlot(self)
+            else
+                input_handler.gamepadDropItem(self)
+            end
         else
             -- Pickup item at cursor
-            input_handler.gamepadPickupItem(self)
+            if self.equipment_mode then
+                input_handler.gamepadPickupFromEquipment(self)
+            else
+                input_handler.gamepadPickupItem(self)
+            end
         end
         return
     end
@@ -323,13 +378,25 @@ function input_handler.mousereleased(self, x, y, button)
                     if vx >= slot_x and vx <= slot_x + eq_bounds.slot_size and
                        vy >= slot_y and vy <= slot_y + eq_bounds.slot_size then
 
+                        -- IMPORTANT: Place item back to grid first (equipItem needs item to exist)
+                        self.inventory:placeItem(
+                            item_id,
+                            item_obj,
+                            self.drag_state.origin_x,
+                            self.drag_state.origin_y,
+                            self.drag_state.origin_width,
+                            self.drag_state.origin_height,
+                            self.drag_state.origin_rotated
+                        )
+
                         -- Try to equip to this slot
                         local success, err = self.inventory:equipItem(item_id, slot_info.name, self.player)
                         if success then
                             play_sound("ui", "select")
                             placed = true
                         else
-                            print("Equip failed:", err)
+                            -- Item is already back in grid, so just mark as placed
+                            placed = true
                         end
                         break
                     end
@@ -537,6 +604,97 @@ function input_handler.gamepadDropItem(self)
                 self.gamepad_drag.origin_rotated
             )
         end
+        play_sound("ui", "error")
+    end
+
+    -- End gamepad drag
+    self.gamepad_drag.active = false
+    self.gamepad_drag.item_id = nil
+    return true
+end
+
+-- Gamepad pickup item from equipment slot
+function input_handler.gamepadPickupFromEquipment(self)
+    -- Get slot name from cursor position
+    local slot_name = getEquipmentSlotName(self.equipment_cursor_x, self.equipment_cursor_y)
+    if not slot_name then
+        play_sound("ui", "error")
+        return false
+    end
+
+    -- Check if slot has an item
+    local item_id = self.inventory.equipment_slots[slot_name]
+    if not item_id then
+        play_sound("ui", "error")
+        return false
+    end
+
+    -- Unequip item (moves to grid)
+    local success, err = self.inventory:unequipItem(slot_name, self.player)
+    if not success then
+        print("Unequip failed:", err)
+        play_sound("ui", "error")
+        return false
+    end
+
+    -- Item is now in grid, get its data
+    local item_data = self.inventory.items[item_id]
+    if not item_data then
+        play_sound("ui", "error")
+        return false
+    end
+
+    -- Start gamepad drag
+    self.gamepad_drag.active = true
+    self.gamepad_drag.item_id = item_id
+    self.gamepad_drag.item_obj = item_data.item
+    self.gamepad_drag.origin_x = item_data.x
+    self.gamepad_drag.origin_y = item_data.y
+    self.gamepad_drag.origin_width = item_data.width
+    self.gamepad_drag.origin_height = item_data.height
+    self.gamepad_drag.origin_rotated = item_data.rotated
+
+    -- Remove from grid (holding in hand)
+    self.inventory:removeItem(item_id)
+
+    play_sound("ui", "select")
+    return true
+end
+
+-- Gamepad equip item to equipment slot
+function input_handler.gamepadEquipToSlot(self)
+    if not self.gamepad_drag.active then
+        return false
+    end
+
+    local item_id = self.gamepad_drag.item_id
+    local item_obj = self.gamepad_drag.item_obj
+
+    -- Get slot name from cursor position
+    local slot_name = getEquipmentSlotName(self.equipment_cursor_x, self.equipment_cursor_y)
+    if not slot_name then
+        play_sound("ui", "error")
+        return false
+    end
+
+    -- IMPORTANT: Place item back to grid first (equipItem needs item to exist)
+    self.inventory:placeItem(
+        item_id,
+        item_obj,
+        self.gamepad_drag.origin_x,
+        self.gamepad_drag.origin_y,
+        self.gamepad_drag.origin_width,
+        self.gamepad_drag.origin_height,
+        self.gamepad_drag.origin_rotated
+    )
+
+    -- Try to equip to this slot
+    local success, err = self.inventory:equipItem(item_id, slot_name, self.player)
+    if success then
+        play_sound("ui", "select")
+    else
+        -- Equip failed, but item is already back in grid
+        print("Equip failed:", err)
         play_sound("ui", "error")
     end
 

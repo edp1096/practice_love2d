@@ -61,6 +61,11 @@ function inventory:enter(previous, player_inventory, player)
     self.cursor_x = 1  -- Grid X position (1-10)
     self.cursor_y = 1  -- Grid Y position (1-6)
 
+    -- Equipment slot cursor state
+    self.equipment_mode = false  -- true when cursor is on equipment slots
+    self.equipment_cursor_x = 0  -- Equipment slot X (0 or 1)
+    self.equipment_cursor_y = 0  -- Equipment slot Y (0, 1, 2, or 3)
+
     -- Joystick state (for analog stick movement with cooldown)
     self.joystick_cooldown = 0  -- Time until next joystick move
     self.joystick_repeat_delay = 0.15  -- Seconds between moves
@@ -121,26 +126,67 @@ function inventory:update(dt)
         if math.abs(lx) > threshold or math.abs(ly) > threshold then
             self.cursor_mode = true
 
-            -- Determine primary direction (move 1 step at a time, wrap around at edges)
+            -- Determine primary direction (move 1 step at a time)
             if math.abs(lx) > math.abs(ly) then
                 if lx > threshold then
-                    self.cursor_x = self.cursor_x == self.inventory.grid_width and 1 or self.cursor_x + 1
-                    self.joystick_cooldown = self.joystick_repeat_delay
-                    play_sound("ui", "move")
+                    -- Move right
+                    if self.equipment_mode then
+                        -- Switch from equipment to grid
+                        self.equipment_mode = false
+                        self.cursor_x = 1
+                        self.joystick_cooldown = self.joystick_repeat_delay
+                        play_sound("ui", "move")
+                    else
+                        -- Move right in grid (wrap around)
+                        self.cursor_x = self.cursor_x == self.inventory.grid_width and 1 or self.cursor_x + 1
+                        self.joystick_cooldown = self.joystick_repeat_delay
+                        play_sound("ui", "move")
+                    end
                 elseif lx < -threshold then
-                    self.cursor_x = self.cursor_x == 1 and self.inventory.grid_width or self.cursor_x - 1
-                    self.joystick_cooldown = self.joystick_repeat_delay
-                    play_sound("ui", "move")
+                    -- Move left
+                    if self.equipment_mode then
+                        -- Toggle equipment X (wrap around: 0 <-> 1)
+                        self.equipment_cursor_x = (self.equipment_cursor_x == 0) and 1 or 0
+                        self.joystick_cooldown = self.joystick_repeat_delay
+                        play_sound("ui", "move")
+                    else
+                        if self.cursor_x == 1 then
+                            -- Switch from grid to equipment
+                            self.equipment_mode = true
+                            self.equipment_cursor_x = 1
+                            self.joystick_cooldown = self.joystick_repeat_delay
+                            play_sound("ui", "move")
+                        else
+                            -- Move left in grid (wrap around)
+                            self.cursor_x = self.cursor_x - 1
+                            self.joystick_cooldown = self.joystick_repeat_delay
+                            play_sound("ui", "move")
+                        end
+                    end
                 end
             else
                 if ly > threshold then
-                    self.cursor_y = self.cursor_y == self.inventory.grid_height and 1 or self.cursor_y + 1
-                    self.joystick_cooldown = self.joystick_repeat_delay
-                    play_sound("ui", "move")
+                    -- Move down
+                    if self.equipment_mode then
+                        self.equipment_cursor_y = (self.equipment_cursor_y + 1) % 4
+                        self.joystick_cooldown = self.joystick_repeat_delay
+                        play_sound("ui", "move")
+                    else
+                        self.cursor_y = self.cursor_y == self.inventory.grid_height and 1 or self.cursor_y + 1
+                        self.joystick_cooldown = self.joystick_repeat_delay
+                        play_sound("ui", "move")
+                    end
                 elseif ly < -threshold then
-                    self.cursor_y = self.cursor_y == 1 and self.inventory.grid_height or self.cursor_y - 1
-                    self.joystick_cooldown = self.joystick_repeat_delay
-                    play_sound("ui", "move")
+                    -- Move up
+                    if self.equipment_mode then
+                        self.equipment_cursor_y = (self.equipment_cursor_y - 1 + 4) % 4
+                        self.joystick_cooldown = self.joystick_repeat_delay
+                        play_sound("ui", "move")
+                    else
+                        self.cursor_y = self.cursor_y == 1 and self.inventory.grid_height or self.cursor_y - 1
+                        self.joystick_cooldown = self.joystick_repeat_delay
+                        play_sound("ui", "move")
+                    end
                 end
             end
         end
@@ -229,7 +275,10 @@ function inventory:draw()
     -- Draw equipment slots panel (left side)
     self.equipment_bounds = slot_renderer.renderEquipmentSlots(
         self.inventory, window_x, window_y,
-        self.title_font, self.item_font, self.desc_font
+        self.title_font, self.item_font, self.desc_font,
+        self.equipment_mode,  -- Pass equipment mode
+        self.equipment_cursor_x,  -- Pass equipment cursor X
+        self.equipment_cursor_y  -- Pass equipment cursor Y
     )
 
     -- Draw items in grid (returns grid start position)

@@ -51,7 +51,7 @@ function shapes:drawButton(x, y, w, h, state, rounding)
         border_width = 2
     elseif state == "hover" then
         bg_color = {0.3, 0.3, 0.4, 0.8}
-        border_color = {1, 1, 0, 1}
+        border_color = {1, 1, 0, 1}  -- Yellow
         border_width = 2
     else -- normal
         bg_color = {0.2, 0.2, 0.3, 0.8}

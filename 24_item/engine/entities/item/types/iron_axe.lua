@@ -1,22 +1,22 @@
--- entities/item/types/iron_sword.lua
--- Iron sword equipment configuration
+-- entities/item/types/iron_axe.lua
+-- Iron axe equipment configuration
 
-local iron_sword = {
-    name = "Iron Sword",
-    description = "A sturdy iron sword",
+local iron_axe = {
+    name = "Iron Axe",
+    description = "A heavy iron axe",
     size = { width = 1, height = 1 },  -- Grid size: 1x1 (16x16 sprite)
     item_type = "equipment",
     equipment_slot = "weapon",  -- Can only be equipped to weapon slot
     max_stack = 1,  -- Equipment cannot be stacked
 
     -- Weapon type for player weapon system
-    weapon_type = "sword",  -- Must match game/data/entities/types.lua weapons table
+    weapon_type = "axe",  -- Must match game/data/entities/types.lua weapons table
 
     -- Sprite information for rendering (from steel-weapons.png)
     sprite = {
         file = "assets/images/steel-weapons.png",
-        x = 0,      -- Top-left X in sprite sheet
-        y = 0,      -- Top-left Y in sprite sheet
+        x = 0,      -- 1x11: Row 1 (index 0)
+        y = 160,    -- 1x11: Column 11 (index 10 * 16 = 160)
         w = 16,     -- Width in pixels
         h = 16,     -- Height in pixels
         scale = 3   -- Render scale
@@ -24,20 +24,19 @@ local iron_sword = {
 
     -- Equipment stats (applied when equipped)
     stats = {
-        damage = 15,
-        attack_speed = 1.0
+        damage = 20,  -- Higher damage than sword
+        attack_speed = 0.8  -- Slower than sword
     }
 }
 
-function iron_sword.use(player)
+function iron_axe.use(player)
     -- Equipment items don't have "use" - they are equipped via drag & drop
-    -- But we keep this function for compatibility
     return false
 end
 
-function iron_sword.canUse(player)
+function iron_axe.canUse(player)
     -- Equipment cannot be "used" directly
     return false
 end
 
-return iron_sword
+return iron_axe
