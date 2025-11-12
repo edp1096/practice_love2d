@@ -469,7 +469,7 @@ function slot_renderer.getGridConstants()
 end
 
 -- Render equipment slots panel (left side of inventory)
-function slot_renderer.renderEquipmentSlots(inventory, window_x, window_y, title_font, item_font, desc_font, equipment_mode, equipment_cursor_x, equipment_cursor_y)
+function slot_renderer.renderEquipmentSlots(inventory, window_x, window_y, title_font, item_font, desc_font, equipment_mode, equipment_cursor_x, equipment_cursor_y, drag_state)
     local SLOT_SIZE = 60
     local SLOT_SPACING = 10
     local panel_x = window_x + 20
@@ -487,6 +487,10 @@ function slot_renderer.renderEquipmentSlots(inventory, window_x, window_y, title
         { name = "ring2", x = 1, y = 3, label = "Ring 2" },
     }
 
+    -- Get mouse position for drag-over detection
+    local display = require "engine.core.display"
+    local vmx, vmy = display:GetVirtualMousePosition()
+
     for _, slot_info in ipairs(slot_layout) do
         local slot_x = panel_x + slot_info.x * (SLOT_SIZE + SLOT_SPACING)
         local slot_y = panel_y + slot_info.y * (SLOT_SIZE + SLOT_SPACING)
@@ -496,8 +500,37 @@ function slot_renderer.renderEquipmentSlots(inventory, window_x, window_y, title
                                 equipment_cursor_x == slot_info.x and
                                 equipment_cursor_y == slot_info.y
 
-        -- Draw slot background (highlight if cursor is here)
-        shapes:drawSlot(slot_x, slot_y, SLOT_SIZE, SLOT_SIZE, false, is_cursor_here, 5)
+        -- Check if dragging item over this slot
+        local is_drag_over = false
+        local can_equip_here = false
+        if drag_state and drag_state.active and drag_state.item_obj then
+            -- Check if mouse is over this slot
+            if vmx >= slot_x and vmx < slot_x + SLOT_SIZE and
+               vmy >= slot_y and vmy < slot_y + SLOT_SIZE then
+                is_drag_over = true
+
+                -- Check if dragged item can be equipped to this slot
+                local item = drag_state.item_obj
+                if item.equipment_slot then
+                    can_equip_here = item.equipment_slot == slot_info.name
+                end
+            end
+        end
+
+        -- Draw slot background (highlight if cursor is here or dragging over)
+        local highlight = is_cursor_here or (is_drag_over and can_equip_here)
+        shapes:drawSlot(slot_x, slot_y, SLOT_SIZE, SLOT_SIZE, false, highlight, 5)
+
+        -- Draw drag-over highlight (green if can equip, red if cannot)
+        if is_drag_over and not equipment_mode then
+            if can_equip_here then
+                love.graphics.setColor(colors.for_placement_valid)
+            else
+                love.graphics.setColor(colors.for_placement_invalid)
+            end
+            love.graphics.rectangle("fill", slot_x, slot_y, SLOT_SIZE, SLOT_SIZE)
+            love.graphics.setColor(1, 1, 1, 1)
+        end
 
         -- Draw slot label above
         local label_w = desc_font:getWidth(slot_info.label)

@@ -342,24 +342,40 @@ end
 -- ============================================================================
 
 function inventory:save()
-    local save_data = {}
+    local grid_items = {}
+    local equipped_items = {}
 
-    -- Save all items with their grid positions
+    -- Separate grid items and equipped items
     for item_id, item_data in pairs(self.items) do
-        table.insert(save_data, {
-            uuid = item_id,
-            type = item_data.item.type,
-            quantity = item_data.item.quantity,
-            x = item_data.x,
-            y = item_data.y,
-            width = item_data.width,
-            height = item_data.height,
-            rotated = item_data.rotated
-        })
+        if item_data.equipped then
+            -- Save equipped items separately (no x, y)
+            table.insert(equipped_items, {
+                uuid = item_id,
+                type = item_data.item.type,
+                quantity = item_data.item.quantity,
+                width = item_data.width,
+                height = item_data.height,
+                rotated = item_data.rotated,
+                slot = item_data.slot
+            })
+        else
+            -- Save grid items with positions
+            table.insert(grid_items, {
+                uuid = item_id,
+                type = item_data.item.type,
+                quantity = item_data.item.quantity,
+                x = item_data.x,
+                y = item_data.y,
+                width = item_data.width,
+                height = item_data.height,
+                rotated = item_data.rotated
+            })
+        end
     end
 
     return {
-        items = save_data,
+        items = grid_items,
+        equipped_items = equipped_items,
         selected_item_id = self.selected_item_id
     }
 end
@@ -377,7 +393,12 @@ function inventory:load(save_data)
         end
     end
 
-    -- Load items
+    -- Clear equipment slots
+    for slot_name, _ in pairs(self.equipment_slots) do
+        self.equipment_slots[slot_name] = nil
+    end
+
+    -- Load grid items (items with x, y positions)
     if save_data.items then
         for _, item_data in ipairs(save_data.items) do
             local item_obj = self.item_class:new(item_data.type, item_data.quantity, item_data.uuid)
@@ -390,6 +411,26 @@ function inventory:load(save_data)
                 item_data.height or item_obj.size.height,
                 item_data.rotated or false
             )
+        end
+    end
+
+    -- Load equipped items (items in equipment slots, no x, y)
+    if save_data.equipped_items then
+        for _, item_data in ipairs(save_data.equipped_items) do
+            local item_obj = self.item_class:new(item_data.type, item_data.quantity, item_data.uuid)
+
+            -- Restore to equipment slot
+            self.equipment_slots[item_data.slot] = item_data.uuid
+
+            -- Store item data (without grid position)
+            self.items[item_data.uuid] = {
+                item = item_obj,
+                width = item_data.width,
+                height = item_data.height,
+                rotated = item_data.rotated or false,
+                equipped = true,
+                slot = item_data.slot
+            }
         end
     end
 

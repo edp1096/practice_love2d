@@ -97,6 +97,23 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
     -- Load inventory from save data (reuse already loaded save_data)
     if save_data and save_data.inventory then
         self.inventory:load(save_data.inventory)
+
+        -- Apply equipped weapon to player
+        local weapon_item_id = self.inventory.equipment_slots["weapon"]
+        if weapon_item_id then
+            local weapon_data = self.inventory.items[weapon_item_id]
+            if weapon_data and weapon_data.item.weapon_type then
+                self.player:equipWeapon(weapon_data.item.weapon_type)
+            end
+        end
+
+        -- Apply equipped items' stats to player
+        for slot_name, item_id in pairs(self.inventory.equipment_slots) do
+            local item_data = self.inventory.items[item_id]
+            if item_data and item_data.item.stats then
+                self.player:applyEquipmentStats(item_data.item.stats)
+            end
+        end
     else
         -- Give starting items (for both new game and no save data)
         self.inventory:addItem("small_potion", 3)

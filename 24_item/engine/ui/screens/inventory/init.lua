@@ -279,7 +279,8 @@ function inventory:draw()
         self.title_font, self.item_font, self.desc_font,
         self.equipment_mode,  -- Pass equipment mode
         self.equipment_cursor_x,  -- Pass equipment cursor X
-        self.equipment_cursor_y  -- Pass equipment cursor Y
+        self.equipment_cursor_y,  -- Pass equipment cursor Y
+        self.drag_state  -- Pass drag state for highlighting droppable slots
     )
 
     -- Draw items in grid (returns grid start position)
