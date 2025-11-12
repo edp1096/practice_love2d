@@ -7,6 +7,7 @@ local display = require "engine.core.display"
 local input = require "engine.core.input"
 local text_ui = require "engine.utils.text"
 local options_module = require "engine.ui.screens.settings.options"
+local colors = require "engine.ui.colors"
 
 function render:draw(state)
     -- Draw previous scene in background if it exists
@@ -62,7 +63,7 @@ function render:draw(state)
     else
         hint_text = "ESC: Back | Enter: Select | Arrow/WASD: Navigate | Left-Right: Change"
     end
-    text_ui:drawCentered(hint_text, state.layout.hint_y - 20, state.virtual_width, {0.5, 0.5, 0.5, 1}, state.hintFont)
+    text_ui:drawCentered(hint_text, state.layout.hint_y - 20, state.virtual_width, colors.for_text_dim, state.hintFont)
 
     display:Detach()
 

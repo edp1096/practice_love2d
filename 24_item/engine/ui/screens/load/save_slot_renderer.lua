@@ -4,6 +4,7 @@
 local slot_renderer = {}
 local shapes = require "engine.utils.shapes"
 local text_ui = require "engine.utils.text"
+local colors = require "engine.ui.colors"
 
 -- Render individual save slot
 function slot_renderer.drawSlot(load_scene, slot, i, is_selected)
@@ -40,11 +41,11 @@ function slot_renderer.drawExistingSlot(load_scene, slot, i, y, is_selected)
     text_ui:draw("Slot " .. slot.slot, load_scene.virtual_width * 0.2, y, title_color, load_scene.slotFont)
 
     -- HP info
-    text_ui:draw("HP: " .. slot.hp .. "/" .. slot.max_hp, load_scene.virtual_width * 0.2, y + 28, {0.8, 0.8, 0.8, 1}, load_scene.infoFont)
-    text_ui:draw(slot.map_display or "Unknown", load_scene.virtual_width * 0.2, y + 48, {0.8, 0.8, 0.8, 1}, load_scene.infoFont)
+    text_ui:draw("HP: " .. slot.hp .. "/" .. slot.max_hp, load_scene.virtual_width * 0.2, y + 28, colors.for_text_gray, load_scene.infoFont)
+    text_ui:draw(slot.map_display or "Unknown", load_scene.virtual_width * 0.2, y + 48, colors.for_text_gray, load_scene.infoFont)
 
     -- Timestamp
-    text_ui:draw(slot.time_string, load_scene.virtual_width * 0.2, y + 65, {0.6, 0.6, 0.6, 1}, load_scene.hintFont)
+    text_ui:draw(slot.time_string, load_scene.virtual_width * 0.2, y + 65, colors.for_text_dark_gray, load_scene.hintFont)
 
     -- Draw X delete button
     slot_renderer.drawDeleteButton(load_scene, i, y)
@@ -52,7 +53,7 @@ end
 
 -- Render empty save slot
 function slot_renderer.drawEmptySlot(load_scene, slot, y)
-    text_ui:draw("Slot " .. slot.slot .. " - Empty", load_scene.virtual_width * 0.2, y + 25, {0.5, 0.5, 0.5, 1}, load_scene.slotFont)
+    text_ui:draw("Slot " .. slot.slot .. " - Empty", load_scene.virtual_width * 0.2, y + 25, colors.for_text_dim, load_scene.slotFont)
 end
 
 -- Render delete button (X button)

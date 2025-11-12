@@ -6,6 +6,7 @@ local input = require "engine.core.input"
 local sound = require "engine.core.sound"
 local fonts = require "engine.utils.fonts"
 local text_ui = require "engine.utils.text"
+local colors = require "engine.ui.colors"
 
 local helpers = {}
 
@@ -84,7 +85,7 @@ function helpers.drawControlHints(font, layout, width, custom_text)
         hint_text = "v" .. (APP_CONFIG.version or "0.0.1")
     end
 
-    text_ui:drawCentered(hint_text, layout.hint_y - 10, width, {0.5, 0.5, 0.5, 1}, font)
+    text_ui:drawCentered(hint_text, layout.hint_y - 10, width, colors.for_text_dim, font)
 end
 
 -- Handle keyboard navigation (returns result table with action and new_selection)
@@ -175,7 +176,7 @@ function helpers.drawConfirmDialog(title, subtitle, button_labels, selected, mou
             end
             hint_font = helpers.fallback_hint_font
         end
-        text_ui:drawCentered(subtitle, height / 2 - 20, width, {0.9, 0.9, 0.9, 1}, hint_font)
+        text_ui:drawCentered(subtitle, height / 2 - 20, width, colors.for_text_light, hint_font)
     end
 
     -- Buttons

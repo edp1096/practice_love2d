@@ -11,6 +11,7 @@ local input = require "engine.core.input"
 local ui_helpers = require "engine.ui.menu.helpers"
 local debug = require "engine.core.debug"
 local text_ui = require "engine.utils.text"
+local colors = require "engine.ui.colors"
 
 -- Create a new menu scene with common boilerplate
 -- config = {
@@ -143,7 +144,7 @@ function MenuSceneBase:create(config)
         -- Debug info
         if config.show_debug then
             if input:hasGamepad() then
-                text_ui:draw("Controller: " .. input.joystick_name, 10, 10, {0.3, 0.8, 0.3, 1})
+                text_ui:draw("Controller: " .. input.joystick_name, 10, 10, colors.for_menu_controller_info)
             end
 
             if debug.enabled then

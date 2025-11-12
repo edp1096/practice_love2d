@@ -47,17 +47,17 @@ function shapes:drawButton(x, y, w, h, state, rounding)
     local bg_color, border_color, border_width
 
     if state == "pressed" or state == "selected" then
-        bg_color = {0.3, 0.5, 0.8, 0.9}
-        border_color = colors.ITEM_SELECTED
-        border_width = colors.ITEM_SELECTED_WIDTH
+        bg_color = colors.for_button_selected_bg
+        border_color = colors.for_item_selected
+        border_width = colors.BORDER_WIDTH_MEDIUM
     elseif state == "hover" then
-        bg_color = {0.3, 0.3, 0.4, 0.8}
-        border_color = colors.GAMEPAD_CURSOR
-        border_width = colors.GAMEPAD_CURSOR_WIDTH - 1  -- 2px for hover (slightly thinner than cursor)
+        bg_color = colors.for_button_hover_bg
+        border_color = colors.for_gamepad_cursor
+        border_width = colors.BORDER_WIDTH_MEDIUM  -- 2px for hover
     else -- normal
-        bg_color = {0.2, 0.2, 0.3, 0.8}
-        border_color = {0.4, 0.4, 0.5, 1}
-        border_width = 1
+        bg_color = colors.for_button_normal_bg
+        border_color = colors.for_button_normal_border
+        border_width = colors.BORDER_WIDTH_THIN
     end
 
     self:drawBox(x, y, w, h, bg_color, border_color, border_width, rounding)

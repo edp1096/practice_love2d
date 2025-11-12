@@ -11,6 +11,7 @@ local fonts = require "engine.utils.fonts"
 local shapes = require "engine.utils.shapes"
 local text_ui = require "engine.utils.text"
 local input = require "engine.core.input"
+local colors = require "engine.ui.colors"
 
 -- Safe sound wrapper
 local function play_sound(category, name)
@@ -245,7 +246,7 @@ function inventory:draw()
     local window_x = (vw - window_w) / 2
     local window_y = (vh - window_h) / 2
 
-    shapes:drawPanel(window_x, window_y, window_w, window_h, {0.15, 0.15, 0.2, 0.95}, {0.3, 0.3, 0.4, 1}, 10)
+    shapes:drawPanel(window_x, window_y, window_w, window_h, colors.for_inventory_bg, colors.for_inventory_border, 10)
 
     -- Draw title
     local title = "INVENTORY"
@@ -263,7 +264,7 @@ function inventory:draw()
     local close_prompt1 = input:getPrompt("open_inventory") or "I"
     local close_prompt2 = input:getPrompt("menu_back") or "ESC"
     local close_text = string.format("Press %s or %s to close", close_prompt1, close_prompt2)
-    text_ui:draw(close_text, window_x + 20, window_y + 20, {0.7, 0.7, 0.7, 1}, self.desc_font)
+    text_ui:draw(close_text, window_x + 20, window_y + 20, colors.for_text_mid_gray, self.desc_font)
 
     -- Draw usage instruction (if item selected)
     if self.selected_item_id then
