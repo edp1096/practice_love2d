@@ -410,7 +410,15 @@ function input_handler.mousereleased(self, x, y, button)
             local item_top_left_x = vx - self.drag_state.offset_x
             local item_top_left_y = vy - self.drag_state.offset_y
 
-            local drop_grid_x, drop_grid_y = slot_renderer.screenToGrid(item_top_left_x, item_top_left_y, self.grid_start_x, self.grid_start_y)
+            -- Calculate item size for center-based placement
+            local CELL_SIZE, CELL_SPACING = slot_renderer.getGridConstants()
+
+            -- For natural drag & drop, use first cell's center (not the entire item's center)
+            -- This prevents multi-cell items from "sinking down" due to their center being in the next cell
+            local snap_point_x = item_top_left_x + CELL_SIZE / 2
+            local snap_point_y = item_top_left_y + CELL_SIZE / 2
+
+            local drop_grid_x, drop_grid_y = slot_renderer.screenToGrid(snap_point_x, snap_point_y, self.grid_start_x, self.grid_start_y)
 
             -- Check if we can place at drop position
             if item_obj and self.inventory:canPlaceItem(drop_grid_x, drop_grid_y, self.drag_state.origin_width, self.drag_state.origin_height) then

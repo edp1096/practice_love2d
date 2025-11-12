@@ -5,6 +5,7 @@ local slot_renderer = {}
 local shapes = require "engine.utils.shapes"
 local text_ui = require "engine.utils.text"
 local input = require "engine.core.input"
+local colors = require "engine.ui.colors"
 
 -- Grid constants
 local CELL_SIZE = 50
@@ -73,7 +74,7 @@ function slot_renderer.renderItemGrid(inventory, selected_item_id, title_font, i
         -- Draw empty message
         local empty_text = "No items in inventory"
         local empty_w = item_font:getWidth(empty_text)
-        text_ui:draw(empty_text, (vw - empty_w) / 2, start_y + 200, {0.5, 0.5, 0.5, 1}, item_font)
+        text_ui:draw(empty_text, (vw - empty_w) / 2, start_y + 200, colors.TEXT_DIM, item_font)
         return start_x, start_y
     end
 
@@ -106,16 +107,16 @@ function slot_renderer.renderItemGrid(inventory, selected_item_id, title_font, i
             local item_w = item_data.width * CELL_SIZE + (item_data.width - 1) * CELL_SPACING
             local item_h = item_data.height * CELL_SIZE + (item_data.height - 1) * CELL_SPACING
 
-            -- Draw item border (olive drab, different from gamepad cursor)
+            -- Draw item border
             local is_selected = (item_id == selected_item_id)
             if is_selected then
-                -- Selected item: blue border
-                love.graphics.setColor(0.5, 0.8, 1, 1)
-                love.graphics.setLineWidth(2)
+                -- Selected item border
+                love.graphics.setColor(colors.ITEM_SELECTED)
+                love.graphics.setLineWidth(colors.ITEM_SELECTED_WIDTH)
             else
-                -- Normal item: olive drab border
-                love.graphics.setColor(0.3, 0.5, 0.2, 0.8)
-                love.graphics.setLineWidth(1)
+                -- Normal item border
+                love.graphics.setColor(colors.ITEM_BORDER)
+                love.graphics.setLineWidth(colors.ITEM_BORDER_WIDTH)
             end
             love.graphics.rectangle("line", screen_x, screen_y, item_w, item_h, 5, 5)
             love.graphics.setLineWidth(1)
@@ -154,11 +155,11 @@ function slot_renderer.renderItemGrid(inventory, selected_item_id, title_font, i
             local icon_color
 
             if item.type == "small_potion" then
-                icon_color = {0.5, 1, 0.5, 1}  -- Green
+                icon_color = colors.ITEM_SMALL_POTION
             elseif item.type == "large_potion" then
-                icon_color = {0.3, 1, 0.8, 1}  -- Cyan
+                icon_color = colors.ITEM_LARGE_POTION
             else
-                icon_color = {1, 1, 1, 1}  -- White
+                icon_color = colors.TEXT_WHITE
             end
 
             -- Center icon in item area
@@ -176,7 +177,8 @@ function slot_renderer.renderItemGrid(inventory, selected_item_id, title_font, i
         -- Draw size indicator (top-right corner, for debugging)
         local size_text = string.format("%dx%d", item_data.width, item_data.height)
         local size_w = desc_font:getWidth(size_text)
-        text_ui:draw(size_text, screen_x + item_w - size_w - 5, screen_y + 5, {0.7, 0.7, 0.7, 0.7}, desc_font)
+        local size_color = {colors.TEXT_MID_GRAY[1], colors.TEXT_MID_GRAY[2], colors.TEXT_MID_GRAY[3], 0.7}
+        text_ui:draw(size_text, screen_x + item_w - size_w - 5, screen_y + 5, size_color, desc_font)
         end
     end
 
@@ -194,9 +196,9 @@ function slot_renderer.renderItemGrid(inventory, selected_item_id, title_font, i
     if cursor_mode then
         local cursor_screen_x, cursor_screen_y = slot_renderer.gridToScreen(cursor_x, cursor_y, start_x, start_y)
 
-        -- Yellow border for cursor
-        love.graphics.setColor(1, 1, 0, 0.8)  -- Yellow
-        love.graphics.setLineWidth(3)
+        -- Gamepad cursor border
+        love.graphics.setColor(colors.GAMEPAD_CURSOR)
+        love.graphics.setLineWidth(colors.GAMEPAD_CURSOR_WIDTH)
         love.graphics.rectangle("line", cursor_screen_x - 2, cursor_screen_y - 2, CELL_SIZE + 4, CELL_SIZE + 4)
         love.graphics.setLineWidth(1)
         love.graphics.setColor(1, 1, 1, 1)
@@ -223,8 +225,13 @@ function slot_renderer.renderDraggedItem(inventory, drag_state, grid_start_x, gr
     local item_w = drag_state.origin_width * CELL_SIZE + (drag_state.origin_width - 1) * CELL_SPACING
     local item_h = drag_state.origin_height * CELL_SIZE + (drag_state.origin_height - 1) * CELL_SPACING
 
-    -- Calculate which grid cell the item would be placed in
-    local drop_grid_x, drop_grid_y = slot_renderer.screenToGrid(item_screen_x, item_screen_y, grid_start_x, grid_start_y)
+    -- For natural drag & drop, use first cell's center (not the entire item's center)
+    -- This prevents multi-cell items from "sinking down" due to their center being in the next cell
+    local snap_point_x = item_screen_x + CELL_SIZE / 2
+    local snap_point_y = item_screen_y + CELL_SIZE / 2
+
+    -- Calculate which grid cell the snap point would be placed in
+    local drop_grid_x, drop_grid_y = slot_renderer.screenToGrid(snap_point_x, snap_point_y, grid_start_x, grid_start_y)
 
     -- Check if placement is valid
     local can_place = inventory:canPlaceItem(drop_grid_x, drop_grid_y, drag_state.origin_width, drag_state.origin_height)
@@ -244,9 +251,9 @@ function slot_renderer.renderDraggedItem(inventory, drag_state, grid_start_x, gr
 
                     -- Draw highlight (green if valid, red if invalid)
                     if can_place then
-                        love.graphics.setColor(0.3, 1, 0.3, 0.3)  -- Green
+                        love.graphics.setColor(colors.PLACEMENT_VALID)
                     else
-                        love.graphics.setColor(1, 0.3, 0.3, 0.3)  -- Red
+                        love.graphics.setColor(colors.PLACEMENT_INVALID)
                     end
                     love.graphics.rectangle("fill", cell_screen_x, cell_screen_y, CELL_SIZE, CELL_SIZE)
                 end
@@ -284,9 +291,9 @@ function slot_renderer.renderDraggedItem(inventory, drag_state, grid_start_x, gr
         local icon_color
 
         if item_obj.type == "small_potion" then
-            icon_color = {0.5, 1, 0.5, 0.7}  -- Green, semi-transparent
+            icon_color = {colors.ITEM_SMALL_POTION[1], colors.ITEM_SMALL_POTION[2], colors.ITEM_SMALL_POTION[3], 0.7}
         elseif item_obj.type == "large_potion" then
-            icon_color = {0.3, 1, 0.8, 0.7}  -- Cyan, semi-transparent
+            icon_color = {colors.ITEM_LARGE_POTION[1], colors.ITEM_LARGE_POTION[2], colors.ITEM_LARGE_POTION[3], 0.7}
         else
             icon_color = {1, 1, 1, 0.7}
         end
@@ -335,9 +342,9 @@ function slot_renderer.renderGamepadDraggedItem(inventory, gamepad_drag, cursor_
 
                 -- Draw highlight (green if valid, red if invalid)
                 if can_place then
-                    love.graphics.setColor(0.3, 1, 0.3, 0.3)  -- Green
+                    love.graphics.setColor(colors.PLACEMENT_VALID)
                 else
-                    love.graphics.setColor(1, 0.3, 0.3, 0.3)  -- Red
+                    love.graphics.setColor(colors.PLACEMENT_INVALID)
                 end
                 love.graphics.rectangle("fill", cell_screen_x, cell_screen_y, CELL_SIZE, CELL_SIZE)
             end
@@ -377,9 +384,9 @@ function slot_renderer.renderGamepadDraggedItem(inventory, gamepad_drag, cursor_
         local icon_color
 
         if item_obj.type == "small_potion" then
-            icon_color = {0.5, 1, 0.5, 0.7}  -- Green, semi-transparent
+            icon_color = {colors.ITEM_SMALL_POTION[1], colors.ITEM_SMALL_POTION[2], colors.ITEM_SMALL_POTION[3], 0.7}
         elseif item_obj.type == "large_potion" then
-            icon_color = {0.3, 1, 0.8, 0.7}  -- Cyan, semi-transparent
+            icon_color = {colors.ITEM_LARGE_POTION[1], colors.ITEM_LARGE_POTION[2], colors.ITEM_LARGE_POTION[3], 0.7}
         else
             icon_color = {1, 1, 1, 0.7}
         end
@@ -424,13 +431,13 @@ function slot_renderer.renderItemDetails(inventory, selected_item_id, player, wi
     -- Check if this is equipment
     if item.item_type == "equipment" then
         status_text = "⚔ Equipment (drag to slot)"
-        status_color = {0.8, 0.7, 1, 1}  -- Purple for equipment
+        status_color = colors.ITEM_EQUIPMENT
     elseif item:canUse(player) then
         status_text = "✓ Can use"
-        status_color = {0.3, 1, 0.3, 1}
+        status_color = colors.ITEM_USABLE
     else
         status_text = "✗ Cannot use (HP full)"
-        status_color = {1, 0.3, 0.3, 1}
+        status_color = {1, 0.3, 0.3, 1}  -- Red (keep as-is, specific to this context)
     end
 
     -- Build line2 (position/size info)
@@ -449,7 +456,7 @@ function slot_renderer.renderItemDetails(inventory, selected_item_id, player, wi
     end
 
     -- Draw position/size in gray
-    text_ui:draw(line2, window_x + 30, detail_y + 22, {0.6, 0.6, 0.6, 1}, desc_font)
+    text_ui:draw(line2, window_x + 30, detail_y + 22, colors.TEXT_DARK_GRAY, desc_font)
 
     -- Draw status next to it in color
     local line2_width = desc_font:getWidth(line2)
@@ -494,7 +501,7 @@ function slot_renderer.renderEquipmentSlots(inventory, window_x, window_y, title
 
         -- Draw slot label above
         local label_w = desc_font:getWidth(slot_info.label)
-        text_ui:draw(slot_info.label, slot_x + (SLOT_SIZE - label_w) / 2, slot_y - 18, {0.7, 0.7, 0.7, 1}, desc_font)
+        text_ui:draw(slot_info.label, slot_x + (SLOT_SIZE - label_w) / 2, slot_y - 18, colors.TEXT_MID_GRAY, desc_font)
 
         -- Draw equipped item (if any)
         local item_id = inventory.equipment_slots[slot_info.name]

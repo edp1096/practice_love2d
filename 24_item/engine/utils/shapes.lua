@@ -2,6 +2,7 @@
 -- Shape drawing utilities to reduce code duplication
 
 local shapes = {}
+local colors = require "engine.ui.colors"
 
 -- Draw a filled box with optional border and rounding
 -- color: {r, g, b, a}
@@ -47,12 +48,12 @@ function shapes:drawButton(x, y, w, h, state, rounding)
 
     if state == "pressed" or state == "selected" then
         bg_color = {0.3, 0.5, 0.8, 0.9}
-        border_color = {0.5, 0.8, 1, 1}
-        border_width = 2
+        border_color = colors.ITEM_SELECTED
+        border_width = colors.ITEM_SELECTED_WIDTH
     elseif state == "hover" then
         bg_color = {0.3, 0.3, 0.4, 0.8}
-        border_color = {1, 1, 0, 1}  -- Yellow
-        border_width = 2
+        border_color = colors.GAMEPAD_CURSOR
+        border_width = colors.GAMEPAD_CURSOR_WIDTH - 1  -- 2px for hover (slightly thinner than cursor)
     else -- normal
         bg_color = {0.2, 0.2, 0.3, 0.8}
         border_color = {0.4, 0.4, 0.5, 1}
