@@ -32,7 +32,7 @@ local screen = {
         resizable = true,
         borderless = false,
         centered = true,
-        display = 1,
+        monitor = 1,
         highdpi = false,
         minwidth = 640,
         minheight = 360,
@@ -52,6 +52,20 @@ local screen = {
     is_android = false,
     dpi_scale = 1
 }
+
+-- Helper: Call love.window.updateMode with proper display field
+-- LÖVE API expects 'display' field, but we use 'monitor' internally
+local function updateMode(w, h, window_table)
+    local love_flags = {}
+    for k, v in pairs(window_table) do
+        if k == "monitor" then
+            love_flags.display = v
+        else
+            love_flags[k] = v
+        end
+    end
+    return pcall(love.window.updateMode, w, h, love_flags)
+end
 
 -- Detect platform
 function screen:DetectPlatform()
@@ -79,9 +93,9 @@ function screen:Initialize(config)
 
     if not self.is_mobile then
         -- Desktop: normal window handling
-        self.window.display = config.monitor or 1
+        self.window.monitor = config.monitor or 1
 
-        local success, dx, dy = pcall(love.window.getDesktopDimensions, self.window.display)
+        local success, dx, dy = pcall(love.window.getDesktopDimensions, self.window.monitor)
         if success and dx and dy then
             self.window.x = dx / 2 - self.render_wh.w / 2
             self.window.y = dy / 2 - self.render_wh.h / 2
@@ -92,8 +106,8 @@ function screen:Initialize(config)
             self.previous_xy.x, self.previous_xy.y = x, y
         end
 
-        if self.window.display ~= 1 then
-            pcall(love.window.updateMode, self.screen_wh.w, self.screen_wh.h, self.window)
+        if self.window.monitor ~= 1 then
+            updateMode(self.screen_wh.w, self.screen_wh.h, self.window)
         end
 
         if config.fullscreen then
@@ -102,9 +116,6 @@ function screen:Initialize(config)
     else
         -- Mobile: always fullscreen
         self.is_fullscreen = true
-        print("Running on mobile platform: " .. love.system.getOS())
-        print("Screen dimensions: " .. self.screen_wh.w .. "x" .. self.screen_wh.h)
-        print("DPI scale: " .. self.dpi_scale)
     end
 
     self:CalculateScale()
@@ -121,7 +132,11 @@ function screen:EnableFullScreen()
 
     self.previous_screen_wh.w, self.previous_screen_wh.h = self.screen_wh.w, self.screen_wh.h
 
-    local success2, w, h = pcall(love.window.getDesktopDimensions, self.window.display)
+    -- Use monitor from config if available
+    local target_monitor = self.window.monitor or 1
+    self.window.monitor = target_monitor
+
+    local success2, w, h = pcall(love.window.getDesktopDimensions, target_monitor)
     if success2 and w and h then
         self.screen_wh.w, self.screen_wh.h = w, h
     else
@@ -132,7 +147,7 @@ function screen:EnableFullScreen()
     self.window.resizable = false
     self.window.borderless = false
 
-    pcall(love.window.updateMode, self.screen_wh.w, self.screen_wh.h, self.window)
+    updateMode(self.screen_wh.w, self.screen_wh.h, self.window)
     self.is_fullscreen = true
 
     self:CalculateScale()
@@ -142,21 +157,24 @@ function screen:DisableFullScreen()
     if self.is_mobile then return end -- Can't exit fullscreen on mobile
     if not self.is_fullscreen then return end
 
-    if self.previous_screen_wh.w == self.screen_wh.w and self.previous_screen_wh.h == self.screen_wh.h then
-        self.window.x = self.screen_wh.w / 2 - self.render_wh.w / 2
-        self.window.y = self.screen_wh.h / 2 - self.render_wh.h / 2
+    -- Restore previous windowed resolution
+    if self.previous_screen_wh.w > 0 and self.previous_screen_wh.h > 0 then
+        self.screen_wh.w, self.screen_wh.h = self.previous_screen_wh.w, self.previous_screen_wh.h
+        self.window.x, self.window.y = self.previous_xy.x, self.previous_xy.y
+        self.window.resizable = true
+        self.window.borderless = false
+    else
+        -- Fallback to virtual resolution
+        self.window.x = 0
+        self.window.y = 0
         self.screen_wh.w, self.screen_wh.h = self.render_wh.w, self.render_wh.h
         self.window.resizable = true
         self.window.borderless = false
         self.window.centered = true
-    else
-        self.window.x, self.window.y = self.previous_xy.x, self.previous_xy.y
-        self.screen_wh.w, self.screen_wh.h = self.previous_screen_wh.w, self.previous_screen_wh.h
-        self.window.resizable = true
-        self.window.borderless = false
     end
 
-    pcall(love.window.updateMode, self.screen_wh.w, self.screen_wh.h, self.window)
+    updateMode(self.screen_wh.w, self.screen_wh.h, self.window)
+
     self.is_fullscreen = false
 
     self:CalculateScale()
@@ -189,33 +207,35 @@ function screen:GetScreenDimensions()
 end
 
 function screen:CalculateScale()
-    self.screen_wh.w = love.graphics.getWidth()
-    self.screen_wh.h = love.graphics.getHeight()
+    -- Don't overwrite screen_wh - it's set by Enable/DisableFullScreen
+    -- Use actual dimensions for calculation
+    local actual_w = love.graphics.getWidth()
+    local actual_h = love.graphics.getHeight()
 
     local virtual_aspect = self.render_wh.w / self.render_wh.h
-    local screen_aspect = self.screen_wh.w / self.screen_wh.h
+    local screen_aspect = actual_w / actual_h
 
     if self.scale_mode == "stretch" then
-        self.scale = math.min(self.screen_wh.w / self.render_wh.w, self.screen_wh.h / self.render_wh.h)
+        self.scale = math.min(actual_w / self.render_wh.w, actual_h / self.render_wh.h)
         self.offset_x = 0
         self.offset_y = 0
     elseif self.scale_mode == "fill" then
         if screen_aspect > virtual_aspect then
-            self.scale = self.screen_wh.w / self.render_wh.w
+            self.scale = actual_w / self.render_wh.w
         else
-            self.scale = self.screen_wh.h / self.render_wh.h
+            self.scale = actual_h / self.render_wh.h
         end
-        self.offset_x = (self.screen_wh.w - self.render_wh.w * self.scale) / 2
-        self.offset_y = (self.screen_wh.h - self.render_wh.h * self.scale) / 2
+        self.offset_x = (actual_w - self.render_wh.w * self.scale) / 2
+        self.offset_y = (actual_h - self.render_wh.h * self.scale) / 2
     else -- "fit" mode (default for mobile)
         if screen_aspect > virtual_aspect then
-            self.scale = self.screen_wh.h / self.render_wh.h
-            self.offset_x = (self.screen_wh.w - self.render_wh.w * self.scale) / 2
+            self.scale = actual_h / self.render_wh.h
+            self.offset_x = (actual_w - self.render_wh.w * self.scale) / 2
             self.offset_y = 0
         else
-            self.scale = self.screen_wh.w / self.render_wh.w
+            self.scale = actual_w / self.render_wh.w
             self.offset_x = 0
-            self.offset_y = (self.screen_wh.h - self.render_wh.h * self.scale) / 2
+            self.offset_y = (actual_h - self.render_wh.h * self.scale) / 2
         end
     end
 
