@@ -538,6 +538,13 @@ function inventory:unequipItem(slot_name, player)
         end
     end
 
+    -- Special handling for weapon slot
+    if slot_name == "weapon" and item.weapon_type then
+        if player and player.unequipWeapon then
+            player:unequipWeapon()
+        end
+    end
+
     -- Remove from equipment slot
     self.equipment_slots[slot_name] = nil
 

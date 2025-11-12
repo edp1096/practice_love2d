@@ -98,7 +98,7 @@ function animation.update(player, dt, cam, dialogue_open)
         end
     end
 
-    if player.state == "attacking" and not player.weapon.is_attacking then
+    if player.state == "attacking" and player.weapon and not player.weapon.is_attacking then
         player.state = "idle"
     end
 

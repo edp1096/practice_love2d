@@ -81,6 +81,8 @@ function render.draw(player)
                 player.anim:draw(player.spriteSheet, afterimage_x, afterimage_y, nil, 3, nil, 24, 24)
             end
         end
+        -- Reset color after afterimages
+        love.graphics.setColor(1, 1, 1, 1)
     end
 
     if should_draw then
@@ -130,16 +132,27 @@ function render.draw(player)
 end
 
 function render.drawWeapon(player)
+    if not player.weapon then
+        return
+    end
     player.weapon:draw(debug.enabled)
 end
 
 function render.drawAll(player)
+    -- No weapon equipped
+    if not player.weapon then
+        render.draw(player)
+        return
+    end
+
+    -- Weapon sheathed
     if not player.weapon_drawn then
         render.draw(player)
         player.weapon:drawSheathParticles()
         return
     end
 
+    -- Weapon drawn
     if player.direction == "left" or player.direction == "up" then
         render.drawWeapon(player)
         render.draw(player)

@@ -171,7 +171,7 @@ end
 
 -- Handle weapon collision detection
 function update.handleWeaponCollisions(self)
-    if self.player.weapon.is_attacking then
+    if self.player.weapon and self.player.weapon.is_attacking then
         local hits = self.world:checkWeaponCollisions(self.player.weapon)
         for _, hit in ipairs(hits) do
             self.world:applyWeaponHit(hit)

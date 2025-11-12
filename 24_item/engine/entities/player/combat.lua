@@ -12,8 +12,8 @@ local combat = {}
 function combat.initialize(player, cfg)
     cfg = cfg or {}
 
-    -- player.weapon = weapon_class:new("sword")
-    player.weapon = weapon_class:new("axe")
+    -- No weapon equipped by default (will be equipped from inventory)
+    player.weapon = nil
     player.state = "idle"
     player.attack_cooldown = 0
     player.attack_cooldown_max = cfg.attack_cooldown or 0.5
@@ -59,6 +59,18 @@ function combat.initialize(player, cfg)
 end
 
 function combat.updateTimers(player, dt)
+    -- Safety: If no weapon equipped, ensure weapon states are reset
+    if not player.weapon then
+        if player.weapon_drawn then
+            player.weapon_drawn = false
+        end
+        if player.parry_active then
+            player.parry_active = false
+            player.parry_timer = 0
+            player.state = "idle"
+        end
+    end
+
     if player.attack_cooldown > 0 then
         player.attack_cooldown = player.attack_cooldown - dt
     end
@@ -121,7 +133,7 @@ function combat.updateTimers(player, dt)
         player.hit_shake_y = 0
     end
 
-    if player.weapon_drawn and player.state ~= "attacking" and not player.parry_active then
+    if player.weapon and player.weapon_drawn and player.state ~= "attacking" and not player.parry_active then
         player.last_action_time = player.last_action_time + dt
         if player.last_action_time >= player.weapon_sheath_delay then
             player.weapon_drawn = false
@@ -139,6 +151,11 @@ function combat.updateTimers(player, dt)
 end
 
 function combat.attack(player)
+    -- Cannot attack without a weapon
+    if not player.weapon then
+        return false
+    end
+
     if player.parry_active or player.parry_cooldown > 0 then
         return false
     end
@@ -179,6 +196,11 @@ function combat.attack(player)
 end
 
 function combat.startParry(player)
+    -- Cannot parry without a weapon
+    if not player.weapon then
+        return false
+    end
+
     if player.parry_cooldown > 0 or player.state == "attacking" or player.parry_active or player.dodge_active then
         return false
     end
@@ -370,6 +392,22 @@ function combat.equipWeapon(player, weapon_type)
 
     -- Create new weapon of specified type
     player.weapon = weapon_class:new(weapon_type)
+
+    -- Reset weapon state
+    player.weapon_drawn = false
+    player.last_action_time = 0
+
+    return true
+end
+
+-- Unequip the current weapon (called when unequipping from inventory)
+function combat.unequipWeapon(player)
+    if not player.weapon then
+        return false
+    end
+
+    -- Remove weapon
+    player.weapon = nil
 
     -- Reset weapon state
     player.weapon_drawn = false
