@@ -64,4 +64,15 @@ function camera_sys:get_shake_offset()
     return self.shake_x, self.shake_y
 end
 
+function camera_sys:reset()
+    self.shake_x = 0
+    self.shake_y = 0
+    self.shake_timer = 0
+    self.shake_intensity = 0
+    self.slow_motion_active = false
+    self.slow_motion_timer = 0
+    self.time_scale = 1.0
+    self.target_time_scale = 1.0
+end
+
 return camera_sys

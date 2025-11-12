@@ -64,8 +64,14 @@ function entities.updateEnemies(self, dt, player_x, player_y)
         if enemy.state == "dead" then
             enemy.death_timer = (enemy.death_timer or 0) + dt
             if enemy.death_timer > 2 then
-                if enemy.collider then enemy.collider:destroy() end
-                if enemy.foot_collider then enemy.foot_collider:destroy() end
+                if enemy.collider then
+                    enemy.collider:destroy()
+                    enemy.collider = nil
+                end
+                if enemy.foot_collider then
+                    enemy.foot_collider:destroy()
+                    enemy.foot_collider = nil
+                end
                 table.remove(self.enemies, i)
             end
         else

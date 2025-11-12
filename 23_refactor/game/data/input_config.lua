@@ -46,7 +46,7 @@ return {
             gamepad = "x" -- Square button (DualSense)
         },
         dodge = {
-            keyboard = { "lshift" }, -- Left Shift for dodge
+            keyboard = { "lshift", "rshift" }, -- Shift for dodge
             gamepad = "rightshoulder" -- R1 button (DualSense)
         },
         jump = {

@@ -61,7 +61,7 @@ function render.draw(enemy)
 
     -- Shadow (positioned at bottom of foot_collider in topdown, or collider in platformer)
     local shadow_x, shadow_y
-    if enemy.game_mode == "topdown" and enemy.foot_collider then
+    if enemy.game_mode == "topdown" and enemy.foot_collider and enemy.foot_collider.body then
         -- Use foot_collider bottom edge for shadow
         local foot_height
         if enemy.is_humanoid then

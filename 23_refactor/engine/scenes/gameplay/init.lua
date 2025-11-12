@@ -9,6 +9,7 @@ gameplay.player_config = {}
 local player_module = require "engine.entities.player"
 local world = require "engine.systems.world"
 local camera = require "vendor.hump.camera"
+local camera_sys = require "engine.core.camera"
 local scene_control = require "engine.core.scene_control"
 local display = require "engine.core.display"
 local save_sys = require "engine.core.save"
@@ -36,6 +37,9 @@ local is_mobile = (love.system.getOS() == "Android" or love.system.getOS() == "i
 function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
     -- Initialize lighting system if not already initialized
     if not lighting.canvas then lighting:init() end
+
+    -- Reset camera effects (shake, slow-motion)
+    camera_sys:reset()
 
     mapPath = mapPath or constants.GAME_START.DEFAULT_MAP
     spawn_x = spawn_x or constants.GAME_START.DEFAULT_SPAWN_X
