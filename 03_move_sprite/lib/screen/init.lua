@@ -145,7 +145,7 @@ function screen:EnableFullScreen()
 
     self.window.x, self.window.y = 0, 0
     self.window.resizable = false
-    self.window.borderless = false
+    self.window.borderless = true
 
     updateMode(self.screen_wh.w, self.screen_wh.h, self.window)
     self.is_fullscreen = true
