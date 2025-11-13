@@ -108,12 +108,8 @@ function rendering.drawHealingPoints(self)
     end
 end
 
-function rendering.drawWorldItems(self, player_x, player_y, game_mode)
-    -- Draw items
-    for _, item in ipairs(self.world_items) do
-        item:draw()
-    end
-
+-- Draw world item prompts only (items are drawn in drawEntitiesYSorted for proper Y-sorting)
+function rendering.drawWorldItemPrompts(self, player_x, player_y, game_mode)
     -- Draw pickup prompts for nearby items
     for _, item in ipairs(self.world_items) do
         if item:canPickup(player_x, player_y, game_mode) then

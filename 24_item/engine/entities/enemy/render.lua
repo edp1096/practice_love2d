@@ -60,26 +60,29 @@ function render.draw(enemy)
     sprite_draw_y = sprite_draw_y + enemy.hit_shake_y
 
     -- Shadow (positioned at bottom of foot_collider in topdown, or collider in platformer)
-    local shadow_x, shadow_y
-    if enemy.game_mode == "topdown" and enemy.foot_collider and enemy.foot_collider.body then
-        -- Use foot_collider bottom edge for shadow
-        local foot_height
-        if enemy.is_humanoid then
-            foot_height = enemy.collider_height * 0.125
+    -- Don't draw shadow if enemy is dead
+    if enemy.state ~= constants.ENEMY_STATES.DEAD then
+        local shadow_x, shadow_y
+        if enemy.game_mode == "topdown" and enemy.foot_collider and enemy.foot_collider.body then
+            -- Use foot_collider bottom edge for shadow
+            local foot_height
+            if enemy.is_humanoid then
+                foot_height = enemy.collider_height * 0.125
+            else
+                foot_height = enemy.collider_height * 0.6
+            end
+            shadow_x = enemy.foot_collider:getX()
+            shadow_y = enemy.foot_collider:getY() + foot_height / 2 - 2
         else
-            foot_height = enemy.collider_height * 0.6
+            -- Platformer mode or fallback: use main collider
+            shadow_x = collider_center_x
+            shadow_y = collider_center_y + (enemy.collider_height / 2) - 2
         end
-        shadow_x = enemy.foot_collider:getX()
-        shadow_y = enemy.foot_collider:getY() + foot_height / 2 - 2
-    else
-        -- Platformer mode or fallback: use main collider
-        shadow_x = collider_center_x
-        shadow_y = collider_center_y + (enemy.collider_height / 2) - 2
-    end
 
-    love.graphics.setColor(0, 0, 0, 0.4)
-    love.graphics.ellipse("fill", shadow_x, shadow_y, 18, 8)
-    love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.setColor(0, 0, 0, 0.4)
+        love.graphics.ellipse("fill", shadow_x, shadow_y, 18, 8)
+        love.graphics.setColor(1, 1, 1, 1)
+    end
 
     -- Determine sprite color
     local draw_color = { 1, 1, 1, 1 }

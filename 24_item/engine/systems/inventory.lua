@@ -714,19 +714,11 @@ function inventory:useQuickslot(slot_index, player)
         return false, "Cannot use item"
     end
 
-    -- Use the item
+    -- Use the item (item:use() already decreases quantity)
     if item.use and item:use(player) then
-        -- Decrease quantity or remove item
-        if item.max_stack and item.max_stack > 1 then
-            -- Stackable item - decrease quantity
-            item_data.quantity = (item_data.quantity or 1) - 1
-            if item_data.quantity <= 0 then
-                -- Remove item completely
-                self:removeItem(item_id)
-                self.quickslots[slot_index] = nil
-            end
-        else
-            -- Non-stackable item - remove completely
+        -- Check if item should be removed (quantity reached 0)
+        if item.quantity <= 0 then
+            -- Remove item completely
             self:removeItem(item_id)
             self.quickslots[slot_index] = nil
         end

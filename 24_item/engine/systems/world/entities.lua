@@ -66,6 +66,18 @@ function entities.updateEnemies(self, dt, player_x, player_y)
             if not enemy.loot_dropped then
                 enemy.loot_dropped = true
 
+                -- Get accurate drop position from collider BEFORE stopping movement
+                local drop_x, drop_y = enemy.x, enemy.y
+                if self.game_mode == "topdown" and enemy.foot_collider then
+                    -- Topdown: use foot_collider position (center of entity)
+                    drop_x = enemy.foot_collider:getX()
+                    drop_y = enemy.foot_collider:getY()
+                elseif enemy.collider then
+                    -- Platformer: use main collider position
+                    drop_x = enemy.collider:getX()
+                    drop_y = enemy.collider:getY()
+                end
+
                 -- Stop all movement
                 if enemy.collider then
                     enemy.collider:setLinearVelocity(0, 0)
@@ -78,8 +90,8 @@ function entities.updateEnemies(self, dt, player_x, player_y)
                 if self.loot_tables and self.world_item_class then
                     local item_type, quantity = self.loot_tables.getLoot(enemy.type)
                     if item_type then
-                        -- Drop at enemy position
-                        self:addWorldItem(item_type, enemy.x, enemy.y, quantity)
+                        -- Drop at accurate enemy collider position
+                        self:addWorldItem(item_type, drop_x, drop_y, quantity)
                     end
                 end
             end

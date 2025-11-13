@@ -26,9 +26,9 @@ function render.draw(self)
     self.world:drawLayer("Background_Near")
 
     self.world:drawLayer("Ground")
-    self.world:drawEntitiesYSorted(self.player)
+    self.world:drawEntitiesYSorted(self.player)  -- Includes world_items for Y-sorting
     self.world:drawSavePoints()
-    self.world:drawWorldItems(self.player.x, self.player.y, self.player.game_mode)
+    self.world:drawWorldItemPrompts(self.player.x, self.player.y, self.player.game_mode)  -- Only prompts
     if debug.enabled then
         self.player:drawDebug()
     end

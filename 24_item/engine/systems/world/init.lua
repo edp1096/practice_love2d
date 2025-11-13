@@ -167,7 +167,7 @@ world.drawEntitiesYSorted = rendering.drawEntitiesYSorted
 world.drawSavePoints = rendering.drawSavePoints
 world.drawHealingPoints = rendering.drawHealingPoints
 world.drawHealingPointsDebug = rendering.drawHealingPointsDebug
-world.drawWorldItems = rendering.drawWorldItems
+world.drawWorldItemPrompts = rendering.drawWorldItemPrompts
 world.drawDebug = rendering.drawDebug
 
 return world

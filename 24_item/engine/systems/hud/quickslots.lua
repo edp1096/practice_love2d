@@ -123,7 +123,7 @@ function quickslots.drawSlot(slot_index, x, y, inventory, player, selected_slot)
 
         -- Draw quantity if stackable
         if item.max_stack and item.max_stack > 1 then
-            local quantity = item_data.quantity or 1
+            local quantity = item.quantity or 1  -- Get from item object, not item_data
             love.graphics.setColor(QUANTITY_TEXT)
             love.graphics.setFont(quantity_font)
             local qty_text = tostring(quantity)
