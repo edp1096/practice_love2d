@@ -59,6 +59,11 @@ function rendering.drawEntitiesYSorted(self, player)
         table.insert(drawables, npc)
     end
 
+    -- Add world items for Y-sorting
+    for _, item in ipairs(self.world_items) do
+        table.insert(drawables, item)
+    end
+
     -- Include drawable walls for Y-sorting (topdown mode only)
     if self.drawable_walls then
         for _, wall in ipairs(self.drawable_walls) do
@@ -101,6 +106,22 @@ function rendering.drawHealingPoints(self)
     for _, hp in ipairs(self.healing_points) do
         hp:draw()
     end
+end
+
+function rendering.drawWorldItems(self, player_x, player_y)
+    -- Draw items
+    for _, item in ipairs(self.world_items) do
+        item:draw()
+    end
+
+    -- Draw pickup prompts for nearby items
+    for _, item in ipairs(self.world_items) do
+        if item:canPickup(player_x, player_y) then
+            -- Show pickup prompt above item
+            prompt:draw("interact", item.x, item.y, -40)
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 function rendering.drawHealingPointsDebug(self)

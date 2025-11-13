@@ -12,7 +12,7 @@ function inventory:new(item_class)
 
     -- Grid configuration
     instance.grid_width = 10
-    instance.grid_height = 7  -- Increased from 6 to 7 (70 cells total)
+    instance.grid_height = 6  -- 10x6 grid (60 cells total)
 
     -- Grid storage: 2D array [y][x] = item_uuid or nil
     instance.grid = {}
@@ -35,10 +35,19 @@ function inventory:new(item_class)
         chest = nil,    -- Body armor
         weapon = nil,   -- Main weapon
         shield = nil,   -- Off-hand shield
-        ring1 = nil,    -- First ring
-        ring2 = nil,    -- Second ring
+        bracelet = nil, -- Bracelet
+        ring = nil,     -- Ring
         boots = nil,    -- Footwear
         gloves = nil    -- Hand armor
+    }
+
+    -- Quickslots: hotbar for quick item usage (1-5 keys)
+    instance.quickslots = {
+        nil,  -- Slot 1
+        nil,  -- Slot 2
+        nil,  -- Slot 3
+        nil,  -- Slot 4
+        nil   -- Slot 5
     }
 
     -- Legacy compatibility
@@ -184,9 +193,9 @@ function inventory:addItem(item_type, quantity)
             self.selected_item_id = new_item.uuid
         end
 
-        return true
+        return true, new_item.uuid  -- Return success and item ID
     else
-        return false  -- No space available
+        return false, nil  -- No space available
     end
 end
 
@@ -376,7 +385,8 @@ function inventory:save()
     return {
         items = grid_items,
         equipped_items = equipped_items,
-        selected_item_id = self.selected_item_id
+        selected_item_id = self.selected_item_id,
+        quickslots = self.quickslots
     }
 end
 
@@ -435,6 +445,14 @@ function inventory:load(save_data)
     end
 
     self.selected_item_id = save_data.selected_item_id
+
+    -- Load quickslots
+    if save_data.quickslots then
+        self.quickslots = save_data.quickslots
+    else
+        -- Initialize empty quickslots if not in save data (backward compatibility)
+        self.quickslots = {nil, nil, nil, nil, nil}
+    end
 end
 
 -- ============================================================================
@@ -623,6 +641,118 @@ function inventory:getEquippedItem(slot_name)
     end
 
     return nil
+end
+
+-- ============================================================================
+-- Quickslot Management Functions
+-- ============================================================================
+
+-- Assign item to quickslot
+function inventory:assignQuickslot(slot_index, item_id)
+    if slot_index < 1 or slot_index > 5 then
+        return false, "Invalid quickslot index"
+    end
+
+    -- Check if item exists
+    local item_data = self.items[item_id]
+    if not item_data then
+        return false, "Item not found"
+    end
+
+    -- Only allow usable items (potions, consumables)
+    local item = item_data.item
+    if not item.use or not item.canUse then
+        -- Check if it's equipment
+        if item.equipment_slot or item.item_type == "equipment" then
+            return false, "Equipment cannot be assigned to quickslots"
+        else
+            return false, "Only consumable items can be assigned to quickslots"
+        end
+    end
+
+    -- Assign to quickslot
+    self.quickslots[slot_index] = item_id
+
+    return true
+end
+
+-- Remove item from quickslot
+function inventory:removeQuickslot(slot_index)
+    if slot_index < 1 or slot_index > 5 then
+        return false
+    end
+
+    self.quickslots[slot_index] = nil
+    return true
+end
+
+-- Use item in quickslot
+function inventory:useQuickslot(slot_index, player)
+    if slot_index < 1 or slot_index > 5 then
+        return false, "Invalid quickslot index"
+    end
+
+    local item_id = self.quickslots[slot_index]
+    if not item_id then
+        return false, "Quickslot is empty"
+    end
+
+    local item_data = self.items[item_id]
+    if not item_data then
+        -- Item was removed from inventory, clear quickslot
+        self.quickslots[slot_index] = nil
+        return false, "Item no longer exists"
+    end
+
+    local item = item_data.item
+
+    -- Check if item can be used
+    if not item.canUse or not item:canUse(player) then
+        return false, "Cannot use item"
+    end
+
+    -- Use the item
+    if item.use and item:use(player) then
+        -- Decrease quantity or remove item
+        if item.max_stack and item.max_stack > 1 then
+            -- Stackable item - decrease quantity
+            item_data.quantity = (item_data.quantity or 1) - 1
+            if item_data.quantity <= 0 then
+                -- Remove item completely
+                self:removeItem(item_id)
+                self.quickslots[slot_index] = nil
+            end
+        else
+            -- Non-stackable item - remove completely
+            self:removeItem(item_id)
+            self.quickslots[slot_index] = nil
+        end
+
+        return true
+    end
+
+    return false, "Item use failed"
+end
+
+-- Get item in quickslot
+function inventory:getQuickslotItem(slot_index)
+    if slot_index < 1 or slot_index > 5 then
+        return nil
+    end
+
+    local item_id = self.quickslots[slot_index]
+    if not item_id then
+        return nil
+    end
+
+    local item_data = self.items[item_id]
+    if not item_data then
+        -- Item no longer exists, clear quickslot
+        self.quickslots[slot_index] = nil
+        return nil
+    end
+
+    return item_data.item, item_id, item_data
 end
 
 return inventory

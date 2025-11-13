@@ -651,6 +651,38 @@ return {
           properties = {}
         }
       }
+    },
+    {
+      type = "objectgroup",
+      draworder = "topdown",
+      id = 11,
+      name = "WorldItems",
+      class = "",
+      visible = true,
+      opacity = 1,
+      offsetx = 0,
+      offsety = 0,
+      parallaxx = 1,
+      parallaxy = 1,
+      properties = {},
+      objects = {
+        {
+          id = 46,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 512,
+          y = 304,
+          width = 32,
+          height = 32,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["item_type"] = "staff",
+            ["quantity"] = 1
+          }
+        }
+      }
     }
   }
 }

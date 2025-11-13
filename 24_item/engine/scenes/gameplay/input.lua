@@ -22,6 +22,16 @@ function input_handler.keypressed(self, key)
         end
     end
 
+    -- Quickslot usage (1-5 number keys)
+    if key >= "1" and key <= "5" then
+        local slot_index = tonumber(key)
+        local success, message = self.inventory:useQuickslot(slot_index, self.player)
+        if not success and message then
+            print("[Quickslot] " .. message)
+        end
+        return
+    end
+
     if input:wasPressed("pause", "keyboard", key) then
         scene_control.push("pause")
 
@@ -57,7 +67,7 @@ function input_handler.keypressed(self, key)
     elseif input:wasPressed("slot_5", "keyboard", key) then
         if self.inventory then self.inventory:selectSlot(5) end
     elseif input:wasPressed("interact", "keyboard", key) then
-        -- F key: Interact with NPC or Save Point (A button on gamepad uses context logic)
+        -- F key: Interact with NPC, Save Point, or Pick up Item (A button on gamepad uses context logic)
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
             local messages = npc:interact()
@@ -71,6 +81,28 @@ function input_handler.keypressed(self, key)
             scene_control.push("saveslot", function(slot)
                 self:saveGame(slot)
             end)
+            return
+        end
+
+        -- Check for world items
+        local world_item = self.world:getInteractableWorldItem(self.player.x, self.player.y)
+        if world_item then
+            -- Try to add to inventory
+            local success, item_id = self.inventory:addItem(world_item.item_type, world_item.quantity)
+            if success then
+                -- Auto-equip if equipment slot is empty
+                local item_data = self.inventory.items[item_id]
+                if item_data and item_data.item.equipment_slot then
+                    local slot = item_data.item.equipment_slot
+                    if not self.inventory.equipment_slots[slot] then
+                        self.inventory:equipItem(item_id, slot, self.player)
+                    end
+                end
+
+                -- Remove from world
+                self.world:removeWorldItem(world_item.id)
+                sound:playSFX("item", "pickup")
+            end
         end
     elseif input:wasPressed("manual_save", "keyboard", key) then
         self:saveGame()
@@ -123,6 +155,22 @@ function input_handler.gamepadpressed(self, joystick, button)
         return
     end
 
+    -- LB button: Cycle quickslot (1 -> 2 -> 3 -> 4 -> 5 -> 1)
+    if button == "leftshoulder" then
+        self.selected_quickslot = self.selected_quickslot % 5 + 1
+        sound:playSFX("ui", "move")
+        return
+    end
+
+    -- D-pad Up: Use selected quickslot
+    if button == "dpup" then
+        local success, message = self.inventory:useQuickslot(self.selected_quickslot, self.player)
+        if not success and message then
+            print("[Quickslot] " .. message)
+        end
+        return
+    end
+
     -- Let input coordinator handle button mapping and context
     local action, ctx = input:handleGamepadPressed(joystick, button)
 
@@ -159,7 +207,7 @@ function input_handler.gamepadpressed(self, joystick, button)
         self.player:startParry()
 
     elseif action == "interact" then
-        -- Direct interact (Y button)
+        -- Direct interact (Y button) - NPC, Save Point, or Pick up Item
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
             local messages = npc:interact()
@@ -172,6 +220,28 @@ function input_handler.gamepadpressed(self, joystick, button)
             scene_control.push("saveslot", function(slot)
                 self:saveGame(slot)
             end)
+            return
+        end
+
+        -- Check for world items
+        local world_item = self.world:getInteractableWorldItem(self.player.x, self.player.y)
+        if world_item then
+            -- Try to add to inventory
+            local success, item_id = self.inventory:addItem(world_item.item_type, world_item.quantity)
+            if success then
+                -- Auto-equip if equipment slot is empty
+                local item_data = self.inventory.items[item_id]
+                if item_data and item_data.item.equipment_slot then
+                    local slot = item_data.item.equipment_slot
+                    if not self.inventory.equipment_slots[slot] then
+                        self.inventory:equipItem(item_id, slot, self.player)
+                    end
+                end
+
+                -- Remove from world
+                self.world:removeWorldItem(world_item.id)
+                sound:playSFX("item", "pickup")
+            end
         end
 
     elseif action == "use_item" then
@@ -239,10 +309,52 @@ function input_handler.gamepadreleased(self, joystick, button)
 end
 
 -- Touch input handler
-function input_handler.touchpressed(id, x, y, dx, dy, pressure)
+function input_handler.touchpressed(self, id, x, y, dx, dy, pressure)
     if dialogue:handleInput("touch", id, x, y) then
         return true
     end
+
+    -- Check if touch is on HUD quickslot
+    if self:checkQuickslotTouch(x, y) then
+        return true
+    end
+
+    return false
+end
+
+-- Check if touch is on HUD quickslot and use it
+function input_handler.checkQuickslotTouch(self, touch_x, touch_y)
+    local coords = require "engine.core.coords"
+    local display = require "engine.core.display"
+
+    -- Convert physical touch to virtual coordinates
+    local vx, vy = coords:physicalToVirtual(touch_x, touch_y, display)
+
+    -- Calculate quickslot positions (same as quickslots.draw)
+    local SLOT_SIZE = 50
+    local SLOT_SPACING = 10
+    local SLOT_COUNT = 5
+
+    local vw, vh = display:GetVirtualDimensions()
+    local total_width = SLOT_COUNT * SLOT_SIZE + (SLOT_COUNT - 1) * SLOT_SPACING
+    local start_x = (vw - total_width) / 2
+    local y = vh - SLOT_SIZE - 20  -- 20px from bottom
+
+    -- Check each slot
+    for i = 1, SLOT_COUNT do
+        local slot_x = start_x + (i - 1) * (SLOT_SIZE + SLOT_SPACING)
+
+        if vx >= slot_x and vx <= slot_x + SLOT_SIZE and
+           vy >= y and vy <= y + SLOT_SIZE then
+            -- Touch is on this slot, use it
+            local success, message = self.inventory:useQuickslot(i, self.player)
+            if not success and message then
+                print("[Quickslot] " .. message)
+            end
+            return true
+        end
+    end
+
     return false
 end
 

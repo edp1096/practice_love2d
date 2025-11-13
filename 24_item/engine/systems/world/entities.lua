@@ -62,6 +62,28 @@ function entities.updateEnemies(self, dt, player_x, player_y)
         local enemy = self.enemies[i]
 
         if enemy.state == "dead" then
+            -- Drop loot once when first entering dead state
+            if not enemy.loot_dropped then
+                enemy.loot_dropped = true
+
+                -- Stop all movement
+                if enemy.collider then
+                    enemy.collider:setLinearVelocity(0, 0)
+                end
+                if enemy.foot_collider then
+                    enemy.foot_collider:setLinearVelocity(0, 0)
+                end
+
+                -- Try to drop item (requires loot_tables and world_item_class)
+                if self.loot_tables and self.world_item_class then
+                    local item_type, quantity = self.loot_tables.getLoot(enemy.type)
+                    if item_type then
+                        -- Drop at enemy position
+                        self:addWorldItem(item_type, enemy.x, enemy.y, quantity)
+                    end
+                end
+            end
+
             enemy.death_timer = (enemy.death_timer or 0) + dt
             if enemy.death_timer > 2 then
                 if enemy.collider then
@@ -208,6 +230,45 @@ function entities.getInteractableSavePoint(self)
     end
 
     return nil
+end
+
+-- World Item Management
+function entities.addWorldItem(self, item_type, x, y, quantity)
+    if not self.world_item_class then
+        error("world_item_class not injected into world system")
+    end
+
+    local world_item = self.world_item_class:new(x, y, item_type, quantity)
+    table.insert(self.world_items, world_item)
+    return world_item
+end
+
+function entities.updateWorldItems(self, dt)
+    for i = #self.world_items, 1, -1 do
+        local item = self.world_items[i]
+        item:update(dt)
+    end
+end
+
+function entities.getInteractableWorldItem(self, player_x, player_y)
+    for _, item in ipairs(self.world_items) do
+        if item:canPickup(player_x, player_y) then
+            return item
+        end
+    end
+
+    return nil
+end
+
+function entities.removeWorldItem(self, item_id)
+    for i = #self.world_items, 1, -1 do
+        if self.world_items[i].id == item_id then
+            table.remove(self.world_items, i)
+            return true
+        end
+    end
+
+    return false
 end
 
 return entities

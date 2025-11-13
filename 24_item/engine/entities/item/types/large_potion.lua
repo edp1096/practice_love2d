@@ -4,9 +4,19 @@
 local large_potion = {
     name = "Large Health Potion",
     description = "Restores 60 HP",
-    size = { width = 1, height = 2 },  -- Grid size: 1x2 (tall bottle)
+    size = { width = 1, height = 1 },  -- Grid size: 1x1
     max_stack = 10,
-    heal_amount = 60
+    heal_amount = 60,
+
+    -- Sprite information (single image, not sprite sheet)
+    sprite = {
+        file = "assets/images/drink1.png",
+        x = 0,
+        y = 0,
+        w = 32,
+        h = 32,
+        scale = 1
+    }
 }
 
 function large_potion.use(player)

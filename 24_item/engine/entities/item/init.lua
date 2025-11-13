@@ -58,7 +58,8 @@ function item:use(player)
 end
 
 function item:canUse(player)
-    if self.quantity <= 0 then
+    -- Check quantity if available (quantity is stored in inventory item_data, not in item object)
+    if self.quantity and self.quantity <= 0 then
         return false
     end
 

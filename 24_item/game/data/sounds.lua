@@ -20,7 +20,8 @@ return {
         ENEMY = "enemy",
         COMBAT = "combat",
         MENU = "menu",
-        UI = "ui"
+        UI = "ui",
+        ITEM = "item"
     },
 
     bgm = {
@@ -47,6 +48,12 @@ return {
             save = { path = "assets/sound/ui/save.wav", volume = 0.8, pitch_variation = "none" },
             pause = { path = "assets/sound/ui/pause.wav", volume = 0.7, pitch_variation = "none" },
             unpause = { path = "assets/sound/ui/unpause.wav", volume = 0.7, pitch_variation = "none" }
+        },
+
+        item = {
+            -- Temporary: Use menu select sound for pickup/eat
+            pickup = { path = "assets/sound/menu/select.wav", volume = 0.6, pitch_variation = "subtle" },
+            eat = { path = "assets/sound/menu/select.wav", volume = 0.7, pitch_variation = "normal" }
         },
 
         combat = {

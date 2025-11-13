@@ -6,7 +6,17 @@ local small_potion = {
     description = "Restores 30 HP",
     size = { width = 1, height = 1 },  -- Grid size: 1x1
     max_stack = 20,
-    heal_amount = 30
+    heal_amount = 30,
+
+    -- Sprite information (single image, not sprite sheet)
+    sprite = {
+        file = "assets/images/energy-red.png",
+        x = 0,
+        y = 0,
+        w = 32,
+        h = 32,
+        scale = 1
+    }
 }
 
 function small_potion.use(player)

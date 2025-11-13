@@ -18,6 +18,8 @@ local item_class = require "engine.entities.item"
 local enemy_class = require "engine.entities.enemy"
 local npc_class = require "engine.entities.npc"
 local healing_point_class = require "engine.entities.healing_point"
+local world_item_class = require "engine.entities.world_item"
+local loot_tables = require "game.data.loot_tables"
 local dialogue = require "engine.ui.dialogue"
 local sound = require "engine.core.sound"
 local util = require "engine.utils.util"
@@ -65,7 +67,9 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
     self.world = world:new(mapPath, {
         enemy = enemy_class,
         npc = npc_class,
-        healing_point = healing_point_class
+        healing_point = healing_point_class,
+        world_item = world_item_class,
+        loot_tables = loot_tables
     })
 
     self.player = player_module:new(spawn_x, spawn_y, gameplay.player_config)
@@ -141,6 +145,9 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
 
     -- Track gamepad skip button state
     self.skip_button_held = false
+
+    -- Track selected quickslot for gamepad (1-5)
+    self.selected_quickslot = 1
 
     dialogue:initialize()
     dialogue:setDisplay(display)
@@ -293,7 +300,9 @@ function gameplay:switchMap(new_map_path, spawn_x, spawn_y)
     self.world = world:new(new_map_path, {
         enemy = enemy_class,
         npc = npc_class,
-        healing_point = healing_point_class
+        healing_point = healing_point_class,
+        world_item = world_item_class,
+        loot_tables = loot_tables
     })
 
     self.player.x = spawn_x

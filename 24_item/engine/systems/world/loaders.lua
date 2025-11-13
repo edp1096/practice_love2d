@@ -289,4 +289,27 @@ function loaders.loadDamageZones(self)
     end
 end
 
+function loaders.loadWorldItems(self)
+    if not self.world_item_class then
+        print("Warning: No world_item_class injected, skipping world item loading")
+        return
+    end
+
+    if self.map.layers["WorldItems"] then
+        for _, obj in ipairs(self.map.layers["WorldItems"].objects) do
+            local item_type = obj.properties.item_type
+            local quantity = obj.properties.quantity or 1
+
+            if item_type then
+                local center_x = obj.x + obj.width / 2
+                local center_y = obj.y + obj.height / 2
+
+                local item = self.world_item_class:new(center_x, center_y, item_type, quantity)
+
+                table.insert(self.world_items, item)
+            end
+        end
+    end
+end
+
 return loaders

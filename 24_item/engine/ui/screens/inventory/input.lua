@@ -16,9 +16,9 @@ local EQUIPMENT_LAYOUT = {
     {name = "chest", x = 0, y = 1},
     {name = "shield", x = 1, y = 1},
     {name = "gloves", x = 0, y = 2},
-    {name = "ring1", x = 1, y = 2},
-    {name = "boots", x = 0, y = 3},
-    {name = "ring2", x = 1, y = 3}
+    {name = "boots", x = 1, y = 2},
+    {name = "bracelet", x = 0, y = 3},
+    {name = "ring", x = 1, y = 3}
 }
 
 -- Get equipment slot name from cursor position
@@ -62,18 +62,22 @@ function input_handler.keypressed(self, key)
         -- Use item (Q key by default, configurable via input_config)
         input_handler.useSelectedItem(self)
     elseif tonumber(key) then
-        -- Number keys 1-9: quick select items by grid position
         local slot_num = tonumber(key)
+        -- Number keys 1-9: quick select items by grid position
         input_handler.selectItemByNumber(self, slot_num)
     end
 end
 
 -- Handle gamepad input
 function input_handler.gamepadpressed(self, joystick, button)
-    -- Direction pad: Move cursor (1 step at a time, with equipment mode support)
+    -- Direction pad: Move cursor (1 step at a time, with equipment/quickslot mode support)
     if input:wasPressed("menu_up", "gamepad", button) then
         self.cursor_mode = true
-        if self.equipment_mode then
+        if self.quickslot_mode then
+            -- Exit quickslot mode, return to grid bottom
+            self.quickslot_mode = false
+            self.cursor_y = self.inventory.grid_height
+        elseif self.equipment_mode then
             self.equipment_cursor_y = (self.equipment_cursor_y - 1 + 4) % 4
         else
             self.cursor_y = self.cursor_y == 1 and self.inventory.grid_height or self.cursor_y - 1
@@ -82,16 +86,27 @@ function input_handler.gamepadpressed(self, joystick, button)
         return
     elseif input:wasPressed("menu_down", "gamepad", button) then
         self.cursor_mode = true
-        if self.equipment_mode then
+        if self.quickslot_mode then
+            -- In quickslot mode, down does nothing
+        elseif self.equipment_mode then
             self.equipment_cursor_y = (self.equipment_cursor_y + 1) % 4
         else
-            self.cursor_y = self.cursor_y == self.inventory.grid_height and 1 or self.cursor_y + 1
+            -- In grid mode
+            if self.cursor_y == self.inventory.grid_height then
+                -- At bottom of grid, enter quickslot mode
+                self.quickslot_mode = true
+            else
+                self.cursor_y = self.cursor_y + 1
+            end
         end
         play_sound("ui", "move")
         return
     elseif input:wasPressed("menu_left", "gamepad", button) then
         self.cursor_mode = true
-        if self.equipment_mode then
+        if self.quickslot_mode then
+            -- Move left in quickslots (wrap around)
+            self.quickslot_cursor = self.quickslot_cursor == 1 and 5 or self.quickslot_cursor - 1
+        elseif self.equipment_mode then
             -- Toggle equipment X (0 <-> 1)
             self.equipment_cursor_x = (self.equipment_cursor_x == 0) and 1 or 0
         else
@@ -107,7 +122,10 @@ function input_handler.gamepadpressed(self, joystick, button)
         return
     elseif input:wasPressed("menu_right", "gamepad", button) then
         self.cursor_mode = true
-        if self.equipment_mode then
+        if self.quickslot_mode then
+            -- Move right in quickslots (wrap around)
+            self.quickslot_cursor = self.quickslot_cursor == 5 and 1 or self.quickslot_cursor + 1
+        elseif self.equipment_mode then
             -- Switch to grid mode
             self.equipment_mode = false
             self.cursor_x = 1
@@ -118,18 +136,22 @@ function input_handler.gamepadpressed(self, joystick, button)
         return
     end
 
-    -- A button: Pickup/Drop/Equip item (toggle)
+    -- A button: Pickup/Drop/Equip/Assign item (toggle)
     if input:wasPressed("menu_select", "gamepad", button) or input:wasPressed("attack", "gamepad", button) then
         if self.gamepad_drag.active then
-            -- Drop/Equip item at cursor
-            if self.equipment_mode then
+            -- Drop/Equip/Assign item at cursor
+            if self.quickslot_mode then
+                input_handler.gamepadAssignToQuickslot(self)
+            elseif self.equipment_mode then
                 input_handler.gamepadEquipToSlot(self)
             else
                 input_handler.gamepadDropItem(self)
             end
         else
             -- Pickup item at cursor
-            if self.equipment_mode then
+            if self.quickslot_mode then
+                input_handler.gamepadPickupFromQuickslot(self)
+            elseif self.equipment_mode then
                 input_handler.gamepadPickupFromEquipment(self)
             else
                 input_handler.gamepadPickupItem(self)
@@ -138,9 +160,18 @@ function input_handler.gamepadpressed(self, joystick, button)
         return
     end
 
-    -- X button: Rotate item at cursor
+    -- X button: Rotate item at cursor OR hold to remove from quickslot
     if input:wasPressed("parry", "gamepad", button) then
-        if self.gamepad_drag.active then
+        if self.quickslot_mode and not self.gamepad_drag.active then
+            -- Start hold timer to remove item from quickslot
+            local slot_index = self.quickslot_cursor
+            local item_id = self.inventory.quickslots[slot_index]
+            if item_id then
+                self.quickslot_hold.active = true
+                self.quickslot_hold.slot_index = slot_index
+                self.quickslot_hold.timer = 0
+            end
+        elseif self.gamepad_drag.active then
             -- Rotate item being held
             local item_id = self.gamepad_drag.item_id
             local item_data = {
@@ -188,6 +219,25 @@ function input_handler.gamepadpressed(self, joystick, button)
         end
 
         input_handler.useSelectedItem(self)
+        return
+    end
+
+    -- L1/LB button: Toggle between grid and quickslot mode (quick navigation)
+    if button == "leftshoulder" then
+        self.cursor_mode = true
+        if self.quickslot_mode then
+            -- Exit quickslot mode, return to grid (last cursor position)
+            self.quickslot_mode = false
+            -- Cursor position already preserved
+        elseif self.equipment_mode then
+            -- Exit equipment mode, enter quickslot mode
+            self.equipment_mode = false
+            self.quickslot_mode = true
+        else
+            -- Exit grid mode, enter quickslot mode
+            self.quickslot_mode = true
+        end
+        play_sound("ui", "move")
         return
     end
 
@@ -323,6 +373,44 @@ function input_handler.mousepressed(self, x, y, button)
             end
         end
 
+        -- Check quickslot clicks (to start dragging from quickslot)
+        if self.quickslot_bounds then
+            for slot_index, bounds in ipairs(self.quickslot_bounds) do
+                if vx >= bounds.x and vx <= bounds.x + bounds.width and
+                   vy >= bounds.y and vy <= bounds.y + bounds.height then
+
+                    local item_id = self.inventory.quickslots[slot_index]
+                    if item_id then
+                        local item_data = self.inventory.items[item_id]
+                        if item_data then
+                            -- Start dragging from quickslot
+                            self.drag_state.active = true
+                            self.drag_state.item_id = item_id
+                            self.drag_state.item_obj = item_data.item
+                            self.drag_state.origin_x = item_data.x
+                            self.drag_state.origin_y = item_data.y
+                            self.drag_state.origin_width = item_data.width
+                            self.drag_state.origin_height = item_data.height
+                            self.drag_state.origin_rotated = item_data.rotated
+                            self.drag_state.visual_x = vx
+                            self.drag_state.visual_y = vy
+                            self.drag_state.offset_x = bounds.width / 2
+                            self.drag_state.offset_y = bounds.height / 2
+                            self.drag_state.from_quickslot_index = slot_index  -- Remember source quickslot
+
+                            -- Keep quickslot assignment (don't remove!)
+                            -- Only remove from grid temporarily (holding in hand)
+                            self.inventory:removeItem(item_id)
+
+                            play_sound("ui", "select")
+                            return
+                        end
+                    end
+                    break
+                end
+            end
+        end
+
         -- Not dragging, handle as normal click
         input_handler.handleClick(self, x, y)
     elseif button == 2 then
@@ -343,6 +431,24 @@ function input_handler.mousepressed(self, x, y, button)
                     play_sound("ui", "error")  -- Rotation failed (1x1 or no space)
                 end
                 return
+            end
+        end
+
+        -- Check if right-clicking on quickslot (to start hold-to-remove)
+        if self.quickslot_bounds then
+            for slot_index, bounds in ipairs(self.quickslot_bounds) do
+                if vx >= bounds.x and vx <= bounds.x + bounds.width and
+                   vy >= bounds.y and vy <= bounds.y + bounds.height then
+
+                    -- Start hold timer to remove item from quickslot
+                    local item_id = self.inventory.quickslots[slot_index]
+                    if item_id then
+                        self.quickslot_hold.active = true
+                        self.quickslot_hold.slot_index = slot_index
+                        self.quickslot_hold.timer = 0
+                    end
+                    return
+                end
             end
         end
 
@@ -404,7 +510,60 @@ function input_handler.mousereleased(self, x, y, button)
             end
         end
 
-        -- If not placed in equipment slot, try grid placement
+        -- Check if dropping on quickslot
+        if not placed and self.quickslot_bounds and item_obj then
+            for slot_index, bounds in ipairs(self.quickslot_bounds) do
+                if vx >= bounds.x and vx <= bounds.x + bounds.width and
+                   vy >= bounds.y and vy <= bounds.y + bounds.height then
+
+                    -- Check if it's equipment (cannot be assigned to quickslots)
+                    local is_equipment = item_obj.equipment_slot or item_obj.item_type == "equipment"
+
+                    if is_equipment then
+                        -- Equipment cannot be assigned to quickslots
+                        print("[Quickslot] Equipment cannot be assigned to quickslots")
+                        play_sound("ui", "error")
+                        -- Don't mark as placed, will return to original position
+                    elseif item_obj.use and item_obj.canUse then
+                        -- Only consumable items can be placed in quickslots
+                        -- Place item back to grid first
+                        self.inventory:placeItem(
+                            item_id,
+                            item_obj,
+                            self.drag_state.origin_x,
+                            self.drag_state.origin_y,
+                            self.drag_state.origin_width,
+                            self.drag_state.origin_height,
+                            self.drag_state.origin_rotated
+                        )
+
+                        -- If dragged from another quickslot, remove from that slot first
+                        if self.drag_state.from_quickslot_index and self.drag_state.from_quickslot_index ~= slot_index then
+                            self.inventory:removeQuickslot(self.drag_state.from_quickslot_index)
+                        end
+
+                        -- Assign to quickslot
+                        local success, message = self.inventory:assignQuickslot(slot_index, item_id)
+                        if success then
+                            play_sound("ui", "select")
+                            placed = true
+                        else
+                            print("[Quickslot] " .. (message or "Cannot assign"))
+                            play_sound("ui", "error")
+                            placed = true  -- Item is already back in grid
+                        end
+                    else
+                        -- Non-usable items
+                        print("[Quickslot] Only consumable items can be assigned to quickslots")
+                        play_sound("ui", "error")
+                        -- Don't mark as placed, will return to original position
+                    end
+                    break
+                end
+            end
+        end
+
+        -- If not placed in equipment slot or quickslot, try grid placement
         if not placed then
             -- Adjust for offset to get top-left corner of item
             local item_top_left_x = vx - self.drag_state.offset_x
@@ -456,6 +615,22 @@ function input_handler.mousereleased(self, x, y, button)
         -- End drag
         self.drag_state.active = false
         self.drag_state.item_id = nil
+        self.drag_state.from_quickslot_index = nil  -- Reset quickslot source
+    elseif button == 2 and self.quickslot_hold.active then
+        -- Right-click release: check if hold duration was met
+        if self.quickslot_hold.timer >= self.quickslot_hold.duration then
+            -- Hold duration reached, remove item from quickslot
+            local slot_index = self.quickslot_hold.slot_index
+            if slot_index and self.inventory.quickslots[slot_index] then
+                self.inventory:removeQuickslot(slot_index)
+                play_sound("ui", "select")
+            end
+        end
+
+        -- Reset hold state
+        self.quickslot_hold.active = false
+        self.quickslot_hold.slot_index = nil
+        self.quickslot_hold.timer = 0
     end
 end
 
@@ -790,6 +965,108 @@ function input_handler.useSelectedItem(self)
     else
         play_sound("ui", "error")
     end
+end
+
+-- Gamepad assign item to quickslot
+function input_handler.gamepadAssignToQuickslot(self)
+    if not self.gamepad_drag.active then
+        return false
+    end
+
+    local item_id = self.gamepad_drag.item_id
+    local item_obj = self.gamepad_drag.item_obj
+    local slot_index = self.quickslot_cursor
+
+    -- Check if it's equipment (cannot be assigned)
+    local is_equipment = item_obj.equipment_slot or item_obj.item_type == "equipment"
+
+    if is_equipment then
+        print("[Quickslot] Equipment cannot be assigned to quickslots")
+        play_sound("ui", "error")
+
+        -- Restore to original position
+        self.inventory:placeItem(
+            item_id,
+            item_obj,
+            self.gamepad_drag.origin_x,
+            self.gamepad_drag.origin_y,
+            self.gamepad_drag.origin_width,
+            self.gamepad_drag.origin_height,
+            self.gamepad_drag.origin_rotated
+        )
+    elseif item_obj.use and item_obj.canUse then
+        -- Place item back to grid first
+        self.inventory:placeItem(
+            item_id,
+            item_obj,
+            self.gamepad_drag.origin_x,
+            self.gamepad_drag.origin_y,
+            self.gamepad_drag.origin_width,
+            self.gamepad_drag.origin_height,
+            self.gamepad_drag.origin_rotated
+        )
+
+        -- Assign to quickslot
+        local success, message = self.inventory:assignQuickslot(slot_index, item_id)
+        if success then
+            play_sound("ui", "select")
+        else
+            print("[Quickslot] " .. (message or "Cannot assign"))
+            play_sound("ui", "error")
+        end
+    else
+        print("[Quickslot] Only consumable items can be assigned to quickslots")
+        play_sound("ui", "error")
+
+        -- Restore to original position
+        self.inventory:placeItem(
+            item_id,
+            item_obj,
+            self.gamepad_drag.origin_x,
+            self.gamepad_drag.origin_y,
+            self.gamepad_drag.origin_width,
+            self.gamepad_drag.origin_height,
+            self.gamepad_drag.origin_rotated
+        )
+    end
+
+    -- End gamepad drag
+    self.gamepad_drag.active = false
+    self.gamepad_drag.item_id = nil
+    return true
+end
+
+-- Gamepad pickup item from quickslot
+function input_handler.gamepadPickupFromQuickslot(self)
+    local slot_index = self.quickslot_cursor
+    local item_id = self.inventory.quickslots[slot_index]
+
+    if not item_id then
+        play_sound("ui", "error")
+        return false
+    end
+
+    local item_data = self.inventory.items[item_id]
+    if not item_data then
+        play_sound("ui", "error")
+        return false
+    end
+
+    -- Start gamepad drag
+    self.gamepad_drag.active = true
+    self.gamepad_drag.item_id = item_id
+    self.gamepad_drag.item_obj = item_data.item
+    self.gamepad_drag.origin_x = item_data.x
+    self.gamepad_drag.origin_y = item_data.y
+    self.gamepad_drag.origin_width = item_data.width
+    self.gamepad_drag.origin_height = item_data.height
+    self.gamepad_drag.origin_rotated = item_data.rotated
+
+    -- Remove from grid temporarily (keep quickslot assignment)
+    self.inventory:removeItem(item_id)
+
+    play_sound("ui", "select")
+    return true
 end
 
 return input_handler

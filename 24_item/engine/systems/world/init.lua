@@ -18,6 +18,8 @@ world.__index = world
 world.enemy_class = nil
 world.npc_class = nil
 world.healing_point_class = nil
+world.world_item_class = nil
+world.loot_tables = nil
 
 function world:new(map_path, entity_classes)
     local instance = setmetatable({}, world)
@@ -27,6 +29,8 @@ function world:new(map_path, entity_classes)
     instance.enemy_class = entity_classes.enemy or self.enemy_class
     instance.npc_class = entity_classes.npc or self.npc_class
     instance.healing_point_class = entity_classes.healing_point or self.healing_point_class
+    instance.world_item_class = entity_classes.world_item or self.world_item_class
+    instance.loot_tables = entity_classes.loot_tables or self.loot_tables
 
     local map_info = love.filesystem.getInfo(map_path)
     if not map_info then
@@ -91,6 +95,10 @@ function world:new(map_path, entity_classes)
     instance.damage_zones = {}
     loaders.loadDamageZones(instance)
 
+    -- World items (dropped items)
+    instance.world_items = {}
+    loaders.loadWorldItems(instance)
+
     return instance
 end
 
@@ -98,6 +106,9 @@ function world:update(dt)
     self.physicsWorld:update(dt)
     self.map:update(dt)
     effects:update(dt)
+
+    -- Update world items
+    entities.updateWorldItems(self, dt)
 end
 
 function world:destroy()
@@ -140,6 +151,10 @@ world.checkWeaponCollisions = entities.checkWeaponCollisions
 world.applyWeaponHit = entities.applyWeaponHit
 world.getInteractableNPC = entities.getInteractableNPC
 world.getInteractableSavePoint = entities.getInteractableSavePoint
+world.addWorldItem = entities.addWorldItem
+world.updateWorldItems = entities.updateWorldItems
+world.getInteractableWorldItem = entities.getInteractableWorldItem
+world.removeWorldItem = entities.removeWorldItem
 
 -- Delegate rendering functions
 world.draw = rendering.draw
@@ -148,6 +163,7 @@ world.drawEntitiesYSorted = rendering.drawEntitiesYSorted
 world.drawSavePoints = rendering.drawSavePoints
 world.drawHealingPoints = rendering.drawHealingPoints
 world.drawHealingPointsDebug = rendering.drawHealingPointsDebug
+world.drawWorldItems = rendering.drawWorldItems
 world.drawDebug = rendering.drawDebug
 
 return world

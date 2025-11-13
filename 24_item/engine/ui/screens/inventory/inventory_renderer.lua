@@ -418,11 +418,17 @@ function slot_renderer.renderItemDetails(inventory, selected_item_id, player, wi
     end
 
     local item = item_data.item
-    local detail_y = grid_start_y + inventory.grid_height * (CELL_SIZE + CELL_SPACING) + 15
+    local detail_y = grid_start_y + inventory.grid_height * (CELL_SIZE + CELL_SPACING) + 5
+
+    -- Calculate detail X position (aligned with grid left edge)
+    local equipment_width = 130
+    local left_margin = 20
+    local spacing_between = 30
+    local detail_x = window_x + left_margin + equipment_width + spacing_between
 
     -- Line 1: Item name - Description
     local line1 = string.format("%s - %s", item.name, item.description)
-    text_ui:draw(line1, window_x + 30, detail_y, {1, 1, 1, 1}, item_font)
+    text_ui:draw(line1, detail_x, detail_y, {1, 1, 1, 1}, item_font)
 
     -- Line 2: Position | Size | Status (all in one line)
     local status_text
@@ -455,12 +461,12 @@ function slot_renderer.renderItemDetails(inventory, selected_item_id, player, wi
         line2 = string.format("Size: %dx%d | ", item_data.width, item_data.height)
     end
 
-    -- Draw position/size in gray
-    text_ui:draw(line2, window_x + 30, detail_y + 22, colors.for_text_dark_gray, desc_font)
+    -- Draw position/size in gray (aligned with grid)
+    text_ui:draw(line2, detail_x, detail_y + 22, colors.for_text_dark_gray, desc_font)
 
     -- Draw status next to it in color
     local line2_width = desc_font:getWidth(line2)
-    text_ui:draw(status_text, window_x + 30 + line2_width, detail_y + 22, status_color, desc_font)
+    text_ui:draw(status_text, detail_x + line2_width, detail_y + 22, status_color, desc_font)
 end
 
 -- Get grid constants (for use in other modules)
@@ -473,7 +479,7 @@ function slot_renderer.renderEquipmentSlots(inventory, window_x, window_y, title
     local SLOT_SIZE = 60
     local SLOT_SPACING = 10
     local panel_x = window_x + 20
-    local panel_y = window_y + 70
+    local panel_y = window_y + 70 + title_font:getHeight()
 
     -- Equipment slot layout (2 columns)
     local slot_layout = {
@@ -482,9 +488,9 @@ function slot_renderer.renderEquipmentSlots(inventory, window_x, window_y, title
         { name = "weapon", x = 1, y = 0, label = "Weapon" },
         { name = "shield", x = 1, y = 1, label = "Shield" },
         { name = "gloves", x = 0, y = 2, label = "Gloves" },
-        { name = "boots", x = 0, y = 3, label = "Boots" },
-        { name = "ring1", x = 1, y = 2, label = "Ring 1" },
-        { name = "ring2", x = 1, y = 3, label = "Ring 2" },
+        { name = "boots", x = 1, y = 2, label = "Boots" },
+        { name = "bracelet", x = 0, y = 3, label = "Bracelet" },
+        { name = "ring", x = 1, y = 3, label = "Ring" },
     }
 
     -- Get mouse position for drag-over detection
@@ -493,7 +499,8 @@ function slot_renderer.renderEquipmentSlots(inventory, window_x, window_y, title
 
     for _, slot_info in ipairs(slot_layout) do
         local slot_x = panel_x + slot_info.x * (SLOT_SIZE + SLOT_SPACING)
-        local slot_y = panel_y + slot_info.y * (SLOT_SIZE + SLOT_SPACING)
+        -- Add label height for each row to prevent overlap
+        local slot_y = panel_y + slot_info.y * (SLOT_SIZE + SLOT_SPACING + item_font:getHeight())
 
         -- Check if cursor is on this slot
         local is_cursor_here = equipment_mode and
@@ -598,6 +605,132 @@ function slot_renderer.renderEquipmentSlots(inventory, window_x, window_y, title
         slot_spacing = SLOT_SPACING,
         layout = slot_layout
     }
+end
+
+-- Render quickslots at bottom of inventory
+function slot_renderer.renderQuickslots(inventory, window_x, window_y, window_w, window_h, player, drag_state, quickslot_hold, quickslot_mode, quickslot_cursor)
+    local QUICK_SLOT_SIZE = 50
+    local QUICK_SLOT_SPACING = 10
+    local QUICK_SLOT_COUNT = 5
+
+    -- Calculate position (centered at bottom of window)
+    local total_width = QUICK_SLOT_COUNT * QUICK_SLOT_SIZE + (QUICK_SLOT_COUNT - 1) * QUICK_SLOT_SPACING
+    local start_x = window_x + (window_w - total_width) / 2
+    local start_y = window_y + window_h - QUICK_SLOT_SIZE - 15  -- 15px from bottom (half text line gap below description)
+
+    -- Store bounds for interaction
+    local quickslot_bounds = {}
+
+    for i = 1, QUICK_SLOT_COUNT do
+        local x = start_x + (i - 1) * (QUICK_SLOT_SIZE + QUICK_SLOT_SPACING)
+        local y = start_y
+
+        -- Get item in this quickslot
+        local item_id = inventory.quickslots[i]
+        local item_data = item_id and inventory.items[item_id]
+        local item = item_data and item_data.item
+
+        -- Check if this slot can accept the dragged item
+        local can_drop = false
+        if drag_state and drag_state.active and drag_state.item_obj then
+            local dragged_item = drag_state.item_obj
+            -- Only consumable items (not equipment)
+            local is_equipment = dragged_item.equipment_slot or dragged_item.item_type == "equipment"
+            can_drop = dragged_item.use and dragged_item.canUse and not is_equipment
+        end
+
+        -- Highlight if can drop
+        if can_drop then
+            love.graphics.setColor(1, 1, 0, 0.3)
+            love.graphics.rectangle("fill", x, y, QUICK_SLOT_SIZE, QUICK_SLOT_SIZE)
+        end
+
+        -- Draw slot background
+        love.graphics.setColor(0.2, 0.2, 0.2, 0.8)
+        love.graphics.rectangle("fill", x, y, QUICK_SLOT_SIZE, QUICK_SLOT_SIZE)
+
+        -- Draw slot border (yellow if selected in quickslot mode)
+        if quickslot_mode and quickslot_cursor == i then
+            love.graphics.setColor(1, 1, 0, 1)  -- Yellow for selected slot
+            love.graphics.setLineWidth(3)
+        else
+            love.graphics.setColor(0.6, 0.6, 0.6, 1)
+            love.graphics.setLineWidth(2)
+        end
+        love.graphics.rectangle("line", x, y, QUICK_SLOT_SIZE, QUICK_SLOT_SIZE)
+
+        -- Draw key number
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.print(tostring(i), x + 4, y + 4)
+
+        -- Draw item if assigned (skip if being dragged)
+        if item and item_id ~= (drag_state and drag_state.item_id) then
+            local can_use = item.canUse and item:canUse(player)
+
+            -- Draw sprite if available
+            if item.sprite then
+                local sprite_img = love.graphics.newImage(item.sprite.file)
+                local sprite_x = item.sprite.x or 0
+                local sprite_y = item.sprite.y or 0
+                local sprite_w = item.sprite.w or 32
+                local sprite_h = item.sprite.h or 32
+                local sprite_scale = item.sprite.scale or 1
+
+                local quad = love.graphics.newQuad(
+                    sprite_x, sprite_y,
+                    sprite_w, sprite_h,
+                    sprite_img:getWidth(), sprite_img:getHeight()
+                )
+
+                local draw_x = x + (QUICK_SLOT_SIZE - sprite_w * sprite_scale) / 2
+                local draw_y = y + (QUICK_SLOT_SIZE - sprite_h * sprite_scale) / 2
+
+                if can_use then
+                    love.graphics.setColor(1, 1, 1, 1)
+                else
+                    love.graphics.setColor(0.5, 0.5, 0.5, 0.7)
+                end
+
+                love.graphics.draw(sprite_img, quad, draw_x, draw_y, 0, sprite_scale, sprite_scale)
+            end
+
+            -- Draw quantity if stackable
+            if item.max_stack and item.max_stack > 1 and item_data.quantity then
+                love.graphics.setColor(1, 1, 1, 1)
+                local qty_text = tostring(item_data.quantity)
+                love.graphics.print(qty_text, x + QUICK_SLOT_SIZE - 20, y + QUICK_SLOT_SIZE - 16)
+            end
+        end
+
+        -- Draw hold-to-remove progress indicator
+        if quickslot_hold and quickslot_hold.active and quickslot_hold.slot_index == i then
+            local progress = quickslot_hold.timer / quickslot_hold.duration
+            progress = math.min(progress, 1.0)  -- Cap at 1.0
+
+            -- Draw red overlay with increasing opacity
+            love.graphics.setColor(1, 0, 0, 0.3 + progress * 0.4)
+            love.graphics.rectangle("fill", x, y, QUICK_SLOT_SIZE, QUICK_SLOT_SIZE)
+
+            -- Draw progress bar at bottom
+            local bar_height = 4
+            local bar_y = y + QUICK_SLOT_SIZE - bar_height
+            love.graphics.setColor(1, 0, 0, 0.8)
+            love.graphics.rectangle("fill", x, bar_y, QUICK_SLOT_SIZE * progress, bar_height)
+        end
+
+        -- Store bounds for hit detection
+        quickslot_bounds[i] = {
+            x = x,
+            y = y,
+            width = QUICK_SLOT_SIZE,
+            height = QUICK_SLOT_SIZE
+        }
+    end
+
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setLineWidth(1)
+
+    return quickslot_bounds
 end
 
 return slot_renderer

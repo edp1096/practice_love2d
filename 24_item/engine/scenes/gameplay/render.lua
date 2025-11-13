@@ -3,6 +3,7 @@
 
 local display = require "engine.core.display"
 local hud = require "engine.systems.hud.status"
+local quickslots_hud = require "engine.systems.hud.quickslots"
 local dialogue = require "engine.ui.dialogue"
 local effects = require "engine.systems.effects"
 local debug = require "engine.core.debug"
@@ -27,6 +28,7 @@ function render.draw(self)
     self.world:drawLayer("Ground")
     self.world:drawEntitiesYSorted(self.player)
     self.world:drawSavePoints()
+    self.world:drawWorldItems(self.player.x, self.player.y)
     if debug.enabled then
         self.player:drawDebug()
     end
@@ -109,6 +111,9 @@ function render.draw(self)
 
     -- Draw inventory
     hud:draw_inventory(self.inventory, vw, vh)
+
+    -- Draw quickslot belt
+    quickslots_hud.draw(self.inventory, self.player, display, self.selected_quickslot)
 
     -- Draw minimap (check game config and map properties)
     if self.minimap and self:shouldShowMinimap() then

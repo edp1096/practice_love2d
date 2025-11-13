@@ -477,6 +477,25 @@ entity_types.weapons = {
 
         hit_start = 0.25,
         hit_end = 0.65
+    },
+
+    staff = {
+        sprite_file = "assets/images/steel-weapons.png",
+        sprite_x = 288,  -- 19x1: Column 19 (x coordinate)
+        sprite_y = 0,    -- 19x1: Row 1 (y coordinate)
+        sprite_w = 16,
+        sprite_h = 16,
+        scale = 3,
+
+        attack_duration = 0.2,  -- Very fast attack
+        swing_radius = 25,      -- Short swing radius
+
+        damage = 15,      -- Low damage
+        range = 100,      -- Long reach
+        knockback = 60,   -- Weak knockback
+
+        hit_start = 0.2,
+        hit_end = 0.6
     }
 }
 

@@ -54,7 +54,8 @@ function inventory:enter(previous, player_inventory, player)
         origin_height = 0,
         origin_rotated = false,
         visual_x = 0,  -- Current visual position (screen coords)
-        visual_y = 0
+        visual_y = 0,
+        from_quickslot_index = nil  -- Track if dragged from quickslot
     }
 
     -- Gamepad cursor state
@@ -62,10 +63,22 @@ function inventory:enter(previous, player_inventory, player)
     self.cursor_x = 1  -- Grid X position (1-10)
     self.cursor_y = 1  -- Grid Y position (1-6)
 
+    -- Quickslot hold-to-remove state
+    self.quickslot_hold = {
+        active = false,
+        slot_index = nil,
+        timer = 0,
+        duration = 0.5  -- 0.5 seconds to remove
+    }
+
     -- Equipment slot cursor state
     self.equipment_mode = false  -- true when cursor is on equipment slots
     self.equipment_cursor_x = 0  -- Equipment slot X (0 or 1)
     self.equipment_cursor_y = 0  -- Equipment slot Y (0, 1, 2, or 3)
+
+    -- Quickslot cursor state
+    self.quickslot_mode = false  -- true when cursor is on quickslots
+    self.quickslot_cursor = 1    -- Which quickslot is selected (1-5)
 
     -- Joystick state (for analog stick movement with cooldown)
     self.joystick_cooldown = 0  -- Time until next joystick move
@@ -116,6 +129,38 @@ function inventory:update(dt)
         self.joystick_cooldown = self.joystick_cooldown - dt
     end
 
+    -- Update quickslot hold-to-remove timer
+    if self.quickslot_hold.active then
+        self.quickslot_hold.timer = self.quickslot_hold.timer + dt
+        -- Auto-cap at duration (no need to go higher)
+        if self.quickslot_hold.timer > self.quickslot_hold.duration then
+            self.quickslot_hold.timer = self.quickslot_hold.duration
+        end
+
+        -- Check if X button (parry) is released (for gamepad hold-to-remove)
+        local joysticks = love.joystick.getJoysticks()
+        if #joysticks > 0 then
+            local joystick = joysticks[1]
+            -- Check if X button is no longer held down
+            if not joystick:isGamepadDown("x") then
+                -- Button released, check if hold duration was met
+                if self.quickslot_hold.timer >= self.quickslot_hold.duration then
+                    -- Hold duration reached, remove item from quickslot
+                    local slot_index = self.quickslot_hold.slot_index
+                    if slot_index and self.inventory.quickslots[slot_index] then
+                        self.inventory:removeQuickslot(slot_index)
+                        play_sound("ui", "select")
+                    end
+                end
+
+                -- Reset hold state
+                self.quickslot_hold.active = false
+                self.quickslot_hold.slot_index = nil
+                self.quickslot_hold.timer = 0
+            end
+        end
+    end
+
     -- Check joystick input for cursor movement
     local joysticks = love.joystick.getJoysticks()
     if #joysticks > 0 and self.joystick_cooldown <= 0 then
@@ -131,7 +176,12 @@ function inventory:update(dt)
             if math.abs(lx) > math.abs(ly) then
                 if lx > threshold then
                     -- Move right
-                    if self.equipment_mode then
+                    if self.quickslot_mode then
+                        -- Move right in quickslots (wrap around)
+                        self.quickslot_cursor = self.quickslot_cursor == 5 and 1 or self.quickslot_cursor + 1
+                        self.joystick_cooldown = self.joystick_repeat_delay
+                        play_sound("ui", "move")
+                    elseif self.equipment_mode then
                         -- Switch from equipment to grid
                         self.equipment_mode = false
                         self.cursor_x = 1
@@ -145,7 +195,12 @@ function inventory:update(dt)
                     end
                 elseif lx < -threshold then
                     -- Move left
-                    if self.equipment_mode then
+                    if self.quickslot_mode then
+                        -- Move left in quickslots (wrap around)
+                        self.quickslot_cursor = self.quickslot_cursor == 1 and 5 or self.quickslot_cursor - 1
+                        self.joystick_cooldown = self.joystick_repeat_delay
+                        play_sound("ui", "move")
+                    elseif self.equipment_mode then
                         -- Toggle equipment X (wrap around: 0 <-> 1)
                         self.equipment_cursor_x = (self.equipment_cursor_x == 0) and 1 or 0
                         self.joystick_cooldown = self.joystick_repeat_delay
@@ -168,18 +223,36 @@ function inventory:update(dt)
             else
                 if ly > threshold then
                     -- Move down
-                    if self.equipment_mode then
+                    if self.quickslot_mode then
+                        -- In quickslot mode, down does nothing (or could wrap to grid top)
+                        -- Do nothing for now
+                    elseif self.equipment_mode then
                         self.equipment_cursor_y = (self.equipment_cursor_y + 1) % 4
                         self.joystick_cooldown = self.joystick_repeat_delay
                         play_sound("ui", "move")
                     else
-                        self.cursor_y = self.cursor_y == self.inventory.grid_height and 1 or self.cursor_y + 1
-                        self.joystick_cooldown = self.joystick_repeat_delay
-                        play_sound("ui", "move")
+                        -- In grid mode
+                        if self.cursor_y == self.inventory.grid_height then
+                            -- At bottom of grid, enter quickslot mode
+                            self.quickslot_mode = true
+                            self.joystick_cooldown = self.joystick_repeat_delay
+                            play_sound("ui", "move")
+                        else
+                            -- Move down in grid
+                            self.cursor_y = self.cursor_y + 1
+                            self.joystick_cooldown = self.joystick_repeat_delay
+                            play_sound("ui", "move")
+                        end
                     end
                 elseif ly < -threshold then
                     -- Move up
-                    if self.equipment_mode then
+                    if self.quickslot_mode then
+                        -- Exit quickslot mode, return to grid bottom
+                        self.quickslot_mode = false
+                        self.cursor_y = self.inventory.grid_height
+                        self.joystick_cooldown = self.joystick_repeat_delay
+                        play_sound("ui", "move")
+                    elseif self.equipment_mode then
                         self.equipment_cursor_y = (self.equipment_cursor_y - 1 + 4) % 4
                         self.joystick_cooldown = self.joystick_repeat_delay
                         play_sound("ui", "move")
@@ -240,9 +313,9 @@ function inventory:draw()
     -- Draw dark overlay
     shapes:drawOverlay(vw, vh, 0.7)
 
-    -- Draw window background (wider to fit equipment slots + grid)
-    local window_w = 750  -- Increased from 600 to fit equipment + grid
-    local window_h = 500
+    -- Draw window background (wider to fit equipment slots + grid + quickslots)
+    local window_w = 720  -- Proper width for balanced margins (20 + 130 + 30 + 590 + 20)
+    local window_h = 500  -- Adjusted for 6-row grid with proper margins
     local window_x = (vw - window_w) / 2
     local window_y = (vh - window_h) / 2
 
@@ -301,6 +374,13 @@ function inventory:draw()
         self.inventory, self.selected_item_id, self.player,
         window_x, window_y, self.grid_start_y,
         self.item_font, self.desc_font
+    )
+
+    -- Draw quickslots at bottom of inventory
+    self.quickslot_bounds = slot_renderer.renderQuickslots(
+        self.inventory, window_x, window_y, window_w, window_h,
+        self.player, self.drag_state, self.quickslot_hold,
+        self.quickslot_mode, self.quickslot_cursor
     )
 
     love.graphics.setColor(1, 1, 1, 1)
