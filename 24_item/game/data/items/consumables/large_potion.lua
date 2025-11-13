@@ -8,6 +8,9 @@ local large_potion = {
     max_stack = 10,
     heal_amount = 60,
 
+    -- UI color (for inventory/HUD display)
+    color = {0.3, 1, 0.8, 1},  -- Cyan green
+
     -- Sprite information (single image, not sprite sheet)
     sprite = {
         file = "assets/images/drink1.png",

@@ -13,7 +13,8 @@ return {
   nextobjectid = 45,
   properties = {
     ["ambient"] = "day",
-    ["game_mode"] = "topdown"
+    ["game_mode"] = "topdown",
+    ["name"] = "level1_area1"
   },
   tilesets = {
     {
@@ -416,6 +417,7 @@ return {
           visible = true,
           properties = {
             ["patrol_points"] = "100,20;150,25",
+            ["respawn"] = false,
             ["type"] = "green_slime",
             ["types"] = "basic_ragned_boss"
           }
@@ -679,7 +681,8 @@ return {
           visible = true,
           properties = {
             ["item_type"] = "staff",
-            ["quantity"] = 1
+            ["quantity"] = 1,
+            ["respawn"] = false
           }
         }
       }

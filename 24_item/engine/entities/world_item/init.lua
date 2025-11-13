@@ -2,6 +2,7 @@
 -- World item entity (dropped items on the ground)
 
 local anim8 = require "vendor.anim8"
+local item_class = require "engine.entities.item"
 
 local world_item = {}
 world_item.__index = world_item
@@ -9,7 +10,7 @@ world_item.__index = world_item
 -- Counter for unique IDs
 local id_counter = 0
 
-function world_item:new(x, y, item_type, quantity)
+function world_item:new(x, y, item_type, quantity, map_id, respawn)
     local instance = setmetatable({}, world_item)
 
     -- Generate unique ID
@@ -24,8 +25,15 @@ function world_item:new(x, y, item_type, quantity)
     instance.item_type = item_type
     instance.quantity = quantity or 1
 
-    -- Load item configuration
-    local item_config = require("engine.entities.item.types." .. item_type)
+    -- Persistence data
+    instance.map_id = map_id  -- Unique identifier for this item in the map (e.g., "level1_area1_obj_123")
+    instance.respawn = (respawn == nil) and true or respawn  -- Default: true (respawns)
+
+    -- Load item configuration from registry
+    local item_config = item_class.type_registry[item_type]
+    if not item_config then
+        error(string.format("Unknown item type: %s (item registry not initialized?)", item_type))
+    end
     instance.config = item_config
     instance.name = item_config.name
 
@@ -96,11 +104,19 @@ function world_item:update(dt)
     self.float_offset = math.sin(self.float_timer) * 4  -- ±4 pixels
 end
 
-function world_item:canPickup(player_x, player_y)
+function world_item:canPickup(player_x, player_y, game_mode)
     local dx = player_x - self.x
     local dy = player_y - self.y
-    local distance = math.sqrt(dx * dx + dy * dy)
-    return distance <= self.pickup_range
+
+    if game_mode == "platformer" then
+        -- In platformer mode, only check horizontal distance
+        -- (vertical distance ignored because player can be in the air)
+        return math.abs(dx) <= self.pickup_range
+    else
+        -- Topdown mode: use full 2D distance
+        local distance = math.sqrt(dx * dx + dy * dy)
+        return distance <= self.pickup_range
+    end
 end
 
 function world_item:draw()

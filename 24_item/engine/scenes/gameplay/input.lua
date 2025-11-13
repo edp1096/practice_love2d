@@ -85,7 +85,7 @@ function input_handler.keypressed(self, key)
         end
 
         -- Check for world items
-        local world_item = self.world:getInteractableWorldItem(self.player.x, self.player.y)
+        local world_item = self.world:getInteractableWorldItem(self.player.x, self.player.y, self.player.game_mode)
         if world_item then
             -- Try to add to inventory
             local success, item_id = self.inventory:addItem(world_item.item_type, world_item.quantity)
@@ -97,6 +97,11 @@ function input_handler.keypressed(self, key)
                     if not self.inventory.equipment_slots[slot] then
                         self.inventory:equipItem(item_id, slot, self.player)
                     end
+                end
+
+                -- Track non-respawning items (one-time pickup)
+                if not world_item.respawn and world_item.map_id then
+                    self.picked_items[world_item.map_id] = true
                 end
 
                 -- Remove from world
@@ -224,7 +229,7 @@ function input_handler.gamepadpressed(self, joystick, button)
         end
 
         -- Check for world items
-        local world_item = self.world:getInteractableWorldItem(self.player.x, self.player.y)
+        local world_item = self.world:getInteractableWorldItem(self.player.x, self.player.y, self.player.game_mode)
         if world_item then
             -- Try to add to inventory
             local success, item_id = self.inventory:addItem(world_item.item_type, world_item.quantity)
@@ -236,6 +241,16 @@ function input_handler.gamepadpressed(self, joystick, button)
                     if not self.inventory.equipment_slots[slot] then
                         self.inventory:equipItem(item_id, slot, self.player)
                     end
+                end
+
+                -- Track non-respawning items (one-time pickup)
+                if not world_item.respawn and world_item.map_id then
+                    self.picked_items[world_item.map_id] = true
+                end
+
+                -- Track non-respawning items (one-time pickup)
+                if not world_item.respawn and world_item.map_id then
+                    self.picked_items[world_item.map_id] = true
                 end
 
                 -- Remove from world

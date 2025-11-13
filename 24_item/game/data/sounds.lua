@@ -85,5 +85,26 @@ return {
         enemy = {
             slime_move = { path = "assets/sound/enemy/slime_move.wav", size = 3, volume = 0.2, pitch_variation = "normal" }
         }
+    },
+
+    -- Enemy type sound mappings (maps enemy_type to sound names)
+    enemy_sounds = {
+        -- Slime enemies (matches any enemy type containing "slime")
+        slime = {
+            move = "slime_move",      -- Pooled sound
+            attack = "slime_attack",  -- SFX
+            hurt = "slime_hurt",      -- SFX
+            death = "slime_death",    -- SFX
+            stunned = "slime_stunned" -- SFX
+        },
+        -- Add more enemy types here as needed
+        -- example:
+        -- goblin = {
+        --     move = "goblin_move",
+        --     attack = "goblin_attack",
+        --     hurt = "goblin_hurt",
+        --     death = "goblin_death",
+        --     stunned = "goblin_stunned"
+        -- }
     }
 }

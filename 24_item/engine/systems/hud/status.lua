@@ -147,12 +147,8 @@ function hud:draw_inventory(inventory, screen_w, screen_h)
 
         -- Item icon (text representation for now)
         local icon_text = "HP"
-        local icon_color = {1, 1, 1, 1}
-        if item.type == "small_potion" then
-            icon_color = {0.5, 1, 0.5, 1}
-        elseif item.type == "large_potion" then
-            icon_color = {0.3, 1, 0.8, 1}
-        end
+        -- Use item's color property if available, otherwise default to white
+        local icon_color = item.color or {1, 1, 1, 1}
         text_ui:draw(icon_text, x + 10, y + 8, icon_color, self.small_font)
 
         -- Quantity

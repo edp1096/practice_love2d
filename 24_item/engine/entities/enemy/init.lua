@@ -42,7 +42,7 @@ local function createAnimation(grid, frames, rows, duration)
     end
 end
 
-function enemy:new(x, y, enemy_type, config)
+function enemy:new(x, y, enemy_type, config, map_id, respawn)
     local instance = setmetatable({}, enemy)
 
     -- Initialize sounds once
@@ -51,7 +51,10 @@ function enemy:new(x, y, enemy_type, config)
         sounds_initialized = true
     end
 
-    enemy_type = enemy_type or "red_slime"
+    -- Require enemy_type to be specified
+    if not enemy_type or enemy_type == "" then
+        error("Enemy created without enemy_type specified")
+    end
 
     -- Use provided config, or fallback to type registry
     if not config then
@@ -68,6 +71,10 @@ function enemy:new(x, y, enemy_type, config)
     instance.x = x or 100
     instance.y = y or 100
     instance.type = enemy_type
+
+    -- Persistence data
+    instance.map_id = map_id  -- Unique identifier for this enemy in the map (e.g., "level1_area1_obj_12")
+    instance.respawn = (respawn == nil) and true or respawn  -- Default: true (respawns)
 
     -- Stats from config
     instance.speed = config.speed

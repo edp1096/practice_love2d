@@ -28,7 +28,7 @@ function render.draw(self)
     self.world:drawLayer("Ground")
     self.world:drawEntitiesYSorted(self.player)
     self.world:drawSavePoints()
-    self.world:drawWorldItems(self.player.x, self.player.y)
+    self.world:drawWorldItems(self.player.x, self.player.y, self.player.game_mode)
     if debug.enabled then
         self.player:drawDebug()
     end

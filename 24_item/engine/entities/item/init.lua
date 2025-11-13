@@ -4,6 +4,9 @@
 local item = {}
 item.__index = item
 
+-- Item type registry (injected from game)
+item.type_registry = {}
+
 -- UUID generation counter
 local uuid_counter = 0
 
@@ -21,8 +24,11 @@ function item:new(item_type, quantity, uuid)
     instance.type = item_type
     instance.quantity = quantity or 1
 
-    -- Load item type configuration
-    local item_config = require("engine.entities.item.types." .. item_type)
+    -- Load item type configuration from registry
+    local item_config = item.type_registry[item_type]
+    if not item_config then
+        error(string.format("Unknown item type: %s (registry not initialized or item not registered)", item_type))
+    end
     instance.config = item_config
     instance.name = item_config.name
     instance.description = item_config.description

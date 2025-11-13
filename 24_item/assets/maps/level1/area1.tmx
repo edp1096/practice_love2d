@@ -3,6 +3,7 @@
  <properties>
   <property name="ambient" value="day"/>
   <property name="game_mode" value="topdown"/>
+  <property name="name" value="level1_area1"/>
  </properties>
  <editorsettings>
   <export target="area1.lua" format="lua"/>
@@ -133,6 +134,7 @@
   <object id="40" x="1344" y="256" width="64" height="64">
    <properties>
     <property name="patrol_points" value="100,20;150,25"/>
+    <property name="respawn" type="bool" value="false"/>
     <property name="type" value="green_slime"/>
     <property name="types" value="basic_ragned_boss"/>
    </properties>
@@ -211,6 +213,7 @@
    <properties>
     <property name="item_type" value="staff"/>
     <property name="quantity" type="int" value="1"/>
+    <property name="respawn" type="bool" value="false"/>
    </properties>
   </object>
  </objectgroup>

@@ -8,6 +8,9 @@ local small_potion = {
     max_stack = 20,
     heal_amount = 30,
 
+    -- UI color (for inventory/HUD display)
+    color = {0.5, 1, 0.5, 1},  -- Light green
+
     -- Sprite information (single image, not sprite sheet)
     sprite = {
         file = "assets/images/energy-red.png",

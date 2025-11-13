@@ -86,6 +86,11 @@ function entities.updateEnemies(self, dt, player_x, player_y)
 
             enemy.death_timer = (enemy.death_timer or 0) + dt
             if enemy.death_timer > 2 then
+                -- Track non-respawning enemies (one-time kill)
+                if not enemy.respawn and enemy.map_id then
+                    self.killed_enemies[enemy.map_id] = true
+                end
+
                 if enemy.collider then
                     enemy.collider:destroy()
                     enemy.collider = nil
@@ -250,9 +255,9 @@ function entities.updateWorldItems(self, dt)
     end
 end
 
-function entities.getInteractableWorldItem(self, player_x, player_y)
+function entities.getInteractableWorldItem(self, player_x, player_y, game_mode)
     for _, item in ipairs(self.world_items) do
-        if item:canPickup(player_x, player_y) then
+        if item:canPickup(player_x, player_y, game_mode) then
             return item
         end
     end

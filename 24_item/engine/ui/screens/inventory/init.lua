@@ -68,7 +68,8 @@ function inventory:enter(previous, player_inventory, player)
         active = false,
         slot_index = nil,
         timer = 0,
-        duration = 0.5  -- 0.5 seconds to remove
+        duration = 0.5,  -- 0.5 seconds to remove
+        source = nil  -- "mouse" or "gamepad"
     }
 
     -- Equipment slot cursor state
@@ -138,25 +139,29 @@ function inventory:update(dt)
         end
 
         -- Check if X button (parry) is released (for gamepad hold-to-remove)
-        local joysticks = love.joystick.getJoysticks()
-        if #joysticks > 0 then
-            local joystick = joysticks[1]
-            -- Check if X button is no longer held down
-            if not joystick:isGamepadDown("x") then
-                -- Button released, check if hold duration was met
-                if self.quickslot_hold.timer >= self.quickslot_hold.duration then
-                    -- Hold duration reached, remove item from quickslot
-                    local slot_index = self.quickslot_hold.slot_index
-                    if slot_index and self.inventory.quickslots[slot_index] then
-                        self.inventory:removeQuickslot(slot_index)
-                        play_sound("ui", "select")
+        -- Only check gamepad if the hold was started by gamepad
+        if self.quickslot_hold.source == "gamepad" then
+            local joysticks = love.joystick.getJoysticks()
+            if #joysticks > 0 then
+                local joystick = joysticks[1]
+                -- Check if X button is no longer held down
+                if not joystick:isGamepadDown("x") then
+                    -- Button released, check if hold duration was met
+                    if self.quickslot_hold.timer >= self.quickslot_hold.duration then
+                        -- Hold duration reached, remove item from quickslot
+                        local slot_index = self.quickslot_hold.slot_index
+                        if slot_index and self.inventory.quickslots[slot_index] then
+                            self.inventory:removeQuickslot(slot_index)
+                            play_sound("ui", "select")
+                        end
                     end
-                end
 
-                -- Reset hold state
-                self.quickslot_hold.active = false
-                self.quickslot_hold.slot_index = nil
-                self.quickslot_hold.timer = 0
+                    -- Reset hold state
+                    self.quickslot_hold.active = false
+                    self.quickslot_hold.slot_index = nil
+                    self.quickslot_hold.timer = 0
+                    self.quickslot_hold.source = nil
+                end
             end
         end
     end

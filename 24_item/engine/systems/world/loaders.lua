@@ -181,16 +181,34 @@ function loaders.loadSavePoints(self)
     end
 end
 
-function loaders.loadEnemies(self)
+function loaders.loadEnemies(self, killed_enemies)
     if not self.enemy_class then
         print("Warning: No enemy_class injected, skipping enemy loading")
         return
     end
 
+    killed_enemies = killed_enemies or {}
+    local map_name = self.map.properties.name or "unknown"
+
     if self.map.layers["Enemies"] then
         for _, obj in ipairs(self.map.layers["Enemies"].objects) do
+            -- Create unique map_id for checking if killed
+            local map_id = string.format("%s_obj_%d", map_name, obj.id)
+
+            -- Get respawn property (default: true)
+            local respawn = obj.properties.respawn
+            if respawn == nil then
+                respawn = true
+            end
+
+            -- Skip non-respawning enemies that were already killed
+            if not respawn and killed_enemies[map_id] then
+                -- Enemy was killed and doesn't respawn, skip it
+                goto continue
+            end
+
             -- Use factory to create from Tiled properties
-            local new_enemy = factory:createEnemy(obj, self.enemy_class)
+            local new_enemy = factory:createEnemy(obj, self.enemy_class, map_name)
 
             new_enemy.world = self
 
@@ -214,6 +232,8 @@ function loaders.loadEnemies(self)
             collision.createEnemyCollider(new_enemy, self.physicsWorld, self.game_mode)
 
             table.insert(self.enemies, new_enemy)
+
+            ::continue::
         end
     end
 end
@@ -289,25 +309,43 @@ function loaders.loadDamageZones(self)
     end
 end
 
-function loaders.loadWorldItems(self)
+function loaders.loadWorldItems(self, picked_items)
     if not self.world_item_class then
         print("Warning: No world_item_class injected, skipping world item loading")
         return
     end
 
+    picked_items = picked_items or {}
+
     if self.map.layers["WorldItems"] then
         for _, obj in ipairs(self.map.layers["WorldItems"].objects) do
             local item_type = obj.properties.item_type
             local quantity = obj.properties.quantity or 1
+            local respawn = obj.properties.respawn
+            if respawn == nil then
+                respawn = true  -- Default: items respawn
+            end
 
             if item_type then
+                -- Create unique map_id: "level1_area1_obj_123"
+                local map_name = self.map.properties.name or "unknown"
+                local map_id = string.format("%s_obj_%d", map_name, obj.id)
+
+                -- Skip non-respawning items that were already picked up
+                if not respawn and picked_items[map_id] then
+                    -- Item was picked up and doesn't respawn, skip it
+                    goto continue
+                end
+
                 local center_x = obj.x + obj.width / 2
                 local center_y = obj.y + obj.height / 2
 
-                local item = self.world_item_class:new(center_x, center_y, item_type, quantity)
+                local item = self.world_item_class:new(center_x, center_y, item_type, quantity, map_id, respawn)
 
                 table.insert(self.world_items, item)
             end
+
+            ::continue::
         end
     end
 end

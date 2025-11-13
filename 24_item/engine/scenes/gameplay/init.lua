@@ -3,8 +3,10 @@
 
 local gameplay = {}
 
--- Player config (injected from game)
+-- Game config (injected from game)
 gameplay.player_config = {}
+gameplay.loot_tables = {}
+gameplay.starting_items = {}
 
 local player_module = require "engine.entities.player"
 local world = require "engine.systems.world"
@@ -19,7 +21,6 @@ local enemy_class = require "engine.entities.enemy"
 local npc_class = require "engine.entities.npc"
 local healing_point_class = require "engine.entities.healing_point"
 local world_item_class = require "engine.entities.world_item"
-local loot_tables = require "game.data.loot_tables"
 local dialogue = require "engine.ui.dialogue"
 local sound = require "engine.core.sound"
 local util = require "engine.utils.util"
@@ -63,14 +64,31 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
 
     self.cam = camera(0, 0, cam_scale, 0, 0)
 
-    -- Create world with injected entity classes
+    -- Load save data first (before creating world)
+    local save_data = nil
+    if not is_new_game then
+        save_data = save_sys:loadGame(save_slot)
+    end
+
+    -- Initialize persistence lists (for non-respawning items/enemies)
+    self.picked_items = {}
+    if save_data and save_data.picked_items then
+        self.picked_items = save_data.picked_items
+    end
+
+    self.killed_enemies = {}
+    if save_data and save_data.killed_enemies then
+        self.killed_enemies = save_data.killed_enemies
+    end
+
+    -- Create world with injected entity classes and persistence data
     self.world = world:new(mapPath, {
         enemy = enemy_class,
         npc = npc_class,
         healing_point = healing_point_class,
         world_item = world_item_class,
-        loot_tables = loot_tables
-    })
+        loot_tables = gameplay.loot_tables
+    }, self.picked_items, self.killed_enemies)
 
     self.player = player_module:new(spawn_x, spawn_y, gameplay.player_config)
 
@@ -79,14 +97,10 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
 
     self.current_save_slot = save_slot
 
-    -- Only load save data if NOT starting a new game
-    local save_data = nil
-    if not is_new_game then
-        save_data = save_sys:loadGame(save_slot)
-        if save_data and save_data.hp then
-            self.player.health = save_data.hp
-            self.player.max_health = save_data.max_hp
-        end
+    -- Apply loaded save data
+    if save_data and save_data.hp then
+        self.player.health = save_data.hp
+        self.player.max_health = save_data.max_hp
     end
 
     self.world:addEntity(self.player)
@@ -120,13 +134,9 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
         end
     else
         -- Give starting items (for both new game and no save data)
-        self.inventory:addItem("small_potion", 3)
-        self.inventory:addItem("large_potion", 1)
-
-        -- Test weapons for equipment system
-        self.inventory:addItem("iron_sword", 1)
-        self.inventory:addItem("iron_axe", 1)
-        self.inventory:addItem("club", 1)
+        for _, item_config in ipairs(gameplay.starting_items) do
+            self.inventory:addItem(item_config.type, item_config.quantity)
+        end
     end
 
 
@@ -200,6 +210,8 @@ function gameplay:saveGame(slot)
         x = self.player.x,
         y = self.player.y,
         inventory = self.inventory and self.inventory:save() or nil,
+        picked_items = self.picked_items or {},
+        killed_enemies = self.killed_enemies or {},
     }
 
     local success = save_sys:saveGame(slot, save_data)
@@ -296,14 +308,14 @@ function gameplay:switchMap(new_map_path, spawn_x, spawn_y)
     if self.world then self.world:destroy() end
 
     self.current_map_path = new_map_path
-    -- Create world with injected entity classes
+    -- Create world with injected entity classes and persistence data
     self.world = world:new(new_map_path, {
         enemy = enemy_class,
         npc = npc_class,
         healing_point = healing_point_class,
         world_item = world_item_class,
-        loot_tables = loot_tables
-    })
+        loot_tables = gameplay.loot_tables
+    }, self.picked_items, self.killed_enemies)
 
     self.player.x = spawn_x
     self.player.y = spawn_y

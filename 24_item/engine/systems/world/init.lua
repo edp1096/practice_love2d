@@ -21,7 +21,7 @@ world.healing_point_class = nil
 world.world_item_class = nil
 world.loot_tables = nil
 
-function world:new(map_path, entity_classes)
+function world:new(map_path, entity_classes, picked_items, killed_enemies)
     local instance = setmetatable({}, world)
 
     -- Store injected entity classes (fallback to class-level if not provided)
@@ -31,6 +31,10 @@ function world:new(map_path, entity_classes)
     instance.healing_point_class = entity_classes.healing_point or self.healing_point_class
     instance.world_item_class = entity_classes.world_item or self.world_item_class
     instance.loot_tables = entity_classes.loot_tables or self.loot_tables
+
+    -- Store persistence lists
+    instance.picked_items = picked_items or {}
+    instance.killed_enemies = killed_enemies or {}
 
     local map_info = love.filesystem.getInfo(map_path)
     if not map_info then
@@ -78,7 +82,7 @@ function world:new(map_path, entity_classes)
     loaders.loadTransitions(instance)
 
     instance.enemies = {}
-    loaders.loadEnemies(instance)
+    loaders.loadEnemies(instance, instance.killed_enemies)
 
     instance.npcs = {}
     loaders.loadNPCs(instance)
@@ -97,7 +101,7 @@ function world:new(map_path, entity_classes)
 
     -- World items (dropped items)
     instance.world_items = {}
-    loaders.loadWorldItems(instance)
+    loaders.loadWorldItems(instance, instance.picked_items)
 
     return instance
 end

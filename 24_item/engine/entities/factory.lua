@@ -12,11 +12,26 @@ local function prop(obj, key, default)
 end
 
 -- Create enemy from Tiled object
-function factory:createEnemy(obj, enemy_class)
+function factory:createEnemy(obj, enemy_class, map_name)
   -- Extract type from object type field or properties.type (Tiled compatibility)
   local enemy_type = obj.type
   if not enemy_type or enemy_type == "" then
-    enemy_type = obj.properties.type or "red_slime"
+    enemy_type = obj.properties and obj.properties.type
+  end
+
+  -- Error if no type specified (map configuration error)
+  if not enemy_type or enemy_type == "" then
+    error(string.format("Enemy at (%d, %d) has no type specified. Set object type in Tiled.", obj.x, obj.y))
+  end
+
+  -- Create unique map_id: "level1_area1_obj_12"
+  map_name = map_name or "unknown"
+  local map_id = string.format("%s_obj_%d", map_name, obj.id)
+
+  -- Get respawn property (default: true)
+  local respawn = obj.properties.respawn
+  if respawn == nil then
+    respawn = true  -- Default: enemies respawn
   end
 
   -- Simple mode: if no custom properties, just use type (loads from types/*.lua)
@@ -24,7 +39,7 @@ function factory:createEnemy(obj, enemy_class)
 
   if not has_custom_props then
     -- Simple: just pass type, enemy will load config from types file
-    return enemy_class:new(obj.x, obj.y, enemy_type)
+    return enemy_class:new(obj.x, obj.y, enemy_type, nil, map_id, respawn)
   end
 
   -- Advanced mode: create custom config from Tiled properties
@@ -57,15 +72,20 @@ function factory:createEnemy(obj, enemy_class)
     target_color = prop(obj, "tgt_col", nil)
   }
 
-  return enemy_class:new(obj.x, obj.y, enemy_type, cfg)
+  return enemy_class:new(obj.x, obj.y, enemy_type, cfg, map_id, respawn)
 end
 
 -- Create NPC from Tiled object
 function factory:createNPC(obj, npc_class)
-  -- Extract type from object type field or properties.npc_type (Tiled compatibility)
+  -- Extract type from object type field or properties.type (Tiled compatibility)
   local npc_type = obj.type
   if not npc_type or npc_type == "" then
-    npc_type = obj.properties.npc_type or "villager"
+    npc_type = obj.properties and obj.properties.type
+  end
+
+  -- Error if no type specified (map configuration error)
+  if not npc_type or npc_type == "" then
+    error(string.format("NPC at (%d, %d) has no type specified. Set object type in Tiled.", obj.x, obj.y))
   end
 
   local npc_id = prop(obj, "id", nil)

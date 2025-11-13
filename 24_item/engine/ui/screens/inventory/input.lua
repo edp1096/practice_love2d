@@ -170,6 +170,7 @@ function input_handler.gamepadpressed(self, joystick, button)
                 self.quickslot_hold.active = true
                 self.quickslot_hold.slot_index = slot_index
                 self.quickslot_hold.timer = 0
+                self.quickslot_hold.source = "gamepad"
             end
         elseif self.gamepad_drag.active then
             -- Rotate item being held
@@ -446,6 +447,7 @@ function input_handler.mousepressed(self, x, y, button)
                         self.quickslot_hold.active = true
                         self.quickslot_hold.slot_index = slot_index
                         self.quickslot_hold.timer = 0
+                        self.quickslot_hold.source = "mouse"
                     end
                     return
                 end
@@ -631,6 +633,7 @@ function input_handler.mousereleased(self, x, y, button)
         self.quickslot_hold.active = false
         self.quickslot_hold.slot_index = nil
         self.quickslot_hold.timer = 0
+        self.quickslot_hold.source = nil
     end
 end
 

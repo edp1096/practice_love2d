@@ -74,8 +74,6 @@ colors.for_inventory_bg = colors.NAVY_BLUE
 colors.for_inventory_border = colors.BLUE_GRAY
 colors.for_item_equipment = colors.LIGHT_PURPLE
 colors.for_item_usable = colors.BRIGHT_GREEN
-colors.for_item_small_potion = colors.LIGHT_GREEN
-colors.for_item_large_potion = colors.CYAN_GREEN
 colors.for_placement_valid = colors.LIGHT_GREEN_ALPHA
 colors.for_placement_invalid = colors.LIGHT_RED_ALPHA
 

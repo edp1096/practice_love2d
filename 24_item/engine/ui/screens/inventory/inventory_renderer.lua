@@ -152,15 +152,8 @@ function slot_renderer.renderItemGrid(inventory, selected_item_id, title_font, i
         else
             -- Fallback: text icon (for potions without sprites)
             local icon_text = "HP"  -- Default for potions
-            local icon_color
-
-            if item.type == "small_potion" then
-                icon_color = colors.for_item_small_potion
-            elseif item.type == "large_potion" then
-                icon_color = colors.for_item_large_potion
-            else
-                icon_color = colors.for_text_normal
-            end
+            -- Use item's color property if available, otherwise default to normal text color
+            local icon_color = item.color or colors.for_text_normal
 
             -- Center icon in item area
             local icon_w = title_font:getWidth(icon_text)
@@ -288,12 +281,10 @@ function slot_renderer.renderDraggedItem(inventory, drag_state, grid_start_x, gr
     else
         -- Fallback: text icon for potions
         local icon_text = "HP"
+        -- Use item's color property with 0.7 alpha, or default to semi-transparent white
         local icon_color
-
-        if item_obj.type == "small_potion" then
-            icon_color = {colors.for_item_small_potion[1], colors.for_item_small_potion[2], colors.for_item_small_potion[3], 0.7}
-        elseif item_obj.type == "large_potion" then
-            icon_color = {colors.for_item_large_potion[1], colors.for_item_large_potion[2], colors.for_item_large_potion[3], 0.7}
+        if item_obj.color then
+            icon_color = {item_obj.color[1], item_obj.color[2], item_obj.color[3], 0.7}
         else
             icon_color = {1, 1, 1, 0.7}
         end
@@ -381,12 +372,10 @@ function slot_renderer.renderGamepadDraggedItem(inventory, gamepad_drag, cursor_
     else
         -- Fallback: text icon for potions
         local icon_text = "HP"
+        -- Use item's color property with 0.7 alpha, or default to semi-transparent white
         local icon_color
-
-        if item_obj.type == "small_potion" then
-            icon_color = {colors.for_item_small_potion[1], colors.for_item_small_potion[2], colors.for_item_small_potion[3], 0.7}
-        elseif item_obj.type == "large_potion" then
-            icon_color = {colors.for_item_large_potion[1], colors.for_item_large_potion[2], colors.for_item_large_potion[3], 0.7}
+        if item_obj.color then
+            icon_color = {item_obj.color[1], item_obj.color[2], item_obj.color[3], 0.7}
         else
             icon_color = {1, 1, 1, 0.7}
         end

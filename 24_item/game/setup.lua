@@ -13,11 +13,14 @@ function setup.configure()
     local player_config = require "game.data.player"
     local cutscene_configs = require "game.data.cutscenes"
     local sound_data = require "game.data.sounds"
+    local item_types = require "game.data.items"
+    local loot_tables = require "game.data.loot_tables"
 
     -- Load engine modules
     local enemy_class = require "engine.entities.enemy"
     local npc_class = require "engine.entities.npc"
     local weapon_class = require "engine.entities.weapon"
+    local item_class = require "engine.entities.item"
     local constants = require "engine.core.constants"
     local factory = require "engine.entities.factory"
     local player_sound = require "engine.entities.player.sound"
@@ -33,6 +36,7 @@ function setup.configure()
     npc_class.type_registry = entity_types.npcs
     weapon_class.type_registry = entity_types.weapons
     weapon_class.effects_config = entity_types.weapon_effects
+    item_class.type_registry = item_types
 
     -- Inject game start defaults
     constants.GAME_START.DEFAULT_MAP = start_config.map
@@ -46,8 +50,10 @@ function setup.configure()
     player_sound.sounds_config = sound_data
     enemy_sound.sounds_config = sound_data
 
-    -- Inject player config
+    -- Inject gameplay configs
     gameplay_scene.player_config = player_config
+    gameplay_scene.loot_tables = loot_tables
+    gameplay_scene.starting_items = start_config.starting_items
 
     -- Inject cutscene configs
     cutscene_scene.configs = cutscene_configs

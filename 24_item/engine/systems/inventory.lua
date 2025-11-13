@@ -248,8 +248,11 @@ end
 -- Select next item (for keyboard navigation)
 function inventory:selectNext()
     local item_ids = {}
-    for item_id, _ in pairs(self.items) do
-        table.insert(item_ids, item_id)
+    for item_id, item_data in pairs(self.items) do
+        -- Only include items in grid (not equipped items)
+        if not item_data.equipped and item_data.x and item_data.y then
+            table.insert(item_ids, item_id)
+        end
     end
 
     if #item_ids == 0 then
@@ -747,8 +750,10 @@ function inventory:getQuickslotItem(slot_index)
 
     local item_data = self.items[item_id]
     if not item_data then
-        -- Item no longer exists, clear quickslot
-        self.quickslots[slot_index] = nil
+        -- Item temporarily doesn't exist (e.g., being dragged)
+        -- Don't clear quickslot, just return nil
+        -- Quickslot should only be cleared explicitly via removeQuickslot()
+        -- or when item is consumed via useQuickslot()
         return nil
     end
 
