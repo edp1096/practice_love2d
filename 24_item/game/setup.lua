@@ -42,6 +42,7 @@ function setup.configure()
     constants.GAME_START.DEFAULT_MAP = start_config.map
     constants.GAME_START.DEFAULT_SPAWN_X = start_config.spawn_x
     constants.GAME_START.DEFAULT_SPAWN_Y = start_config.spawn_y
+    constants.GAME_START.DEFAULT_INTRO_ID = start_config.intro_id
 
     -- Inject entity factory defaults
     factory.DEFAULTS = entity_defaults

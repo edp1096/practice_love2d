@@ -18,7 +18,10 @@ weapon.effects_config = {}
 function weapon:new(weapon_type)
     local instance = setmetatable({}, weapon)
 
-    weapon_type = weapon_type or "sword"
+    if not weapon_type then
+        error("weapon_type is required (weapon:new must receive a weapon type)")
+    end
+
     local config = self.type_registry[weapon_type]
 
     if not config then

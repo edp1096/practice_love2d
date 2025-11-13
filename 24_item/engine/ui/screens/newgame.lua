@@ -55,7 +55,7 @@ function newgame:selectSlot(slot_index)
         -- Start new game with intro cutscene
         -- Pass is_new_game flag to prevent loading old save data
         scene_control.switch("cutscene",
-            "level1",
+            constants.GAME_START.DEFAULT_INTRO_ID,
             constants.GAME_START.DEFAULT_MAP,
             constants.GAME_START.DEFAULT_SPAWN_X,
             constants.GAME_START.DEFAULT_SPAWN_Y,

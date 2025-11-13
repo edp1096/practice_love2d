@@ -60,7 +60,7 @@ local function executeAction(action_cfg, previous_scene)
     if action_cfg.scene == "cutscene" then
       local cutscene = require "engine.scenes.cutscene"
       scene_control.switch(cutscene,
-        "level1",
+        constants.GAME_START.DEFAULT_INTRO_ID,
         constants.GAME_START.DEFAULT_MAP,
         constants.GAME_START.DEFAULT_SPAWN_X,
         constants.GAME_START.DEFAULT_SPAWN_Y,
@@ -79,7 +79,7 @@ local function executeAction(action_cfg, previous_scene)
     -- Start new game (with intro cutscene and is_new_game flag)
     local cutscene = require "engine.scenes.cutscene"
     scene_control.switch(cutscene,
-      "level1",
+      constants.GAME_START.DEFAULT_INTRO_ID,
       constants.GAME_START.DEFAULT_MAP,
       constants.GAME_START.DEFAULT_SPAWN_X,
       constants.GAME_START.DEFAULT_SPAWN_Y,

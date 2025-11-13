@@ -58,6 +58,7 @@ constants.GAME_START = {
     DEFAULT_MAP = nil,
     DEFAULT_SPAWN_X = nil,
     DEFAULT_SPAWN_Y = nil,
+    DEFAULT_INTRO_ID = nil,
 }
 
 -- Debug

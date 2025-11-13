@@ -227,7 +227,7 @@ function update.checkTransitions(self, scaled_dt)
             scene_control.switch("ending")
         elseif transition.transition_type == "intro" then
             local cutscene = require "engine.scenes.cutscene"
-            local intro_id = transition.intro_id or "level1"
+            local intro_id = transition.intro_id or constants.GAME_START.DEFAULT_INTRO_ID
             scene_control.switch(cutscene, intro_id, transition.target_map, transition.spawn_x, transition.spawn_y)
         elseif transition.transition_type == "ending" then
             local cutscene = require "engine.scenes.cutscene"

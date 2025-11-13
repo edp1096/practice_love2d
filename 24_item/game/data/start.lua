@@ -7,6 +7,7 @@ local start_config = {}
 start_config.map = "assets/maps/level1/area1.lua"
 start_config.spawn_x = 400
 start_config.spawn_y = 250
+start_config.intro_id = "level1"
 
 -- Starting Inventory Items
 start_config.starting_items = {
