@@ -24,7 +24,7 @@ function factory:createEnemy(obj, enemy_class, map_name)
     error(string.format("Enemy at (%d, %d) has no type specified. Set object type in Tiled.", obj.x, obj.y))
   end
 
-  -- Create unique map_id: "level1_area1_obj_12"
+  -- Create unique map_id: "{map_name}_obj_{id}" (e.g., "level1_area1_obj_12")
   map_name = map_name or "unknown"
   local map_id = string.format("%s_obj_%d", map_name, obj.id)
 

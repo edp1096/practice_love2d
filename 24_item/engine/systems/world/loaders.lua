@@ -327,7 +327,7 @@ function loaders.loadWorldItems(self, picked_items)
             end
 
             if item_type then
-                -- Create unique map_id: "level1_area1_obj_123"
+                -- Create unique map_id: "{map_name}_obj_{id}" (e.g., "level1_area1_obj_123")
                 local map_name = self.map.properties.name or "unknown"
                 local map_id = string.format("%s_obj_%d", map_name, obj.id)
 

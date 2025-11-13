@@ -73,7 +73,7 @@ function enemy:new(x, y, enemy_type, config, map_id, respawn)
     instance.type = enemy_type
 
     -- Persistence data
-    instance.map_id = map_id  -- Unique identifier for this enemy in the map (e.g., "level1_area1_obj_12")
+    instance.map_id = map_id  -- Unique identifier: "{map_name}_obj_{id}" (e.g., "level1_area1_obj_12")
     instance.respawn = (respawn == nil) and true or respawn  -- Default: true (respawns)
 
     -- Stats from config
