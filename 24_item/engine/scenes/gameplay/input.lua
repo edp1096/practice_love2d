@@ -330,7 +330,7 @@ function input_handler.touchpressed(self, id, x, y, dx, dy, pressure)
     end
 
     -- Check if touch is on HUD quickslot
-    if self:checkQuickslotTouch(x, y) then
+    if input_handler.checkQuickslotTouch(self, x, y) then
         return true
     end
 
@@ -378,7 +378,7 @@ function input_handler.touchreleased(self, id, x, y, dx, dy, pressure)
         return true
     end
 
-    if self:handleDebugButtonTouch(x, y, id, false) then
+    if self.handleDebugButtonTouch and self:handleDebugButtonTouch(x, y, id, false) then
         return
     end
 end

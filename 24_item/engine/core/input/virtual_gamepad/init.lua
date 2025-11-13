@@ -109,7 +109,7 @@ function virtual_gamepad:calculatePositions()
 
     -- Aim stick in center-right (between D-pad and buttons) - moved left
     self.aim_stick.x = vw * 0.65 -- 65% from left (was 70%)
-    self.aim_stick.y = bottom_y
+    self.aim_stick.y = bottom_y - 45
 
     -- Face buttons on bottom right (diamond pattern) - moved left
     local button_base_x = vw - 130  -- Moved left (was 100)

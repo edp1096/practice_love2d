@@ -70,8 +70,7 @@ function cutscene:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot, 
     end
 
     -- Initialize and show intro messages
-    dialogue:initialize()
-    dialogue:setDisplay(display)
+    dialogue:initialize(display)
     local speaker = self.config.speaker or ""
     dialogue:showMultiple(speaker, self.config.messages)
 

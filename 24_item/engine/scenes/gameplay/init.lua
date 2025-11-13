@@ -159,8 +159,7 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
     -- Track selected quickslot for gamepad (1-5)
     self.selected_quickslot = 1
 
-    dialogue:initialize()
-    dialogue:setDisplay(display)
+    dialogue:initialize(display)
 
     -- Initialize lighting
     self:setupLighting()
@@ -392,7 +391,7 @@ function gameplay:touchpressed(id, x, y, dx, dy, pressure)
     end
 
     -- Delegate to input module for dialogue and other touch handling
-    return input_module.touchpressed(id, x, y, dx, dy, pressure)
+    return input_module.touchpressed(self, id, x, y, dx, dy, pressure)
 end
 
 -- Delegate to sub-modules

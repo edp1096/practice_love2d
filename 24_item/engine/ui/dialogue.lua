@@ -7,7 +7,7 @@ local next_button_widget = require "engine.ui.widgets.button.next"
 
 local dialogue = {}
 
-function dialogue:initialize()
+function dialogue:initialize(display_module)
     -- Configure Talkies
     Talkies.backgroundColor = { 0, 0, 0, 0.8 }
     Talkies.textSpeed = "fast"
@@ -38,6 +38,11 @@ function dialogue:initialize()
         button_spacing = 0,  -- Space between NEXT and SKIP
     })
     self.next_button.visible = false  -- Hidden by default
+
+    -- Initialize display if provided
+    if display_module then
+        self:setDisplay(display_module)
+    end
 end
 
 -- Set display reference for buttons
