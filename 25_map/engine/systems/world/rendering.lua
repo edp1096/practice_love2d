@@ -40,10 +40,11 @@ end
 
 -- Draw parallax backgrounds
 -- camera: camera object (optional, can pass nil)
-function rendering.drawParallax(self, camera)
+-- display: display system for virtual coordinate transform
+function rendering.drawParallax(self, camera, display)
     local parallax = require "engine.systems.parallax"
     if parallax:isActive() then
-        parallax:draw(camera)
+        parallax:draw(camera, display)
     end
 end
 

@@ -2,6 +2,7 @@
 -- Main parallax system for managing multiple background layers
 
 local Layer = require "engine.systems.parallax.layer"
+local display_module = require "engine.core.display"
 
 local parallax = {
   layers = {},
@@ -46,13 +47,12 @@ end
 
 -- Draw all layers
 -- camera: camera object with position() method (hump.camera)
--- screen_width, screen_height: viewport dimensions (optional, uses physical screen if not provided)
-function parallax:draw(camera, screen_width, screen_height)
+-- display: display system object for virtual coordinate transform
+function parallax:draw(camera, display)
   if not self.active or #self.layers == 0 then return end
 
-  -- Get camera position and scale
+  -- Get camera position
   local camera_x, camera_y = 0, 0
-  local camera_scale = 1.0
   if camera then
     if camera.position then
       -- hump.camera style
@@ -61,24 +61,25 @@ function parallax:draw(camera, screen_width, screen_height)
       -- Direct field access
       camera_x, camera_y = camera.x, camera.y
     end
-
-    -- Get camera scale (hump.camera stores it as 'scale' field)
-    if camera.scale then
-      camera_scale = camera.scale
-    end
   end
 
-  -- Get screen dimensions (use PHYSICAL screen size for proper parallax)
-  if not screen_width or not screen_height then
-    screen_width = love.graphics.getWidth()
-    screen_height = love.graphics.getHeight()
+  -- Get virtual dimensions from display module
+  local virtual_width = display_module.render_wh.w
+  local virtual_height = display_module.render_wh.h
+
+  -- Apply display transform (scale + letterbox offset)
+  love.graphics.push()
+  if display then
+    love.graphics.translate(display.offset_x, display.offset_y)
+    love.graphics.scale(display.scale, display.scale)
   end
 
-
-  -- Draw all layers in order (z_index sorted)
+  -- Draw all layers in virtual coordinate space (960x540)
   for _, layer in ipairs(self.layers) do
-    layer:draw(camera_x, camera_y, screen_width, screen_height, camera_scale)
+    layer:draw(camera_x, camera_y, virtual_width, virtual_height)
   end
+
+  love.graphics.pop()
 end
 
 -- Check if parallax is active

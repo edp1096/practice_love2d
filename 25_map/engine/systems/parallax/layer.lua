@@ -79,17 +79,13 @@ end
 
 -- Draw layer with parallax effect
 -- camera_x, camera_y: camera position in world coordinates
--- screen_width, screen_height: viewport dimensions (physical screen)
--- camera_scale: camera zoom level (optional, from hump.camera)
-function Layer:draw(camera_x, camera_y, screen_width, screen_height, camera_scale)
-  -- Screen-space parallax with camera scale compensation
+-- virtual_width, virtual_height: virtual screen dimensions (960x540)
+function Layer:draw(camera_x, camera_y, virtual_width, virtual_height)
+  -- Virtual coordinate space parallax
   -- parallax_factor: how much the layer scrolls with camera movement
   -- 0.0 = no scroll (fixed background), 1.0 = full scroll (moves with camera)
 
-  camera_scale = camera_scale or 1.0
-
   -- Calculate parallax offset from camera movement
-  -- parallax_factor: 0.0 = fixed, 1.0 = moves with camera
   local parallax_offset_x = camera_x * self.parallax_factor
   local parallax_offset_y = camera_y * self.parallax_factor
 
@@ -99,16 +95,16 @@ function Layer:draw(camera_x, camera_y, screen_width, screen_height, camera_scal
 
   -- Smooth infinite horizontal tiling (no tile snapping!)
   if self.repeat_x then
-    -- Start from scroll_x position and extend left to cover screen
+    -- Start from scroll_x position and extend left to cover virtual screen
     local start_x = scroll_x
     -- Move left until we're off-screen left edge
     while start_x > -self.width do
       start_x = start_x - self.width
     end
 
-    -- Now draw from start_x rightward to cover entire screen
+    -- Now draw from start_x rightward to cover entire virtual screen
     local x = start_x
-    while x < screen_width do
+    while x < virtual_width do
       if self.repeat_y then
         -- Vertical tiling
         local start_y = scroll_y
@@ -116,7 +112,7 @@ function Layer:draw(camera_x, camera_y, screen_width, screen_height, camera_scal
           start_y = start_y - self.height
         end
         local y = start_y
-        while y < screen_height do
+        while y < virtual_height do
           love.graphics.draw(self.image, x, y)
           y = y + self.height
         end

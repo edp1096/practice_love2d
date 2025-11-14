@@ -20,9 +20,9 @@ function render.draw(self)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.clear(0, 0, 0, 1)
 
-    -- Draw parallax backgrounds in PHYSICAL coordinates (same space as world rendering)
-    -- Camera uses physical screen size and has its own scale, so parallax needs physical coords too
-    self.world:drawParallax(self.cam)
+    -- Draw parallax backgrounds in virtual coordinates (960x540)
+    -- Display transform (scale + letterbox) applied inside parallax:draw()
+    self.world:drawParallax(self.cam, display)
 
     -- Now apply camera transform for world rendering
     self.cam:attach()
