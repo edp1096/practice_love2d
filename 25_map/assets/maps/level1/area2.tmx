@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="2025.09.25" orientation="orthogonal" renderorder="right-down" width="30" height="30" tilewidth="32" tileheight="32" infinite="0" nextlayerid="9" nextobjectid="40">
+<map version="1.10" tiledversion="2025.09.25" orientation="orthogonal" renderorder="right-down" width="30" height="40" tilewidth="32" tileheight="32" infinite="0" nextlayerid="10" nextobjectid="44">
  <editorsettings>
   <export target="area2.lua" format="lua"/>
  </editorsettings>
@@ -11,8 +11,18 @@
   <grid orientation="orthogonal" width="1" height="1"/>
   <image source="tileset_area2.png" trans="ff00ff" width="256" height="192"/>
  </tileset>
- <layer id="1" name="Ground" width="30" height="30" locked="1">
+ <layer id="1" name="Ground" width="30" height="40" visible="0" locked="1">
   <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,
 30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,
 30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,
@@ -45,8 +55,18 @@
 30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30
 </data>
  </layer>
- <layer id="8" name="GroundDeco" width="30" height="30">
+ <layer id="8" name="GroundDeco" width="30" height="40" visible="0">
   <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -79,14 +99,24 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <layer id="2" name="Trees" width="30" height="30">
+ <layer id="2" name="Trees" width="30" height="40">
   <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 1,2,2,2,2,2,2,2,2,2,2,2,2,2,3,33,34,34,34,34,34,34,34,34,34,34,34,34,34,34,
-9,10,10,10,10,10,10,10,10,10,10,10,10,10,11,33,34,34,34,34,34,34,34,34,34,34,34,34,34,34,
-17,18,18,18,18,18,18,18,18,18,18,18,18,21,11,41,42,42,42,42,42,42,42,42,42,42,42,42,37,34,
-0,0,0,0,0,0,0,0,0,0,0,0,0,9,11,0,0,0,0,0,0,0,0,0,0,0,0,0,33,34,
-0,0,0,0,0,0,0,0,0,0,0,0,0,9,11,0,0,0,0,0,0,0,0,0,0,0,0,0,33,34,
-0,0,0,0,0,0,0,0,0,0,0,0,0,17,19,0,0,0,0,0,0,0,0,0,0,0,0,0,33,34,
+17,18,18,18,18,18,18,18,18,18,18,18,18,18,19,33,34,34,34,34,34,34,34,34,34,34,34,34,34,34,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,41,42,42,42,42,42,42,42,42,42,42,42,42,37,34,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,38,39,40,0,0,0,0,0,0,0,0,48,33,34,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,33,34,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,33,34,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,33,34,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,33,34,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,33,34,
@@ -113,29 +143,28 @@
 34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,34,35,0,0,0,33,34,34,34,34,34
 </data>
  </layer>
- <objectgroup id="3" name="Walls" visible="0">
-  <object id="1" x="0" y="0" width="465.125" height="81.1252"/>
-  <object id="2" x="431.625" y="81.125" width="33.625" height="96.2085"/>
-  <object id="3" x="0" y="366.727" width="465.477" height="66.7273"/>
-  <object id="4" x="430" y="301.75" width="35.4091" height="64.4318"/>
-  <object id="5" x="288" y="608" width="32" height="32"/>
-  <object id="6" x="352" y="640" width="32" height="32"/>
-  <object id="7" x="192" y="640" width="32" height="32"/>
-  <object id="8" x="160" y="672" width="32" height="32"/>
-  <object id="9" x="192" y="704" width="32" height="32"/>
-  <object id="10" x="256" y="704" width="32" height="32"/>
-  <object id="11" x="160" y="768" width="32" height="32"/>
-  <object id="24" x="896" y="96" width="64" height="384"/>
-  <object id="25" x="896" y="640" width="64" height="320"/>
-  <object id="26" x="768" y="896" width="128" height="64"/>
-  <object id="27" x="0" y="896" width="672" height="64"/>
-  <object id="28" x="0" y="448" width="32" height="448"/>
-  <object id="37" x="480" y="0">
+ <objectgroup id="3" name="Walls">
+  <object id="1" x="0" y="320" width="477.458" height="49.3333"/>
+  <object id="3" x="0" y="686.727" width="465.477" height="66.7273"/>
+  <object id="4" x="430" y="621.75" width="35.4091" height="64.4318"/>
+  <object id="5" x="288" y="928" width="32" height="32"/>
+  <object id="6" x="352" y="960" width="32" height="32"/>
+  <object id="7" x="192" y="960" width="32" height="32"/>
+  <object id="8" x="160" y="992" width="32" height="32"/>
+  <object id="9" x="192" y="1024" width="32" height="32"/>
+  <object id="10" x="256" y="1024" width="32" height="32"/>
+  <object id="11" x="160" y="1088" width="32" height="32"/>
+  <object id="24" x="896" y="416" width="64" height="384"/>
+  <object id="25" x="896" y="960" width="64" height="320"/>
+  <object id="26" x="768" y="1216" width="128" height="64"/>
+  <object id="27" x="0" y="1216" width="672" height="64"/>
+  <object id="28" x="0" y="768" width="32" height="448"/>
+  <object id="37" x="480" y="320">
    <polygon points="0,0 0,96 32,128 128,128 160,96 352,96 384,128 416,128 416,96 480,96 480,0"/>
   </object>
  </objectgroup>
  <objectgroup id="7" name="Enemies" visible="0">
-  <object id="38" x="160" y="544" width="32" height="32">
+  <object id="38" x="160" y="864" width="32" height="32">
    <properties>
     <property name="patrol_points" value="50.0,10.0;75.0,12.5"/>
     <property name="type" value="bandit"/>
@@ -143,7 +172,7 @@
   </object>
  </objectgroup>
  <objectgroup id="4" name="Portals" visible="0">
-  <object id="29" x="0" y="96" width="32" height="256">
+  <object id="29" x="0" y="416" width="32" height="256">
    <properties>
     <property name="spawn_x" type="float" value="100"/>
     <property name="spawn_y" type="float" value="100"/>
@@ -151,7 +180,7 @@
     <property name="type" value="portal"/>
    </properties>
   </object>
-  <object id="33" x="928" y="480" width="32" height="160">
+  <object id="33" x="928" y="800" width="32" height="160">
    <properties>
     <property name="spawn_x" type="float" value="25"/>
     <property name="spawn_y" type="float" value="350"/>
@@ -159,7 +188,7 @@
     <property name="type" value="portal"/>
    </properties>
   </object>
-  <object id="39" x="672" y="928" width="96" height="32">
+  <object id="39" x="672" y="1248" width="96" height="32">
    <properties>
     <property name="spawn_x" type="float" value="25"/>
     <property name="spawn_y" type="float" value="350"/>
@@ -169,16 +198,59 @@
   </object>
  </objectgroup>
  <objectgroup id="5" name="SavePoints" visible="0">
-  <object id="35" x="832" y="480" width="32" height="32">
+  <object id="35" x="832" y="800" width="32" height="32">
    <properties>
     <property name="id" value="save2-1"/>
     <property name="type" value="savepoint"/>
    </properties>
   </object>
-  <object id="36" x="640" y="864" width="32" height="32">
+  <object id="36" x="640" y="1184" width="32" height="32">
    <properties>
     <property name="id" value="save2-2"/>
     <property name="type" value="savepoint"/>
+   </properties>
+  </object>
+ </objectgroup>
+ <objectgroup id="9" name="Parallax">
+  <object id="40" name="sky" x="0" y="0" width="128" height="128">
+   <properties>
+    <property name="Type" value="parallax"/>
+    <property name="image" value="assets/backgrounds/layer1_sky.png"/>
+    <property name="offset_y" type="float" value="50"/>
+    <property name="parallax_factor" type="float" value="0.1"/>
+    <property name="repeat_x" type="bool" value="true"/>
+    <property name="z_index" type="int" value="1"/>
+   </properties>
+  </object>
+  <object id="41" name="mountains" x="160" y="0" width="128" height="128">
+   <properties>
+    <property name="Type" value="parallax"/>
+    <property name="image" value="assets/backgrounds/layer2_mountains.png"/>
+    <property name="offset_y" type="float" value="-50"/>
+    <property name="parallax_factor" type="float" value="0.3"/>
+    <property name="repeat_x" type="bool" value="true"/>
+    <property name="z_index" type="int" value="2"/>
+   </properties>
+  </object>
+  <object id="42" name="clouds" x="320" y="0" width="128" height="128">
+   <properties>
+    <property name="Type" value="parallax"/>
+    <property name="auto_scroll_x" type="float" value="10"/>
+    <property name="image" value="assets/backgrounds/layer3_clouds.png"/>
+    <property name="offset_y" type="float" value="120"/>
+    <property name="parallax_factor" type="float" value="0.5"/>
+    <property name="repeat_x" type="bool" value="true"/>
+    <property name="z_index" type="int" value="3"/>
+   </properties>
+  </object>
+  <object id="43" name="trees" x="480" y="0" width="128" height="128">
+   <properties>
+    <property name="Type" value="parallax"/>
+    <property name="image" value="assets/backgrounds/layer4_trees.png"/>
+    <property name="offset_y" type="float" value="300"/>
+    <property name="parallax_factor" type="float" value="0.7"/>
+    <property name="repeat_x" type="bool" value="true"/>
+    <property name="z_index" type="int" value="4"/>
    </properties>
   </object>
  </objectgroup>
