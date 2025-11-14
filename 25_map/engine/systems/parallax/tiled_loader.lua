@@ -50,16 +50,9 @@ function tiled_loader.parseParallaxObject(obj)
     return nil
   end
 
-  -- Fix image path if it's missing assets/backgrounds/ prefix
-  local image_path = props.image
-  if not image_path:match("^assets/") then
-    -- Add assets/backgrounds/ prefix if missing
-    image_path = "assets/backgrounds/" .. image_path
-  end
-
   -- Build layer config
   local config = {
-    image = image_path,
+    image = props.image,  -- Use full path from Tiled (e.g., "assets/backgrounds/layer1_sky.png")
     parallax_factor = tonumber(props.parallax_factor) or 0.5,
     z_index = tonumber(props.z_index) or 0,
     repeat_x = props.repeat_x ~= false,  -- Default true

@@ -251,6 +251,62 @@ sounds.sfx.mysound = {
 sound:playSFX("gameplay", "mysound")
 ```
 
+### Adding Parallax Backgrounds
+
+Create multi-layer scrolling backgrounds with depth effect.
+
+1. **Prepare images:**
+   - Place in `assets/backgrounds/`
+   - Example: `layer1_sky.png`, `layer2_mountains.png`, etc.
+
+2. **In Tiled map, create "Parallax" objectgroup layer**
+
+3. **Add objects (one per layer) with custom properties:**
+
+```
+Object 1 (Sky):
+  Name: "sky" (for reference only)
+  Type: Leave empty (Tiled may not have type field)
+
+  Custom Properties (Add these!):
+    Type (string) = "parallax"                       ← REQUIRED!
+    image (string) = "assets/backgrounds/layer1_sky.png"
+    parallax_factor (float) = 0.1                    (0.0 = fixed, 1.0 = normal)
+    z_index (int) = 1                                (lower = behind)
+    repeat_x (bool) = true                           (horizontal tiling)
+    offset_y (float) = 0                             (vertical position)
+    auto_scroll_x (float) = 0                        (optional: auto-scroll)
+
+Object 2 (Mountains):
+  Custom Properties:
+    Type = "parallax"
+    image = "assets/backgrounds/layer2_mountains.png"
+    parallax_factor = 0.3
+    z_index = 2
+    repeat_x = true
+    offset_y = 0
+
+Object 3 (Clouds):
+  Custom Properties:
+    Type = "parallax"
+    image = "assets/backgrounds/layer3_clouds.png"
+    parallax_factor = 0.5
+    z_index = 3
+    repeat_x = true
+    offset_y = 0
+    auto_scroll_x = 10                               ← Drifting clouds!
+```
+
+4. **Export map to Lua**
+
+**Result:** Smooth infinite scrolling backgrounds with depth illusion!
+
+**Tips:**
+- Lower parallax_factor = slower scroll = farther away
+- Use offset_y to adjust vertical positioning
+- auto_scroll_x creates drifting effect (clouds, fog, etc.)
+- Works in both topdown and platformer modes
+
 ---
 
 ## Persistence System

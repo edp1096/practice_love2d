@@ -7,7 +7,7 @@ Complete reference for the LÖVE2D game engine project structure.
 ## 📁 Root Directory
 
 ```
-24_item/
+25_map/
 ├── main.lua              - Entry point (dependency injection)
 ├── conf.lua              - LÖVE configuration
 ├── startup.lua           - Initialization utilities
@@ -38,7 +38,6 @@ core/
 ├── coords.lua            - Unified coordinate system
 ├── sound.lua             - Audio system (BGM, SFX)
 ├── save.lua              - Save/load system (slot-based)
-├── inventory.lua         - Inventory system
 ├── debug.lua             - Debug overlay (F1-F6)
 ├── constants.lua         - Engine constants
 │
@@ -56,6 +55,7 @@ core/
 ```
 systems/
 ├── collision.lua         - Collision system (dual collider for topdown)
+├── inventory.lua         - Inventory system
 │
 ├── world/                - Physics & map system
 │   ├── init.lua          - World coordinator (Windfield + STI)
@@ -70,6 +70,11 @@ systems/
 ├── lighting/             - Dynamic lighting system
 │   ├── init.lua          - Lighting manager
 │   └── source.lua        - Light source class
+│
+├── parallax/             - Parallax background system
+│   ├── init.lua          - Parallax manager (multiple layers)
+│   ├── layer.lua         - Individual layer (smooth scrolling)
+│   └── tiled_loader.lua  - Load from Tiled maps
 │
 └── hud/                  - In-game HUD
     ├── status.lua        - Health bars, cooldowns
@@ -254,6 +259,12 @@ assets/
 │   ├── items/
 │   └── tilesets/
 │
+├── backgrounds/          - Parallax background layers
+│   ├── layer1_sky.png
+│   ├── layer2_mountains.png
+│   ├── layer3_clouds.png
+│   └── layer4_trees.png
+│
 ├── sounds/               - Sound effects
 │   ├── combat/
 │   ├── ui/
@@ -280,6 +291,16 @@ WorldItems Object Properties:
 Enemies Object Properties:
   type = "boss_slime"
   respawn = false          ← One-time kill!
+
+Parallax Layer (in "Parallax" objectgroup):
+  Object Properties:
+    Type = "parallax"              ← Custom property (string)
+    image = "assets/backgrounds/layer1_sky.png"
+    parallax_factor = 0.1          (0.0 = fixed, 1.0 = normal speed)
+    z_index = 1                    (rendering order: lower = behind)
+    repeat_x = true                (horizontal tiling)
+    offset_y = 0                   (vertical position adjustment)
+    auto_scroll_x = 10             (optional: auto-scroll speed px/s)
 ```
 
 ---

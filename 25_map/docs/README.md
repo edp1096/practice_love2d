@@ -9,7 +9,7 @@ A LÖVE2D game project with clean **Engine/Game separation** architecture.
 ### **Engine (100% Reusable)** ⭐
 The `engine/` folder contains **ALL** game systems AND entities:
 - **Core systems:** lifecycle, input, display, sound, save, camera, debug
-- **Subsystems:** world (physics), effects, lighting, HUD, collision
+- **Subsystems:** world (physics), effects, lighting, parallax, HUD, collision
 - **Entities:** player, enemy, weapon, NPC, item, healing_point (**ALL in engine!**)
 - **UI:** menu system, screens, dialogue, prompts, widgets
 - **Scene builders:** data-driven scene factory, cutscene, gameplay

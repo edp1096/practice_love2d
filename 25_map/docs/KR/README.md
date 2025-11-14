@@ -9,7 +9,7 @@
 ### **Engine (100% 재사용 가능)** ⭐
 `engine/` 폴더는 **모든** 게임 시스템과 엔티티를 포함합니다:
 - **핵심 시스템:** lifecycle, input, display, sound, save, camera, debug
-- **서브시스템:** world (물리), effects, lighting, HUD, collision
+- **서브시스템:** world (물리), effects, lighting, parallax, HUD, collision
 - **엔티티:** player, enemy, weapon, NPC, item, healing_point (**모두 engine에!**)
 - **UI:** 메뉴 시스템, 화면, 대화, 프롬프트, 위젯
 - **씬 빌더:** 데이터 기반 씬 팩토리, 컷씬, 게임플레이

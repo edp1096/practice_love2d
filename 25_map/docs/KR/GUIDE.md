@@ -252,6 +252,62 @@ bgm = {
 
 3. Tiled 맵 속성에 설정: `bgm = "yourmusic"`
 
+### 패럴랙스 배경 추가하기
+
+깊이감 있는 다중 레이어 스크롤 배경을 만듭니다.
+
+1. **이미지 준비:**
+   - `assets/backgrounds/`에 배치
+   - 예: `layer1_sky.png`, `layer2_mountains.png` 등
+
+2. **Tiled 맵에서 "Parallax" objectgroup 레이어 생성**
+
+3. **오브젝트 추가 (레이어당 하나씩) 및 커스텀 속성 설정:**
+
+```
+오브젝트 1 (하늘):
+  Name: "sky" (참고용)
+  Type: 비워둠 (Tiled에 type 필드 없을 수 있음)
+
+  커스텀 속성 (추가 필수!):
+    Type (string) = "parallax"                       ← 필수!
+    image (string) = "assets/backgrounds/layer1_sky.png"
+    parallax_factor (float) = 0.1                    (0.0 = 고정, 1.0 = 일반)
+    z_index (int) = 1                                (낮을수록 뒤에)
+    repeat_x (bool) = true                           (가로 타일링)
+    offset_y (float) = 0                             (세로 위치)
+    auto_scroll_x (float) = 0                        (선택: 자동 스크롤)
+
+오브젝트 2 (산):
+  커스텀 속성:
+    Type = "parallax"
+    image = "assets/backgrounds/layer2_mountains.png"
+    parallax_factor = 0.3
+    z_index = 2
+    repeat_x = true
+    offset_y = 0
+
+오브젝트 3 (구름):
+  커스텀 속성:
+    Type = "parallax"
+    image = "assets/backgrounds/layer3_clouds.png"
+    parallax_factor = 0.5
+    z_index = 3
+    repeat_x = true
+    offset_y = 0
+    auto_scroll_x = 10                               ← 구름 표류 효과!
+```
+
+4. **맵을 Lua로 내보내기**
+
+**결과:** 깊이감 있는 무한 스크롤 배경!
+
+**팁:**
+- parallax_factor가 낮을수록 = 느린 스크롤 = 멀리 있음
+- offset_y로 세로 위치 조정
+- auto_scroll_x로 표류 효과 (구름, 안개 등)
+- 탑다운/플랫포머 모드 모두 작동
+
 ---
 
 ## 지속성 시스템
