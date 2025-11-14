@@ -350,4 +350,22 @@ function loaders.loadWorldItems(self, picked_items)
     end
 end
 
+function loaders.loadParallax(self)
+    -- Load parallax backgrounds from Tiled map
+    local tiled_loader = require "engine.systems.parallax.tiled_loader"
+    local parallax = require "engine.systems.parallax"
+
+    -- Extract parallax layer configs from map
+    local layer_configs = tiled_loader.loadParallaxLayers(self.map)
+
+    -- Initialize parallax system if layers found
+    if #layer_configs > 0 then
+        parallax:init(layer_configs)
+        print("Loaded " .. #layer_configs .. " parallax layer(s)")
+    else
+        -- Clear parallax if no layers
+        parallax:clear()
+    end
+end
+
 return loaders

@@ -103,6 +103,9 @@ function world:new(map_path, entity_classes, picked_items, killed_enemies)
     instance.world_items = {}
     loaders.loadWorldItems(instance, instance.picked_items)
 
+    -- Load parallax backgrounds
+    loaders.loadParallax(instance)
+
     return instance
 end
 
@@ -110,6 +113,10 @@ function world:update(dt)
     self.physicsWorld:update(dt)
     self.map:update(dt)
     effects:update(dt)
+
+    -- Update parallax (auto-scroll)
+    local parallax = require "engine.systems.parallax"
+    parallax:update(dt)
 
     -- Update world items
     entities.updateWorldItems(self, dt)
@@ -162,6 +169,7 @@ world.removeWorldItem = entities.removeWorldItem
 
 -- Delegate rendering functions
 world.draw = rendering.draw
+world.drawParallax = rendering.drawParallax
 world.drawLayer = rendering.drawLayer
 world.drawEntitiesYSorted = rendering.drawEntitiesYSorted
 world.drawSavePoints = rendering.drawSavePoints

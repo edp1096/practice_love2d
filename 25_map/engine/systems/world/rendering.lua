@@ -38,6 +38,15 @@ function rendering.draw(self)
     self.map:draw()
 end
 
+-- Draw parallax backgrounds
+-- camera: camera object (optional, can pass nil)
+function rendering.drawParallax(self, camera)
+    local parallax = require "engine.systems.parallax"
+    if parallax:isActive() then
+        parallax:draw(camera)
+    end
+end
+
 function rendering.drawLayer(self, layer_name)
     local layer = self.map.layers[layer_name]
     if not layer then return end
