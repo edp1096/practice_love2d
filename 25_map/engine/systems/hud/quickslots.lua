@@ -1,6 +1,8 @@
 -- systems/hud/quickslots.lua
 -- Quickslot belt UI rendering and management
 
+local colors = require "engine.ui.colors"
+
 local quickslots = {}
 
 -- Configuration
@@ -8,14 +10,6 @@ local SLOT_SIZE = 50
 local SLOT_SPACING = 10
 local SLOT_COUNT = 5
 local FONT_SIZE = 16
-
--- Colors (will use engine colors later)
-local SLOT_BG = {0.2, 0.2, 0.2, 0.8}
-local SLOT_BORDER = {0.6, 0.6, 0.6, 1}
-local SLOT_HOVER = {1, 1, 0, 0.3}
-local KEY_TEXT = {1, 1, 1, 1}
-local QUANTITY_TEXT = {1, 1, 1, 1}
-local UNUSABLE = {0.5, 0.5, 0.5, 0.7}
 
 -- Font
 local key_font = nil
@@ -61,21 +55,21 @@ function quickslots.drawSlot(slot_index, x, y, inventory, player, selected_slot)
     local item, item_id, item_data = inventory:getQuickslotItem(slot_index)
 
     -- Draw slot background
-    love.graphics.setColor(SLOT_BG)
+    colors:apply(colors.for_quickslot_bg)
     love.graphics.rectangle("fill", x, y, SLOT_SIZE, SLOT_SIZE)
 
     -- Draw slot border (yellow if selected, gray otherwise)
     if slot_index == selected_slot then
-        love.graphics.setColor(1, 1, 0, 1)  -- Yellow for selected slot
+        colors:apply(colors.for_quickslot_selected)
         love.graphics.setLineWidth(3)
     else
-        love.graphics.setColor(SLOT_BORDER)
+        colors:apply(colors.for_quickslot_border)
         love.graphics.setLineWidth(2)
     end
     love.graphics.rectangle("line", x, y, SLOT_SIZE, SLOT_SIZE)
 
     -- Draw key number
-    love.graphics.setColor(KEY_TEXT)
+    colors:apply(colors.for_text_normal)
     love.graphics.setFont(key_font)
     local key_text = tostring(slot_index)
     local key_width = key_font:getWidth(key_text)
@@ -107,15 +101,15 @@ function quickslots.drawSlot(slot_index, x, y, inventory, player, selected_slot)
 
             -- Draw sprite
             if can_use then
-                love.graphics.setColor(1, 1, 1, 1)
+                colors:apply(colors.WHITE)
             else
-                love.graphics.setColor(UNUSABLE)
+                colors:apply(colors.for_quickslot_unusable)
             end
 
             love.graphics.draw(sprite_img, quad, draw_x, draw_y, 0, sprite_scale, sprite_scale)
         else
             -- Fallback: draw item name
-            love.graphics.setColor(can_use and KEY_TEXT or UNUSABLE)
+            colors:apply(can_use and colors.for_text_normal or colors.for_quickslot_unusable)
             love.graphics.setFont(quantity_font)
             local name_short = item.name:sub(1, 6)
             love.graphics.printf(name_short, x + 2, y + SLOT_SIZE/2 - 6, SLOT_SIZE - 4, "center")
@@ -124,7 +118,7 @@ function quickslots.drawSlot(slot_index, x, y, inventory, player, selected_slot)
         -- Draw quantity if stackable
         if item.max_stack and item.max_stack > 1 then
             local quantity = item.quantity or 1  -- Get from item object, not item_data
-            love.graphics.setColor(QUANTITY_TEXT)
+            colors:apply(colors.for_text_normal)
             love.graphics.setFont(quantity_font)
             local qty_text = tostring(quantity)
             local qty_width = quantity_font:getWidth(qty_text)
@@ -132,8 +126,7 @@ function quickslots.drawSlot(slot_index, x, y, inventory, player, selected_slot)
         end
     end
 
-    -- Reset color
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
 end
 
 return quickslots

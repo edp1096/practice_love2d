@@ -54,7 +54,9 @@ core/
 
 ```
 systems/
-├── collision.lua         - Collision system (dual collider for topdown)
+├── collision.lua         - Collision system
+│                           - Dual collider for topdown mode
+│                           - Game mode-aware NPC colliders
 ├── inventory.lua         - Inventory system
 │
 ├── world/                - Physics & map system
@@ -72,13 +74,14 @@ systems/
 │   └── source.lua        - Light source class
 │
 ├── parallax/             - Parallax background system
-│   ├── init.lua          - Parallax manager (multiple layers)
+│   ├── init.lua          - Parallax manager (display-integrated)
 │   ├── layer.lua         - Individual layer (smooth scrolling)
 │   └── tiled_loader.lua  - Load from Tiled maps
 │
 └── hud/                  - In-game HUD
-    ├── status.lua        - Health bars, cooldowns
-    └── minimap.lua       - Minimap rendering
+    ├── status.lua        - Health bars, cooldowns, parry UI
+    ├── minimap.lua       - Minimap rendering (75% opacity)
+    └── quickslots.lua    - Quickslot belt UI (bottom center)
 ```
 
 ### Entities (`engine/entities/`) ⭐
@@ -153,6 +156,10 @@ scenes/
 
 ```
 ui/
+├── colors.lua            - ⭐ Centralized color system
+│                           - Base palette + semantic mappings
+│                           - Helper functions (apply, withAlpha, etc.)
+│
 ├── menu/                 - Menu UI system
 │   ├── base.lua          - MenuSceneBase (base class)
 │   └── helpers.lua       - Menu helpers (layout, navigation)
@@ -160,9 +167,9 @@ ui/
 ├── screens/              - Reusable UI screens
 │   ├── newgame.lua       - New game slot selection
 │   ├── saveslot.lua      - Save game screen
-│   ├── load.lua          - Load game screen
-│   ├── inventory.lua     - Inventory UI
-│   └── settings.lua      - Settings screen
+│   ├── load/             - Load game screen (modular)
+│   ├── inventory/        - Inventory UI (modular)
+│   └── settings/         - Settings screen (modular)
 │
 ├── dialogue.lua          - NPC dialogue (Talkies wrapper)
 ├── prompt.lua            - Interaction prompts (dynamic button icons)
@@ -171,6 +178,12 @@ ui/
     ├── skip_button.lua   - Skip button (0.5s hold charge)
     └── next_button.lua   - Next button
 ```
+
+**Color System (`colors.lua`):**
+- **5 Helper Functions:** `apply()`, `withAlpha()`, `unpackRGB()`, `unpackRGBA()`, `toVertex()`
+- **Base Palette:** Pure colors (WHITE, DARK_CHARCOAL, SKY_BLUE, etc.)
+- **Semantic Mappings:** Purpose-based names (for_text_normal, for_menu_selected, etc.)
+- **Coverage:** All HUD & UI screens use centralized colors (Phase 2 complete)
 
 ### Utilities (`engine/utils/`)
 
@@ -303,6 +316,11 @@ Parallax Layer (in "Parallax" objectgroup):
     auto_scroll_x = 10             (optional: auto-scroll speed px/s)
 ```
 
+**Parallax System Features:**
+- ✅ **Virtual Resolution Integration** - Uses 960x540 virtual coords
+- ✅ **Display Transform** - Proper letterbox offset + scale
+- ✅ **Window Resize Support** - Scales correctly with fullscreen toggle
+
 ---
 
 ## 📦 Vendor Folder
@@ -403,13 +421,22 @@ Examples:
 **Engine Core:**
 - `engine/core/lifecycle.lua` - Main game loop orchestrator
 - `engine/core/scene_control.lua` - Scene management
+- `engine/core/coords.lua` - Unified coordinate transformations
 - `engine/systems/world/init.lua` - Physics & map system
+- `engine/systems/collision.lua` - Collision system (NPC game mode-aware)
+- `engine/systems/parallax/init.lua` - Parallax backgrounds (display-integrated)
 - `engine/scenes/gameplay/init.lua` - Main gameplay scene ⭐ Persistence!
 
 **Entity System:**
 - `engine/entities/factory.lua` - Creates entities from Tiled
 - `engine/entities/world_item/init.lua` - Dropped items ⭐ Respawn control!
 - `engine/entities/enemy/init.lua` - Enemy base class ⭐ Respawn control!
+
+**UI & Systems:**
+- `engine/ui/colors.lua` - Centralized color system ⭐ Phase 2 complete!
+- `engine/systems/hud/minimap.lua` - Minimap (75% opacity)
+- `engine/systems/hud/quickslots.lua` - Quickslot belt
+- `engine/ui/screens/inventory/inventory_renderer.lua` - Inventory UI
 
 **Game Config:**
 - `game/data/player.lua` - Player stats (injected)
@@ -422,6 +449,6 @@ Examples:
 
 ---
 
-**Last Updated:** 2025-11-13
+**Last Updated:** 2025-11-15
 **Framework:** LÖVE 11.5 + Lua 5.1
-**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven + Persistence
+**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven + Persistence + Centralized Colors

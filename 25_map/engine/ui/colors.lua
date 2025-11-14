@@ -16,6 +16,7 @@ colors.DARK_GRAY = {0.6, 0.6, 0.6, 1}
 colors.DIM_GRAY = {0.5, 0.5, 0.5, 1}
 colors.CHARCOAL = {0.3, 0.3, 0.3}
 colors.DARK_CHARCOAL = {0.2, 0.2, 0.2}
+colors.DARK_CHARCOAL_80 = {0.2, 0.2, 0.2, 0.8}
 
 -- Blues
 colors.SKY_BLUE = {0.5, 0.8, 1, 1}
@@ -38,6 +39,7 @@ colors.FULL_GREEN = {0, 1, 0}
 colors.BRIGHT_YELLOW = {1, 1, 0, 1}
 colors.BRIGHT_YELLOW_ALPHA = {1, 1, 0, 0.8}
 colors.GOLDEN_YELLOW = {1, 0.9, 0}
+colors.PASTEL_YELLOW = {1, 1, 0.5, 1}
 colors.AMBER = {1, 0.8, 0}
 
 -- Reds
@@ -58,6 +60,7 @@ colors.BLACK_DARK_OVERLAY = {0, 0, 0, 0.9}
 colors.DARK_BLUE_TRANSPARENT = {0.3, 0.3, 0.4, 0.8}
 colors.CHARCOAL_TRANSPARENT = {0.3, 0.3, 0.3, 0.7}
 colors.CHARCOAL_SELECTED = {0.4, 0.4, 0.4, 0.9}
+colors.DIM_GRAY_ALPHA = {0.5, 0.5, 0.5, 0.7}
 
 -- Special UI colors
 colors.LIGHT_CYAN_BLUE = {0.8, 0.8, 1.0}
@@ -82,6 +85,8 @@ colors.PERFECT_PARRY_YELLOW = {1, 1, 0}
 colors.PARRY_BLUE = {0.5, 0.8, 1}
 colors.SLOW_MOTION_BLUE = {0.2, 0.4, 0.6}
 
+-- Quickslot specific (moved below, using existing colors)
+
 -- ========================================
 -- PART 2: SEMANTIC MAPPING (UI purpose)
 -- ========================================
@@ -94,8 +99,10 @@ colors.for_inventory_bg = colors.NAVY_BLUE
 colors.for_inventory_border = colors.BLUE_GRAY
 colors.for_item_equipment = colors.LIGHT_PURPLE
 colors.for_item_usable = colors.BRIGHT_GREEN
+colors.for_item_unusable = colors.BRIGHT_CRIMSON
 colors.for_placement_valid = colors.LIGHT_GREEN_ALPHA
 colors.for_placement_invalid = colors.LIGHT_RED_ALPHA
+colors.for_equipment_icon_fallback = colors.PASTEL_YELLOW
 
 -- Text colors
 colors.for_text_normal = colors.WHITE
@@ -175,6 +182,12 @@ colors.for_hud_text_dim = colors.MID_GRAY_TEXT
 colors.for_hud_parry_perfect = colors.PERFECT_PARRY_YELLOW
 colors.for_hud_parry_normal = colors.PARRY_BLUE
 colors.for_hud_slow_motion = colors.SLOW_MOTION_BLUE
+
+-- Quickslots
+colors.for_quickslot_bg = colors.DARK_CHARCOAL_80
+colors.for_quickslot_border = colors.DARK_GRAY
+colors.for_quickslot_selected = colors.BRIGHT_YELLOW
+colors.for_quickslot_unusable = colors.DIM_GRAY_ALPHA
 
 -- ========================================
 -- PART 3: CONSTANTS

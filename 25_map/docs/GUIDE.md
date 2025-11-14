@@ -30,7 +30,7 @@ luac -p **/*.lua
 ### Project Structure
 
 ```
-24_item/
+25_map/
 ├── engine/           # Reusable game engine (100% reusable)
 ├── game/             # Game-specific content
 │   ├── data/         # Configuration files
@@ -604,6 +604,6 @@ For code examples, see:
 
 ---
 
-**Last Updated:** 2025-11-13
-**Engine Version:** 24_item
+**Last Updated:** 2025-11-15
+**Engine Version:** 25_map
 **LÖVE Version:** 11.5

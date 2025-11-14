@@ -120,7 +120,7 @@ function slot_renderer.renderItemGrid(inventory, selected_item_id, title_font, i
             end
             love.graphics.rectangle("line", screen_x, screen_y, item_w, item_h, 5, 5)
             love.graphics.setLineWidth(1)
-            love.graphics.setColor(1, 1, 1, 1)
+            colors:reset()
 
         -- Draw item icon/sprite
         local item = item_data.item
@@ -147,7 +147,7 @@ function slot_renderer.renderItemGrid(inventory, selected_item_id, title_font, i
             local sprite_y = screen_y + (item_h - sprite_h) / 2
 
             -- Draw sprite
-            love.graphics.setColor(1, 1, 1, 1)
+            colors:apply(colors.WHITE)
             love.graphics.draw(sprite_sheet, quad, sprite_x, sprite_y, 0, item.sprite.scale, item.sprite.scale)
         else
             -- Fallback: text icon (for potions without sprites)
@@ -164,13 +164,13 @@ function slot_renderer.renderItemGrid(inventory, selected_item_id, title_font, i
 
         -- Draw quantity (bottom-left corner)
         if item.quantity > 1 then
-            text_ui:draw("x" .. item.quantity, screen_x + 5, screen_y + item_h - 20, {1, 1, 1, 1}, desc_font)
+            text_ui:draw("x" .. item.quantity, screen_x + 5, screen_y + item_h - 20, colors.for_text_normal, desc_font)
         end
 
         -- Draw size indicator (top-right corner, for debugging)
         local size_text = string.format("%dx%d", item_data.width, item_data.height)
         local size_w = desc_font:getWidth(size_text)
-        local size_color = {colors.for_text_mid_gray[1], colors.for_text_mid_gray[2], colors.for_text_mid_gray[3], 0.7}
+        local size_color = colors:withAlpha(colors.for_text_mid_gray, 0.7)
         text_ui:draw(size_text, screen_x + item_w - size_w - 5, screen_y + 5, size_color, desc_font)
         end
     end
@@ -190,11 +190,11 @@ function slot_renderer.renderItemGrid(inventory, selected_item_id, title_font, i
         local cursor_screen_x, cursor_screen_y = slot_renderer.gridToScreen(cursor_x, cursor_y, start_x, start_y)
 
         -- Gamepad cursor border
-        love.graphics.setColor(colors.for_gamepad_cursor)
+        colors:apply(colors.for_gamepad_cursor)
         love.graphics.setLineWidth(colors.BORDER_WIDTH_THICK)
         love.graphics.rectangle("line", cursor_screen_x - 2, cursor_screen_y - 2, CELL_SIZE + 4, CELL_SIZE + 4)
         love.graphics.setLineWidth(1)
-        love.graphics.setColor(1, 1, 1, 1)
+        colors:reset()
     end
 
     return start_x, start_y
@@ -243,11 +243,7 @@ function slot_renderer.renderDraggedItem(inventory, drag_state, grid_start_x, gr
                     local cell_screen_x, cell_screen_y = slot_renderer.gridToScreen(cell_x, cell_y, grid_start_x, grid_start_y)
 
                     -- Draw highlight (green if valid, red if invalid)
-                    if can_place then
-                        love.graphics.setColor(colors.for_placement_valid)
-                    else
-                        love.graphics.setColor(colors.for_placement_invalid)
-                    end
+                    colors:apply(can_place and colors.for_placement_valid or colors.for_placement_invalid)
                     love.graphics.rectangle("fill", cell_screen_x, cell_screen_y, CELL_SIZE, CELL_SIZE)
                 end
             end
@@ -255,7 +251,7 @@ function slot_renderer.renderDraggedItem(inventory, drag_state, grid_start_x, gr
     end
 
     -- Draw dragged item (semi-transparent)
-    love.graphics.setColor(1, 1, 1, 0.7)
+    colors:apply(colors.WHITE, 0.7)
     shapes:drawSlot(item_screen_x, item_screen_y, item_w, item_h, false, true, 5)
 
     -- Draw item icon/sprite
@@ -276,18 +272,13 @@ function slot_renderer.renderDraggedItem(inventory, drag_state, grid_start_x, gr
         local sprite_x = item_screen_x + (item_w - sprite_w) / 2
         local sprite_y = item_screen_y + (item_h - sprite_h) / 2
 
-        love.graphics.setColor(1, 1, 1, 0.7)  -- Semi-transparent
+        colors:apply(colors.WHITE, 0.7)
         love.graphics.draw(sprite_sheet, quad, sprite_x, sprite_y, 0, item_obj.sprite.scale, item_obj.sprite.scale)
     else
         -- Fallback: text icon for potions
         local icon_text = "HP"
         -- Use item's color property with 0.7 alpha, or default to semi-transparent white
-        local icon_color
-        if item_obj.color then
-            icon_color = {item_obj.color[1], item_obj.color[2], item_obj.color[3], 0.7}
-        else
-            icon_color = {1, 1, 1, 0.7}
-        end
+        local icon_color = item_obj.color and colors:withAlpha(item_obj.color, 0.7) or colors:withAlpha(colors.WHITE, 0.7)
 
         local icon_w = title_font:getWidth(icon_text)
         local icon_x = item_screen_x + (item_w - icon_w) / 2
@@ -297,11 +288,10 @@ function slot_renderer.renderDraggedItem(inventory, drag_state, grid_start_x, gr
 
     -- Draw quantity
     if item_obj.quantity > 1 then
-        text_ui:draw("x" .. item_obj.quantity, item_screen_x + 5, item_screen_y + item_h - 20, {1, 1, 1, 0.7}, desc_font)
+        text_ui:draw("x" .. item_obj.quantity, item_screen_x + 5, item_screen_y + item_h - 20, colors:withAlpha(colors.WHITE, 0.7), desc_font)
     end
 
-    -- Reset color
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
 end
 
 -- Render gamepad dragged item at cursor position
@@ -332,18 +322,14 @@ function slot_renderer.renderGamepadDraggedItem(inventory, gamepad_drag, cursor_
                 local cell_screen_x, cell_screen_y = slot_renderer.gridToScreen(cell_x, cell_y, grid_start_x, grid_start_y)
 
                 -- Draw highlight (green if valid, red if invalid)
-                if can_place then
-                    love.graphics.setColor(colors.for_placement_valid)
-                else
-                    love.graphics.setColor(colors.for_placement_invalid)
-                end
+                colors:apply(can_place and colors.for_placement_valid or colors.for_placement_invalid)
                 love.graphics.rectangle("fill", cell_screen_x, cell_screen_y, CELL_SIZE, CELL_SIZE)
             end
         end
     end
 
     -- Draw dragged item (semi-transparent)
-    love.graphics.setColor(1, 1, 1, 0.7)
+    colors:apply(colors.WHITE, 0.7)
     local shapes = require "engine.utils.shapes"
     shapes:drawSlot(item_screen_x, item_screen_y, item_w, item_h, false, true, 5)
 
@@ -367,18 +353,13 @@ function slot_renderer.renderGamepadDraggedItem(inventory, gamepad_drag, cursor_
         local sprite_x = item_screen_x + (item_w - sprite_w) / 2
         local sprite_y = item_screen_y + (item_h - sprite_h) / 2
 
-        love.graphics.setColor(1, 1, 1, 0.7)  -- Semi-transparent
+        colors:apply(colors.WHITE, 0.7)
         love.graphics.draw(sprite_sheet, quad, sprite_x, sprite_y, 0, item_obj.sprite.scale, item_obj.sprite.scale)
     else
         -- Fallback: text icon for potions
         local icon_text = "HP"
         -- Use item's color property with 0.7 alpha, or default to semi-transparent white
-        local icon_color
-        if item_obj.color then
-            icon_color = {item_obj.color[1], item_obj.color[2], item_obj.color[3], 0.7}
-        else
-            icon_color = {1, 1, 1, 0.7}
-        end
+        local icon_color = item_obj.color and colors:withAlpha(item_obj.color, 0.7) or colors:withAlpha(colors.WHITE, 0.7)
 
         local icon_w = title_font:getWidth(icon_text)
         local icon_x = item_screen_x + (item_w - icon_w) / 2
@@ -388,11 +369,10 @@ function slot_renderer.renderGamepadDraggedItem(inventory, gamepad_drag, cursor_
 
     -- Draw quantity
     if item_obj.quantity > 1 then
-        text_ui:draw("x" .. item_obj.quantity, item_screen_x + 5, item_screen_y + item_h - 20, {1, 1, 1, 0.7}, desc_font)
+        text_ui:draw("x" .. item_obj.quantity, item_screen_x + 5, item_screen_y + item_h - 20, colors:withAlpha(colors.WHITE, 0.7), desc_font)
     end
 
-    -- Reset color
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
 end
 
 -- Render selected item details below the grid
@@ -417,7 +397,7 @@ function slot_renderer.renderItemDetails(inventory, selected_item_id, player, wi
 
     -- Line 1: Item name - Description
     local line1 = string.format("%s - %s", item.name, item.description)
-    text_ui:draw(line1, detail_x, detail_y, {1, 1, 1, 1}, item_font)
+    text_ui:draw(line1, detail_x, detail_y, colors.for_text_normal, item_font)
 
     -- Line 2: Position | Size | Status (all in one line)
     local status_text
@@ -432,7 +412,7 @@ function slot_renderer.renderItemDetails(inventory, selected_item_id, player, wi
         status_color = colors.for_item_usable
     else
         status_text = "✗ Cannot use (HP full)"
-        status_color = {1, 0.3, 0.3, 1}  -- Red (keep as-is, specific to this context)
+        status_color = colors.for_item_unusable
     end
 
     -- Build line2 (position/size info)
@@ -519,13 +499,9 @@ function slot_renderer.renderEquipmentSlots(inventory, window_x, window_y, title
 
         -- Draw drag-over highlight (green if can equip, red if cannot)
         if is_drag_over and not equipment_mode then
-            if can_equip_here then
-                love.graphics.setColor(colors.for_placement_valid)
-            else
-                love.graphics.setColor(colors.for_placement_invalid)
-            end
+            colors:apply(can_equip_here and colors.for_placement_valid or colors.for_placement_invalid)
             love.graphics.rectangle("fill", slot_x, slot_y, SLOT_SIZE, SLOT_SIZE)
-            love.graphics.setColor(1, 1, 1, 1)
+            colors:reset()
         end
 
         -- Draw slot label above
@@ -561,7 +537,7 @@ function slot_renderer.renderEquipmentSlots(inventory, window_x, window_y, title
                     local sprite_y = slot_y + (SLOT_SIZE - sprite_h) / 2
 
                     -- Draw sprite
-                    love.graphics.setColor(1, 1, 1, 1)
+                    colors:apply(colors.WHITE)
                     love.graphics.draw(sprite_sheet, quad, sprite_x, sprite_y, 0, item.sprite.scale, item.sprite.scale)
                 else
                     -- Fallback: text icon
@@ -578,7 +554,7 @@ function slot_renderer.renderEquipmentSlots(inventory, window_x, window_y, title
                     local icon_w = title_font:getWidth(icon_text)
                     local icon_x = slot_x + (SLOT_SIZE - icon_w) / 2
                     local icon_y = slot_y + (SLOT_SIZE - title_font:getHeight()) / 2
-                    text_ui:draw(icon_text, icon_x, icon_y, {1, 1, 0.5, 1}, title_font)
+                    text_ui:draw(icon_text, icon_x, icon_y, colors.for_equipment_icon_fallback, title_font)
                 end
             end
         end
@@ -630,26 +606,26 @@ function slot_renderer.renderQuickslots(inventory, window_x, window_y, window_w,
 
         -- Highlight if can drop
         if can_drop then
-            love.graphics.setColor(1, 1, 0, 0.3)
+            colors:apply(colors.BRIGHT_YELLOW, 0.3)
             love.graphics.rectangle("fill", x, y, QUICK_SLOT_SIZE, QUICK_SLOT_SIZE)
         end
 
         -- Draw slot background
-        love.graphics.setColor(0.2, 0.2, 0.2, 0.8)
+        colors:apply(colors.for_quickslot_bg)
         love.graphics.rectangle("fill", x, y, QUICK_SLOT_SIZE, QUICK_SLOT_SIZE)
 
         -- Draw slot border (yellow if selected in quickslot mode)
         if quickslot_mode and quickslot_cursor == i then
-            love.graphics.setColor(1, 1, 0, 1)  -- Yellow for selected slot
+            colors:apply(colors.for_quickslot_selected)
             love.graphics.setLineWidth(3)
         else
-            love.graphics.setColor(0.6, 0.6, 0.6, 1)
+            colors:apply(colors.for_quickslot_border)
             love.graphics.setLineWidth(2)
         end
         love.graphics.rectangle("line", x, y, QUICK_SLOT_SIZE, QUICK_SLOT_SIZE)
 
         -- Draw key number
-        love.graphics.setColor(1, 1, 1, 1)
+        colors:apply(colors.for_text_normal)
         love.graphics.print(tostring(i), x + 4, y + 4)
 
         -- Draw item if assigned (skip if being dragged)
@@ -674,18 +650,14 @@ function slot_renderer.renderQuickslots(inventory, window_x, window_y, window_w,
                 local draw_x = x + (QUICK_SLOT_SIZE - sprite_w * sprite_scale) / 2
                 local draw_y = y + (QUICK_SLOT_SIZE - sprite_h * sprite_scale) / 2
 
-                if can_use then
-                    love.graphics.setColor(1, 1, 1, 1)
-                else
-                    love.graphics.setColor(0.5, 0.5, 0.5, 0.7)
-                end
+                colors:apply(can_use and colors.WHITE or colors.for_quickslot_unusable)
 
                 love.graphics.draw(sprite_img, quad, draw_x, draw_y, 0, sprite_scale, sprite_scale)
             end
 
             -- Draw quantity if stackable
             if item.max_stack and item.max_stack > 1 and item_data.quantity then
-                love.graphics.setColor(1, 1, 1, 1)
+                colors:apply(colors.for_text_normal)
                 local qty_text = tostring(item_data.quantity)
                 love.graphics.print(qty_text, x + QUICK_SLOT_SIZE - 20, y + QUICK_SLOT_SIZE - 16)
             end
@@ -697,13 +669,13 @@ function slot_renderer.renderQuickslots(inventory, window_x, window_y, window_w,
             progress = math.min(progress, 1.0)  -- Cap at 1.0
 
             -- Draw red overlay with increasing opacity
-            love.graphics.setColor(1, 0, 0, 0.3 + progress * 0.4)
+            colors:apply(colors.FULL_RED, 0.3 + progress * 0.4)
             love.graphics.rectangle("fill", x, y, QUICK_SLOT_SIZE, QUICK_SLOT_SIZE)
 
             -- Draw progress bar at bottom
             local bar_height = 4
             local bar_y = y + QUICK_SLOT_SIZE - bar_height
-            love.graphics.setColor(1, 0, 0, 0.8)
+            colors:apply(colors.FULL_RED, 0.8)
             love.graphics.rectangle("fill", x, bar_y, QUICK_SLOT_SIZE * progress, bar_height)
         end
 
@@ -716,7 +688,7 @@ function slot_renderer.renderQuickslots(inventory, window_x, window_y, window_w,
         }
     end
 
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
     love.graphics.setLineWidth(1)
 
     return quickslot_bounds

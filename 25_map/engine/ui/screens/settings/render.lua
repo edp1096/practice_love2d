@@ -14,23 +14,24 @@ function render:draw(state)
     if state.previous and state.previous.draw then
         state.previous:draw()
     else
-        love.graphics.clear(0.1, 0.1, 0.15, 1)
+        colors:apply(colors.NAVY_BLUE)
+        love.graphics.clear(love.graphics.getColor())
     end
 
     -- Draw semi-transparent overlay
     if state.previous then
         display:Attach()
-        love.graphics.setColor(0, 0, 0, 0.9)
+        colors:apply(colors.for_dialog_dark)
         love.graphics.rectangle("fill", 0, 0, state.virtual_width, state.virtual_height)
         display:Detach()
     end
 
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
 
     display:Attach()
 
     -- Title
-    text_ui:drawCentered("Settings", state.layout.title_y, state.virtual_width, {1, 1, 1, 1}, state.titleFont)
+    text_ui:drawCentered("Settings", state.layout.title_y, state.virtual_width, colors.for_text_normal, state.titleFont)
 
     -- Draw settings options
     for i, option in ipairs(state.options) do
@@ -43,7 +44,7 @@ function render:draw(state)
         -- Draw value
         local value_text = options_module:getOptionValue(state, i)
         if option.type ~= "action" then
-            local value_color = is_selected and {1, 1, 0, 1} or {1, 1, 1, 1}
+            local value_color = is_selected and colors.for_menu_selected or colors.for_text_normal
             text_ui:drawf(value_text, state.layout.value_x, y, state.virtual_width - state.layout.value_x - 100, "left", value_color, state.valueFont)
         end
 
@@ -51,7 +52,7 @@ function render:draw(state)
         if is_selected and option.type ~= "action" then
             love.graphics.setFont(state.valueFont)
             local value_width = state.valueFont:getWidth(value_text)
-            text_ui:draw("< >", state.layout.value_x + value_width + 20, y, {0.5, 0.5, 1, 1})
+            text_ui:draw("< >", state.layout.value_x + value_width + 20, y, colors.for_settings_arrow)
         end
     end
 

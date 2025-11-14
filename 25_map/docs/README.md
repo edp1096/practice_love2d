@@ -83,13 +83,13 @@ The `game/` folder contains **only** game-specific content:
 ## 📁 Project Structure
 
 ```
-24_item/
+25_map/
 ├── engine/           # Reusable game engine (100% reusable)
 │   ├── core/         # Core systems (lifecycle, input, scene, etc.)
 │   ├── systems/      # Subsystems (world, effects, lighting, hud)
 │   ├── entities/     # All entities (player, enemy, weapon, npc, item)
 │   ├── scenes/       # Scene builders (builder, cutscene, gameplay)
-│   ├── ui/           # UI systems (menu, dialogue, widgets)
+│   ├── ui/           # UI systems (menu, dialogue, widgets, colors)
 │   └── utils/        # Utilities
 ├── game/             # Game-specific content
 │   ├── data/         # Configuration files (player, scenes, sounds, etc.)
@@ -345,5 +345,5 @@ inventory:addItem("youritem", 1)
 ---
 
 **Framework:** LÖVE 11.5 + Lua 5.1
-**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven
-**Last Updated:** 2025-11-13
+**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven + Centralized Colors
+**Last Updated:** 2025-11-15

@@ -26,18 +26,14 @@ end
 -- Render "Back to Menu" button
 function slot_renderer.drawBackButton(load_scene, slot, y, is_selected)
     love.graphics.setFont(load_scene.slotFont)
-    if is_selected then
-        love.graphics.setColor(1, 1, 0, 1)
-    else
-        love.graphics.setColor(0.8, 0.8, 0.8, 1)
-    end
+    colors:apply(is_selected and colors.for_menu_selected or colors.for_text_light)
     love.graphics.printf(slot.display_name, 0, y + 25, load_scene.virtual_width, "center")
 end
 
 -- Render existing save slot with data
 function slot_renderer.drawExistingSlot(load_scene, slot, i, y, is_selected)
     -- Slot title
-    local title_color = is_selected and {1, 1, 0, 1} or {1, 1, 1, 1}
+    local title_color = is_selected and colors.for_menu_selected or colors.for_text_normal
     text_ui:draw("Slot " .. slot.slot, load_scene.virtual_width * 0.2, y, title_color, load_scene.slotFont)
 
     -- HP info
@@ -81,12 +77,12 @@ function slot_renderer.drawConfirmDialog(load_scene)
 
     -- Confirmation text
     love.graphics.setFont(load_scene.confirmFont)
-    love.graphics.setColor(1, 0.3, 0.3, 1)
+    colors:apply(colors.for_button_delete_border_selected)
     local confirm_text = "Delete Slot " .. load_scene.delete_slot .. "?"
     love.graphics.printf(confirm_text, 0, load_scene.virtual_height / 2 - 60, load_scene.virtual_width, "center")
 
     love.graphics.setFont(load_scene.hintFont)
-    love.graphics.setColor(0.9, 0.9, 0.9, 1)
+    colors:apply(colors.for_text_light)
     love.graphics.printf("This action cannot be undone!", 0, load_scene.virtual_height / 2 - 20, load_scene.virtual_width, "center")
 
     -- Draw Yes/No buttons
@@ -111,11 +107,7 @@ function slot_renderer.drawConfirmButtons(load_scene)
     shapes:drawButton(no_x, button_y, button_width, button_height, no_state, 0)
 
     love.graphics.setFont(load_scene.slotFont)
-    if is_no_selected then
-        love.graphics.setColor(1, 1, 1, 1)
-    else
-        love.graphics.setColor(0.8, 0.8, 0.8, 1)
-    end
+    colors:apply(is_no_selected and colors.for_text_normal or colors.for_text_light)
     love.graphics.printf("No", no_x, button_y + 12, button_width, "center")
 
     -- Yes button (right)
@@ -123,26 +115,14 @@ function slot_renderer.drawConfirmButtons(load_scene)
     local is_yes_selected = (load_scene.confirm_selected == 2)
 
     -- Custom red color for Yes button
-    if is_yes_selected then
-        love.graphics.setColor(0.8, 0.2, 0.2, 0.9)
-    else
-        love.graphics.setColor(0.5, 0.2, 0.2, 0.7)
-    end
+    colors:apply(is_yes_selected and colors.for_button_delete_selected or colors.for_button_delete_normal)
     love.graphics.rectangle("fill", yes_x, button_y, button_width, button_height)
 
-    if is_yes_selected then
-        love.graphics.setColor(1, 0.3, 0.3, 1)
-    else
-        love.graphics.setColor(0.7, 0.3, 0.3, 1)
-    end
+    colors:apply(is_yes_selected and colors.for_button_delete_border_selected or colors.for_button_delete_border_normal)
     love.graphics.rectangle("line", yes_x, button_y, button_width, button_height)
 
     love.graphics.setFont(load_scene.slotFont)
-    if is_yes_selected then
-        love.graphics.setColor(1, 1, 1, 1)
-    else
-        love.graphics.setColor(0.9, 0.9, 0.9, 0.9)
-    end
+    colors:apply(is_yes_selected and colors.for_text_normal or colors:withAlpha(colors.for_text_light, 0.9))
     love.graphics.printf("Yes", yes_x, button_y + 12, button_width, "center")
 end
 
@@ -152,7 +132,7 @@ function slot_renderer.drawConfirmHints(load_scene)
     local button_height = 50
 
     love.graphics.setFont(load_scene.hintFont)
-    love.graphics.setColor(0.7, 0.7, 0.7, 1)
+    colors:apply(colors.for_text_mid_gray)
 
     local input = require "engine.core.input"
     if input:hasGamepad() then
@@ -171,7 +151,7 @@ end
 -- Render input hints at bottom
 function slot_renderer.drawInputHints(load_scene)
     love.graphics.setFont(load_scene.hintFont)
-    love.graphics.setColor(0.5, 0.5, 0.5, 1)
+    colors:apply(colors.for_text_dim)
 
     local input = require "engine.core.input"
     if input:hasGamepad() then
