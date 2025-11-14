@@ -62,6 +62,26 @@ colors.CHARCOAL_SELECTED = {0.4, 0.4, 0.4, 0.9}
 -- Special UI colors
 colors.LIGHT_CYAN_BLUE = {0.8, 0.8, 1.0}
 
+-- Minimap specific
+colors.DARK_GREEN_MID = {0.3, 0.7, 0.3}
+colors.DARK_GREEN_BRIGHT = {0.5, 0.9, 0.5}
+colors.DARK_GREEN_DIM = {0.3, 0.6, 0.3}
+colors.DARK_GREEN_SHADOW = {0.08, 0.25, 0.08}
+colors.DARK_CHARCOAL_OUTLINE = {0.15, 0.15, 0.15, 1}
+colors.LIME_GREEN_TRANSPARENT = {0.5, 1, 0.5, 0.6}
+colors.NEON_GREEN_OUTLINE = {0.2, 1, 0.3}
+colors.RED_OUTLINE = {1, 0.2, 0.2}
+colors.BLACK_75 = {0, 0, 0, 0.75}
+colors.CHARCOAL_90 = {0.3, 0.3, 0.3, 0.9}
+
+-- HUD specific
+colors.BLACK_50 = {0, 0, 0, 0.5}
+colors.BLACK_70 = {0, 0, 0, 0.7}
+colors.MID_GRAY_TEXT = {0.7, 0.7, 0.7, 1}
+colors.PERFECT_PARRY_YELLOW = {1, 1, 0}
+colors.PARRY_BLUE = {0.5, 0.8, 1}
+colors.SLOW_MOTION_BLUE = {0.2, 0.4, 0.6}
+
 -- ========================================
 -- PART 2: SEMANTIC MAPPING (UI purpose)
 -- ========================================
@@ -135,6 +155,26 @@ colors.for_debug_grid = colors.CHARCOAL
 colors.for_debug_collider = colors.FULL_RED
 colors.for_debug_ground = colors.FULL_GREEN
 colors.for_debug_text = colors.BRIGHT_YELLOW
+colors.for_debug_panel_bg = colors.BLACK_50
+
+-- Minimap
+colors.for_minimap_bg = colors.BLACK_75
+colors.for_minimap_border = colors.CHARCOAL_90
+colors.for_minimap_portal = colors.LIME_GREEN_TRANSPARENT
+colors.for_minimap_player_mid = colors.DARK_GREEN_MID
+colors.for_minimap_player_bright = colors.DARK_GREEN_BRIGHT
+colors.for_minimap_player_dim = colors.DARK_GREEN_DIM
+colors.for_minimap_player_shadow = colors.DARK_GREEN_SHADOW
+colors.for_minimap_player_outline = colors.DARK_CHARCOAL_OUTLINE
+colors.for_minimap_npc_outline = colors.NEON_GREEN_OUTLINE
+colors.for_minimap_enemy_outline = colors.RED_OUTLINE
+
+-- HUD
+colors.for_hud_cooldown_bg = colors.BLACK_70
+colors.for_hud_text_dim = colors.MID_GRAY_TEXT
+colors.for_hud_parry_perfect = colors.PERFECT_PARRY_YELLOW
+colors.for_hud_parry_normal = colors.PARRY_BLUE
+colors.for_hud_slow_motion = colors.SLOW_MOTION_BLUE
 
 -- ========================================
 -- PART 3: CONSTANTS
@@ -145,13 +185,39 @@ colors.BORDER_WIDTH_THIN = 1
 colors.BORDER_WIDTH_MEDIUM = 2
 colors.BORDER_WIDTH_THICK = 3
 
--- Helper function to apply color with alpha
+-- ========================================
+-- PART 4: HELPER FUNCTIONS
+-- ========================================
+
+-- Apply color with optional alpha override
 function colors:apply(color, alpha)
-    alpha = alpha or 1.0
+    alpha = alpha or color[4] or 1.0
     love.graphics.setColor(color[1], color[2], color[3], alpha)
 end
 
--- Helper function to reset to white
+-- Create new color table with overridden alpha
+function colors:withAlpha(color, alpha)
+    return {color[1], color[2], color[3], alpha}
+end
+
+-- Unpack RGB only (for cases where alpha is separate)
+function colors:unpackRGB(color)
+    return color[1], color[2], color[3]
+end
+
+-- Unpack RGBA with optional alpha override
+function colors:unpackRGBA(color, alpha)
+    alpha = alpha or color[4] or 1.0
+    return color[1], color[2], color[3], alpha
+end
+
+-- Get RGBA values for mesh vertices (returns 4 values)
+function colors:toVertex(color, alpha)
+    alpha = alpha or color[4] or 1.0
+    return color[1], color[2], color[3], alpha
+end
+
+-- Reset to white
 function colors:reset()
     love.graphics.setColor(1, 1, 1, 1)
 end

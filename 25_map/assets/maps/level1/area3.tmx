@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="2025.09.25" orientation="orthogonal" renderorder="right-down" width="80" height="15" tilewidth="32" tileheight="32" infinite="0" nextlayerid="10" nextobjectid="58">
+<map version="1.10" tiledversion="2025.09.25" orientation="orthogonal" renderorder="right-down" width="80" height="15" tilewidth="32" tileheight="32" infinite="0" nextlayerid="10" nextobjectid="59">
  <editorsettings>
   <export target="area3.lua" format="lua"/>
  </editorsettings>
@@ -43,11 +43,11 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,1,2,2,2,2,3,0,0,0,0,0,0,0,1,2,2,2,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,17,18,18,18,18,19,0,0,0,0,0,0,0,17,18,18,18,19,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,46,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,17,18,18,18,18,19,0,0,0,0,0,0,0,17,18,18,18,19,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,31,0,0,46,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <objectgroup id="9" name="Parallax">
+ <objectgroup id="9" name="Parallax" visible="0">
   <object id="52" name="sky" x="32" y="34" width="128" height="128">
    <properties>
     <property name="Type" value="parallax"/>
@@ -90,7 +90,7 @@
    </properties>
   </object>
  </objectgroup>
- <objectgroup id="3" name="Walls">
+ <objectgroup id="3" name="Walls" visible="0">
   <object id="1" x="0" y="430" width="2560" height="50"/>
   <object id="2" x="174.545" y="398.364" width="162.909" height="34.303"/>
   <object id="4" x="590.375" y="398.375" width="131.443" height="34.875"/>
@@ -98,7 +98,7 @@
   <object id="9" x="2528" y="0" width="32" height="224"/>
   <object id="10" x="0" y="0" width="2560" height="32"/>
  </objectgroup>
- <objectgroup id="7" name="Enemies">
+ <objectgroup id="7" name="Enemies" visible="0">
   <object id="40" x="256" y="366" width="32" height="32">
    <properties>
     <property name="patrol_points" value="0,0;64,0"/>
@@ -112,7 +112,7 @@
    </properties>
   </object>
  </objectgroup>
- <objectgroup id="4" name="Portals">
+ <objectgroup id="4" name="Portals" visible="0">
   <properties>
    <property name="spawn_x" type="float" value="400"/>
    <property name="spawn_y" type="float" value="400"/>
@@ -137,7 +137,7 @@
    </properties>
   </object>
  </objectgroup>
- <objectgroup id="5" name="SavePoints">
+ <objectgroup id="5" name="SavePoints" visible="0">
   <object id="45" x="1888" y="416" width="32" height="32">
    <properties>
     <property name="id" value="save3-1"/>
@@ -145,13 +145,22 @@
    </properties>
   </object>
  </objectgroup>
- <objectgroup id="6" name="NPCs">
-  <object id="46" x="1664" y="390" width="32" height="32">
+ <objectgroup id="6" name="NPCs" visible="0">
+  <object id="46" x="1664" y="368" width="32" height="32">
    <properties>
     <property name="id" value="platformer_guide"/>
     <property name="type" value="villager"/>
    </properties>
   </object>
  </objectgroup>
- <objectgroup id="8" name="HealingPoints"/>
+ <objectgroup id="8" name="HealingPoints">
+  <object id="58" x="1792" y="384" width="32" height="64">
+   <properties>
+    <property name="cooldown" type="float" value="10"/>
+    <property name="heal_amount" type="int" value="30"/>
+    <property name="radius" type="float" value="50"/>
+    <property name="type" value="healing_point"/>
+   </properties>
+  </object>
+ </objectgroup>
 </map>

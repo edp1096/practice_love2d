@@ -17,6 +17,7 @@ function collision.setupCollisionClasses(physicsWorld, game_mode)
     physicsWorld:addCollisionClass("Portals")
     physicsWorld:addCollisionClass("Enemy")
     physicsWorld:addCollisionClass("EnemyFoot")   -- Topdown enemy foot collider
+    physicsWorld:addCollisionClass("NPC")
     physicsWorld:addCollisionClass("Item")
     physicsWorld:addCollisionClass("DeathZone")
     physicsWorld:addCollisionClass("DamageZone")
@@ -30,13 +31,13 @@ function collision.setupCollisionClasses(physicsWorld, game_mode)
     end
 
     -- PlayerFoot: only collides with Wall, WallBase, and EnemyFoot (ignores Enemy main collider!)
-    physicsWorld.collision_classes.PlayerFoot.ignores = { "Player", "PlayerDodging", "Enemy", "Portals", "Item", "DeathZone", "DamageZone" }
+    physicsWorld.collision_classes.PlayerFoot.ignores = { "Player", "PlayerDodging", "Enemy", "Portals", "NPC", "Item", "DeathZone", "DamageZone" }
 
     -- EnemyFoot: only collides with Wall, WallBase, and PlayerFoot (ignores Player main collider!)
-    physicsWorld.collision_classes.EnemyFoot.ignores = { "Player", "PlayerDodging", "Enemy", "Portals", "Item", "DeathZone", "DamageZone" }
+    physicsWorld.collision_classes.EnemyFoot.ignores = { "Player", "PlayerDodging", "Enemy", "Portals", "NPC", "Item", "DeathZone", "DamageZone" }
 
     -- WallBase only collides with PlayerFoot and EnemyFoot (not with combat or other systems)
-    physicsWorld.collision_classes.WallBase.ignores = { "Player", "PlayerDodging", "Enemy", "Wall", "Portals", "Item", "DeathZone", "DamageZone" }
+    physicsWorld.collision_classes.WallBase.ignores = { "Player", "PlayerDodging", "Enemy", "Wall", "Portals", "NPC", "Item", "DeathZone", "DamageZone" }
 
     physicsWorld:collisionClassesSet()
 end
@@ -271,7 +272,7 @@ end
 --- Create collider for NPC entity
 -- @param npc The NPC entity
 -- @param physicsWorld The Windfield physics world
-function collision.createNPCCollider(npc, physicsWorld)
+function collision.createNPCCollider(npc, physicsWorld, game_mode)
     local bounds = npc:getColliderBounds()
     npc.collider = physicsWorld:newBSGRectangleCollider(
         bounds.x, bounds.y,
@@ -280,8 +281,14 @@ function collision.createNPCCollider(npc, physicsWorld)
     )
     npc.collider:setFixedRotation(true)
     npc.collider:setType("static")
-    npc.collider:setCollisionClass(constants.COLLISION_CLASSES.WALL)
+    npc.collider:setCollisionClass(constants.COLLISION_CLASSES.NPC)
     npc.collider:setObject(npc)
+
+    -- Platformer: Make NPC a sensor (no physical collision, only detection)
+    -- Prevents player from standing on NPC like a platform
+    if game_mode == "platformer" then
+        npc.collider:setSensor(true)
+    end
 
     -- Update NPC position to match collider
     npc.x = npc.collider:getX() - npc.collider_offset_x

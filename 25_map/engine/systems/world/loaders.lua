@@ -251,7 +251,7 @@ function loaders.loadNPCs(self)
             new_npc.world = self
 
             -- Create NPC collider using collision module
-            collision.createNPCCollider(new_npc, self.physicsWorld)
+            collision.createNPCCollider(new_npc, self.physicsWorld, self.game_mode)
 
             table.insert(self.npcs, new_npc)
         end

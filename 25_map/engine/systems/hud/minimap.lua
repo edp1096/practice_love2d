@@ -3,6 +3,7 @@
 
 -- Module dependencies (loaded once at module load time)
 local lighting = require "engine.systems.lighting"
+local colors = require "engine.ui.colors"
 
 local minimap = {}
 minimap.__index = minimap
@@ -87,12 +88,12 @@ function minimap:new()
         zoom_factor = ZOOM_FACTOR,
         lighting_brightness = MINIMAP_LIGHTING_BRIGHTNESS,
 
-        -- Colors
-        bg_color = { 0, 0, 0, 0.7 },
-        border_color = { 0.3, 0.3, 0.3, 0.9 },
-        player_color = { 0.2, 0.5, 0.2, 1 },  -- Dark green
-        player_outline_color = { 0.15, 0.15, 0.15, 1 },  -- Dark gray (almost black)
-        portal_color = { 0.5, 1, 0.5, 0.6 },
+        -- Colors (from colors.lua)
+        bg_color = colors.for_minimap_bg,
+        border_color = colors.for_minimap_border,
+        player_color = nil,  -- Unused (using gradient mesh)
+        player_outline_color = colors.for_minimap_player_outline,
+        portal_color = colors.for_minimap_portal,
 
         -- Canvas for rendering minimap
         canvas = nil,
@@ -165,7 +166,7 @@ function minimap:updateMinimapCanvas()
 
     -- Draw portals before pop (inside scale transformation)
     if self.world.transitions then
-        love.graphics.setColor(self.portal_color)
+        colors:apply(self.portal_color)
         for _, transition in ipairs(self.world.transitions) do
             love.graphics.rectangle("fill",
                 math.floor(transition.x),
@@ -211,7 +212,7 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
     end
 
     -- Draw background
-    love.graphics.setColor(self.bg_color)
+    colors:apply(self.bg_color)
     love.graphics.rectangle("fill", x, y, display_size, display_size)
 
     -- Use stencil to clip minimap area
@@ -223,7 +224,7 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
     love.graphics.setStencilTest("greater", 0)
 
     -- Draw static minimap (walls, portals, etc.) with offset
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:apply(colors.WHITE, 0.75)
     love.graphics.draw(self.canvas, math.floor(x + canvas_offset_x), math.floor(y + canvas_offset_y))
 
     -- Apply lighting effect with multiply blend (brightened for minimap visibility)
@@ -260,10 +261,11 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
                 if outline_shader then
                     love.graphics.setShader(outline_shader)
                     local w, h = npc.spriteSheet:getDimensions()
-                    outline_shader:send("outline_color", {0.2, 1, 0.3})
+                    local r, g, b = colors:unpackRGB(colors.for_minimap_npc_outline)
+                    outline_shader:send("outline_color", {r, g, b})
                     outline_shader:send("stepSize", {1/w, 1/h})
 
-                    love.graphics.setColor(1, 1, 1, 1)
+                    colors:apply(colors.WHITE, 0.85)
                     love.graphics.draw(
                         npc.spriteSheet,
                         quad,
@@ -279,7 +281,7 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
                 end
 
                 -- Draw main sprite
-                love.graphics.setColor(1, 1, 1, 1)
+                colors:apply(colors.WHITE, 0.85)
                 love.graphics.draw(
                     npc.spriteSheet,
                     quad,
@@ -315,10 +317,11 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
                 if outline_shader then
                     love.graphics.setShader(outline_shader)
                     local w, h = enemy.spriteSheet:getDimensions()
-                    outline_shader:send("outline_color", {1, 0.2, 0.2})
+                    local r, g, b = colors:unpackRGB(colors.for_minimap_enemy_outline)
+                    outline_shader:send("outline_color", {r, g, b})
                     outline_shader:send("stepSize", {1/w, 1/h})
 
-                    love.graphics.setColor(1, 1, 1, 1)
+                    colors:apply(colors.WHITE, 0.85)
                     love.graphics.draw(
                         enemy.spriteSheet,
                         quad,
@@ -340,7 +343,7 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
                     color_swap_shader:send("target_color", enemy.target_color)
                 end
 
-                love.graphics.setColor(1, 1, 1, 1)
+                colors:apply(colors.WHITE, 0.85)
                 love.graphics.draw(
                     enemy.spriteSheet,
                     quad,
@@ -383,16 +386,21 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
         love.graphics.rotate(angle)
 
         -- Draw metallic gradient (vertical: bright on top, dark on bottom)
+        local r1, g1, b1, a1 = colors:toVertex(colors.for_minimap_player_mid, 0.85)
+        local r2, g2, b2, a2 = colors:toVertex(colors.for_minimap_player_bright, 0.85)
+        local r3, g3, b3, a3 = colors:toVertex(colors.for_minimap_player_dim, 0.85)
+        local r4, g4, b4, a4 = colors:toVertex(colors.for_minimap_player_shadow, 0.85)
+
         local mesh = love.graphics.newMesh({
-            {arrow_length, 0, 0, 0, 0.3, 0.7, 0.3, 1},  -- tip (mid-tone)
-            {-arrow_length, -arrow_width, 0, 0, 0.5, 0.9, 0.5, 1},  -- top back (bright highlight)
-            {-arrow_length * 0.5, 0, 0, 0, 0.3, 0.6, 0.3, 1},  -- middle (mid-tone)
-            {-arrow_length, arrow_width, 0, 0, 0.08, 0.25, 0.08, 1},  -- bottom back (dark shadow)
+            {arrow_length, 0, 0, 0, r1, g1, b1, a1},  -- tip (mid-tone)
+            {-arrow_length, -arrow_width, 0, 0, r2, g2, b2, a2},  -- top back (bright highlight)
+            {-arrow_length * 0.5, 0, 0, 0, r3, g3, b3, a3},  -- middle (mid-tone)
+            {-arrow_length, arrow_width, 0, 0, r4, g4, b4, a4},  -- bottom back (dark shadow)
         }, "fan", "static")
         love.graphics.draw(mesh, 0, 0)
 
         -- Draw thin outline
-        love.graphics.setColor(self.player_outline_color)
+        colors:apply(self.player_outline_color, 0.85)
         love.graphics.setLineWidth(1)
         love.graphics.polygon("line", points)
 
@@ -403,7 +411,7 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
     love.graphics.setStencilTest()
 
     -- Draw border
-    love.graphics.setColor(self.border_color)
+    colors:apply(self.border_color)
     love.graphics.setLineWidth(self.border_width)
     love.graphics.rectangle("line", x, y, display_size, display_size)
 end

@@ -4,6 +4,7 @@
 local fonts = require "engine.utils.fonts"
 local text_ui = require "engine.utils.text"
 local shapes = require "engine.utils.shapes"
+local colors = require "engine.ui.colors"
 
 local hud = {}
 
@@ -18,7 +19,7 @@ end
 
 function hud:draw_cooldown(x, y, size, cd, max_cd, label, key_hint)
     -- Background panel
-    love.graphics.setColor(0, 0, 0, 0.7)
+    colors:apply(colors.for_hud_cooldown_bg)
     love.graphics.rectangle("fill", x - 2, y - 2, size + 4, 44)
 
     -- Cooldown bar
@@ -26,12 +27,12 @@ function hud:draw_cooldown(x, y, size, cd, max_cd, label, key_hint)
 
     -- Label
     if cd > 0 then
-        text_ui:draw(string.format("%s CD: %.1f", label, cd), x + 5, y + 3, {0.7, 0.7, 0.7, 1}, self.small_font)
+        text_ui:draw(string.format("%s CD: %.1f", label, cd), x + 5, y + 3, colors.for_hud_text_dim, self.small_font)
     else
-        text_ui:draw(string.format("%s READY! (%s)", label, key_hint), x + 5, y + 3, {1, 1, 1, 1}, self.small_font)
+        text_ui:draw(string.format("%s READY! (%s)", label, key_hint), x + 5, y + 3, colors.WHITE, self.small_font)
     end
 
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
 end
 
 function hud:draw_parry_success(player, screen_w, screen_h)
@@ -41,21 +42,22 @@ function hud:draw_parry_success(player, screen_w, screen_h)
     local font = player.parry_perfect and hud.perfect_parry_font or hud.parry_font
 
     local alpha = player.parry_success_timer / 0.5
-    local color = player.parry_perfect and {1, 1, 0, alpha} or {0.5, 0.8, 1, alpha}
+    local base_color = player.parry_perfect and colors.for_hud_parry_perfect or colors.for_hud_parry_normal
+    local color = colors:withAlpha(base_color, alpha)
 
     local text_width = font:getWidth(text)
     text_ui:draw(text, screen_w / 2 - text_width / 2, 100, color, font)
 
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
 end
 
 function hud:draw_slow_motion_vignette(time_scale, screen_w, screen_h)
     if time_scale >= 0.9 then return end
 
     local vignette_alpha = (1.0 - time_scale) * 0.3
-    love.graphics.setColor(0.2, 0.4, 0.6, vignette_alpha)
+    colors:apply(colors.for_hud_slow_motion, vignette_alpha)
     love.graphics.rectangle("fill", 0, 0, screen_w, screen_h)
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
 end
 
 function hud:draw_debug_panel(player, current_save_slot)
@@ -71,28 +73,27 @@ function hud:draw_debug_panel(player, current_save_slot)
 
     local panel_height = marking_info and 200 or 170
 
-    love.graphics.setColor(0, 0, 0, 0.5)
+    colors:apply(colors.for_debug_panel_bg)
     love.graphics.rectangle("fill", 0, 0, 220, panel_height)
 
-    local white = {1, 1, 1, 1}
-    text_ui:draw("FPS: " .. love.timer.getFPS(), 8, 8, white, self.tiny_font)
-    text_ui:draw(string.format("Player: %.1f, %.1f", player.x, player.y), 8, 22, white, self.tiny_font)
+    text_ui:draw("FPS: " .. love.timer.getFPS(), 8, 8, colors.WHITE, self.tiny_font)
+    text_ui:draw(string.format("Player: %.1f, %.1f", player.x, player.y), 8, 22, colors.WHITE, self.tiny_font)
 
     if current_save_slot then
-        text_ui:draw("Current Slot: " .. current_save_slot, 8, 36, white, self.tiny_font)
-        text_ui:draw("Press ESC to pause", 8, 50, white, self.tiny_font)
-        text_ui:draw("Left Click to Attack", 8, 64, white, self.tiny_font)
-        text_ui:draw("Right Click to Parry", 8, 78, white, self.tiny_font)
-        text_ui:draw("Space to Dodge/Roll", 8, 92, white, self.tiny_font)
-        text_ui:draw("H = Hand Marking Mode", 8, 106, white, self.tiny_font)
-        text_ui:draw("P = Mark Anchor Position", 8, 120, white, self.tiny_font)
+        text_ui:draw("Current Slot: " .. current_save_slot, 8, 36, colors.WHITE, self.tiny_font)
+        text_ui:draw("Press ESC to pause", 8, 50, colors.WHITE, self.tiny_font)
+        text_ui:draw("Left Click to Attack", 8, 64, colors.WHITE, self.tiny_font)
+        text_ui:draw("Right Click to Parry", 8, 78, colors.WHITE, self.tiny_font)
+        text_ui:draw("Space to Dodge/Roll", 8, 92, colors.WHITE, self.tiny_font)
+        text_ui:draw("H = Hand Marking Mode", 8, 106, colors.WHITE, self.tiny_font)
+        text_ui:draw("P = Mark Anchor Position", 8, 120, colors.WHITE, self.tiny_font)
     else
-        text_ui:draw("Press ESC to pause", 8, 36, white, self.tiny_font)
-        text_ui:draw("Left Click to Attack", 8, 50, white, self.tiny_font)
-        text_ui:draw("Right Click to Parry", 8, 64, white, self.tiny_font)
-        text_ui:draw("Space to Dodge/Roll", 8, 78, white, self.tiny_font)
-        text_ui:draw("H = Hand Marking Mode", 8, 92, white, self.tiny_font)
-        text_ui:draw("P = Mark Anchor Position", 8, 106, white, self.tiny_font)
+        text_ui:draw("Press ESC to pause", 8, 36, colors.WHITE, self.tiny_font)
+        text_ui:draw("Left Click to Attack", 8, 50, colors.WHITE, self.tiny_font)
+        text_ui:draw("Right Click to Parry", 8, 64, colors.WHITE, self.tiny_font)
+        text_ui:draw("Space to Dodge/Roll", 8, 78, colors.WHITE, self.tiny_font)
+        text_ui:draw("H = Hand Marking Mode", 8, 92, colors.WHITE, self.tiny_font)
+        text_ui:draw("P = Mark Anchor Position", 8, 106, colors.WHITE, self.tiny_font)
     end
 
     local state_text = "State: " .. player.state
@@ -103,7 +104,7 @@ function hud:draw_debug_panel(player, current_save_slot)
         state_text = state_text .. " [DODGING]"
     end
     local state_y = current_save_slot and 134 or 120
-    text_ui:draw(state_text, 8, state_y, white, self.tiny_font)
+    text_ui:draw(state_text, 8, state_y, colors.WHITE, self.tiny_font)
 end
 
 function hud:draw_inventory(inventory, screen_w, screen_h)
