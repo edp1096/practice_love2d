@@ -28,13 +28,18 @@ function collision.setupCollisionClasses(physicsWorld, game_mode)
     if game_mode == "topdown" then
         physicsWorld.collision_classes.Player.ignores = { "Enemy" }
         physicsWorld.collision_classes.Enemy.ignores = { "Player" }
+
+        -- PlayerFoot: collides with Wall, WallBase, EnemyFoot, and NPC (topdown needs NPC collision!)
+        physicsWorld.collision_classes.PlayerFoot.ignores = { "Player", "PlayerDodging", "Enemy", "Portals", "Item", "DeathZone", "DamageZone" }
+
+        -- EnemyFoot: collides with Wall, WallBase, PlayerFoot, and NPC
+        physicsWorld.collision_classes.EnemyFoot.ignores = { "Player", "PlayerDodging", "Enemy", "Portals", "Item", "DeathZone", "DamageZone" }
+    else
+        -- Platformer mode: PlayerFoot and EnemyFoot don't exist, Player main collider handles everything
+        -- But we still set up the rules in case they're created
+        physicsWorld.collision_classes.PlayerFoot.ignores = { "Player", "PlayerDodging", "Enemy", "Portals", "NPC", "Item", "DeathZone", "DamageZone" }
+        physicsWorld.collision_classes.EnemyFoot.ignores = { "Player", "PlayerDodging", "Enemy", "Portals", "NPC", "Item", "DeathZone", "DamageZone" }
     end
-
-    -- PlayerFoot: only collides with Wall, WallBase, and EnemyFoot (ignores Enemy main collider!)
-    physicsWorld.collision_classes.PlayerFoot.ignores = { "Player", "PlayerDodging", "Enemy", "Portals", "NPC", "Item", "DeathZone", "DamageZone" }
-
-    -- EnemyFoot: only collides with Wall, WallBase, and PlayerFoot (ignores Player main collider!)
-    physicsWorld.collision_classes.EnemyFoot.ignores = { "Player", "PlayerDodging", "Enemy", "Portals", "NPC", "Item", "DeathZone", "DamageZone" }
 
     -- WallBase only collides with PlayerFoot and EnemyFoot (not with combat or other systems)
     physicsWorld.collision_classes.WallBase.ignores = { "Player", "PlayerDodging", "Enemy", "Wall", "Portals", "NPC", "Item", "DeathZone", "DamageZone" }

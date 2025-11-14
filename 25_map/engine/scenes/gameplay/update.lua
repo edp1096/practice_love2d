@@ -10,6 +10,7 @@ local constants = require "engine.core.constants"
 local input = require "engine.core.input"
 local player_sound = require "engine.entities.player.sound"
 local lighting = require "engine.systems.lighting"
+local weather = require "engine.systems.weather"
 
 local update = {}
 
@@ -310,6 +311,7 @@ function update.update(self, dt)
     effects:update(dt)
     effects.screen:update(dt)
     lighting:update(dt)
+    weather:update(dt)
 
     -- Sync gamepad skip button state to dialogue (same as cutscene)
     if dialogue.skip_button and self.skip_button_held then

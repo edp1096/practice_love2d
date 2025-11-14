@@ -4,6 +4,8 @@
   <property name="ambient" value="day"/>
   <property name="game_mode" value="topdown"/>
   <property name="name" value="level1_area1"/>
+  <property name="weather_change_interval" value="60,120"/>
+  <property name="weather_pool" value="rain:20,snow:20,storm:10,mist:15,clear:35"/>
  </properties>
  <editorsettings>
   <export target="area1.lua" format="lua"/>

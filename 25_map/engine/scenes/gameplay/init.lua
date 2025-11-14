@@ -28,6 +28,7 @@ local constants = require "engine.core.constants"
 local minimap_class = require "engine.systems.hud.minimap"
 local lighting = require "engine.systems.lighting"
 local effects = require "engine.systems.effects"
+local weather = require "engine.systems.weather"
 
 -- Import sub-modules
 local update_module = require "engine.scenes.gameplay.update"
@@ -108,6 +109,9 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
     -- Initialize minimap
     self.minimap = minimap_class:new()
     self.minimap:setMap(self.world)
+
+    -- Initialize weather system
+    weather:initialize(self.world.map)
 
     -- Initialize inventory with item_class injection
     self.inventory = inventory_class:new(item_class)
@@ -190,6 +194,7 @@ end
 
 function gameplay:exit()
     if self.world then self.world:destroy() end
+    weather:cleanup()
     sound:stopBGM()
 
     -- Hide virtual gamepad when leaving gameplay
@@ -305,6 +310,7 @@ function gameplay:switchMap(new_map_path, spawn_x, spawn_y)
 
     -- Now destroy world
     if self.world then self.world:destroy() end
+    weather:cleanup()
 
     self.current_map_path = new_map_path
     -- Create world with injected entity classes and persistence data
@@ -315,6 +321,9 @@ function gameplay:switchMap(new_map_path, spawn_x, spawn_y)
         world_item = world_item_class,
         loot_tables = gameplay.loot_tables
     }, self.picked_items, self.killed_enemies)
+
+    -- Reinitialize weather for new map
+    weather:initialize(self.world.map)
 
     self.player.x = spawn_x
     self.player.y = spawn_y

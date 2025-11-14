@@ -78,6 +78,13 @@ systems/
 │   ├── layer.lua         - Individual layer (smooth scrolling)
 │   └── tiled_loader.lua  - Load from Tiled maps
 │
+├── weather/              - Dynamic weather system
+│   ├── init.lua          - Weather manager (pool, transitions)
+│   ├── rain.lua          - Rain effect (1000 particles/s)
+│   ├── snow.lua          - Snow effect (300 particles/s, 8s lifetime)
+│   ├── fog.lua           - Fog/mist effect (8 moving layers)
+│   └── storm.lua         - Storm effect (rain + wind)
+│
 └── hud/                  - In-game HUD
     ├── status.lua        - Health bars, cooldowns, parry UI
     ├── minimap.lua       - Minimap rendering (75% opacity)

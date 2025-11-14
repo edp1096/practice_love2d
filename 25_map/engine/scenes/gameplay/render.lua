@@ -12,6 +12,7 @@ local input = require "engine.core.input"
 local fonts = require "engine.utils.fonts"
 local lighting = require "engine.systems.lighting"
 local text_ui = require "engine.utils.text"
+local weather = require "engine.systems.weather"
 
 local render = {}
 
@@ -60,6 +61,9 @@ function render.draw(self)
 
     -- Draw screen effects
     effects.screen:draw()
+
+    -- Draw weather effects (AFTER world/effects, BEFORE HUD)
+    weather:draw()
 
     -- UI rendering starts here
     display:Attach()
