@@ -25,6 +25,11 @@ function inventory:enter(previous, player_inventory, player)
     self.inventory = player_inventory
     self.player = player
 
+    -- Hide virtual gamepad when inventory is open (mobile)
+    if input.virtual_gamepad then
+        input.virtual_gamepad:hide()
+    end
+
     -- Use item_id instead of slot index
     self.selected_item_id = self.inventory.selected_item_id
 
@@ -102,6 +107,11 @@ end
 
 function inventory:exit()
     play_sound("ui", "close")
+
+    -- Show virtual gamepad when inventory closes (mobile)
+    if input.virtual_gamepad then
+        input.virtual_gamepad:show()
+    end
 end
 
 function inventory:update(dt)

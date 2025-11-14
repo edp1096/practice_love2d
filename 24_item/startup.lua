@@ -168,6 +168,9 @@ end
 -- Initialize application (called from love.load)
 -- Returns modules needed for system.handleHotkey()
 function startup.initialize(is_mobile, modules)
+    -- Set pixel-perfect rendering (prevents tile seams)
+    love.graphics.setDefaultFilter("nearest", "nearest")
+
     -- Load mobile config if on mobile
     if is_mobile then
         startup.loadMobileConfig()

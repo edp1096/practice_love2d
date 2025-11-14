@@ -160,6 +160,7 @@ function minimap:updateMinimapCanvas()
     -- Draw actual map layers using world's drawLayer method
     self.world:drawLayer("Background_Near")
     self.world:drawLayer("Ground")
+    self.world:drawLayer("GroundDeco")
     self.world:drawLayer("Trees")
 
     -- Draw portals before pop (inside scale transformation)
