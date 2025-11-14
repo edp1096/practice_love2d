@@ -1,0 +1,553 @@
+# Development Guide
+
+A practical guide to developing with this LÖVE2D game engine. For detailed API reference, see [CLAUDE.md](../CLAUDE.md).
+
+---
+
+## Table of Contents
+
+1. [Quick Start](#quick-start)
+2. [Core Concepts](#core-concepts)
+3. [Creating Content](#creating-content)
+4. [Persistence System](#persistence-system)
+5. [Common Tasks](#common-tasks)
+6. [Best Practices](#best-practices)
+
+---
+
+## Quick Start
+
+### Running the Game
+
+```bash
+# Desktop
+love .
+
+# Check syntax
+luac -p **/*.lua
+```
+
+### Project Structure
+
+```
+24_item/
+├── engine/           # Reusable game engine (100% reusable)
+├── game/             # Game-specific content
+│   ├── data/         # Configuration files
+│   └── scenes/       # Game scenes
+├── vendor/           # External libraries
+├── assets/           # Game resources
+├── main.lua          # Entry point (dependency injection)
+└── conf.lua          # LÖVE configuration
+```
+
+### First Steps
+
+1. **Modify player stats:** Edit `game/data/player.lua`
+2. **Change menus:** Edit `game/data/scenes.lua`
+3. **Add enemies:** Place in Tiled map with properties
+4. **Create maps:** Use Tiled, export to Lua
+
+---
+
+## Core Concepts
+
+### Engine/Game Separation
+
+**Rule:** Engine NEVER imports game files, only game imports engine.
+
+```lua
+-- ✅ GOOD: game/scenes/menu.lua
+local builder = require "engine.scenes.builder"
+
+-- ❌ BAD: engine/core/sound.lua
+local sounds = require "game.data.sounds"  -- NEVER DO THIS!
+```
+
+**Solution:** Use dependency injection in `main.lua`:
+
+```lua
+local player_module = require "engine.entities.player"
+local player_config = require "game.data.player"
+player_module.config = player_config  -- Inject game config
+```
+
+### Game Modes
+
+Two modes supported: **topdown** and **platformer**.
+
+Set in Tiled map properties: `game_mode = "topdown"`
+
+**Key Differences:**
+- **Topdown:** No gravity, free 2D movement, dual colliders (foot + main)
+- **Platformer:** Gravity enabled, jump mechanics, horizontal distance checks
+
+### Coordinate Systems
+
+Always use `engine/core/coords.lua` for transformations:
+
+```lua
+local coords = require "engine.core.coords"
+
+-- World ↔ Camera (for rendering)
+local cam_x, cam_y = coords:worldToCamera(x, y, camera)
+
+-- Physical ↔ Virtual (for touch input)
+local vx, vy = coords:physicalToVirtual(touch_x, touch_y, display)
+```
+
+### Scene Management
+
+```lua
+local scene_control = require "engine.core.scene_control"
+
+scene_control.switch(scene, ...)  -- Switch to new scene
+scene_control.push(scene, ...)    -- Push on stack (pause menu)
+scene_control.pop()               -- Return to previous
+```
+
+---
+
+## Creating Content
+
+### Adding a New Enemy (Data-Driven!)
+
+**No code required!** Just configure in Tiled:
+
+1. Open map: `assets/maps/level1/area1.tmx`
+2. Add object to "Enemies" layer
+3. Set object type: `slime`, `goblin`, etc.
+4. Add custom properties (optional):
+   ```
+   hp = 100          (health)
+   dmg = 10          (damage)
+   spd = 50          (speed)
+   det_rng = 200     (detection range)
+   respawn = false   (one-time enemy, default: true)
+   ```
+5. Export to Lua
+6. Done! Enemy will spawn with those stats.
+
+**Available enemy types:** See `game/data/entities/types.lua`
+
+**Factory defaults:** See `engine/entities/factory.lua` DEFAULTS section
+
+### Adding a Menu Scene (Data-Driven!)
+
+1. Add to `game/data/scenes.lua`:
+
+```lua
+scenes.mymenu = {
+  type = "menu",
+  title = "My Menu",
+  options = {"Start", "Quit"},
+  actions = {
+    ["Start"] = {action = "switch_scene", scene = "play"},
+    ["Quit"] = {action = "quit"}
+  },
+  back_action = {action = "quit"},
+
+  -- Optional: Flash effect
+  flash = {
+    enabled = true,
+    color = {1, 0, 0},
+    initial_alpha = 1.0,
+    fade_speed = 2.0
+  }
+}
+```
+
+2. Create file `game/scenes/mymenu.lua`:
+
+```lua
+local builder = require "engine.scenes.builder"
+local configs = require "game.data.scenes"
+return builder:build("mymenu", configs)
+```
+
+Done! 6 lines of code.
+
+### Adding an Item
+
+1. Create icon: `assets/images/items/myitem.png`
+2. Create type: `engine/entities/item/types/myitem.lua`:
+
+```lua
+local myitem = {
+  name = "My Item",
+  description = "A useful item",
+  icon = "assets/images/items/myitem.png",
+  max_stack = 99,
+
+  -- Optional: equipment
+  equipment_slot = "weapon",  -- or "armor", "accessory"
+
+  -- Optional: consumable
+  consumable = true,
+  effect = function(player)
+    player.health = player.health + 50
+  end
+}
+
+return myitem
+```
+
+3. Add to inventory:
+
+```lua
+inventory:addItem("myitem", 1)
+```
+
+### Creating a Map
+
+1. Create in Tiled: `assets/maps/level1/newarea.tmx`
+
+2. Set map properties:
+   ```
+   name = "level1_newarea"     (for persistence)
+   game_mode = "topdown"       (or "platformer")
+   bgm = "level1"              (optional)
+   ambient = "day"             (optional: day, night, cave, etc.)
+   ```
+
+3. Add required layers:
+   - **Ground** - Terrain tiles
+   - **Trees** - Tiles with depth (Y-sorted in topdown)
+   - **Walls** - Collision objects
+   - **Portals** - Map transitions
+   - **Enemies**, **NPCs** - Spawn points
+   - **WorldItems** - Pickable items
+   - **SavePoints**, **HealingPoints** - Interaction points
+
+4. Export to Lua
+
+5. Create portal from previous map:
+   ```
+   type = "portal"
+   target_map = "assets/maps/level1/newarea.lua"
+   spawn_x = 100
+   spawn_y = 200
+   ```
+
+### Adding a Sound
+
+1. Add file: `assets/sounds/mysound.ogg`
+
+2. Register in `game/data/sounds.lua`:
+
+```lua
+sounds.sfx.mysound = {
+  category = "gameplay",
+  sources = {
+    love.audio.newSource("assets/sounds/mysound.ogg", "static")
+  },
+  volume = 0.8
+}
+```
+
+3. Play:
+
+```lua
+sound:playSFX("gameplay", "mysound")
+```
+
+---
+
+## Persistence System
+
+**NEW!** One-time pickups and enemy kills persist across maps and save/load.
+
+### One-Time Items
+
+Items with `respawn = false` only spawn once:
+
+```lua
+-- In Tiled (WorldItems layer)
+item_type = "sword"
+quantity = 1
+respawn = false  -- Pick up once, never respawns
+```
+
+**How it works:**
+1. Item has unique `map_id`: `"level1_area1_obj_46"`
+2. When picked up, added to `picked_items` table
+3. Saved to save file
+4. On map load, filtered out if already picked
+
+**Default:** Items respawn (`respawn = true`)
+
+### One-Time Enemies
+
+Enemies with `respawn = false` stay dead:
+
+```lua
+-- In Tiled (Enemies layer)
+type = "boss_slime"
+hp = 500
+respawn = false  -- Kill once, stays dead
+```
+
+**How it works:**
+1. Enemy has unique `map_id`: `"level1_area1_obj_40"`
+2. When killed (after 2s death timer), added to `killed_enemies` table
+3. Saved to save file
+4. On map load, filtered out if already killed
+
+**Default:** Enemies respawn (`respawn = true`)
+
+### Map ID Generation
+
+Format: `"{map_name}_obj_{object_id}"`
+
+Examples:
+- `"level1_area1_obj_46"` - Item with id=46 in level1_area1
+- `"level2_area3_obj_120"` - Enemy with id=120 in level2_area3
+
+**Requirements:**
+- Map must have `name` property (e.g., `name = "level1_area1"`)
+- Object must have unique id (assigned by Tiled)
+
+### Save Data Structure
+
+```lua
+save_data = {
+  hp = 100,
+  max_hp = 100,
+  map = "assets/maps/level1/area1.lua",
+  x = 500,
+  y = 300,
+  inventory = {...},
+  picked_items = {
+    ["level1_area1_obj_46"] = true,  -- Staff picked up
+    ["level1_area2_obj_12"] = true,  -- Potion picked up
+  },
+  killed_enemies = {
+    ["level1_area1_obj_40"] = true,  -- Boss slime killed
+    ["level2_area1_obj_8"] = true,   -- Mini-boss killed
+  }
+}
+```
+
+---
+
+## Common Tasks
+
+### Debugging
+
+Press **F1** to toggle debug overlay (if `APP_CONFIG.is_debug = true`):
+
+- **F1** - Toggle debug UI
+- **F2** - Toggle collision grid
+- **F3** - Toggle mouse coordinates
+- **F11** - Toggle fullscreen
+
+Debug print:
+
+```lua
+dprint("My debug message")  -- Only shows if debug.enabled = true
+```
+
+### Testing Map Transitions
+
+1. Add portal to test map
+2. Set properties: `target_map`, `spawn_x`, `spawn_y`
+3. Walk into portal
+4. Check persistence: items/enemies should stay picked/killed
+
+### Checking Colliders
+
+Enable collision debug (F2) to see:
+- Player colliders (green for foot, blue for main)
+- Enemy colliders (red for foot, orange for main)
+- Walls (white)
+
+**Topdown mode:**
+- Main colliders ignore each other (pass through)
+- Foot colliders collide with walls and each other
+
+**Platformer mode:**
+- Uses main collider only
+- Ground detection via raycasts
+
+### Adjusting Player Stats
+
+Edit `game/data/player.lua`:
+
+```lua
+return {
+  health = 100,
+  speed = 150,
+  jump_force = -600,  -- Platformer only
+
+  abilities = {
+    can_attack = true,
+    can_dodge = true,
+    can_parry = true,
+  },
+
+  dodge = {
+    cooldown = 1.0,
+    speed_multiplier = 2.5,
+    duration = 0.3,
+  }
+}
+```
+
+### Changing Input Bindings
+
+Edit `game/data/input_config.lua`:
+
+```lua
+keyboard = {
+  move_left = "a",
+  move_right = "d",
+  move_up = "w",
+  move_down = "s",
+  jump = "space",
+  attack = "j",
+  dodge = "lshift",
+  -- ... etc
+}
+```
+
+---
+
+## Best Practices
+
+### File Organization
+
+```lua
+-- 1. Module declaration
+local mymodule = {}
+
+-- 2. Requires
+local engine_system = require "engine.core.something"
+
+-- 3. Local functions
+local function _helper()
+  -- Private helper
+end
+
+-- 4. Public functions
+function mymodule:publicMethod()
+  -- Public API
+end
+
+-- 5. Return module
+return mymodule
+```
+
+### Require Paths
+
+```lua
+-- ✅ GOOD: Use dots
+require "engine.core.sound"
+require "game.data.player"
+
+-- ❌ BAD: Use slashes
+require "engine/core/sound"
+```
+
+**Exception:** File paths use forward slashes:
+
+```lua
+"assets/maps/level1/area1.lua"  -- File path, not require
+```
+
+### Naming Conventions
+
+```lua
+local module_name = {}        -- lowercase_with_underscores
+function obj:methodName() end  -- camelCase
+local CONSTANT_VALUE = 100     -- UPPER_CASE
+```
+
+### Entity Lifecycle
+
+**Creating:**
+```lua
+-- Use factory for Tiled objects
+local enemy = factory:createEnemy(obj, enemy_class, map_name)
+
+-- Or direct construction
+local player = player_module:new(x, y, config)
+```
+
+**Destroying:**
+```lua
+-- ALWAYS destroy colliders before world
+if entity.collider then
+  entity.collider:destroy()
+  entity.collider = nil
+end
+if entity.foot_collider then
+  entity.foot_collider:destroy()
+  entity.foot_collider = nil
+end
+
+-- Then destroy world
+world:destroy()
+```
+
+### Collision Classes
+
+**Available classes:**
+- `Player`, `PlayerFoot`, `PlayerDodging`
+- `Enemy`, `EnemyFoot`
+- `Wall`, `WallBase`
+- `NPC`
+- `DeathZone`, `DamageZone`
+
+**Topdown ignore rules:**
+- Player main ↔ Enemy main (pass through)
+- PlayerFoot ↔ EnemyFoot (collide for wall collision)
+
+**Platformer:**
+- Uses main collider only
+- All entities collide normally
+
+### Time Scaling
+
+Use scaled time for slow-motion effects:
+
+```lua
+local scaled_dt = camera_sys:get_scaled_dt(dt)
+enemy:update(scaled_dt, player.x, player.y)
+```
+
+### Y-Sorting (Topdown)
+
+Entities sorted by **foot_collider bottom edge**:
+
+```lua
+-- Player
+player.y_sort = foot_collider:getY() + (collider_height * 0.1875) / 2
+
+-- Humanoid enemy
+enemy.y_sort = foot_collider:getY() + (collider_height * 0.125) / 2
+
+-- Slime enemy
+enemy.y_sort = foot_collider:getY() + (collider_height * 0.6) / 2
+```
+
+Trees tiles from Tiled map are also Y-sorted.
+
+**Platformer:** No Y-sorting, Trees layer drawn normally.
+
+---
+
+## Reference
+
+For detailed API documentation, see:
+- **[CLAUDE.md](../CLAUDE.md)** - Complete reference and instructions
+- **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - File structure
+- **[README.md](README.md)** - Quick start
+
+For code examples, see:
+- **[DEVELOPMENT_JOURNAL.md](../DEVELOPMENT_JOURNAL.md)** - Recent changes and patterns
+
+---
+
+**Last Updated:** 2025-11-13
+**Engine Version:** 24_item
+**LÖVE Version:** 11.5

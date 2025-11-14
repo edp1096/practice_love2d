@@ -1,0 +1,349 @@
+# LÖVE2D 게임 엔진 - 빠른 시작
+
+깔끔한 **Engine/Game 분리** 아키텍처를 가진 LÖVE2D 게임 프로젝트입니다.
+
+---
+
+## 🎯 프로젝트 철학
+
+### **Engine (100% 재사용 가능)** ⭐
+`engine/` 폴더는 **모든** 게임 시스템과 엔티티를 포함합니다:
+- **핵심 시스템:** lifecycle, input, display, sound, save, camera, debug
+- **서브시스템:** world (물리), effects, lighting, HUD, collision
+- **엔티티:** player, enemy, weapon, NPC, item, healing_point (**모두 engine에!**)
+- **UI:** 메뉴 시스템, 화면, 대화, 프롬프트, 위젯
+- **씬 빌더:** 데이터 기반 씬 팩토리, 컷씬, 게임플레이
+
+### **Game (데이터 + 최소 코드)**
+`game/` 폴더는 **오직** 게임 특화 콘텐츠만 포함합니다:
+- **씬:** 4개 데이터 기반 메뉴 (각 6줄!), 복잡한 씬들 (play, settings, inventory, load)
+- **데이터 설정:** 플레이어 스탯, 적 타입, 메뉴 설정, 사운드, 입력 매핑
+- **엔티티 폴더 없음!** (engine으로 이동)
+
+### **장점**
+- ✅ **손쉬운 신규 게임 제작**: `engine/` 복사, 새 `game/` 콘텐츠 생성
+- ✅ **깔끔한 분리**: 엔진 코드 vs 게임 콘텐츠
+- ✅ **쉬운 유지보수**: 명확한 폴더 구조
+- ✅ **콘텐츠 중심 워크플로우**: 게임 디자인에 집중, 엔진 코드 불필요
+- ✅ **61% 코드 감소**: 약 3,000줄 vs 기존 7,649줄
+
+---
+
+## 🚀 빠른 시작
+
+### 설치
+
+1. LÖVE 11.5 설치: https://love2d.org/
+2. 프로젝트 클론 또는 다운로드
+3. 실행: `love .`
+
+### 조작법
+
+**데스크톱:**
+- **WASD / 화살표 키** - 이동 (Topdown) / 이동 + 점프 (Platformer)
+- **마우스** - 무기 조준
+- **좌클릭 / Z** - 공격
+- **우클릭 / X** - 패리 (완벽한 타이밍 = 슬로우 모션!)
+- **Shift / C** - 회피 (무적 프레임)
+- **F** - 상호작용 (NPC, 세이브 포인트, 아이템)
+- **I** - 인벤토리
+- **Q** - 선택한 아이템 사용
+- **Tab** - 아이템 순환
+- **1-5** - 인벤토리 슬롯 빠른 선택
+- **Escape** - 일시정지
+- **F11** - 전체화면 토글
+
+**디버그 모드 (`APP_CONFIG.is_debug = true`인 경우):**
+- **F1** - 디버그 UI 토글
+- **F2** - 충돌 그리드 토글
+- **F3** - 마우스 좌표 토글
+- **F4** - 가상 게임패드 토글 (PC 테스트용)
+- **F5** - 이펙트 디버그 토글
+- **F6** - 마우스 위치에 이펙트 테스트
+
+**게임패드 (Xbox / DualSense):**
+- **좌 스틱 / D-Pad** - 이동
+- **우 스틱** - 무기 조준
+- **A / Cross (✕)** - 공격 / 상호작용
+- **B / Circle (○)** - 점프 / 대화 스킵 (0.5초 홀드)
+- **X / Square (□)** - 패리
+- **Y / Triangle (△)** - 상호작용 (NPC/세이브 포인트)
+- **LB / L1** - 아이템 사용
+- **LT / L2** - 다음 아이템
+- **RB / R1** - 회피
+- **RT / R2** - 인벤토리
+- **Start / Options** - 일시정지
+
+**모바일 (터치):**
+- **가상 게임패드** - 화면 컨트롤 (Android/iOS에서 자동 표시)
+- **화면 터치** - 메뉴 탐색 / 대화 진행
+
+---
+
+## 📁 프로젝트 구조
+
+```
+24_item/
+├── engine/           # 재사용 가능 게임 엔진 (100% 재사용 가능)
+│   ├── core/         # 핵심 시스템 (lifecycle, input, scene 등)
+│   ├── systems/      # 서브시스템 (world, effects, lighting, hud)
+│   ├── entities/     # 모든 엔티티 (player, enemy, weapon, npc, item)
+│   ├── scenes/       # 씬 빌더 (builder, cutscene, gameplay)
+│   ├── ui/           # UI 시스템 (menu, dialogue, widgets)
+│   └── utils/        # 유틸리티
+├── game/             # 게임 특화 콘텐츠
+│   ├── data/         # 설정 파일 (player, scenes, sounds 등)
+│   └── scenes/       # 게임 씬 (menu, play, settings, inventory, load)
+├── assets/           # 게임 리소스 (maps, images, sounds)
+├── vendor/           # 외부 라이브러리 (STI, Windfield, anim8 등)
+├── docs/             # 문서
+├── main.lua          # 진입점 (의존성 주입)
+├── conf.lua          # LÖVE 설정
+└── startup.lua       # 초기화 유틸리티
+```
+
+**핵심 개념:**
+- **engine/** = "어떻게 작동하는가" (100% 재사용 가능)
+- **game/** = "무엇을 보여주는가" (데이터 + 씬)
+- **의존성 주입** = `main.lua`를 통해 게임 설정을 엔진에 주입
+
+---
+
+## 🎮 첫 단계
+
+### 1. 게임 탐험
+- 시작: `love .`
+- 새 게임 → 세이브 슬롯 생성
+- WASD로 이동
+- 좌클릭으로 적 공격
+- F키로 NPC와 대화
+- 빛나는 원(세이브 포인트)에서 F키로 저장
+
+### 2. 다양한 게임 모드 시도
+- **Topdown** (level1/area1-3): 자유로운 2D 이동, 중력 없음
+- **Platformer** (level2/area1): 수평 이동 + 점프, 중력 활성화
+
+### 3. 전투 테스트
+- **공격:** 좌클릭 / A 버튼
+- **패리:** 우클릭 / X 버튼 (완벽한 타이밍 = 슬로우 모션!)
+- **회피:** Shift / R1 버튼 (무적 프레임)
+
+### 4. 인벤토리 시스템
+- **I** 키로 인벤토리 열기
+- 아이템 사용: **Q** / **L1**
+- 아이템 순환: **Tab** / **L2**
+- 빠른 선택: **1-5** 키
+
+### 5. 지속성 시스템 ⭐ NEW!
+- **일회성 아이템:** 시작 무기(지팡이, 검) 한 번만 획득
+- **일회성 적:** 보스를 한 번 처치하면 계속 죽어있음
+- **리스폰:** 일반 아이템/적은 기본적으로 리스폰
+- Tiled에서 `respawn = false`로 설정하여 일회성으로 만들기
+
+---
+
+## 🛠️ 콘텐츠 만들기
+
+### 새 적 추가하기 ⭐ (데이터 기반 - 코드 불필요!)
+
+**방법 1: Tiled에서 직접 (빠름)**
+1. 맵 열기: `assets/maps/level1/area1.tmx`
+2. "Enemies" 레이어에 오브젝트 추가
+3. 오브젝트 타입 설정: `slime`, `goblin` 등
+4. 커스텀 속성 추가:
+   ```
+   hp = 100           (체력)
+   dmg = 10           (데미지)
+   spd = 50           (속도)
+   det_rng = 200      (감지 범위)
+   respawn = false    (선택: 일회성 처치, 기본값: true)
+   spr = "assets/images/enemies/yourenemy.png"
+   ```
+5. Lua로 내보내기 - 완료!
+
+**방법 2: 적 타입 레지스트리 (재사용 가능)**
+`game/data/entities/types.lua`에 추가:
+```lua
+enemies = {
+  yourenemy = {
+    hp = 100,
+    damage = 15,
+    speed = 80,
+    sprite = "assets/images/enemies/yourenemy.png",
+    detection_range = 250,
+    attack_range = 50
+  }
+}
+```
+
+그 다음 Tiled에서 `type = "yourenemy"`만 설정하면 됩니다.
+
+### 새 메뉴 추가하기 ⭐ (데이터 기반 - 6줄!)
+
+1. `game/data/scenes.lua`에 추가:
+```lua
+scenes.mymenu = {
+  type = "menu",
+  title = "내 메뉴",
+  options = {"플레이", "설정", "종료"},
+  actions = {
+    ["플레이"] = {action = "switch_scene", scene = "play"},
+    ["설정"] = {action = "switch_scene", scene = "settings"},
+    ["종료"] = {action = "quit"}
+  },
+  back_action = {action = "quit"},
+
+  -- 선택: 플래시 효과
+  flash = {
+    enabled = true,
+    color = {1, 0, 0},     -- 빨간색 플래시
+    initial_alpha = 1.0,
+    fade_speed = 2.0
+  }
+}
+```
+
+2. `game/scenes/mymenu.lua` 생성:
+```lua
+local builder = require "engine.scenes.builder"
+local configs = require "game.data.scenes"
+return builder:build("mymenu", configs)
+```
+
+완료! 단 6줄입니다.
+
+### 새 아이템 추가하기
+
+1. 아이콘 생성: `assets/images/items/youritem.png`
+2. 타입 생성: `engine/entities/item/types/youritem.lua`:
+```lua
+local youritem = {
+  name = "내 아이템",
+  description = "유용한 아이템",
+  icon = "assets/images/items/youritem.png",
+  max_stack = 99,
+
+  -- 선택: 장비
+  equipment_slot = "weapon",  -- 또는 "armor", "accessory"
+  weapon_type = "sword",      -- 무기인 경우
+
+  -- 선택: 소모품
+  consumable = true,
+  effect = function(player)
+    player.health = math.min(player.health + 50, player.max_health)
+  end
+}
+
+return youritem
+```
+
+3. 월드 또는 인벤토리에 추가:
+```lua
+-- 월드에 드롭
+world:addWorldItem("youritem", x, y, quantity)
+
+-- 인벤토리에 추가
+inventory:addItem("youritem", 1)
+```
+
+### 새 맵 만들기
+
+1. Tiled에서 생성: `assets/maps/level1/newarea.tmx`
+
+2. 맵 속성 설정:
+   ```
+   name = "level1_newarea"      (필수: 지속성용)
+   game_mode = "topdown"        (또는 "platformer")
+   bgm = "level1"               (선택)
+   ambient = "day"              (선택: day, night, cave, dusk, indoor, underground)
+   ```
+
+3. 필요한 레이어 추가:
+   - **Ground** - 지형 타일
+   - **Trees** - 깊이가 있는 타일 (topdown에서 Y-정렬)
+   - **Walls** - 충돌 오브젝트
+   - **Portals** - 맵 전환
+   - **Enemies** - 적 스폰 지점
+   - **NPCs** - NPC 스폰 지점
+   - **WorldItems** - 획득 가능 아이템
+   - **SavePoints** - 세이브 포인트
+   - **HealingPoints** - 체력 회복 지점
+
+4. Lua로 내보내기
+
+5. 이전 맵에서 포털 생성:
+   ```
+   type = "portal"
+   target_map = "assets/maps/level1/newarea.lua"
+   spawn_x = 100
+   spawn_y = 200
+   ```
+
+### 배경음악 추가하기
+
+1. 파일 배치: `assets/bgm/yourmusic.ogg`
+2. `game/data/sounds.lua`에 등록:
+   ```lua
+   bgm = {
+     yourmusic = {
+       path = "assets/bgm/yourmusic.ogg",
+       volume = 0.7,
+       loop = true
+     }
+   }
+   ```
+3. Tiled 맵 속성에 설정: `bgm = "yourmusic"`
+
+---
+
+## 📚 문서
+
+- **[GUIDE.md](GUIDE.md)** - 완전한 개발 가이드 (개념, 워크플로우, 모범 사례)
+- **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - 상세한 프로젝트 구조 참조
+- **[../CLAUDE.md](../CLAUDE.md)** - 전체 API 참조 및 Claude Code 지침
+- **[../DEVELOPMENT_JOURNAL.md](../DEVELOPMENT_JOURNAL.md)** - 최근 변경사항 및 패턴
+
+---
+
+## 🐛 문제 해결
+
+### 게임이 시작되지 않음
+- LÖVE 버전 확인: `love --version` (11.5 필요)
+- Lua 버전 확인: `lua -v` (5.1 호환 필요)
+- 콘솔에서 에러 확인
+
+### 파일을 찾을 수 없음 에러
+- require 경로에 점 사용: `require "engine.core.sound"` ✅
+- 파일 경로에 슬래시 사용: `"assets/maps/level1/area1.lua"` ✅
+- 절대 혼용하지 마세요!
+
+### 사운드 없음
+- `config.ini`의 볼륨이 0이 아닌지 확인
+- 파일 존재 확인: `assets/bgm/`, `assets/sound/`
+- `game/data/sounds.lua` 정의 확인
+
+### 맵이 로드되지 않음
+- Tiled 맵을 Lua 형식으로 내보내기 (`.lua` 파일)
+- 필요한 레이어 존재 확인 (Ground, Walls 등)
+- 맵 속성 `game_mode` 설정 확인
+- 맵 속성 `name` 설정 확인 (지속성용)
+
+### 아이템/적이 리스폰되지 않아야 하는데 됨
+- 맵에 `name` 속성 있는지 확인
+- 오브젝트에 `respawn = false` 속성 있는지 확인
+- 세이브/로드 작동 확인 (세이브 데이터에 `picked_items`, `killed_enemies` 포함)
+
+---
+
+## 🎯 다음 단계
+
+1. **GUIDE.md 읽기** - 콘텐츠 제작 워크플로우 학습
+2. **CLAUDE.md 읽기** - 전체 API 참조
+3. **실험** - 기존 콘텐츠 수정
+4. **제작** - 자신만의 게임 만들기!
+
+---
+
+**프레임워크:** LÖVE 11.5 + Lua 5.1
+**아키텍처:** Engine/Game 분리 + 의존성 주입 + 데이터 기반
+**마지막 업데이트:** 2025-11-13
