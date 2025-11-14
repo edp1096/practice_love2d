@@ -48,7 +48,7 @@
 </data>
  </layer>
  <objectgroup id="9" name="Parallax">
-  <object id="52" name="sky" x="0" y="0" width="128" height="128">
+  <object id="52" name="sky" x="32" y="34" width="128" height="128">
    <properties>
     <property name="Type" value="parallax"/>
     <property name="image" value="assets/backgrounds/layer1_sky.png"/>
@@ -58,18 +58,18 @@
     <property name="z_index" type="int" value="1"/>
    </properties>
   </object>
-  <object id="55" name="clouds" x="320" y="0" width="128" height="128">
+  <object id="55" name="clouds" x="352" y="34" width="128" height="128">
    <properties>
     <property name="Type" value="parallax"/>
     <property name="auto_scroll_x" type="float" value="13"/>
     <property name="image" value="assets/backgrounds/layer3_clouds.png"/>
-    <property name="offset_y" type="float" value="30"/>
+    <property name="offset_y" type="float" value="270"/>
     <property name="parallax_factor" type="float" value="0.5"/>
     <property name="repeat_x" type="bool" value="true"/>
     <property name="z_index" type="int" value="3"/>
    </properties>
   </object>
-  <object id="56" name="mountains" x="151" y="-2" width="137" height="130">
+  <object id="56" name="mountains" x="183" y="32" width="137" height="130">
    <properties>
     <property name="Type" value="parallax"/>
     <property name="image" value="assets/backgrounds/layer2_mountains.png"/>
@@ -79,7 +79,7 @@
     <property name="z_index" type="int" value="2"/>
    </properties>
   </object>
-  <object id="57" name="trees" x="480" y="0" width="128" height="128">
+  <object id="57" name="trees" x="512" y="34" width="128" height="128">
    <properties>
     <property name="Type" value="parallax"/>
     <property name="image" value="assets/backgrounds/layer4_trees.png"/>
@@ -131,7 +131,7 @@
   <object id="50" x="0" y="224" width="32" height="206">
    <properties>
     <property name="spawn_x" type="float" value="200"/>
-    <property name="spawn_y" type="float" value="200"/>
+    <property name="spawn_y" type="float" value="350"/>
     <property name="target_map" value="assets/maps/level1/area2.lua"/>
     <property name="type" value="portal"/>
    </properties>

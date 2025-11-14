@@ -319,10 +319,11 @@ function gameplay:switchMap(new_map_path, spawn_x, spawn_y)
     self.player.x = spawn_x
     self.player.y = spawn_y
 
-    self.world:addEntity(self.player)
-
-    -- CRITICAL: Update player game mode when switching maps
+    -- CRITICAL: Update player game mode BEFORE adding to world
+    -- (createPlayerColliders needs correct game_mode to create foot_collider in topdown)
     self.player.game_mode = self.world.game_mode
+
+    self.world:addEntity(self.player)
 
     -- Update minimap for new map
     if self.minimap then
