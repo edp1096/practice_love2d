@@ -34,8 +34,8 @@ options.deadzones = { 0.05, 0.10, 0.15, 0.20, 0.25, 0.30 }
 function options:buildOptions(is_mobile, monitor_count)
     local option_list = {}
 
-    -- Desktop-only options
-    if not is_mobile then
+    -- Desktop-only options (hide on mobile and web)
+    if not is_mobile and love.system.getOS() ~= "Web" then
         table.insert(option_list, { name = "Resolution", type = "list" })
         table.insert(option_list, { name = "Fullscreen", type = "toggle" })
 

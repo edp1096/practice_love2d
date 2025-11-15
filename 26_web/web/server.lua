@@ -40,6 +40,8 @@ local function send_response(client, status, content_type, body)
         "Content-Type: %s\r\n" ..
         "Content-Length: %d\r\n" ..
         "Access-Control-Allow-Origin: *\r\n" ..
+        "Cross-Origin-Opener-Policy: same-origin\r\n" ..
+        "Cross-Origin-Embedder-Policy: require-corp\r\n" ..
         "Cache-Control: no-cache\r\n" ..
         "Connection: close\r\n" ..
         "\r\n",
@@ -71,6 +73,9 @@ local function handle_client(client)
 
     local method, path = request_line:match("^(%S+)%s+(%S+)")
     if not path then return end
+
+    -- Strip query string
+    path = path:match("^([^?]*)") or path
 
     -- Read headers (but we don't need them for static files)
     while true do

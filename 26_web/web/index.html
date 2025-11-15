@@ -1,111 +1,93 @@
-<!doctype html>
-<html lang="en-us">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, minimum-scale=1, maximum-scale=1">
-    <title>LOVE2D Game</title>
-
-    <!-- Load custom style sheet -->
-    <link rel="stylesheet" type="text/css" href="theme/love.css">
-  </head>
-  <body>
-    <center>
-      <div>
-        <h1>LOVE2D Game</h1>
-        <canvas id="loadingCanvas" oncontextmenu="event.preventDefault()" width="800" height="600"></canvas>
-        <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
-      </div>
-    </center>
-
-    <script type='text/javascript'>
-      function goFullScreen(){
-            var canvas = document.getElementById("canvas");
-            if(canvas.requestFullScreen)
-                canvas.requestFullScreen();
-            else if(canvas.webkitRequestFullScreen)
-                canvas.webkitRequestFullScreen();
-            else if(canvas.mozRequestFullScreen)
-                canvas.mozRequestFullScreen();
-      }
-      function FullScreenHook(){
-        var canvas = document.getElementById("canvas");
-        canvas.width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-        canvas.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
-      }
-      var loadingContext = document.getElementById('loadingCanvas').getContext('2d');
-      function drawLoadingText(text) {
-        var canvas = loadingContext.canvas;
-
-        loadingContext.fillStyle = "rgb(142, 195, 227)";
-        loadingContext.fillRect(0, 0, canvas.scrollWidth, canvas.scrollHeight);
-
-        loadingContext.font = '2em arial';
-        loadingContext.textAlign = 'center'
-        loadingContext.fillStyle = "rgb( 11, 86, 117 )";
-        loadingContext.fillText(text, canvas.scrollWidth / 2, canvas.scrollHeight / 2);
-
-        loadingContext.fillText("Powered By Emscripten.", canvas.scrollWidth / 2, canvas.scrollHeight / 4);
-        loadingContext.fillText("Powered By LÖVE.", canvas.scrollWidth / 2, canvas.scrollHeight / 4 * 3);
-      }
-
-      window.onload = function () { window.focus(); };
-      window.onclick = function () { window.focus(); };
-
-      window.addEventListener("keydown", function(e) {
-        // space and arrow keys
-        if([32, 37, 38, 39, 40].indexOf(e.keyCode) > -1) {
-          e.preventDefault();
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LÖVE2D RPG Game</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #111;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-y: auto;
         }
-      }, false);
 
-      var Module = {
-        arguments: ["./game.love"],
-        INITIAL_MEMORY: 67108864,
-        printErr: console.error.bind(console),
-        canvas: (function() {
-          var canvas = document.getElementById('canvas');
-
-          // As a default initial behavior, pop up an alert when webgl context is lost. To make your
-          // application robust, you may want to override this behavior before shipping!
-          // See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
-          canvas.addEventListener("webglcontextlost", function(e) { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
-
-          return canvas;
-        })(),
-        setStatus: function(text) {
-          if (text) {
-            drawLoadingText(text);
-          } else if (Module.remainingDependencies === 0) {
-            document.getElementById('loadingCanvas').style.display = 'none';
-            document.getElementById('canvas').style.visibility = 'visible';
-          }
-        },
-        totalDependencies: 0,
-        remainingDependencies: 0,
-        monitorRunDependencies: function(left) {
-          this.remainingDependencies = left;
-          this.totalDependencies = Math.max(this.totalDependencies, left);
-          Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+        #game-wrapper {
+            position: relative;
+            width: 90vw;
+            max-width: 1280px;
+            aspect-ratio: 16 / 9;
+            background: #000;
+            margin: 20px auto 0 auto;
+            /* 버튼 공간을 확보하기 위해 최대 높이 제한 */
+            max-height: calc(100vh - 100px);
         }
-      };
-      Module.setStatus('Downloading...');
-      window.onerror = function(event) {
-        // TODO: do not warn on ok events like simulating an infinite loop or exitStatus
-        Module.setStatus('Exception thrown, see JavaScript console');
-        Module.setStatus = function(text) {
-          if (text) Module.printErr('[post-exception status] ' + text);
-        };
-      };
 
-      var applicationLoad = function(e) {
-        Love(Module);
-      }
+        #canvas {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain;
+        }
+
+        #fullscreen-btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            background: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 16px;
+            font-family: Arial, sans-serif;
+            transition: background 0.3s;
+        }
+
+        #fullscreen-btn:hover {
+            background: #357abd;
+        }
+
+        #fullscreen-btn:active {
+            background: #2868a8;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-wrapper">
+        <script src="player.js?g=game.love&v=11.5&n=1"></script>
+    </div>
+    <button id="fullscreen-btn" onclick="toggleFullscreen()">전체화면</button>
+
+    <script>
+        function toggleFullscreen() {
+            const wrapper = document.getElementById('game-wrapper');
+
+            if (!document.fullscreenElement) {
+                wrapper.requestFullscreen().catch(err => {
+                    console.error('Fullscreen error:', err);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // 전체화면 상태 변경 시 버튼 텍스트 업데이트
+        document.addEventListener('fullscreenchange', () => {
+            const btn = document.getElementById('fullscreen-btn');
+            if (document.fullscreenElement) {
+                btn.textContent = '전체화면 종료';
+            } else {
+                btn.textContent = '전체화면';
+            }
+        });
     </script>
-    <script type="text/javascript" src="game.js"></script>
-    <script async type="text/javascript" src="love.js" onload="applicationLoad(this)"></script>
-    <footer>
-      <p>Built with <a href="https://github.com/Davidobot/love.js">love.js</a> <button onclick="goFullScreen();">Go Fullscreen</button><br>Hint: Reload the page if screen is blank</p>
-    </footer>
-  </body>
+</body>
 </html>
