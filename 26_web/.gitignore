@@ -1,0 +1,8 @@
+/compile
+/dist
+config.ini
+icon.ico
+
+.claude
+/*.md
+!/README.md
