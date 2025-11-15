@@ -147,7 +147,8 @@ function save:deserialize(str)
         return nil
     end
 
-    local func, err = load("return " .. str)
+    -- Lua 5.1 uses loadstring, Lua 5.2+ uses load (web uses Lua 5.1)
+    local func, err = (loadstring or load)("return " .. str)
     if not func then
         print("ERROR: Failed to deserialize: " .. tostring(err))
         return nil

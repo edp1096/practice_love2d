@@ -93,4 +93,28 @@ function love.gamepadreleased(joystick, button) input_dispatcher:gamepadreleased
 
 function love.gamepadaxis(joystick, axis, value) input_dispatcher:gamepadaxis(joystick, axis, value) end
 
+-- === Focus Handler (Web/Mobile Tab Switching) ===
+
+function love.focus(focused)
+    if focused then
+        -- Tab gained focus - resume BGM if it stopped
+        if sound.current_bgm and not sound.current_bgm:isPlaying() then
+            -- Reset volume (in case browser muted it)
+            local vol = sound.current_bgm:getVolume()
+            sound.current_bgm:setVolume(0)
+            sound.current_bgm:setVolume(vol)
+
+            -- Multiple play attempts for reliability
+            for i = 1, 3 do
+                sound.current_bgm:play()
+                if sound.current_bgm:isPlaying() then
+                    break
+                end
+            end
+        end
+    end
+    -- Note: Tab loses focus automatically pauses audio in most browsers
+    -- This is expected browser behavior and cannot be prevented
+end
+
 function love.quit() system.cleanup(lifecycle) end

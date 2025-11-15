@@ -122,6 +122,18 @@ function builder:buildMenu(cfg)
       self.selected = 1
     end
 
+    -- Filter out "Quit" option on web platform
+    local os = love.system.getOS()
+    if os == "Web" and self.options then
+      local filtered = {}
+      for _, opt in ipairs(self.options) do
+        if opt ~= "Quit" then
+          table.insert(filtered, opt)
+        end
+      end
+      self.options = filtered
+    end
+
     -- Initialize flash effect if configured
     if cfg.flash and cfg.flash.enabled then
       self.flash_alpha = cfg.flash.initial_alpha or 1.0

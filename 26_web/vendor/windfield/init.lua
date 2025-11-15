@@ -50,6 +50,38 @@ local function reversePolygonVertices(vertices)
     return reversed
 end
 
+-- Validate triangle for Box2D compatibility
+local function isValidTriangle(triangle)
+    if #triangle ~= 6 then return false end
+
+    local x1, y1 = triangle[1], triangle[2]
+    local x2, y2 = triangle[3], triangle[4]
+    local x3, y3 = triangle[5], triangle[6]
+
+    -- Check minimum distance between vertices (Box2D requires > b2_linearSlop = 0.005)
+    local MIN_DISTANCE = 0.1  -- Conservative threshold (0.1 units)
+
+    local dist12 = math.sqrt((x2 - x1)^2 + (y2 - y1)^2)
+    local dist23 = math.sqrt((x3 - x2)^2 + (y3 - y2)^2)
+    local dist31 = math.sqrt((x1 - x3)^2 + (y1 - y3)^2)
+
+    if dist12 < MIN_DISTANCE or dist23 < MIN_DISTANCE or dist31 < MIN_DISTANCE then
+        return false, "vertices too close"
+    end
+
+    -- Check triangle area using cross product
+    local area = math.abs((x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1)) / 2
+
+    -- Minimum area threshold
+    local MIN_AREA = 0.01  -- Conservative threshold
+
+    if area < MIN_AREA then
+        return false, "area too small"
+    end
+
+    return true
+end
+
 local function triangulatePolygon(vertices)
     if #vertices <= 16 then
         return { vertices }
@@ -72,21 +104,34 @@ local function triangulatePolygon(vertices)
     end
 
     local triangles = {}
+    local rejected = 0
     for i, triangle in ipairs(result) do
         if #triangle == 6 then
             if getPolygonWindingOrder(triangle) == "cw" then
                 triangle = reversePolygonVertices(triangle)
             end
-            table.insert(triangles, triangle)
+
+            -- Validate triangle before adding (critical for web/Box2D)
+            local valid, reason = isValidTriangle(triangle)
+            if valid then
+                table.insert(triangles, triangle)
+            else
+                rejected = rejected + 1
+                print("Warning: Rejected invalid triangle #" .. i .. " (" .. (reason or "unknown") .. ")")
+            end
         end
     end
 
     if #triangles == 0 then
-        print("Error: No valid triangles created from triangulation")
+        print("Error: No valid triangles created from triangulation (rejected: " .. rejected .. ")")
         return {}
     end
 
-    print("Created " .. #triangles .. " triangles from polygon")
+    if rejected > 0 then
+        print("Created " .. #triangles .. " triangles from polygon (rejected " .. rejected .. " invalid)")
+    else
+        print("Created " .. #triangles .. " triangles from polygon")
+    end
     return triangles
 end
 
@@ -280,8 +325,13 @@ end
 function World:collisionEventsClear()
     local bodies = self.box2d_world:getBodies()
     for _, body in ipairs(bodies) do
-        local collider = body:getFixtures()[1]:getUserData()
-        collider:collisionEventsClear()
+        local fixtures = body:getFixtures()
+        if fixtures and fixtures[1] then
+            local collider = fixtures[1]:getUserData()
+            if collider and collider.collisionEventsClear then
+                collider:collisionEventsClear()
+            end
+        end
     end
 end
 
@@ -753,8 +803,13 @@ end
 function World:destroy()
     local bodies = self.box2d_world:getBodies()
     for _, body in ipairs(bodies) do
-        local collider = body:getFixtures()[1]:getUserData()
-        collider:destroy()
+        local fixtures = body:getFixtures()
+        if fixtures and fixtures[1] then
+            local collider = fixtures[1]:getUserData()
+            if collider and collider.destroy then
+                collider:destroy()
+            end
+        end
     end
     local joints = self.box2d_world:getJoints()
     for _, joint in ipairs(joints) do joint:destroy() end

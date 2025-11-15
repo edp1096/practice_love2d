@@ -26,40 +26,34 @@ function loaders.loadTreeTiles(self)
             if tile_data and tile_data.gid and tile_data.gid > 0 then
                 -- Get tile info from map's tiles table
                 local tile_info = self.map.tiles[tile_data.gid]
-                if not tile_info then
-                    goto continue
-                end
+                if tile_info then
+                    -- Get tileset
+                    local tileset = self.map.tilesets[tile_info.tileset]
+                    if tileset and tileset.image then
+                        -- Calculate world position
+                        local world_x = (x - 1) * tile_width
+                        local world_y = (y - 1) * tile_height
 
-                -- Get tileset
-                local tileset = self.map.tilesets[tile_info.tileset]
-                if not tileset or not tileset.image then
-                    goto continue
-                end
-
-                -- Calculate world position
-                local world_x = (x - 1) * tile_width
-                local world_y = (y - 1) * tile_height
-
-                -- Add to drawable tiles for Y-sorting
-                table.insert(self.drawable_tiles, {
-                    x = world_x,
-                    y = world_y + tile_height,  -- Bottom Y for sorting
-                    tile_info = tile_info,
-                    tileset = tileset,
-                    world_x = world_x,
-                    world_y = world_y,
-                    draw = function(self_tile)
-                        -- Draw the tile using tileset image and quad
-                        love.graphics.draw(
-                            self_tile.tileset.image,
-                            self_tile.tile_info.quad,
-                            self_tile.world_x,
-                            self_tile.world_y
-                        )
+                        -- Add to drawable tiles for Y-sorting
+                        table.insert(self.drawable_tiles, {
+                            x = world_x,
+                            y = world_y + tile_height,  -- Bottom Y for sorting
+                            tile_info = tile_info,
+                            tileset = tileset,
+                            world_x = world_x,
+                            world_y = world_y,
+                            draw = function(self_tile)
+                                -- Draw the tile using tileset image and quad
+                                love.graphics.draw(
+                                    self_tile.tileset.image,
+                                    self_tile.tile_info.quad,
+                                    self_tile.world_x,
+                                    self_tile.world_y
+                                )
+                            end
+                        })
                     end
-                })
-
-                ::continue::
+                end
             end
         end
     end
@@ -202,38 +196,33 @@ function loaders.loadEnemies(self, killed_enemies)
             end
 
             -- Skip non-respawning enemies that were already killed
-            if not respawn and killed_enemies[map_id] then
-                -- Enemy was killed and doesn't respawn, skip it
-                goto continue
-            end
+            if not (not respawn and killed_enemies[map_id]) then
+                -- Use factory to create from Tiled properties
+                local new_enemy = factory:createEnemy(obj, self.enemy_class, map_name)
 
-            -- Use factory to create from Tiled properties
-            local new_enemy = factory:createEnemy(obj, self.enemy_class, map_name)
+                new_enemy.world = self
 
-            new_enemy.world = self
-
-            if obj.properties.patrol_points then
-                local points = {}
-                for point_str in string.gmatch(obj.properties.patrol_points, "([^;]+)") do
-                    local x, y = point_str:match("([^,]+),([^,]+)")
-                    table.insert(points, { x = obj.x + tonumber(x), y = obj.y + tonumber(y) })
+                if obj.properties.patrol_points then
+                    local points = {}
+                    for point_str in string.gmatch(obj.properties.patrol_points, "([^;]+)") do
+                        local x, y = point_str:match("([^,]+),([^,]+)")
+                        table.insert(points, { x = obj.x + tonumber(x), y = obj.y + tonumber(y) })
+                    end
+                    new_enemy:setPatrolPoints(points)
+                else
+                    new_enemy:setPatrolPoints({
+                        { x = obj.x - 50, y = obj.y - 50 },
+                        { x = obj.x + 50, y = obj.y - 50 },
+                        { x = obj.x + 50, y = obj.y + 50 },
+                        { x = obj.x - 50, y = obj.y + 50 }
+                    })
                 end
-                new_enemy:setPatrolPoints(points)
-            else
-                new_enemy:setPatrolPoints({
-                    { x = obj.x - 50, y = obj.y - 50 },
-                    { x = obj.x + 50, y = obj.y - 50 },
-                    { x = obj.x + 50, y = obj.y + 50 },
-                    { x = obj.x - 50, y = obj.y + 50 }
-                })
+
+                -- Create enemy collider using collision module
+                collision.createEnemyCollider(new_enemy, self.physicsWorld, self.game_mode)
+
+                table.insert(self.enemies, new_enemy)
             end
-
-            -- Create enemy collider using collision module
-            collision.createEnemyCollider(new_enemy, self.physicsWorld, self.game_mode)
-
-            table.insert(self.enemies, new_enemy)
-
-            ::continue::
         end
     end
 end
@@ -332,20 +321,15 @@ function loaders.loadWorldItems(self, picked_items)
                 local map_id = string.format("%s_obj_%d", map_name, obj.id)
 
                 -- Skip non-respawning items that were already picked up
-                if not respawn and picked_items[map_id] then
-                    -- Item was picked up and doesn't respawn, skip it
-                    goto continue
+                if not (not respawn and picked_items[map_id]) then
+                    local center_x = obj.x + obj.width / 2
+                    local center_y = obj.y + obj.height / 2
+
+                    local item = self.world_item_class:new(center_x, center_y, item_type, quantity, map_id, respawn)
+
+                    table.insert(self.world_items, item)
                 end
-
-                local center_x = obj.x + obj.width / 2
-                local center_y = obj.y + obj.height / 2
-
-                local item = self.world_item_class:new(center_x, center_y, item_type, quantity, map_id, respawn)
-
-                table.insert(self.world_items, item)
             end
-
-            ::continue::
         end
     end
 end

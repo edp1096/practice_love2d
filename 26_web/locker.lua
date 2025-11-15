@@ -3,27 +3,36 @@
 
 local locker = {}
 
-local ffi = require("ffi")
+-- Check if running on desktop platform (FFI only works on desktop)
+local os = love.system.getOS()
+local isDesktop = (os == "Windows" or os == "Linux" or os == "OS X")
+
+-- Only load FFI on desktop platforms
+local ffi
+if isDesktop then ffi = require("ffi") end
+
 local lockHandle = nil
 local kernel32 = nil
-local isWindows = love.system.getOS() == "Windows"
+local isWindows = os == "Windows"
 
--- Define FFI functions once at module load time
-if isWindows then
-    ffi.cdef [[
-        void* CreateMutexA(void* lpMutexAttributes, int bInitialOwner, const char* lpName);
-        unsigned long GetLastError();
-        int CloseHandle(void* hObject);
-    ]]
-    kernel32 = ffi.load("kernel32")
-else
-    ffi.cdef [[
-        typedef struct sem_t sem_t;
-        sem_t* sem_open(const char *name, int oflag, unsigned int mode, unsigned int value);
-        int sem_close(sem_t *sem);
-        int sem_unlink(const char *name);
-        int sem_trywait(sem_t *sem);
-    ]]
+-- Define FFI functions once at module load time (only on desktop)
+if isDesktop then
+    if isWindows then
+        ffi.cdef [[
+            void* CreateMutexA(void* lpMutexAttributes, int bInitialOwner, const char* lpName);
+            unsigned long GetLastError();
+            int CloseHandle(void* hObject);
+        ]]
+        kernel32 = ffi.load("kernel32")
+    else
+        ffi.cdef [[
+            typedef struct sem_t sem_t;
+            sem_t* sem_open(const char *name, int oflag, unsigned int mode, unsigned int value);
+            int sem_close(sem_t *sem);
+            int sem_unlink(const char *name);
+            int sem_trywait(sem_t *sem);
+        ]]
+    end
 end
 
 local function initWindowsLock()
@@ -71,6 +80,8 @@ local function quitUnix()
 end
 
 function locker:ProcInit()
+    -- Skip locker on non-desktop platforms (Android, iOS, Web)
+    if not isDesktop then return true end
     local success
 
     -- Use explicit if-else instead of 'and ... or ...' pattern
@@ -90,6 +101,8 @@ function locker:ProcInit()
 end
 
 function locker:ProcQuit()
+    -- Skip locker on non-desktop platforms
+    if not isDesktop then return end
     if isWindows then
         quitWindows()
     else

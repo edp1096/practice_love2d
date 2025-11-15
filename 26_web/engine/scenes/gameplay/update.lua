@@ -83,37 +83,29 @@ function update.handleEnemyAttacks(self, scaled_dt, shake_callback)
 
     for _, enemy in ipairs(self.world.enemies) do
         -- Early skip: only process attacking enemies that haven't attacked yet
-        if enemy.state ~= constants.ENEMY_STATES.ATTACK or enemy.is_stunned or enemy.has_attacked then
-            goto continue_enemy_loop
+        if enemy.state == constants.ENEMY_STATES.ATTACK and not enemy.is_stunned and not enemy.has_attacked then
+            -- Calculate distance
+            local enemy_center_x = enemy.x + enemy.collider_offset_x
+            local enemy_center_y = enemy.y + enemy.collider_offset_y
+            local dx = enemy_center_x - self.player.x
+            local dy = enemy_center_y - self.player.y
+
+            local attack_distance = calculateAttackDistance(enemy, dx, dy, is_platformer)
+            if attack_distance then
+                -- Check if in attack range
+                local in_attack_range = (attack_distance < (enemy.attack_range or constants.COMBAT.DEFAULT_ATTACK_RANGE))
+                if in_attack_range then
+                    -- Process attack
+                    local damaged, parried, is_perfect = self.player:takeDamage(enemy.damage or 10, shake_callback)
+                    enemy.has_attacked = true
+
+                    if parried then
+                        enemy:stun(nil, is_perfect)
+                        handleParryEffects(is_perfect)
+                    end
+                end
+            end
         end
-
-        -- Calculate distance
-        local enemy_center_x = enemy.x + enemy.collider_offset_x
-        local enemy_center_y = enemy.y + enemy.collider_offset_y
-        local dx = enemy_center_x - self.player.x
-        local dy = enemy_center_y - self.player.y
-
-        local attack_distance = calculateAttackDistance(enemy, dx, dy, is_platformer)
-        if not attack_distance then
-            goto continue_enemy_loop  -- Too far vertically in platformer
-        end
-
-        -- Check if in attack range
-        local in_attack_range = (attack_distance < (enemy.attack_range or constants.COMBAT.DEFAULT_ATTACK_RANGE))
-        if not in_attack_range then
-            goto continue_enemy_loop
-        end
-
-        -- Process attack
-        local damaged, parried, is_perfect = self.player:takeDamage(enemy.damage or 10, shake_callback)
-        enemy.has_attacked = true
-
-        if parried then
-            enemy:stun(nil, is_perfect)
-            handleParryEffects(is_perfect)
-        end
-
-        ::continue_enemy_loop::
     end
 end
 
@@ -282,24 +274,18 @@ function update.checkDamageZones(self, scaled_dt, shake_callback)
 
         -- Use Box2D's testPoint to check if player foot is inside the zone
         local is_in_zone = zone_data.collider.fixture:testPoint(px, py)
-        if not is_in_zone then
-            goto continue_zone_loop
+        if is_in_zone then
+            -- Check cooldown
+            local zone_id = "zone_" .. i
+            local cooldown = self.player.damage_zone_cooldowns[zone_id] or 0
+            if cooldown <= 0 then
+                -- Apply damage
+                local damaged = self.player:takeDamage(zone_data.damage, shake_callback)
+                if damaged then
+                    self.player.damage_zone_cooldowns[zone_id] = zone_data.damage_cooldown
+                end
+            end
         end
-
-        -- Check cooldown
-        local zone_id = "zone_" .. i
-        local cooldown = self.player.damage_zone_cooldowns[zone_id] or 0
-        if cooldown > 0 then
-            goto continue_zone_loop
-        end
-
-        -- Apply damage
-        local damaged = self.player:takeDamage(zone_data.damage, shake_callback)
-        if damaged then
-            self.player.damage_zone_cooldowns[zone_id] = zone_data.damage_cooldown
-        end
-
-        ::continue_zone_loop::
     end
 end
 
