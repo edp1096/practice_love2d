@@ -4,9 +4,9 @@ A LÖVE2D game project with clean **Engine/Game separation** architecture.
 
 ---
 
-## 🎯 Project Philosophy
+## Project Philosophy
 
-### **Engine (100% Reusable)** ⭐
+### **Engine (100% Reusable)** 
 The `engine/` folder contains **ALL** game systems AND entities:
 - **Core systems:** lifecycle, input, display, sound, save, camera, debug
 - **Subsystems:** world (physics), effects, lighting, parallax, HUD, collision
@@ -21,21 +21,23 @@ The `game/` folder contains **only** game-specific content:
 - **No entities folder!** (moved to engine)
 
 ### **Benefits**
-- ✅ **Create new games easily**: Copy `engine/`, create new `game/` content
-- ✅ **Clean separation**: Engine code vs Game content
-- ✅ **Easy maintenance**: Clear folder structure
-- ✅ **Content-focused**: Focus on game design, not engine code
-- ✅ **61% less code**: ~3,000 lines vs original 7,649 lines
+- **Create new games easily**: Copy `engine/`, create new `game/` content
+- **Clean separation**: Engine code vs Game content
+- **Easy maintenance**: Clear folder structure
+- **Content-focused**: Focus on game design, not engine code
+- **61% less code**: ~3,000 lines vs original 7,649 lines
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
 1. Install LÖVE 11.5: https://love2d.org/
 2. Clone or download this project
-3. Run: `love .`
+3. Run:
+   - **Desktop:** `love .`
+   - **Web:** See [Web Build](#-web-build) section below
 
 ### Controls
 
@@ -80,7 +82,7 @@ The `game/` folder contains **only** game-specific content:
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 25_map/
@@ -109,7 +111,7 @@ The `game/` folder contains **only** game-specific content:
 
 ---
 
-## 🎮 First Steps
+## First Steps
 
 ### 1. Explore the Game
 - Start: `love .`
@@ -134,7 +136,7 @@ The `game/` folder contains **only** game-specific content:
 - Cycle items: **Tab** / **L2**
 - Quick-select: **1-5** keys
 
-### 5. Persistence System ⭐ NEW!
+### 5. Persistence System  NEW!
 - **One-time items:** Pick up starter weapons (staff, sword) once
 - **One-time enemies:** Kill bosses once, they stay dead
 - **Respawning:** Regular items/enemies respawn by default
@@ -142,9 +144,9 @@ The `game/` folder contains **only** game-specific content:
 
 ---
 
-## 🛠️ Creating Content
+## Creating Content
 
-### Add a New Enemy ⭐ (Data-Driven - No Code!)
+### Add a New Enemy  (Data-Driven - No Code!)
 
 **Method 1: Direct in Tiled (Quick)**
 1. Open map: `assets/maps/level1/area1.tmx`
@@ -178,7 +180,7 @@ enemies = {
 
 Then in Tiled, just set `type = "yourenemy"`.
 
-### Add a New Menu ⭐ (Data-Driven - 6 lines!)
+### Add a New Menu  (Data-Driven - 6 lines!)
 
 1. Add to `game/data/scenes.lua`:
 ```lua
@@ -296,7 +298,7 @@ inventory:addItem("youritem", 1)
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 - **[GUIDE.md](GUIDE.md)** - Complete development guide (concepts, workflows, best practices)
 - **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - Detailed project structure reference
@@ -305,7 +307,7 @@ inventory:addItem("youritem", 1)
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Game won't start
 - Check LÖVE version: `love --version` (need 11.5)
@@ -313,8 +315,8 @@ inventory:addItem("youritem", 1)
 - Look for errors in console
 
 ### Files not found errors
-- Use dots in require paths: `require "engine.core.sound"` ✅
-- Use slashes in file paths: `"assets/maps/level1/area1.lua"` ✅
+- Use dots in require paths: `require "engine.core.sound"`
+- Use slashes in file paths: `"assets/maps/level1/area1.lua"`
 - Never mix them up!
 
 ### No sound
@@ -335,7 +337,104 @@ inventory:addItem("youritem", 1)
 
 ---
 
-## 🎯 Next Steps
+## Web Build
+
+The game can be deployed to web browsers using **love.js** (LÖVE to WebAssembly compiler).
+
+### Requirements
+
+- **Node.js** and **npm** installed
+- **Lua 5.1 compatible code** (see limitations below)
+
+### Build Process
+
+1. **Install love.js globally:**
+   ```bash
+   npm install -g love.js
+   ```
+
+2. **Build for web:**
+   ```bash
+   npm run build
+   ```
+
+   This creates `web_build/game.data` with all game files.
+
+3. **Run local server:**
+   ```bash
+   cd web_build
+   lua server.lua 8080
+   ```
+
+   Or using Node.js:
+   ```bash
+   cd web_build
+   npx http-server -p 8080
+   ```
+
+4. **Open browser:**
+   - Navigate to `http://localhost:8080`
+   - Use `localhost` (not `127.0.0.1`) for best compatibility
+
+### Lua 5.1 Compatibility
+
+**Web builds use Lua 5.1 (not LuaJIT).** The codebase is already compatible:
+
+**Avoided Features:**
+- `goto` and labels (Lua 5.2+)
+- FFI module (LuaJIT only)
+- Use `loadstring or load` for compatibility
+
+**Platform Detection:**
+```lua
+local os = love.system.getOS()
+if os == "Web" then
+  -- Web-specific behavior
+end
+```
+
+### Web Platform Limitations
+
+**Browser Restrictions:**
+- **Tab blur pauses execution:** BGM and weather stop when tab loses focus
+- **Auto-resume on focus:** BGM automatically resumes when tab regains focus
+- **No "Quit" button:** Automatically hidden in web builds
+- **Fullscreen limitations:** Requires user gesture (button click)
+
+**Storage:**
+- Save files stored in browser IndexedDB
+- Clear browser data = lost saves
+- Not portable between browsers
+
+### Deployment
+
+**Option 1: Lua-based Server (No Node.js required)**
+```bash
+cd web_build
+lua server.lua 8080
+```
+
+**Option 2: Any HTTP Server**
+```bash
+# Python
+python -m http.server 8080
+
+# Node.js
+npx http-server -p 8080
+
+# PHP
+php -S localhost:8080
+```
+
+**Production Deployment:**
+- Upload `web_build/` contents to web host
+- Ensure MIME types: `.wasm` = `application/wasm`, `.data` = `application/octet-stream`
+- Enable gzip compression for `.data`, `.js`, `.wasm` files
+- Set appropriate CORS headers if needed
+
+---
+
+## Next Steps
 
 1. **Read GUIDE.md** - Learn content creation workflows
 2. **Read CLAUDE.md** - Full API reference

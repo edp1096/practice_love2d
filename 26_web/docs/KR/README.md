@@ -4,9 +4,9 @@
 
 ---
 
-## 🎯 프로젝트 철학
+## 프로젝트 철학
 
-### **Engine (100% 재사용 가능)** ⭐
+### **Engine (100% 재사용 가능)** 
 `engine/` 폴더는 **모든** 게임 시스템과 엔티티를 포함합니다:
 - **핵심 시스템:** lifecycle, input, display, sound, save, camera, debug
 - **서브시스템:** world (물리), effects, lighting, parallax, HUD, collision
@@ -21,21 +21,23 @@
 - **엔티티 폴더 없음!** (engine으로 이동)
 
 ### **장점**
-- ✅ **손쉬운 신규 게임 제작**: `engine/` 복사, 새 `game/` 콘텐츠 생성
-- ✅ **깔끔한 분리**: 엔진 코드 vs 게임 콘텐츠
-- ✅ **쉬운 유지보수**: 명확한 폴더 구조
-- ✅ **콘텐츠 중심 워크플로우**: 게임 디자인에 집중, 엔진 코드 불필요
-- ✅ **61% 코드 감소**: 약 3,000줄 vs 기존 7,649줄
+- **손쉬운 신규 게임 제작**: `engine/` 복사, 새 `game/` 콘텐츠 생성
+- **깔끔한 분리**: 엔진 코드 vs 게임 콘텐츠
+- **쉬운 유지보수**: 명확한 폴더 구조
+- **콘텐츠 중심 워크플로우**: 게임 디자인에 집중, 엔진 코드 불필요
+- **61% 코드 감소**: 약 3,000줄 vs 기존 7,649줄
 
 ---
 
-## 🚀 빠른 시작
+## 빠른 시작
 
 ### 설치
 
 1. LÖVE 11.5 설치: https://love2d.org/
 2. 프로젝트 클론 또는 다운로드
-3. 실행: `love .`
+3. 실행:
+   - **데스크톱:** `love .`
+   - **웹:** 아래 [웹 빌드](#-웹-빌드) 섹션 참조
 
 ### 조작법
 
@@ -80,7 +82,7 @@
 
 ---
 
-## 📁 프로젝트 구조
+## 프로젝트 구조
 
 ```
 25_map/
@@ -109,7 +111,7 @@
 
 ---
 
-## 🎮 첫 단계
+## 첫 단계
 
 ### 1. 게임 탐험
 - 시작: `love .`
@@ -134,7 +136,7 @@
 - 아이템 순환: **Tab** / **L2**
 - 빠른 선택: **1-5** 키
 
-### 5. 지속성 시스템 ⭐ NEW!
+### 5. 지속성 시스템  NEW!
 - **일회성 아이템:** 시작 무기(지팡이, 검) 한 번만 획득
 - **일회성 적:** 보스를 한 번 처치하면 계속 죽어있음
 - **리스폰:** 일반 아이템/적은 기본적으로 리스폰
@@ -142,9 +144,9 @@
 
 ---
 
-## 🛠️ 콘텐츠 만들기
+## 콘텐츠 만들기
 
-### 새 적 추가하기 ⭐ (데이터 기반 - 코드 불필요!)
+### 새 적 추가하기  (데이터 기반 - 코드 불필요!)
 
 **방법 1: Tiled에서 직접 (빠름)**
 1. 맵 열기: `assets/maps/level1/area1.tmx`
@@ -178,7 +180,7 @@ enemies = {
 
 그 다음 Tiled에서 `type = "yourenemy"`만 설정하면 됩니다.
 
-### 새 메뉴 추가하기 ⭐ (데이터 기반 - 6줄!)
+### 새 메뉴 추가하기  (데이터 기반 - 6줄!)
 
 1. `game/data/scenes.lua`에 추가:
 ```lua
@@ -296,7 +298,7 @@ inventory:addItem("youritem", 1)
 
 ---
 
-## 📚 문서
+## 문서
 
 - **[GUIDE.md](GUIDE.md)** - 완전한 개발 가이드 (개념, 워크플로우, 모범 사례)
 - **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - 상세한 프로젝트 구조 참조
@@ -305,7 +307,7 @@ inventory:addItem("youritem", 1)
 
 ---
 
-## 🐛 문제 해결
+## 문제 해결
 
 ### 게임이 시작되지 않음
 - LÖVE 버전 확인: `love --version` (11.5 필요)
@@ -313,8 +315,8 @@ inventory:addItem("youritem", 1)
 - 콘솔에서 에러 확인
 
 ### 파일을 찾을 수 없음 에러
-- require 경로에 점 사용: `require "engine.core.sound"` ✅
-- 파일 경로에 슬래시 사용: `"assets/maps/level1/area1.lua"` ✅
+- require 경로에 점 사용: `require "engine.core.sound"`
+- 파일 경로에 슬래시 사용: `"assets/maps/level1/area1.lua"`
 - 절대 혼용하지 마세요!
 
 ### 사운드 없음
@@ -335,7 +337,104 @@ inventory:addItem("youritem", 1)
 
 ---
 
-## 🎯 다음 단계
+## 웹 빌드
+
+**love.js** (LÖVE to WebAssembly 컴파일러)를 사용하여 웹 브라우저에 게임을 배포할 수 있습니다.
+
+### 요구사항
+
+- **Node.js** 및 **npm** 설치
+- **Lua 5.1 호환 코드** (아래 제한사항 참조)
+
+### 빌드 과정
+
+1. **love.js 전역 설치:**
+   ```bash
+   npm install -g love.js
+   ```
+
+2. **웹용 빌드:**
+   ```bash
+   npm run build
+   ```
+
+   `web_build/game.data`에 모든 게임 파일이 생성됩니다.
+
+3. **로컬 서버 실행:**
+   ```bash
+   cd web_build
+   lua server.lua 8080
+   ```
+
+   또는 Node.js 사용:
+   ```bash
+   cd web_build
+   npx http-server -p 8080
+   ```
+
+4. **브라우저 열기:**
+   - `http://localhost:8080` 접속
+   - `127.0.0.1`이 아닌 `localhost` 사용 권장
+
+### Lua 5.1 호환성
+
+**웹 빌드는 Lua 5.1 사용 (LuaJIT 아님).** 코드베이스는 이미 호환됩니다:
+
+**피해야 할 기능:**
+- `goto`와 레이블 (Lua 5.2+)
+- FFI 모듈 (LuaJIT 전용)
+- 호환성을 위해 `loadstring or load` 사용
+
+**플랫폼 감지:**
+```lua
+local os = love.system.getOS()
+if os == "Web" then
+  -- 웹 전용 동작
+end
+```
+
+### 웹 플랫폼 제한사항
+
+**브라우저 제한:**
+- **탭 블러 시 실행 일시정지:** 탭을 벗어나면 BGM과 날씨 중지
+- **포커스 시 자동 재개:** 탭으로 돌아오면 BGM 자동 재생
+- **"종료" 버튼 없음:** 웹 빌드에서 자동으로 숨김
+- **전체화면 제한:** 사용자 제스처 필요 (버튼 클릭)
+
+**저장소:**
+- 저장 파일은 브라우저 IndexedDB에 저장
+- 브라우저 데이터 삭제 = 저장 파일 손실
+- 브라우저 간 이동 불가
+
+### 배포
+
+**옵션 1: Lua 기반 서버 (Node.js 불필요)**
+```bash
+cd web_build
+lua server.lua 8080
+```
+
+**옵션 2: 모든 HTTP 서버**
+```bash
+# Python
+python -m http.server 8080
+
+# Node.js
+npx http-server -p 8080
+
+# PHP
+php -S localhost:8080
+```
+
+**프로덕션 배포:**
+- `web_build/` 내용물을 웹 호스트에 업로드
+- MIME 타입 설정: `.wasm` = `application/wasm`, `.data` = `application/octet-stream`
+- `.data`, `.js`, `.wasm` 파일에 gzip 압축 활성화
+- 필요 시 적절한 CORS 헤더 설정
+
+---
+
+## 다음 단계
 
 1. **GUIDE.md 읽기** - 콘텐츠 제작 워크플로우 학습
 2. **CLAUDE.md 읽기** - 전체 API 참조

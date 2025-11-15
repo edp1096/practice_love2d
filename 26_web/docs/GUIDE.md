@@ -23,6 +23,9 @@ A practical guide to developing with this LÖVE2D game engine. For detailed API 
 # Desktop
 love .
 
+# Web (see Web Development section)
+npm run build && cd web_build && lua server.lua 8080
+
 # Check syntax
 luac -p **/*.lua
 ```
@@ -57,10 +60,10 @@ luac -p **/*.lua
 **Rule:** Engine NEVER imports game files, only game imports engine.
 
 ```lua
--- ✅ GOOD: game/scenes/menu.lua
+-- GOOD: game/scenes/menu.lua
 local builder = require "engine.scenes.builder"
 
--- ❌ BAD: engine/core/sound.lua
+-- BAD: engine/core/sound.lua
 local sounds = require "game.data.sounds"  -- NEVER DO THIS!
 ```
 
@@ -496,11 +499,11 @@ return mymodule
 ### Require Paths
 
 ```lua
--- ✅ GOOD: Use dots
+-- GOOD: Use dots
 require "engine.core.sound"
 require "game.data.player"
 
--- ❌ BAD: Use slashes
+-- BAD: Use slashes
 require "engine/core/sound"
 ```
 
@@ -589,6 +592,157 @@ enemy.y_sort = foot_collider:getY() + (collider_height * 0.6) / 2
 Trees tiles from Tiled map are also Y-sorted.
 
 **Platformer:** No Y-sorting, Trees layer drawn normally.
+
+---
+
+## Web Development
+
+### Building for Web
+
+The game uses **love.js** to compile to WebAssembly for browser deployment.
+
+**Build Command:**
+```bash
+npm run build
+```
+
+This executes: `love.js -c -t "LÖVE2D RPG Game" -m 67108864 . web_build/game.data`
+
+**Parameters:**
+- `-c` - Compatibility mode (no SharedArrayBuffer)
+- `-t` - Browser tab title
+- `-m 67108864` - 64MB memory allocation
+
+**Output:** `web_build/game.data` (contains all game files)
+
+### Local Testing
+
+**Option 1: Lua Server (Recommended)**
+```bash
+cd web_build
+lua server.lua 8080
+```
+
+**Option 2: Node.js**
+```bash
+cd web_build
+npx http-server -p 8080
+```
+
+**Access:** `http://localhost:8080` (use `localhost`, not `127.0.0.1`)
+
+### Lua 5.1 Compatibility Rules
+
+**Web builds use Lua 5.1 (not LuaJIT).** Follow these rules:
+
+**Avoid:**
+```lua
+-- Lua 5.2+ goto (NOT SUPPORTED)
+goto continue
+::continue::
+
+-- FFI module (LuaJIT only)
+local ffi = require("ffi")
+
+-- load() with string (Lua 5.2+)
+local func = load("return " .. str)
+```
+
+**Use Instead:**
+```lua
+-- Nested conditionals instead of goto
+if condition then
+  -- process
+end
+
+-- Platform detection for FFI
+local os = love.system.getOS()
+if os == "Windows" or os == "Linux" or os == "OS X" then
+  local ffi = require("ffi")
+  -- use FFI
+end
+
+-- Compatible load
+local func = (loadstring or load)("return " .. str)
+```
+
+### Web-Specific Code
+
+**Platform Detection:**
+```lua
+local os = love.system.getOS()
+
+if os == "Web" then
+  -- Web-only code
+  -- Example: Hide quit button
+elseif os == "Android" or os == "iOS" then
+  -- Mobile code
+else
+  -- Desktop code
+end
+```
+
+**Example Usage:**
+```lua
+-- engine/scenes/builder.lua
+local function onEnter(self, previous, ...)
+  -- Filter out "Quit" on web
+  local os = love.system.getOS()
+  if os == "Web" and self.options then
+    local filtered = {}
+    for _, opt in ipairs(self.options) do
+      if opt ~= "Quit" then
+        table.insert(filtered, opt)
+      end
+    end
+    self.options = filtered
+  end
+end
+```
+
+### Web Platform Limitations
+
+**Browser Behavior:**
+- **Tab blur:** Execution pauses when tab loses focus
+  - BGM stops (auto-resumes on focus via `love.focus()`)
+  - Weather effects pause
+  - All timers/animations freeze
+- **No quit:** `love.event.quit()` has no effect
+- **Fullscreen:** Requires user gesture (button click)
+
+**Storage:**
+- Saves stored in browser IndexedDB (not files)
+- Browser-specific (not portable)
+- Cleared with browser data
+
+**Performance:**
+- 60 FPS cap (browser enforced)
+- Memory limited (set in build command)
+- No JIT compilation (Lua 5.1 interpreter)
+
+### Deployment Checklist
+
+**Pre-Deploy:**
+- [ ] Test in multiple browsers (Chrome, Firefox, Safari)
+- [ ] Test tab blur/focus behavior
+- [ ] Test save/load in browser storage
+- [ ] Check memory usage (browser dev tools)
+- [ ] Verify all assets load correctly
+
+**Web Server:**
+- [ ] Set MIME types:
+  - `.wasm` → `application/wasm`
+  - `.data` → `application/octet-stream`
+  - `.js` → `application/javascript`
+- [ ] Enable gzip for `.data`, `.js`, `.wasm`
+- [ ] Set appropriate CORS headers
+- [ ] Configure cache headers for static assets
+
+**Production:**
+- [ ] Upload `web_build/` contents
+- [ ] Test on actual hosting environment
+- [ ] Monitor browser console for errors
+- [ ] Test on mobile browsers (touch controls)
 
 ---
 

@@ -23,6 +23,9 @@ LÖVE2D 게임 엔진 개발을 위한 실용적인 가이드입니다. 자세�
 # 데스크톱
 love .
 
+# 웹 (웹 개발 섹션 참조)
+npm run build && cd web_build && lua server.lua 8080
+
 # 문법 검사
 luac -p **/*.lua
 ```
@@ -57,10 +60,10 @@ luac -p **/*.lua
 **규칙:** Engine은 절대 game 파일을 import하지 않음, game만 engine을 import.
 
 ```lua
--- ✅ 좋음: game/scenes/menu.lua
+-- 좋음: game/scenes/menu.lua
 local builder = require "engine.scenes.builder"
 
--- ❌ 나쁨: engine/core/sound.lua
+-- 나쁨: engine/core/sound.lua
 local sounds = require "game.data.sounds"  -- 절대 하지 마세요!
 ```
 
@@ -497,11 +500,11 @@ return mymodule
 ### Require 경로
 
 ```lua
--- ✅ 좋음: 점 사용
+-- 좋음: 점 사용
 require "engine.core.sound"
 require "game.data.player"
 
--- ❌ 나쁨: 슬래시 사용
+-- 나쁨: 슬래시 사용
 require "engine/core/sound"
 ```
 
@@ -590,6 +593,157 @@ enemy.y_sort = foot_collider:getY() + (collider_height * 0.6) / 2
 Tiled 맵의 Trees 타일도 Y-정렬됩니다.
 
 **Platformer:** Y-정렬 없음, Trees 레이어 정상 그리기.
+
+---
+
+## 웹 개발
+
+### 웹용 빌드
+
+게임은 **love.js**를 사용하여 WebAssembly로 컴파일되어 브라우저에 배포됩니다.
+
+**빌드 명령:**
+```bash
+npm run build
+```
+
+실행 내용: `love.js -c -t "LÖVE2D RPG Game" -m 67108864 . web_build/game.data`
+
+**파라미터:**
+- `-c` - 호환 모드 (SharedArrayBuffer 불필요)
+- `-t` - 브라우저 탭 제목
+- `-m 67108864` - 64MB 메모리 할당
+
+**출력:** `web_build/game.data` (모든 게임 파일 포함)
+
+### 로컬 테스트
+
+**옵션 1: Lua 서버 (권장)**
+```bash
+cd web_build
+lua server.lua 8080
+```
+
+**옵션 2: Node.js**
+```bash
+cd web_build
+npx http-server -p 8080
+```
+
+**접속:** `http://localhost:8080` (`127.0.0.1`이 아닌 `localhost` 사용)
+
+### Lua 5.1 호환성 규칙
+
+**웹 빌드는 Lua 5.1 사용 (LuaJIT 아님).** 다음 규칙을 따르세요:
+
+**피하기:**
+```lua
+-- Lua 5.2+ goto (지원 안 됨)
+goto continue
+::continue::
+
+-- FFI 모듈 (LuaJIT 전용)
+local ffi = require("ffi")
+
+-- 문자열과 함께 load() (Lua 5.2+)
+local func = load("return " .. str)
+```
+
+**대신 사용:**
+```lua
+-- goto 대신 중첩 조건문
+if condition then
+  -- 처리
+end
+
+-- FFI용 플랫폼 감지
+local os = love.system.getOS()
+if os == "Windows" or os == "Linux" or os == "OS X" then
+  local ffi = require("ffi")
+  -- FFI 사용
+end
+
+-- 호환 가능한 load
+local func = (loadstring or load)("return " .. str)
+```
+
+### 웹 전용 코드
+
+**플랫폼 감지:**
+```lua
+local os = love.system.getOS()
+
+if os == "Web" then
+  -- 웹 전용 코드
+  -- 예: 종료 버튼 숨김
+elseif os == "Android" or os == "iOS" then
+  -- 모바일 코드
+else
+  -- 데스크톱 코드
+end
+```
+
+**사용 예:**
+```lua
+-- engine/scenes/builder.lua
+local function onEnter(self, previous, ...)
+  -- 웹에서 "종료" 필터링
+  local os = love.system.getOS()
+  if os == "Web" and self.options then
+    local filtered = {}
+    for _, opt in ipairs(self.options) do
+      if opt ~= "Quit" then
+        table.insert(filtered, opt)
+      end
+    end
+    self.options = filtered
+  end
+end
+```
+
+### 웹 플랫폼 제한사항
+
+**브라우저 동작:**
+- **탭 블러:** 탭을 벗어나면 실행 일시정지
+  - BGM 중지 (`love.focus()`로 자동 재개)
+  - 날씨 효과 일시정지
+  - 모든 타이머/애니메이션 정지
+- **종료 불가:** `love.event.quit()` 효과 없음
+- **전체화면:** 사용자 제스처 필요 (버튼 클릭)
+
+**저장소:**
+- 저장은 브라우저 IndexedDB에 저장 (파일 아님)
+- 브라우저별 (이식 불가)
+- 브라우저 데이터와 함께 삭제
+
+**성능:**
+- 60 FPS 제한 (브라우저 강제)
+- 메모리 제한 (빌드 명령에서 설정)
+- JIT 컴파일 없음 (Lua 5.1 인터프리터)
+
+### 배포 체크리스트
+
+**배포 전:**
+- [ ] 여러 브라우저에서 테스트 (Chrome, Firefox, Safari)
+- [ ] 탭 블러/포커스 동작 테스트
+- [ ] 브라우저 저장소에서 저장/로드 테스트
+- [ ] 메모리 사용량 확인 (브라우저 개발자 도구)
+- [ ] 모든 에셋 정상 로드 확인
+
+**웹 서버:**
+- [ ] MIME 타입 설정:
+  - `.wasm` → `application/wasm`
+  - `.data` → `application/octet-stream`
+  - `.js` → `application/javascript`
+- [ ] `.data`, `.js`, `.wasm`에 gzip 활성화
+- [ ] 적절한 CORS 헤더 설정
+- [ ] 정적 에셋용 캐시 헤더 설정
+
+**프로덕션:**
+- [ ] `web_build/` 내용물 업로드
+- [ ] 실제 호스팅 환경에서 테스트
+- [ ] 브라우저 콘솔 에러 모니터링
+- [ ] 모바일 브라우저에서 테스트 (터치 컨트롤)
 
 ---
 
