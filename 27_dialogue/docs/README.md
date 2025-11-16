@@ -85,7 +85,7 @@ The `game/` folder contains **only** game-specific content:
 ## Project Structure
 
 ```
-25_map/
+27_dialogue/
 ├── engine/           # Reusable game engine (100% reusable)
 │   ├── core/         # Core systems (lifecycle, input, scene, etc.)
 │   ├── systems/      # Subsystems (world, effects, lighting, hud)
@@ -444,5 +444,5 @@ php -S localhost:8080
 ---
 
 **Framework:** LÖVE 11.5 + Lua 5.1
-**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven + Centralized Colors
-**Last Updated:** 2025-11-15
+**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven + Dialogue System
+**Last Updated:** 2025-11-16

@@ -15,6 +15,7 @@ function setup.configure()
     local sound_data = require "game.data.sounds"
     local item_types = require "game.data.items"
     local loot_tables = require "game.data.loot_tables"
+    local dialogues = require "game.data.dialogues"  -- NEW: Dialogue trees
 
     -- Load engine modules
     local enemy_class = require "engine.entities.enemy"
@@ -64,6 +65,9 @@ function setup.configure()
 
     -- Inject dialogue reference into prompt (so prompts hide during dialogue)
     prompt.dialogue = dialogue
+
+    -- Inject dialogue trees into dialogue system
+    dialogue.dialogue_registry = dialogues
 end
 
 -- Return scene loader function for engine's scene_control

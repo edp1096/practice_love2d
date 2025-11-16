@@ -229,10 +229,13 @@ function display:GetScreenDimensions()
 end
 
 function display:CalculateScale()
-    -- Don't overwrite screen_wh - it's set by Enable/DisableFullScreen
-    -- Use actual dimensions for calculation
+    -- Update screen_wh with actual dimensions
     local actual_w = love.graphics.getWidth()
     local actual_h = love.graphics.getHeight()
+
+    -- Update screen_wh so GetScreenDimensions() returns correct values
+    self.screen_wh.w = actual_w
+    self.screen_wh.h = actual_h
 
     local virtual_aspect = self.render_wh.w / self.render_wh.h
     local screen_aspect = actual_w / actual_h

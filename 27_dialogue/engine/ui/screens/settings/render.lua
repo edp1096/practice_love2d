@@ -18,17 +18,15 @@ function render:draw(state)
         love.graphics.clear(love.graphics.getColor())
     end
 
+    display:Attach()
+
     -- Draw semi-transparent overlay
     if state.previous then
-        display:Attach()
         colors:apply(colors.for_dialog_dark)
         love.graphics.rectangle("fill", 0, 0, state.virtual_width, state.virtual_height)
-        display:Detach()
     end
 
     colors:reset()
-
-    display:Attach()
 
     -- Title
     text_ui:drawCentered("Settings", state.layout.title_y, state.virtual_width, colors.for_text_normal, state.titleFont)

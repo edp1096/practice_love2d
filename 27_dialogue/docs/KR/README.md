@@ -85,7 +85,7 @@
 ## 프로젝트 구조
 
 ```
-25_map/
+27_dialogue/
 ├── engine/           # 재사용 가능 게임 엔진 (100% 재사용 가능)
 │   ├── core/         # 핵심 시스템 (lifecycle, input, scene 등)
 │   ├── systems/      # 서브시스템 (world, effects, lighting, hud)
@@ -444,5 +444,5 @@ php -S localhost:8080
 ---
 
 **프레임워크:** LÖVE 11.5 + Lua 5.1
-**아키텍처:** Engine/Game 분리 + 의존성 주입 + 데이터 기반 + 중앙집중식 색상
-**마지막 업데이트:** 2025-11-15
+**아키텍처:** Engine/Game 분리 + 의존성 주입 + 데이터 기반 + 대화 시스템
+**마지막 업데이트:** 2025-11-16

@@ -39,7 +39,10 @@ function npc:new(x, y, npc_type, npc_id, config)
     -- Properties from config
     instance.name = config.name
     instance.interaction_range = config.interaction_range or 80
+
+    -- Dialogue: support both old (dialogue array) and new (dialogue_id)
     instance.dialogue = config.dialogue or { "Hello!" }
+    instance.dialogue_id = config.dialogue_id  -- Optional: dialogue tree ID
 
     -- Initialize collision and sprite properties using base class
     entity_base.initializeCollider(instance, config)
@@ -121,7 +124,13 @@ function npc:update(dt, player_x, player_y)
 end
 
 function npc:interact()
-    return self.dialogue
+    -- Return dialogue_id if available (for tree-based dialogue)
+    -- Otherwise return legacy dialogue array
+    if self.dialogue_id then
+        return { type = "tree", dialogue_id = self.dialogue_id }
+    else
+        return { type = "simple", messages = self.dialogue }
+    end
 end
 
 function npc:draw()

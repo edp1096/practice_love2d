@@ -14,10 +14,17 @@ local is_mobile = (love.system.getOS() == "Android" or love.system.getOS() == "i
 
 -- Keyboard input handler
 function input_handler.keypressed(self, key)
-    -- Dialogue takes priority
+    -- Dialogue takes priority (pass key for choice navigation)
     if input:wasPressed("interact", "keyboard", key) or
         input:wasPressed("menu_select", "keyboard", key) then
-        if dialogue:handleInput("keyboard") then
+        if dialogue:handleInput("keyboard", key) then
+            return
+        end
+    end
+
+    -- Also check for up/down keys when dialogue is open (for choice navigation)
+    if dialogue:isOpen() and (key == "up" or key == "down" or key == "w" or key == "s") then
+        if dialogue:handleInput("keyboard", key) then
             return
         end
     end
@@ -70,8 +77,14 @@ function input_handler.keypressed(self, key)
         -- F key: Interact with NPC, Save Point, or Pick up Item (A button on gamepad uses context logic)
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
-            local messages = npc:interact()
-            dialogue:showMultiple(npc.name, messages)
+            local interaction_data = npc:interact()
+            if interaction_data.type == "tree" then
+                -- New: dialogue tree system
+                dialogue:showTreeById(interaction_data.dialogue_id)
+            else
+                -- Legacy: simple message array
+                dialogue:showMultiple(npc.name, interaction_data.messages)
+            end
 
             return
         end
@@ -141,7 +154,9 @@ end
 function input_handler.mousereleased(self, x, y, button)
     if is_mobile then return end
 
-    if input:wasPressed("menu_select", "mouse", button) then
+    -- Always pass release event to dialogue (no wasPressed check on release!)
+    -- Released events don't trigger wasPressed (that's for press events)
+    if button == 1 then  -- Left mouse button
         dialogue:handleInput("mouse_release", x, y)
     end
 end
@@ -192,8 +207,14 @@ function input_handler.gamepadpressed(self, joystick, button)
     elseif action == "interact_npc" then
         -- ctx is the NPC
         if ctx then
-            local messages = ctx:interact()
-            dialogue:showMultiple(ctx.name, messages)
+            local interaction_data = ctx:interact()
+            if interaction_data.type == "tree" then
+                -- New: dialogue tree system
+                dialogue:showTreeById(interaction_data.dialogue_id)
+            else
+                -- Legacy: simple message array
+                dialogue:showMultiple(ctx.name, interaction_data.messages)
+            end
         end
 
     elseif action == "interact_savepoint" then
@@ -215,8 +236,14 @@ function input_handler.gamepadpressed(self, joystick, button)
         -- Direct interact (Y button) - NPC, Save Point, or Pick up Item
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
-            local messages = npc:interact()
-            dialogue:showMultiple(npc.name, messages)
+            local interaction_data = npc:interact()
+            if interaction_data.type == "tree" then
+                -- New: dialogue tree system
+                dialogue:showTreeById(interaction_data.dialogue_id)
+            else
+                -- Legacy: simple message array
+                dialogue:showMultiple(npc.name, interaction_data.messages)
+            end
             return
         end
 

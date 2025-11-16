@@ -7,7 +7,7 @@ Complete reference for the LÖVE2D game engine project structure.
 ## Root Directory
 
 ```
-26_web/
+27_dialogue/
 ├── main.lua              - Entry point (dependency injection)
 ├── conf.lua              - LÖVE configuration
 ├── startup.lua           - Initialization utilities
@@ -464,6 +464,6 @@ Examples:
 
 ---
 
-**Last Updated:** 2025-11-15
+**Last Updated:** 2025-11-16
 **Framework:** LÖVE 11.5 + Lua 5.1
-**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven + Persistence + Centralized Colors
+**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven + Dialogue System

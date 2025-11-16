@@ -361,10 +361,8 @@ entity_types.npcs = {
     villager = {
         name = "Villager",
         sprite_sheet = "assets/images/passerby_01-sheet.png",
-        dialogue = {
-            "Hello player!",
-            "Good bye player!",
-        },
+        -- Use dialogue tree instead of simple dialogue array
+        dialogue_id = "villager_greeting",  -- References game/data/dialogues.lua
         interaction_range = 80,
 
         sprite_width = 48,
