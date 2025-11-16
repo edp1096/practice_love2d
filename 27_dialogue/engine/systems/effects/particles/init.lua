@@ -48,12 +48,6 @@ function particles:spawn(effect_type, x, y, angle, particle_count)
         time = 0,
         type = effect_type
     })
-
-    -- Debug logging (check if debug is available)
-    if self.debug and self.debug.show_effects then
-        dprint(string.format("Spawned %s effect at (%.1f, %.1f) with %d particles",
-            effect_type, x, y, particle_count))
-    end
 end
 
 -- Update all active effects
@@ -65,11 +59,6 @@ function particles:update(dt)
         effect.ps:update(dt)
 
         if effect.time > effect.lifetime or effect.ps:getCount() == 0 then
-            -- Debug logging
-            if self.debug and self.debug.show_effects then
-                dprint(string.format("Removing %s effect (time: %.2f, particles: %d)",
-                    effect.type, effect.time, effect.ps:getCount()))
-            end
             table.remove(self.active_effects, i)
         end
     end
@@ -96,9 +85,6 @@ end
 
 -- Clear all effects
 function particles:clear()
-    if self.debug and self.debug.show_effects then
-        dprint("Clearing " .. #self.active_effects .. " effects")
-    end
     self.active_effects = {}
 end
 

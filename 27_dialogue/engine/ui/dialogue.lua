@@ -5,12 +5,13 @@
 local Talkies = require "vendor.talkies"
 local skip_button_widget = require "engine.ui.widgets.button.skip"
 local next_button_widget = require "engine.ui.widgets.button.next"
+local colors = require "engine.ui.colors"
 
 local dialogue = {}
 
 function dialogue:initialize(display_module)
     -- Configure Talkies
-    Talkies.backgroundColor = { 0, 0, 0, 0.8 }
+    Talkies.backgroundColor = colors.for_dialogue_bg
     Talkies.textSpeed = "fast"
     Talkies.indicatorCharacter = "█"  -- Filled box cursor
 
@@ -66,6 +67,23 @@ function dialogue:initialize(display_module)
     self.total_pages = 0
     self.showing_paged_text = false
 
+    -- Selected choices tracking (for grey-out effect) - PER DIALOGUE
+    -- Format: { "{node_id}|{choice_text}" = true }
+    self.selected_choices = {}
+
+    -- Global storage for ALL dialogue choices (for persistence)
+    -- Format: { dialogue_id = { "{node_id}|{choice_text}" = true, ... }, ... }
+    -- Preserve existing data if already set (for save/load)
+    if not self.all_dialogue_choices then
+        self.all_dialogue_choices = {}
+    end
+
+    -- Current dialogue ID (for save/load)
+    self.current_dialogue_id = nil
+
+    -- Track which choice was pressed (to prevent click-through)
+    self.pressed_choice_index = nil
+
     -- Initialize display if provided
     if display_module then
         self:setDisplay(display_module)
@@ -95,6 +113,8 @@ function dialogue:showTreeById(dialogue_id)
     if not dialogue_tree then
         return
     end
+    -- Store dialogue ID for persistence
+    self.current_dialogue_id = dialogue_id
     self:showTree(dialogue_tree)
 end
 
@@ -106,6 +126,19 @@ function dialogue:showTree(dialogue_tree)
 
     -- Reset forced_closed flag (allowing dialogue to open)
     self.forced_closed = false
+
+    -- Load selected choices for this dialogue (instead of resetting)
+    if self.current_dialogue_id then
+        -- Ensure global storage exists for this dialogue
+        if not self.all_dialogue_choices[self.current_dialogue_id] then
+            self.all_dialogue_choices[self.current_dialogue_id] = {}
+        end
+        -- Share the same table reference (not a copy!)
+        self.selected_choices = self.all_dialogue_choices[self.current_dialogue_id]
+    else
+        -- No dialogue ID - use temporary table
+        self.selected_choices = {}
+    end
 
     -- Enter tree mode
     self.tree_mode = true
@@ -261,6 +294,14 @@ function dialogue:selectChoice(choice_index)
     if not choice then
         return
     end
+
+    -- Mark this choice as selected (for grey-out effect)
+    local choice_key = self.current_node_id .. "|" .. choice.text
+    self.selected_choices[choice_key] = true
+
+    -- Note: self.selected_choices is already a reference to
+    -- self.all_dialogue_choices[self.current_dialogue_id]
+    -- so no need to update global storage separately
 
     -- Navigate to next node
     if choice.next then
@@ -431,11 +472,11 @@ function dialogue:_drawPagedText()
     local speaker = node and node.speaker or "???"
 
     -- Draw dialogue box background
-    love.graphics.setColor(0, 0, 0, 0.8)
+    colors:apply(colors.for_dialogue_bg)
     love.graphics.rectangle("fill", boxX, boxY, boxW, boxH, 4, 4)
 
     -- Draw border
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:apply(colors.for_dialogue_text)
     love.graphics.setLineWidth(2)
     love.graphics.rectangle("line", boxX, boxY, boxW, boxH, 4, 4)
 
@@ -449,16 +490,16 @@ function dialogue:_drawPagedText()
         local titleX, titleY = boxX + padding, titleBoxY + 2
 
         -- Title background
-        love.graphics.setColor(0, 0, 0, 0.8)
+        colors:apply(colors.for_dialogue_bg)
         love.graphics.rectangle("fill", boxX, titleBoxY, titleBoxW, titleBoxH, 4, 4)
 
         -- Title border
-        love.graphics.setColor(1, 1, 1, 1)
+        colors:apply(colors.for_dialogue_text)
         love.graphics.setLineWidth(2)
         love.graphics.rectangle("line", boxX, titleBoxY, titleBoxW, titleBoxH, 4, 4)
 
         -- Title text
-        love.graphics.setColor(1, 1, 1, 1)
+        colors:apply(colors.for_dialogue_speaker)
         love.graphics.print(speaker, titleX, titleY)
     end
 
@@ -470,18 +511,18 @@ function dialogue:_drawPagedText()
     local textWidth = boxW - (2 * padding) - 10
 
     local currentText = self.current_pages[self.current_page_index + 1] or ""
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:apply(colors.for_dialogue_text)
     love.graphics.printf(currentText, textX, textY, textWidth, "left")
 
     -- Draw page indicator (1/3)
     local pageIndicator = string.format("%d/%d", self.current_page_index + 1, self.total_pages)
     local indicatorX = boxX + boxW - padding - textFont:getWidth(pageIndicator)
     local indicatorY = boxY + boxH - padding - textFont:getHeight()
-    love.graphics.setColor(0.7, 0.7, 0.7, 1)
+    colors:apply(colors.for_dialogue_page_indicator)
     love.graphics.print(pageIndicator, indicatorX, indicatorY)
 
     -- Reset
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
     love.graphics.setLineWidth(1)
 end
 
@@ -505,11 +546,11 @@ function dialogue:_drawDialogueBoxForChoices()
     local text = node and node.text or ""
 
     -- Draw dialogue box background
-    love.graphics.setColor(0, 0, 0, 0.8)
+    colors:apply(colors.for_dialogue_bg)
     love.graphics.rectangle("fill", boxX, boxY, boxW, boxH, 4, 4)
 
     -- Draw border
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:apply(colors.for_dialogue_text)
     love.graphics.setLineWidth(2)
     love.graphics.rectangle("line", boxX, boxY, boxW, boxH, 4, 4)
 
@@ -523,16 +564,16 @@ function dialogue:_drawDialogueBoxForChoices()
         local titleX, titleY = boxX + padding, titleBoxY + 2
 
         -- Title background
-        love.graphics.setColor(0, 0, 0, 0.8)
+        colors:apply(colors.for_dialogue_bg)
         love.graphics.rectangle("fill", boxX, titleBoxY, titleBoxW, titleBoxH, 4, 4)
 
         -- Title border
-        love.graphics.setColor(1, 1, 1, 1)
+        colors:apply(colors.for_dialogue_text)
         love.graphics.setLineWidth(2)
         love.graphics.rectangle("line", boxX, titleBoxY, titleBoxW, titleBoxH, 4, 4)
 
         -- Title text
-        love.graphics.setColor(1, 1, 1, 1)
+        colors:apply(colors.for_dialogue_speaker)
         love.graphics.print(speaker, titleX, titleY)
     end
 
@@ -544,12 +585,12 @@ function dialogue:_drawDialogueBoxForChoices()
         local textY = boxY + padding
         local textWidth = boxW - (2 * padding) - 10
 
-        love.graphics.setColor(1, 1, 1, 1)
+        colors:apply(colors.for_dialogue_text)
         love.graphics.printf(text, textX, textY, textWidth, "left")
     end
 
     -- Reset
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
     love.graphics.setLineWidth(1)
 end
 
@@ -582,31 +623,39 @@ function dialogue:_drawChoices()
         local y = start_y + ((i - 1) * (choice_height + choice_spacing))
         local is_selected = (i == self.selected_choice_index)
 
-        -- Button background
+        -- Check if this choice was previously selected
+        local choice_key = self.current_node_id .. "|" .. choice.text
+        local was_selected = self.selected_choices[choice_key]
+
+        -- Button background (only depends on selection, NOT visited state)
         if is_selected then
-            love.graphics.setColor(0.3, 0.6, 0.9, 0.9)  -- Highlighted
+            colors:apply(colors.for_dialogue_choice_selected_bg)  -- Bright blue highlight when selected
         else
-            love.graphics.setColor(0.2, 0.2, 0.2, 0.8)  -- Normal
+            colors:apply(colors.for_dialogue_choice_normal_bg)  -- Dark grey when not selected
         end
         love.graphics.rectangle("fill", start_x, y, choice_width, choice_height, 5, 5)
 
-        -- Button border
+        -- Button border (only depends on selection, NOT visited state)
         if is_selected then
-            love.graphics.setColor(0.5, 0.8, 1.0, 1.0)
+            colors:apply(colors.for_dialogue_choice_selected_border)  -- Bright border when selected
             love.graphics.setLineWidth(3)
         else
-            love.graphics.setColor(0.4, 0.4, 0.4, 1.0)
+            colors:apply(colors.for_dialogue_choice_normal_border)  -- Normal border when not selected
             love.graphics.setLineWidth(2)
         end
         love.graphics.rectangle("line", start_x, y, choice_width, choice_height, 5, 5)
 
-        -- Button text
-        love.graphics.setColor(1, 1, 1, 1)
+        -- Button text (only depends on whether this choice was previously selected)
+        if was_selected then
+            colors:apply(colors.for_dialogue_choice_text_visited)  -- Dark grey text for previously selected
+        else
+            colors:apply(colors.for_dialogue_choice_text_normal)  -- White text for not yet selected
+        end
         local text_y = y + (choice_height - self.choice_font:getHeight()) / 2
         love.graphics.printf(choice.text, start_x + 10, text_y, choice_width - 20, "left")
     end
 
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
     love.graphics.setLineWidth(1)
 end
 
@@ -785,8 +834,9 @@ function dialogue:touchPressed(id, x, y)
     if self.tree_mode and self.current_choices and #self.current_choices > 0 then
         local choice_index = self:_getChoiceAtPosition(x, y)
         if choice_index then
-            -- Highlight the choice being pressed
+            -- Highlight the choice being pressed AND remember which one
             self.selected_choice_index = choice_index
+            self.pressed_choice_index = choice_index
             return true
         end
     end
@@ -839,11 +889,15 @@ function dialogue:touchReleased(id, x, y)
     -- Priority 3: Check choice buttons (if visible)
     if self.tree_mode and self.current_choices and #self.current_choices > 0 then
         local choice_index = self:_getChoiceAtPosition(x, y)
-        if choice_index then
+        -- Only select if released on the SAME choice that was pressed (prevent click-through)
+        if choice_index and choice_index == self.pressed_choice_index then
             -- Select the clicked choice
             self:selectChoice(choice_index)
+            self.pressed_choice_index = nil  -- Reset
             return true
         end
+        -- Reset even if released on a different choice
+        self.pressed_choice_index = nil
     end
 
     return false
@@ -866,6 +920,58 @@ function dialogue:touchMoved(id, x, y)
         if self.next_button then
             self.next_button:touchMoved(id, x, y)
         end
+    end
+end
+
+-- ========================================
+-- PERSISTENCE SYSTEM
+-- ========================================
+
+-- Export dialogue choice history (for save system)
+-- Returns a table ready to be saved to file
+function dialogue:exportChoiceHistory()
+    return self.all_dialogue_choices
+end
+
+-- Import dialogue choice history (from save file)
+-- Merges with existing history
+function dialogue:importChoiceHistory(history)
+    if not history then
+        return
+    end
+
+    -- Ensure all_dialogue_choices exists (in case called before initialize)
+    if not self.all_dialogue_choices then
+        self.all_dialogue_choices = {}
+    end
+
+    -- Merge loaded history with current state
+    for dialogue_id, choices in pairs(history) do
+        if not self.all_dialogue_choices[dialogue_id] then
+            self.all_dialogue_choices[dialogue_id] = {}
+        end
+        for choice_key, value in pairs(choices) do
+            self.all_dialogue_choices[dialogue_id][choice_key] = value
+        end
+    end
+end
+
+-- Clear all dialogue history (for new game)
+function dialogue:clearAllHistory()
+    self.all_dialogue_choices = {}
+    self.selected_choices = {}
+    self.current_dialogue_id = nil
+end
+
+-- Clear history for a specific dialogue (optional utility)
+function dialogue:clearDialogueHistory(dialogue_id)
+    if self.all_dialogue_choices[dialogue_id] then
+        self.all_dialogue_choices[dialogue_id] = nil
+    end
+
+    -- If this is the current dialogue, also clear local state
+    if self.current_dialogue_id == dialogue_id then
+        self.selected_choices = {}
     end
 end
 

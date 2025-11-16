@@ -345,7 +345,6 @@ function loaders.loadParallax(self)
     -- Initialize parallax system if layers found
     if #layer_configs > 0 then
         parallax:init(layer_configs)
-        print("Loaded " .. #layer_configs .. " parallax layer(s)")
     else
         -- Clear parallax if no layers
         parallax:clear()

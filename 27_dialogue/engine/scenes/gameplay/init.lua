@@ -82,6 +82,11 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
         self.killed_enemies = save_data.killed_enemies
     end
 
+    -- Load dialogue choice history
+    if save_data and save_data.dialogue_choices then
+        dialogue:importChoiceHistory(save_data.dialogue_choices)
+    end
+
     -- Create world with injected entity classes and persistence data
     self.world = world:new(mapPath, {
         enemy = enemy_class,
@@ -216,6 +221,7 @@ function gameplay:saveGame(slot)
         inventory = self.inventory and self.inventory:save() or nil,
         picked_items = self.picked_items or {},
         killed_enemies = self.killed_enemies or {},
+        dialogue_choices = dialogue:exportChoiceHistory(),
     }
 
     local success = save_sys:saveGame(slot, save_data)

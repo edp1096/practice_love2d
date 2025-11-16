@@ -459,42 +459,8 @@ function inventory:load(save_data)
 end
 
 -- ============================================================================
--- Debug Functions
+-- Utility Functions
 -- ============================================================================
-
-function inventory:debugPrintGrid()
-    print("=== Inventory Grid Debug ===")
-    print(string.format("Grid size: %dx%d", self.grid_width, self.grid_height))
-    print(string.format("Items count: %d", self:getItemCount()))
-
-    -- Print grid visualization
-    for y = 1, self.grid_height do
-        local row = ""
-        for x = 1, self.grid_width do
-            if self.grid[y][x] then
-                row = row .. "X "
-            else
-                row = row .. ". "
-            end
-        end
-        print(row)
-    end
-
-    -- Print item details
-    print("\n=== Items ===")
-    for item_id, item_data in pairs(self.items) do
-        print(string.format("%s: %s x%d at (%d,%d) size %dx%d",
-            item_id:sub(1, 12),
-            item_data.item.name,
-            item_data.item.quantity,
-            item_data.x,
-            item_data.y,
-            item_data.width,
-            item_data.height
-        ))
-    end
-    print("===========================")
-end
 
 function inventory:getItemCount()
     local count = 0

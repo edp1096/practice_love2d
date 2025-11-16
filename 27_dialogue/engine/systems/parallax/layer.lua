@@ -39,7 +39,6 @@ function Layer.new(config)
 
   self.image = result
   self.image:setWrap("repeat", "repeat")  -- Enable texture wrapping
-  print("Loaded parallax layer: " .. config.image .. " (factor: " .. (config.parallax_factor or 0.5) .. ", z: " .. (config.z_index or 0) .. ")")
 
   -- Image dimensions
   self.width = self.image:getWidth()

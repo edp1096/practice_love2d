@@ -14,6 +14,7 @@ colors.GRAY = {0.8, 0.8, 0.8, 1}
 colors.MID_GRAY = {0.7, 0.7, 0.7, 1}
 colors.DARK_GRAY = {0.6, 0.6, 0.6, 1}
 colors.DIM_GRAY = {0.5, 0.5, 0.5, 1}
+colors.MEDIUM_GRAY = {0.4, 0.4, 0.4, 1}
 colors.CHARCOAL = {0.3, 0.3, 0.3}
 colors.DARK_CHARCOAL = {0.2, 0.2, 0.2}
 colors.DARK_CHARCOAL_80 = {0.2, 0.2, 0.2, 0.8}
@@ -22,6 +23,7 @@ colors.DARK_CHARCOAL_80 = {0.2, 0.2, 0.2, 0.8}
 colors.SKY_BLUE = {0.5, 0.8, 1, 1}
 colors.LIGHT_BLUE_HINT = {0.6, 0.8, 1, 1}
 colors.MEDIUM_BLUE = {0.3, 0.5, 0.8, 0.9}
+colors.DIALOGUE_BLUE = {0.3, 0.6, 0.9, 0.9}
 colors.NAVY_BLUE = {0.15, 0.15, 0.2, 0.95}
 colors.BLUE_GRAY = {0.3, 0.3, 0.4, 1}
 colors.SLATE_BLUE = {0.5, 0.5, 1, 1}
@@ -57,6 +59,7 @@ colors.LIGHT_GREEN_ALPHA = {0.3, 1, 0.3, 0.3}
 colors.LIGHT_RED_ALPHA = {1, 0.3, 0.3, 0.3}
 colors.BLACK_OVERLAY = {0, 0, 0, 0.85}
 colors.BLACK_DARK_OVERLAY = {0, 0, 0, 0.9}
+colors.BLACK_80 = {0, 0, 0, 0.8}
 colors.DARK_BLUE_TRANSPARENT = {0.3, 0.3, 0.4, 0.8}
 colors.CHARCOAL_TRANSPARENT = {0.3, 0.3, 0.3, 0.7}
 colors.CHARCOAL_SELECTED = {0.4, 0.4, 0.4, 0.9}
@@ -188,6 +191,18 @@ colors.for_quickslot_bg = colors.DARK_CHARCOAL_80
 colors.for_quickslot_border = colors.DARK_GRAY
 colors.for_quickslot_selected = colors.BRIGHT_YELLOW
 colors.for_quickslot_unusable = colors.DIM_GRAY_ALPHA
+
+-- Dialogue System
+colors.for_dialogue_bg = colors.BLACK_80
+colors.for_dialogue_text = colors.WHITE
+colors.for_dialogue_speaker = colors.WHITE
+colors.for_dialogue_page_indicator = colors.MID_GRAY
+colors.for_dialogue_choice_selected_bg = colors.DIALOGUE_BLUE
+colors.for_dialogue_choice_normal_bg = colors.DARK_CHARCOAL_80
+colors.for_dialogue_choice_selected_border = colors.SKY_BLUE
+colors.for_dialogue_choice_normal_border = colors.MEDIUM_GRAY
+colors.for_dialogue_choice_text_normal = colors.WHITE
+colors.for_dialogue_choice_text_visited = colors.MEDIUM_GRAY
 
 -- ========================================
 -- PART 3: CONSTANTS
