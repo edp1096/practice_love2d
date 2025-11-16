@@ -446,6 +446,12 @@ function gameplay:mousereleased(x, y, button)
     return input_module.mousereleased(self, x, y, button)
 end
 
+function gameplay:mousemoved(x, y, dx, dy)
+    -- Pass mouse move to dialogue for choice hover
+    local dialogue = require "engine.ui.dialogue"
+    dialogue:handleInput("touch_move", 0, x, y)
+end
+
 function gameplay:gamepadpressed(joystick, button)
     return input_module.gamepadpressed(self, joystick, button)
 end

@@ -179,12 +179,17 @@ ui/
 │   ├── inventory/        - 인벤토리 UI (모듈형)
 │   └── settings/         - 설정 화면 (모듈형)
 │
-├── dialogue.lua          - NPC 대화 (Talkies 래퍼)
+├── dialogue.lua          - NPC 대화 시스템 (Talkies 래퍼)
+│                           - 간단한 대화 (문자열 메시지)
+│                           - 트리 대화 (선택 기반 대화)
+│                           - 다중 페이지 대화 (비주얼 노벨 스타일)
+│                           - 네비게이션: 키보드, 마우스, 게임패드, 터치
+│
 ├── prompt.lua            - 상호작용 프롬프트 (동적 버튼 아이콘)
 ├── shapes.lua            - 도형 렌더링 (버튼, 다이얼로그)
 └── widgets/              - 재사용 가능 위젯
     ├── skip_button.lua   - 스킵 버튼 (0.5초 홀드 충전)
-    └── next_button.lua   - 다음 버튼
+    └── next_button.lua   - 다음 버튼 (대화 진행용)
 ```
 
 **색상 시스템 (`colors.lua`):**
@@ -226,14 +231,15 @@ game/
 │   ├── load/             - 로드 게임 씬 (모듈형)
 │   └── inventory/        - 인벤토리 오버레이 (모듈형)
 │
-└── data/                 - 설정 파일 
+└── data/                 - 설정 파일
     ├── player.lua        - 플레이어 스탯 (엔진에 주입)
     ├── entities/
     │   └── types.lua     - 적 타입 (엔진에 주입)
     ├── scenes.lua        - 메뉴 설정 (builder 사용)
     ├── sounds.lua        - 사운드 정의
     ├── input_config.lua  - 입력 매핑
-    └── intro_configs.lua - 컷씬 설정
+    ├── intro_configs.lua - 컷씬 설정
+    └── dialogues.lua     - NPC 대화 트리 (선택 기반 대화)
 ```
 
 **데이터 기반 메뉴 예시:**

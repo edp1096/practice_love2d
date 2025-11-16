@@ -42,6 +42,75 @@ local function createAnimation(grid, frames, rows, duration)
     end
 end
 
+-- Helper: Initialize animations for enemy (humanoid or slime)
+local function initializeAnimations(instance, config)
+    instance.spriteSheet = love.graphics.newImage(config.sprite_sheet)
+    instance.grid = anim8.newGrid(
+        instance.sprite_width,
+        instance.sprite_height,
+        instance.spriteSheet:getWidth(),
+        instance.spriteSheet:getHeight()
+    )
+
+    instance.animations = {}
+
+    if instance.is_humanoid then
+        -- Humanoid has 4 directions (up, down, left, right) with slower animations
+        local dirs = { "up", "down", "left", "right" }
+
+        for _, dir in ipairs(dirs) do
+            instance.animations["idle_" .. dir] = createAnimation(
+                instance.grid,
+                config.idle_frames[dir],
+                config.idle_rows[dir],
+                0.2 -- slower: 0.15 -> 0.2
+            )
+
+            instance.animations["walk_" .. dir] = createAnimation(
+                instance.grid,
+                config.walk_frames[dir],
+                config.walk_rows[dir],
+                0.15 -- slower: 0.1 -> 0.15
+            )
+
+            instance.animations["attack_" .. dir] = createAnimation(
+                instance.grid,
+                config.attack_frames[dir],
+                config.attack_rows[dir],
+                0.12 -- slower: 0.08 -> 0.12
+            )
+        end
+    else
+        -- Slime only has 2 directions (left, right)
+        instance.animations.idle_right = anim8.newAnimation(instance.grid("1-3", 1), 0.2)
+        instance.animations.walk_right = anim8.newAnimation(instance.grid("4-7", 1), 0.12)
+        instance.animations.attack_right = anim8.newAnimation(instance.grid("8-11", 1), 0.1)
+
+        instance.animations.idle_left = anim8.newAnimation(instance.grid("1-3", 2), 0.2)
+        instance.animations.walk_left = anim8.newAnimation(instance.grid("4-7", 2), 0.12)
+        instance.animations.attack_left = anim8.newAnimation(instance.grid("8-11", 2), 0.1)
+
+        -- Create up/down as aliases to right for compatibility
+        instance.animations.idle_up = instance.animations.idle_right
+        instance.animations.idle_down = instance.animations.idle_right
+        instance.animations.walk_up = instance.animations.walk_right
+        instance.animations.walk_down = instance.animations.walk_right
+        instance.animations.attack_up = instance.animations.attack_right
+        instance.animations.attack_down = instance.animations.attack_right
+    end
+
+    instance.anim = instance.animations.idle_right
+    instance.direction = "right"
+end
+
+-- Helper: Initialize weapon for humanoid enemies
+local function initializeWeapon(instance)
+    if instance.is_humanoid then
+        instance.weapon = weapon_class:new("axe")
+        instance.weapon_drawn = true -- humanoids always have weapon drawn
+    end
+end
+
 function enemy:new(x, y, enemy_type, config, map_id, respawn)
     local instance = setmetatable({}, enemy)
 
@@ -130,70 +199,11 @@ function enemy:new(x, y, enemy_type, config, map_id, respawn)
     instance.move_sound_timer = 0
     instance.move_sound_interval = 0.6
 
-    -- Animation
-    instance.spriteSheet = love.graphics.newImage(config.sprite_sheet)
-    instance.grid = anim8.newGrid(
-        instance.sprite_width,
-        instance.sprite_height,
-        instance.spriteSheet:getWidth(),
-        instance.spriteSheet:getHeight()
-    )
+    -- Initialize animations using helper
+    initializeAnimations(instance, config)
 
-    instance.animations = {}
-
-    if instance.is_humanoid then
-        -- Humanoid has 4 directions (up, down, left, right) with slower animations
-        local dirs = { "up", "down", "left", "right" }
-
-        for _, dir in ipairs(dirs) do
-            instance.animations["idle_" .. dir] = createAnimation(
-                instance.grid,
-                config.idle_frames[dir],
-                config.idle_rows[dir],
-                0.2 -- slower: 0.15 -> 0.2
-            )
-
-            instance.animations["walk_" .. dir] = createAnimation(
-                instance.grid,
-                config.walk_frames[dir],
-                config.walk_rows[dir],
-                0.15 -- slower: 0.1 -> 0.15
-            )
-
-            instance.animations["attack_" .. dir] = createAnimation(
-                instance.grid,
-                config.attack_frames[dir],
-                config.attack_rows[dir],
-                0.12 -- slower: 0.08 -> 0.12
-            )
-        end
-    else
-        -- Slime only has 2 directions (left, right)
-        instance.animations.idle_right = anim8.newAnimation(instance.grid("1-3", 1), 0.2)
-        instance.animations.walk_right = anim8.newAnimation(instance.grid("4-7", 1), 0.12)
-        instance.animations.attack_right = anim8.newAnimation(instance.grid("8-11", 1), 0.1)
-
-        instance.animations.idle_left = anim8.newAnimation(instance.grid("1-3", 2), 0.2)
-        instance.animations.walk_left = anim8.newAnimation(instance.grid("4-7", 2), 0.12)
-        instance.animations.attack_left = anim8.newAnimation(instance.grid("8-11", 2), 0.1)
-
-        -- Create up/down as aliases to right for compatibility
-        instance.animations.idle_up = instance.animations.idle_right
-        instance.animations.idle_down = instance.animations.idle_right
-        instance.animations.walk_up = instance.animations.walk_right
-        instance.animations.walk_down = instance.animations.walk_right
-        instance.animations.attack_up = instance.animations.attack_right
-        instance.animations.attack_down = instance.animations.attack_right
-    end
-
-    instance.anim = instance.animations.idle_right
-    instance.direction = "right"
-
-    -- Weapon (only for humanoid enemies)
-    if instance.is_humanoid then
-        instance.weapon = weapon_class:new("axe")
-        instance.weapon_drawn = true -- humanoids always have weapon drawn
-    end
+    -- Initialize weapon using helper
+    initializeWeapon(instance)
 
     -- Collider (set by world)
     instance.collider = nil

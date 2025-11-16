@@ -50,6 +50,17 @@ function input_dispatcher:mousereleased(x, y, button)
     end
 end
 
+function input_dispatcher:mousemoved(x, y, dx, dy)
+    -- Block mouse input if virtual gamepad is enabled (mobile mode)
+    if self.virtual_gamepad and self.virtual_gamepad.enabled then
+        return
+    end
+
+    if self.scene_control and self.scene_control.mousemoved then
+        self.scene_control.mousemoved(x, y, dx, dy)
+    end
+end
+
 -- === Touch Input (Mobile) ===
 
 function input_dispatcher:touchpressed(id, x, y, dx, dy, pressure)

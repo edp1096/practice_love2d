@@ -281,6 +281,81 @@ inventory:addItem("youritem", 1)
    spawn_y = 200
    ```
 
+### Add NPC Dialogue
+
+The game supports two dialogue modes: **Simple Dialogue** and **Tree Dialogue** (choice-based).
+
+#### Method 1: Simple Dialogue (Quick Message)
+
+For single-line messages, set in Tiled:
+```
+NPC property: dlg = "Hello, traveler!"
+```
+
+#### Method 2: Tree Dialogue (Choice-Based RPG Style)
+
+For interactive conversations with choices:
+
+1. Create dialogue tree in `game/data/dialogues.lua`:
+```lua
+dialogues.shopkeeper = {
+  start_node = "greeting",
+  nodes = {
+    greeting = {
+      text = "Welcome to my shop!",
+      speaker = "Shopkeeper",
+      next = "main_menu"
+    },
+    main_menu = {
+      text = "How can I help you?",
+      speaker = "Shopkeeper",
+      choices = {
+        { text = "Tell me about items", next = "items" },
+        { text = "Tell me a story", next = "story" },
+        { text = "Goodbye", next = "end" }
+      }
+    },
+    items = {
+      text = "I sell potions and weapons!",
+      speaker = "Shopkeeper",
+      next = "main_menu"  -- Loop back to menu
+    },
+    story = {
+      pages = {  -- Multi-page dialogue (Visual Novel style)
+        "Once upon a time...",
+        "There was a great kingdom...",
+        "And that's how the legend began!"
+      },
+      speaker = "Shopkeeper",
+      next = "main_menu"
+    },
+    ["end"] = {
+      text = "See you later!",
+      speaker = "Shopkeeper"
+      -- No choices, no next = dialogue ends
+    }
+  }
+}
+```
+
+2. Set NPC property in Tiled:
+```
+dlg = "shopkeeper"
+```
+
+3. Done! Players can now:
+   - Navigate choices with keyboard (Up/Down, WASD)
+   - Select with mouse hover + click
+   - Use gamepad (A button to select)
+   - Loop back to main menu for continuous interaction
+
+**Dialogue Node Properties:**
+- `text` - Single message (string)
+- `pages` - Multi-page dialogue (array of strings)
+- `speaker` - Character name (displayed above dialogue box)
+- `choices` - Player choices: `{ text = "...", next = "node_id" }`
+- `next` - Auto-advance to next node (if no choices)
+
 ### Add Background Music
 
 1. Place file: `assets/bgm/yourmusic.ogg`

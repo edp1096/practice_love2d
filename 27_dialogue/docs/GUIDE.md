@@ -201,6 +201,201 @@ return myitem
 inventory:addItem("myitem", 1)
 ```
 
+### Adding NPC Dialogue
+
+The game supports two dialogue modes: **Simple Dialogue** and **Tree Dialogue** (choice-based conversations).
+
+#### Simple Dialogue (Quick Messages)
+
+For basic NPC messages, set directly in Tiled:
+
+```
+NPC property: dlg = "Hello, traveler! Welcome to our village."
+```
+
+Multiple messages (separated by semicolons):
+
+```
+dlg = "Welcome!;How can I help you?;Come back soon!"
+```
+
+**Player advances with:**
+- **Keyboard:** F key / Z key / Enter
+- **Gamepad:** A button (Xbox) / Cross (PS) / Y button
+- **Mouse/Touch:** Click anywhere on dialogue box
+
+#### Tree Dialogue (RPG-Style Conversations)
+
+For interactive conversations with player choices, create a dialogue tree.
+
+**Step 1: Create dialogue tree in `game/data/dialogues.lua`**
+
+```lua
+local dialogues = {}
+
+dialogues.shopkeeper = {
+  start_node = "greeting",
+  nodes = {
+    -- Initial greeting (auto-advances)
+    greeting = {
+      text = "Welcome to my shop!",
+      speaker = "Shopkeeper",
+      next = "main_menu"
+    },
+
+    -- Main menu with choices
+    main_menu = {
+      text = "How can I help you today?",
+      speaker = "Shopkeeper",
+      choices = {
+        { text = "Tell me about your items", next = "items" },
+        { text = "Any rumors lately?", next = "rumors" },
+        { text = "I'd like to buy something", next = "shop" },
+        { text = "Goodbye", next = "end" }
+      }
+    },
+
+    -- Items info (loops back to menu)
+    items = {
+      text = "I sell potions, weapons, and armor. All high quality!",
+      speaker = "Shopkeeper",
+      next = "main_menu"  -- Loop back to menu
+    },
+
+    -- Rumors (multi-page dialogue)
+    rumors = {
+      pages = {
+        "Have you heard? There's been strange activity in the northern forest...",
+        "Travelers report seeing unusual lights at night.",
+        "Some say it's magic, others think it's just fireflies.",
+        "I'd stay away if I were you!"
+      },
+      speaker = "Shopkeeper",
+      next = "main_menu"  -- Loop back to menu
+    },
+
+    -- Shop (would open shop UI in real game)
+    shop = {
+      text = "Here's what I have in stock. Take a look!",
+      speaker = "Shopkeeper",
+      next = "main_menu"
+    },
+
+    -- Ending
+    ["end"] = {
+      text = "Come back anytime! Safe travels!",
+      speaker = "Shopkeeper"
+      -- No choices, no next = dialogue ends
+    }
+  }
+}
+
+return dialogues
+```
+
+**Step 2: Set NPC property in Tiled**
+
+```
+dlg = "shopkeeper"
+```
+
+**Step 3: Done!** The NPC will show the interactive dialogue tree.
+
+#### Dialogue Navigation
+
+**Keyboard:**
+- **Up/Down** or **W/S** - Navigate choices
+- **Enter** or **Z** - Select choice
+- **F** - Advance dialogue (no choices)
+
+**Mouse/Touch:**
+- **Hover** - Highlight choice
+- **Click** - Select choice / Advance dialogue
+
+**Gamepad:**
+- **D-Pad** or **Left Stick** - Navigate choices
+- **A button** (Xbox) / Cross (PS) - Select / Advance
+- **Y button** (Xbox) / Triangle (PS) - Same as A
+- **B button** (Xbox) / Circle (PS) - Hold 0.5s to skip dialogue (charge indicator)
+
+#### Dialogue Node Properties
+
+**Required:**
+- `text` (string) - Single message
+- OR `pages` (array) - Multi-page dialogue (Visual Novel style)
+
+**Optional:**
+- `speaker` (string) - Character name (displayed above dialogue box)
+- `choices` (array) - Player choices: `{ text = "...", next = "node_id" }`
+- `next` (string) - Auto-advance to next node (if no choices)
+
+**No `next` and no `choices` = dialogue ends**
+
+#### Advanced: Multi-Page Dialogue
+
+For longer conversations, use `pages` instead of `text`:
+
+```lua
+story = {
+  pages = {
+    "Long ago, in a distant land...",
+    "There lived a powerful wizard named Aldric.",
+    "He created many magical artifacts.",
+    "One of them was the legendary Crystal of Light!",
+    "But that's a story for another time..."
+  },
+  speaker = "Elder",
+  next = "main_menu"
+}
+```
+
+Player advances through pages with same controls (F key, click, A button).
+
+#### RPG Dialogue Pattern (Recommended)
+
+**Best practice:** greeting → main_menu → choices loop back to menu
+
+```lua
+dialogues.quest_giver = {
+  start_node = "greeting",
+  nodes = {
+    greeting = {
+      text = "Ah, an adventurer! Perfect timing!",
+      speaker = "Quest Giver",
+      next = "main_menu"  -- Auto-advance to menu
+    },
+    main_menu = {
+      text = "What can I do for you?",
+      speaker = "Quest Giver",
+      choices = {
+        { text = "Do you have any quests?", next = "quest" },
+        { text = "Tell me about this town", next = "town" },
+        { text = "I'll be going now", next = "end" }
+      }
+    },
+    quest = {
+      text = "Yes! I need someone to retrieve a lost item from the caves.",
+      speaker = "Quest Giver",
+      next = "main_menu"  -- Loop back!
+    },
+    town = {
+      text = "Our town is peaceful, but monsters have been appearing lately.",
+      speaker = "Quest Giver",
+      next = "main_menu"  -- Loop back!
+    },
+    ["end"] = {
+      text = "Good luck on your journey!",
+      speaker = "Quest Giver"
+    }
+  }
+}
+```
+
+**Benefits:**
+- Players can ask multiple questions without restarting conversation
+- Natural RPG dialogue flow
+- Easy to add new dialogue branches
+
 ### Creating a Map
 
 1. Create in Tiled: `assets/maps/level1/newarea.tmx`

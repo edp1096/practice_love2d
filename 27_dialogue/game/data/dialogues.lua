@@ -26,7 +26,13 @@ dialogues.villager_greeting = {
     start_node = "start",
     nodes = {
         start = {
-            text = "Hello traveler! How can I help you?",
+            text = "Hello traveler!",
+            speaker = "Villager",
+            next = "main_menu"
+        },
+
+        main_menu = {
+            text = "How can I help you?",
             speaker = "Villager",
             choices = {
                 { text = "Tell me about this village", next = "village_info" },
@@ -40,7 +46,7 @@ dialogues.villager_greeting = {
             speaker = "Villager",
             choices = {
                 { text = "Interesting. What else?", next = "more_info" },
-                { text = "Thanks for the info", next = "start" }
+                { text = "Thanks for the info", next = "main_menu" }
             }
         },
 
@@ -54,7 +60,7 @@ dialogues.villager_greeting = {
             speaker = "Villager",
             choices = {
                 { text = "Tell me more about the slimes", next = "slimes" },
-                { text = "Interesting story", next = "start" }
+                { text = "Interesting story", next = "main_menu" }
             }
         },
 
@@ -62,7 +68,7 @@ dialogues.villager_greeting = {
             text = "Yes, slimes! They've been bothering us lately. Maybe you could help?",
             speaker = "Villager",
             choices = {
-                { text = "I'll think about it", next = "start" },
+                { text = "I'll think about it", next = "main_menu" },
                 { text = "Not interested", next = "end" }
             }
         },
@@ -71,15 +77,15 @@ dialogues.villager_greeting = {
             text = "I heard the merchant has rare items for sale. You should check them out!",
             speaker = "Villager",
             choices = {
-                { text = "Good to know", next = "start" }
+                { text = "Good to know", next = "main_menu" }
             }
         },
 
-        -- Special node: ends dialogue
+        -- End conversation
         ["end"] = {
             text = "Take care, traveler!",
-            speaker = "Villager",
-            -- No choices = dialogue ends after this
+            speaker = "Villager"
+            -- No choices, no next = dialogue ends completely
         }
     }
 }
@@ -89,7 +95,13 @@ dialogues.merchant_greeting = {
     start_node = "start",
     nodes = {
         start = {
-            text = "Welcome to my shop! What brings you here?",
+            text = "Welcome to my shop!",
+            speaker = "Merchant",
+            next = "main_menu"
+        },
+
+        main_menu = {
+            text = "What brings you here?",
             speaker = "Merchant",
             choices = {
                 { text = "What do you sell?", next = "shop_info" },
@@ -121,11 +133,13 @@ dialogues.merchant_greeting = {
             speaker = "Merchant",
             -- Phase 4: This will trigger shop UI opening
             -- action = { type = "open_shop", shop_id = "general_store" }
+            next = "main_menu"  -- Loop back until shop UI is implemented
         },
 
         ["end"] = {
             text = "Come again!",
-            speaker = "Merchant",
+            speaker = "Merchant"
+            -- No choices, no next = dialogue ends completely
         }
     }
 }

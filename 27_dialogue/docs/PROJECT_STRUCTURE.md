@@ -186,12 +186,17 @@ ui/
 │   ├── inventory/        - Inventory UI (modular)
 │   └── settings/         - Settings screen (modular)
 │
-├── dialogue.lua          - NPC dialogue (Talkies wrapper)
+├── dialogue.lua          - NPC dialogue system (Talkies wrapper)
+│                           - Simple dialogue (string messages)
+│                           - Tree dialogue (choice-based conversations)
+│                           - Multi-page dialogue (Visual Novel style)
+│                           - Navigation: keyboard, mouse, gamepad, touch
+│
 ├── prompt.lua            - Interaction prompts (dynamic button icons)
 ├── shapes.lua            - Shape rendering (buttons, dialogs)
 └── widgets/              - Reusable widgets
     ├── skip_button.lua   - Skip button (0.5s hold charge)
-    └── next_button.lua   - Next button
+    └── next_button.lua   - Next button for advancing dialogue
 ```
 
 **Color System (`colors.lua`):**
@@ -233,14 +238,15 @@ game/
 │   ├── load/             - Load game scene (modular)
 │   └── inventory/        - Inventory overlay (modular)
 │
-└── data/                 - Configuration files 
+└── data/                 - Configuration files
     ├── player.lua        - Player stats (injected into engine)
     ├── entities/
     │   └── types.lua     - Enemy types (injected into engine)
     ├── scenes.lua        - Menu configs (used by builder)
     ├── sounds.lua        - Sound definitions
     ├── input_config.lua  - Input mappings
-    └── intro_configs.lua - Cutscene configs
+    ├── intro_configs.lua - Cutscene configs
+    └── dialogues.lua     - NPC dialogue trees (choice-based conversations)
 ```
 
 **Data-Driven Menu Example:**

@@ -296,6 +296,81 @@ inventory:addItem("youritem", 1)
    ```
 3. Tiled 맵 속성에 설정: `bgm = "yourmusic"`
 
+### NPC 대화 추가하기
+
+게임은 두 가지 대화 모드를 지원합니다: **간단한 대화**와 **트리 대화** (선택 기반).
+
+#### 방법 1: 간단한 대화 (빠른 메시지)
+
+단순 메시지의 경우, Tiled에서 설정:
+```
+NPC 속성: dlg = "안녕하세요, 여행자님!"
+```
+
+#### 방법 2: 트리 대화 (RPG 스타일 선택 기반)
+
+상호작용적인 대화를 위해:
+
+1. `game/data/dialogues.lua`에 대화 트리 생성:
+```lua
+dialogues.shopkeeper = {
+  start_node = "greeting",
+  nodes = {
+    greeting = {
+      text = "제 가게에 오신 걸 환영합니다!",
+      speaker = "상점주인",
+      next = "main_menu"
+    },
+    main_menu = {
+      text = "무엇을 도와드릴까요?",
+      speaker = "상점주인",
+      choices = {
+        { text = "아이템에 대해 알려주세요", next = "items" },
+        { text = "이야기를 들려주세요", next = "story" },
+        { text = "안녕히 계세요", next = "end" }
+      }
+    },
+    items = {
+      text = "물약과 무기를 팝니다!",
+      speaker = "상점주인",
+      next = "main_menu"  -- 메뉴로 되돌아감
+    },
+    story = {
+      pages = {  -- 다중 페이지 대화 (비주얼 노벨 스타일)
+        "옛날 옛적에...",
+        "위대한 왕국이 있었답니다...",
+        "그리고 그렇게 전설이 시작되었지요!"
+      },
+      speaker = "상점주인",
+      next = "main_menu"
+    },
+    ["end"] = {
+      text = "또 오세요!",
+      speaker = "상점주인"
+      -- choices나 next 없음 = 대화 종료
+    }
+  }
+}
+```
+
+2. Tiled에서 NPC 속성 설정:
+```
+dlg = "shopkeeper"
+```
+
+3. 완료! 플레이어는 이제:
+   - 키보드로 선택 탐색 (Up/Down, WASD)
+   - 마우스로 호버 + 클릭
+   - 게임패드 사용 (A 버튼으로 선택)
+   - 메인 메뉴로 반복해서 돌아가기
+
+**대화 노드 속성:**
+- `text` - 단일 메시지 (문자열)
+- `pages` - 다중 페이지 대화 (문자열 배열)
+- `speaker` - 캐릭터 이름 (대화 상자 위에 표시)
+- `choices` - 플레이어 선택지: `{ text = "...", next = "node_id" }`
+- `next` - 다음 노드로 자동 진행 (선택지가 없을 때)
+
 ---
 
 ## 문서

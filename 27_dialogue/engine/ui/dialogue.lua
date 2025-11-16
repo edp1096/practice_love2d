@@ -93,7 +93,6 @@ end
 function dialogue:showTreeById(dialogue_id)
     local dialogue_tree = self.dialogue_registry[dialogue_id]
     if not dialogue_tree then
-        print("ERROR: Dialogue tree not found: " .. tostring(dialogue_id))
         return
     end
     self:showTree(dialogue_tree)
@@ -102,7 +101,6 @@ end
 -- Start a dialogue tree (choice-based conversation)
 function dialogue:showTree(dialogue_tree)
     if not dialogue_tree or not dialogue_tree.nodes then
-        print("ERROR: Invalid dialogue tree")
         return
     end
 
@@ -126,7 +124,6 @@ end
 function dialogue:_showNode(node_id)
     local node = self.current_tree.nodes[node_id]
     if not node then
-        print("ERROR: Node not found: " .. tostring(node_id))
         self:clear()
         return
     end
@@ -144,6 +141,13 @@ function dialogue:_showNode(node_id)
 
         -- Don't show Talkies, we'll render pages ourselves
         Talkies.clearMessages()
+    elseif node.choices and #node.choices > 0 then
+        -- Node has choices: skip Talkies, show custom dialogue box directly
+        self.current_pages = nil
+        self.current_page_index = 0
+        self.total_pages = 0
+        self.showing_paged_text = false
+        Talkies.clearMessages()
     else
         -- Single text mode: use Talkies
         self.current_pages = nil
@@ -157,16 +161,9 @@ function dialogue:_showNode(node_id)
 
     -- Setup choices (if any)
     if node.choices and #node.choices > 0 then
-        -- If node has both text and choices, show text first, then choices
-        if (node.text or node.pages) then
-            -- Pending: show choices after text is read
-            self.pending_choices = node.choices
-            self.current_choices = nil
-        else
-            -- No text: show choices immediately
-            self.current_choices = node.choices
-            self.pending_choices = nil
-        end
+        -- Node has choices: show immediately (Talkies already skipped above)
+        self.current_choices = node.choices
+        self.pending_choices = nil
         self.selected_choice_index = 1
     else
         -- No choices - this node ends dialogue or auto-advances
@@ -181,45 +178,38 @@ end
 
 -- Advance dialogue tree (called when player presses action)
 function dialogue:advanceTree()
-    print("[DEBUG] advanceTree() called")
-
     if not self.tree_mode then
-        print("[DEBUG] Not in tree mode, returning")
         return
     end
 
     local node = self.current_tree.nodes[self.current_node_id]
     if not node then
-        print("[DEBUG] Node not found, clearing")
         self:clear()
         return
     end
 
-    print("[DEBUG] Current node:", self.current_node_id)
-
     -- PAGED MODE: Handle page navigation
     if self.showing_paged_text and self.current_pages then
-        print("[DEBUG] Paged mode - current page:", self.current_page_index, "/", self.total_pages - 1)
-
         -- Advance to next page
         if self.current_page_index < self.total_pages - 1 then
             self.current_page_index = self.current_page_index + 1
-            print("[DEBUG] Moving to page:", self.current_page_index)
             return
         else
             -- Last page reached - show choices or continue
-            print("[DEBUG] Last page reached")
-            if self.current_choices and #self.current_choices > 0 then
-                -- Show choices (stay in paged mode but hide text)
-                print("[DEBUG] Showing choices")
+            if self.pending_choices and #self.pending_choices > 0 then
+                -- Activate pending choices
+                self.current_choices = self.pending_choices
+                self.pending_choices = nil
+                self.selected_choice_index = 1
+                return
+            elseif self.current_choices and #self.current_choices > 0 then
+                -- Choices already shown (stay in paged mode)
                 return
             else
                 -- No choices - advance to next node or end
                 if node.next then
-                    print("[DEBUG] Node has next:", node.next)
                     self:_showNode(node.next)
                 else
-                    print("[DEBUG] No next node, clearing dialogue")
                     self:clear()
                 end
                 return
@@ -228,13 +218,8 @@ function dialogue:advanceTree()
     end
 
     -- TALKIES MODE: Handle Talkies text
-    print("[DEBUG] Talkies.isOpen():", Talkies.isOpen())
-    print("[DEBUG] Talkies.paused:", Talkies.paused)
-
     if Talkies.isOpen() and not Talkies.paused then
-        print("[DEBUG] Advancing Talkies message")
         Talkies.onAction()
-        print("[DEBUG] After Talkies.onAction(), Talkies.isOpen():", Talkies.isOpen())
         -- CRITICAL: Update button visibility after Talkies advances
         self:_updateButtonVisibility()
 
@@ -247,7 +232,6 @@ function dialogue:advanceTree()
 
     -- Check for pending choices (text was shown, now show choices)
     if self.pending_choices then
-        print("[DEBUG] Activating pending choices")
         self.current_choices = self.pending_choices
         self.pending_choices = nil
         self:_updateButtonVisibility()  -- Hide buttons when choices shown
@@ -256,16 +240,13 @@ function dialogue:advanceTree()
 
     -- If node has choices, wait for player to select
     if self.current_choices and #self.current_choices > 0 then
-        print("[DEBUG] Node has choices, waiting for selection")
         return
     end
 
     -- No choices - check for auto-advance
     if node.next then
-        print("[DEBUG] Node has next:", node.next)
         self:_showNode(node.next)
     else
-        print("[DEBUG] No next node, clearing dialogue")
         self:clear()
     end
 end
@@ -283,7 +264,13 @@ function dialogue:selectChoice(choice_index)
 
     -- Navigate to next node
     if choice.next then
-        Talkies.clearMessages()  -- Clear current message
+        -- Clear current state completely before navigating
+        Talkies.clearMessages()
+        self.showing_paged_text = false
+        self.current_pages = nil
+        self.current_page_index = 0
+        self.total_pages = 0
+
         self:_showNode(choice.next)
     else
         -- No next - end dialogue
@@ -312,7 +299,7 @@ function dialogue:moveChoiceSelection(direction)
 end
 
 -- ========================================
--- LEGACY METHODS (backwards compatible)
+-- SIMPLE DIALOGUE METHODS (non-interactive)
 -- ========================================
 
 function dialogue:showSimple(npc_name, message)
@@ -381,12 +368,6 @@ function dialogue:_updateButtonVisibility()
     -- 2. EITHER Talkies is showing OR we're in paged text mode
     -- 3. No choices are shown (has_choices = false)
     local should_show = is_open and (talkies_open or is_paged_text) and not has_choices
-
-    -- Only log when state changes
-    local prev_visible = self.next_button and self.next_button.visible or false
-    if (should_show and not prev_visible) or (not should_show and prev_visible) then
-        print("[DEBUG] Button visibility changing - isOpen:", is_open, "talkies_open:", talkies_open, "paged:", is_paged_text, "has_choices:", has_choices, "should_show:", should_show)
-    end
 
     if should_show then
         if self.skip_button then self.skip_button:show() end
@@ -510,19 +491,62 @@ function dialogue:_drawDialogueBoxForChoices()
 
     local vw, vh = self.display:GetVirtualDimensions()
     local padding = 10
-    local boxH = vh / 3 - (2 * padding)
+
+    -- Increase box height for text visibility (3 line heights for more space)
+    local text_space = self.choice_font:getHeight() * 3.0
+    local boxH = vh / 3 - (2 * padding) + text_space
     local boxY = vh - (boxH + padding)
     local boxW = vw - (2 * padding)
     local boxX = padding
 
-    -- Draw background (same as Talkies)
-    love.graphics.setColor(0, 0, 0, 0.8)  -- Talkies backgroundColor
+    -- Get current node for speaker and text
+    local node = self.current_tree and self.current_tree.nodes[self.current_node_id]
+    local speaker = node and node.speaker or "???"
+    local text = node and node.text or ""
+
+    -- Draw dialogue box background
+    love.graphics.setColor(0, 0, 0, 0.8)
     love.graphics.rectangle("fill", boxX, boxY, boxW, boxH, 4, 4)
 
     -- Draw border
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setLineWidth(2)
     love.graphics.rectangle("line", boxX, boxY, boxW, boxH, 4, 4)
+
+    -- Draw speaker name (title box above dialogue)
+    if speaker ~= "" then
+        local titleFont = self.choice_font or love.graphics.getFont()
+        love.graphics.setFont(titleFont)
+        local titleBoxW = titleFont:getWidth(speaker) + (2 * padding)
+        local titleBoxH = titleFont:getHeight() + padding
+        local titleBoxY = boxY - titleBoxH - (padding / 2)
+        local titleX, titleY = boxX + padding, titleBoxY + 2
+
+        -- Title background
+        love.graphics.setColor(0, 0, 0, 0.8)
+        love.graphics.rectangle("fill", boxX, titleBoxY, titleBoxW, titleBoxH, 4, 4)
+
+        -- Title border
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", boxX, titleBoxY, titleBoxW, titleBoxH, 4, 4)
+
+        -- Title text
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.print(speaker, titleX, titleY)
+    end
+
+    -- Draw dialogue text above choices
+    if text ~= "" then
+        local textFont = Talkies.font or love.graphics.getFont()
+        love.graphics.setFont(textFont)
+        local textX = boxX + padding + 5
+        local textY = boxY + padding
+        local textWidth = boxW - (2 * padding) - 10
+
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.printf(text, textX, textY, textWidth, "left")
+    end
 
     -- Reset
     love.graphics.setColor(1, 1, 1, 1)
@@ -538,18 +562,19 @@ function dialogue:_drawChoices()
     local choice_height = 35
     local choice_spacing = 8
 
-    -- Calculate dialogue box dimensions (same as Talkies)
+    -- Calculate dialogue box dimensions (same as _drawDialogueBoxForChoices)
     local padding = 10
-    local boxH = vh / 3 - (2 * padding)
+    local text_space = self.choice_font:getHeight() * 3.0
+    local boxH = vh / 3 - (2 * padding) + text_space  -- Increased height
     local boxY = vh - (boxH + padding)
 
     -- Choice width: fit inside dialogue box with padding
     local choice_width = vw - (4 * padding)
     local total_height = (choice_height * choice_count) + (choice_spacing * (choice_count - 1))
 
-    -- Position choices inside the dialogue box, near the bottom
+    -- Position choices: top-aligned below text with one line spacing
     local start_x = 2 * padding
-    local start_y = boxY + boxH - total_height - (2 * padding)
+    local start_y = boxY + text_space + padding
 
     love.graphics.setFont(self.choice_font)
 
@@ -601,18 +626,19 @@ function dialogue:_getChoiceAtPosition(x, y)
     local choice_height = 35  -- Same as _drawChoices
     local choice_spacing = 8  -- Same as _drawChoices
 
-    -- Calculate dialogue box dimensions (same as _drawChoices)
+    -- Calculate dialogue box dimensions (same as _drawDialogueBoxForChoices)
     local padding = 10
-    local boxH = vh / 3 - (2 * padding)
+    local text_space = self.choice_font:getHeight() * 3.0
+    local boxH = vh / 3 - (2 * padding) + text_space  -- Increased height
     local boxY = vh - (boxH + padding)
 
     -- Choice width and positioning (same as _drawChoices)
     local choice_width = vw - (4 * padding)
     local total_height = (choice_height * choice_count) + (choice_spacing * (choice_count - 1))
 
-    -- Position choices inside the dialogue box, near the bottom
+    -- Position choices: top-aligned below text with one line spacing (same as _drawChoices)
     local start_x = 2 * padding
-    local start_y = boxY + boxH - total_height - (2 * padding)
+    local start_y = boxY + text_space + padding
 
     -- Check each choice button
     for i = 1, choice_count do
@@ -628,20 +654,16 @@ function dialogue:_getChoiceAtPosition(x, y)
 end
 
 function dialogue:onAction()
-    print("[DEBUG] onAction() called - tree_mode:", self.tree_mode)
-
     if self.tree_mode then
         -- Tree mode: handle choice selection or advance
         if self.current_choices and #self.current_choices > 0 then
-            print("[DEBUG] Selecting choice:", self.selected_choice_index)
             self:selectChoice(self.selected_choice_index)
         else
             -- No choices - advance tree
             self:advanceTree()
         end
     else
-        -- Legacy mode: advance Talkies and update button state
-        print("[DEBUG] Legacy mode - calling Talkies.onAction()")
+        -- Simple dialogue mode: advance Talkies and update button state
         Talkies.onAction()
 
         -- CRITICAL: Update button visibility after advancing
@@ -714,7 +736,10 @@ function dialogue:handleInput(source, ...)
         local x, y = ...
         -- Mouse: check buttons first, then advance
         if not self:touchPressed(0, x, y) then
-            self:onAction()
+            -- Only advance if no choices are displayed (prevent accidental selection)
+            if not (self.tree_mode and self.current_choices and #self.current_choices > 0) then
+                self:onAction()
+            end
         end
         return true
 
@@ -729,7 +754,10 @@ function dialogue:handleInput(source, ...)
         if self:touchPressed(id, x, y) then
             return true  -- Button consumed
         end
-        self:onAction()
+        -- Only advance if no choices are displayed (prevent accidental selection)
+        if not (self.tree_mode and self.current_choices and #self.current_choices > 0) then
+            self:onAction()
+        end
         return true
 
     elseif source == "touch_release" then
@@ -823,7 +851,15 @@ end
 
 -- Handle touch/mouse move
 function dialogue:touchMoved(id, x, y)
-    if Talkies.isOpen() then
+    if self:isOpen() then
+        -- Check for choice hover (mouse/touch move)
+        if self.tree_mode and self.current_choices and #self.current_choices > 0 then
+            local hover_index = self:_getChoiceAtPosition(x, y)
+            if hover_index then
+                self.selected_choice_index = hover_index
+            end
+        end
+
         if self.skip_button then
             self.skip_button:touchMoved(id, x, y)
         end

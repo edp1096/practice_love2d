@@ -146,6 +146,12 @@ function scene_control.mousereleased(x, y, button)
     end
 end
 
+function scene_control.mousemoved(x, y, dx, dy)
+    if scene_control.current and scene_control.current.mousemoved then
+        scene_control.current:mousemoved(x, y, dx, dy)
+    end
+end
+
 function scene_control.gamepadpressed(joystick, button)
     if scene_control.current and scene_control.current.gamepadpressed then
         scene_control.current:gamepadpressed(joystick, button)

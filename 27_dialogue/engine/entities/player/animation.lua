@@ -20,39 +20,31 @@ local function getWeaponPosition(player)
     return weapon_x, weapon_y
 end
 
-function animation.initialize(player, sprite_sheet)
-    player.spriteSheet = love.graphics.newImage(sprite_sheet)
-    player.grid = anim8.newGrid(48, 48, player.spriteSheet:getWidth(), player.spriteSheet:getHeight())
+-- Helper: Handle dialogue state (returns early with 0,0 velocity)
+local function handleDialogueState(player, dt, dialogue_open)
+    if not dialogue_open then
+        return false, 0, 0
+    end
 
-    player.animations = {}
-    player.animations.walk_up = anim8.newAnimation(player.grid("1-4", 4), 0.1)
-    player.animations.walk_down = anim8.newAnimation(player.grid("1-4", 3), 0.1)
-    player.animations.walk_left = anim8.newAnimation(player.grid("5-8", 4, "1-2", 5), 0.1)
-    player.animations.walk_right = anim8.newAnimation(player.grid("3-8", 5), 0.1)
+    local current_anim_name = "idle_" .. player.direction
+    player.anim = player.animations[current_anim_name]
+    player.anim:update(dt)
+    player.state = "idle"
+    player.current_anim_name = current_anim_name
 
-    player.animations.idle_up = anim8.newAnimation(player.grid("5-8", 1), 0.15)
-    player.animations.idle_down = anim8.newAnimation(player.grid("1-4", 1), 0.15)
-    player.animations.idle_left = anim8.newAnimation(player.grid("1-4", 2), 0.15)
-    player.animations.idle_right = anim8.newAnimation(player.grid("5-8", 2), 0.15)
+    if player.weapon then
+        local current_frame_index = player.anim and math.floor(player.anim.position) or 1
+        local weapon_x, weapon_y = getWeaponPosition(player)
 
-    player.animations.attack_down = anim8.newAnimation(player.grid("1-4", 11), 0.08)
-    player.animations.attack_up = anim8.newAnimation(player.grid("5-8", 11), 0.08)
-    player.animations.attack_left = anim8.newAnimation(player.grid("1-4", 12), 0.08)
-    player.animations.attack_right = anim8.newAnimation(player.grid("5-8", 12), 0.08)
+        player.weapon:update(dt, weapon_x, weapon_y, player.facing_angle,
+            player.direction, player.current_anim_name, current_frame_index, debug:IsHandMarkingActive())
+    end
 
-    player.anim = player.animations.idle_right
-    player.direction = "right"
-    player.facing_angle = 0
-    player.current_anim_name = "idle_right"
+    return true, 0, 0
 end
 
-function animation.update(player, dt, cam, dialogue_open)
-    dialogue_open = dialogue_open or false
-
-    local current_anim_name = nil
-    local current_frame_index = 1
-
-    -- Determine facing direction
+-- Helper: Determine facing direction from input/weapon state
+local function handleDirectionFromInput(player, cam)
     if debug:IsHandMarkingActive() then
         if love.keyboard.isDown('w') then
             player.direction = 'up'
@@ -97,32 +89,13 @@ function animation.update(player, dt, cam, dialogue_open)
             end
         end
     end
+end
 
-    if player.state == "attacking" and player.weapon and not player.weapon.is_attacking then
-        player.state = "idle"
-    end
-
+-- Helper: Process movement input and update animation
+local function handleMovementInput(player, dt)
     local vx, vy = 0, 0
     local is_moving = false
     local movement_input = false
-
-    if dialogue_open then
-        current_anim_name = "idle_" .. player.direction
-        player.anim = player.animations[current_anim_name]
-        player.anim:update(dt)
-        player.state = "idle"
-        player.current_anim_name = current_anim_name
-
-        if player.weapon then
-            current_frame_index = player.anim and math.floor(player.anim.position) or 1
-            local weapon_x, weapon_y = getWeaponPosition(player)
-
-            player.weapon:update(dt, weapon_x, weapon_y, player.facing_angle,
-                player.direction, player.current_anim_name, current_frame_index, debug:IsHandMarkingActive())
-        end
-
-        return 0, 0
-    end
 
     -- Check for movement input (keyboard or gamepad)
     local move_x, move_y = input:getMovement()
@@ -193,35 +166,40 @@ function animation.update(player, dt, cam, dialogue_open)
         end
 
         if is_moving then
-            current_anim_name = "walk_" .. player.direction
-            player.anim = player.animations[current_anim_name]
+            player.anim = player.animations["walk_" .. player.direction]
             player.anim:update(dt)
             player.state = "walking"
         else
-            current_anim_name = "idle_" .. player.direction
-            player.anim = player.animations[current_anim_name]
+            player.anim = player.animations["idle_" .. player.direction]
             player.anim:update(dt)
             if player.state ~= "attacking" and not player.parry_active then
                 player.state = "idle"
             end
         end
-    elseif player.dodge_active then
+    end
+
+    return vx, vy, movement_input
+end
+
+-- Helper: Handle special states (dodge, attack, parry, debug)
+local function handleSpecialStates(player, dt, movement_input)
+    local vx, vy = 0, 0
+
+    if player.dodge_active then
         vx = player.dodge_direction_x * player.dodge_speed
         vy = player.dodge_direction_y * player.dodge_speed
-        current_anim_name = "walk_" .. player.direction
-        player.anim = player.animations[current_anim_name]
+        player.anim = player.animations["walk_" .. player.direction]
         player.anim:update(dt * 2)
     elseif player.state == "attacking" then
-        current_anim_name = "attack_" .. player.direction
-        player.anim = player.animations[current_anim_name]
+        player.anim = player.animations["attack_" .. player.direction]
         if not debug:IsHandMarkingActive() then
             player.anim:update(dt)
         end
     elseif player.parry_active then
-        current_anim_name = "idle_" .. player.direction
-        player.anim = player.animations[current_anim_name]
+        player.anim = player.animations["idle_" .. player.direction]
         player.anim:update(dt)
     elseif debug:IsHandMarkingActive() then
+        local current_anim_name
         if movement_input then
             player.state = "walking"
             current_anim_name = "walk_" .. player.direction
@@ -237,15 +215,92 @@ function animation.update(player, dt, cam, dialogue_open)
         if not player.anim or player.anim ~= player.animations[current_anim_name] then
             player.anim = player.animations[current_anim_name]
         end
-    else
-        current_anim_name = "idle_" .. player.direction
     end
 
-    player.current_anim_name = current_anim_name or ("idle_" .. player.direction)
+    return vx, vy
+end
 
+-- Helper: Update weapon position and animation
+local function handleWeaponUpdate(player, dt, current_frame_index)
+    if player.weapon then
+        local weapon_x, weapon_y = getWeaponPosition(player)
+
+        player.weapon:update(dt, weapon_x, weapon_y, player.facing_angle,
+            player.direction, player.current_anim_name, current_frame_index, debug:IsHandMarkingActive())
+    end
+end
+
+function animation.initialize(player, sprite_sheet)
+    player.spriteSheet = love.graphics.newImage(sprite_sheet)
+    player.grid = anim8.newGrid(48, 48, player.spriteSheet:getWidth(), player.spriteSheet:getHeight())
+
+    player.animations = {}
+    player.animations.walk_up = anim8.newAnimation(player.grid("1-4", 4), 0.1)
+    player.animations.walk_down = anim8.newAnimation(player.grid("1-4", 3), 0.1)
+    player.animations.walk_left = anim8.newAnimation(player.grid("5-8", 4, "1-2", 5), 0.1)
+    player.animations.walk_right = anim8.newAnimation(player.grid("3-8", 5), 0.1)
+
+    player.animations.idle_up = anim8.newAnimation(player.grid("5-8", 1), 0.15)
+    player.animations.idle_down = anim8.newAnimation(player.grid("1-4", 1), 0.15)
+    player.animations.idle_left = anim8.newAnimation(player.grid("1-4", 2), 0.15)
+    player.animations.idle_right = anim8.newAnimation(player.grid("5-8", 2), 0.15)
+
+    player.animations.attack_down = anim8.newAnimation(player.grid("1-4", 11), 0.08)
+    player.animations.attack_up = anim8.newAnimation(player.grid("5-8", 11), 0.08)
+    player.animations.attack_left = anim8.newAnimation(player.grid("1-4", 12), 0.08)
+    player.animations.attack_right = anim8.newAnimation(player.grid("5-8", 12), 0.08)
+
+    player.anim = player.animations.idle_right
+    player.direction = "right"
+    player.facing_angle = 0
+    player.current_anim_name = "idle_right"
+end
+
+function animation.update(player, dt, cam, dialogue_open)
+    dialogue_open = dialogue_open or false
+
+    -- Handle dialogue state (early return if dialogue is open)
+    local handled, vx, vy = handleDialogueState(player, dt, dialogue_open)
+    if handled then
+        return vx, vy
+    end
+
+    -- Determine facing direction from input/weapon state
+    handleDirectionFromInput(player, cam)
+
+    -- Reset attacking state if weapon finished
+    if player.state == "attacking" and player.weapon and not player.weapon.is_attacking then
+        player.state = "idle"
+    end
+
+    -- Process movement input (or get velocity from special states)
+    local movement_input
+    vx, vy, movement_input = handleMovementInput(player, dt)
+
+    -- Handle special states (dodge, attack, parry, debug) if not already handled
+    if player.dodge_active or player.state == "attacking" or player.parry_active or debug:IsHandMarkingActive() then
+        local special_vx, special_vy = handleSpecialStates(player, dt, movement_input)
+        if special_vx ~= 0 or special_vy ~= 0 then
+            vx, vy = special_vx, special_vy
+        end
+    end
+
+    -- Set current animation name
+    local current_anim_name = "idle_" .. player.direction
+    if player.anim then
+        for anim_name, anim_obj in pairs(player.animations) do
+            if anim_obj == player.anim then
+                current_anim_name = anim_name
+                break
+            end
+        end
+    end
+    player.current_anim_name = current_anim_name
+
+    -- Determine current frame index
+    local current_frame_index = 1
     if debug:IsHandMarkingActive() then
         current_frame_index = debug.manual_frame
-        -- Actually set player animation frame for hand marking mode
         if player.anim then
             player.anim:gotoFrame(debug.manual_frame)
         end
@@ -253,12 +308,8 @@ function animation.update(player, dt, cam, dialogue_open)
         current_frame_index = math.floor(player.anim.position)
     end
 
-    if player.weapon then
-        local weapon_x, weapon_y = getWeaponPosition(player)
-
-        player.weapon:update(dt, weapon_x, weapon_y, player.facing_angle,
-            player.direction, player.current_anim_name, current_frame_index, debug:IsHandMarkingActive())
-    end
+    -- Update weapon
+    handleWeaponUpdate(player, dt, current_frame_index)
 
     return vx, vy
 end

@@ -79,7 +79,7 @@ function input_handler.keypressed(self, key)
                 -- New: dialogue tree system
                 dialogue:showTreeById(interaction_data.dialogue_id)
             else
-                -- Legacy: simple message array
+                -- Simple dialogue: message array (non-interactive)
                 dialogue:showMultiple(npc.name, interaction_data.messages)
             end
 
@@ -206,7 +206,7 @@ function input_handler.gamepadpressed(self, joystick, button)
                 -- New: dialogue tree system
                 dialogue:showTreeById(interaction_data.dialogue_id)
             else
-                -- Legacy: simple message array
+                -- Simple dialogue: message array (non-interactive)
                 dialogue:showMultiple(ctx.name, interaction_data.messages)
             end
         end
@@ -235,7 +235,7 @@ function input_handler.gamepadpressed(self, joystick, button)
                 -- New: dialogue tree system
                 dialogue:showTreeById(interaction_data.dialogue_id)
             else
-                -- Legacy: simple message array
+                -- Simple dialogue: message array (non-interactive)
                 dialogue:showMultiple(npc.name, interaction_data.messages)
             end
             return

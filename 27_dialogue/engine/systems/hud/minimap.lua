@@ -190,6 +190,178 @@ function minimap:update(dt)
     -- Could add animations or dynamic updates here
 end
 
+-- Helper: Draw NPCs on minimap with outline
+local function drawMinimapNPCs(self, x, y, canvas_offset_x, canvas_offset_y, npcs)
+    if not npcs then return end
+
+    -- Ensure shader is initialized
+    initialize_shader()
+
+    for _, npc in ipairs(npcs) do
+        if npc.x and npc.y and npc.spriteSheet and npc.grid then
+            local nx = math.floor(x + canvas_offset_x + (npc.x * self.scale))
+            local ny = math.floor(y + canvas_offset_y + (npc.y * self.scale))
+
+            -- Draw first frame of sprite (1,1)
+            -- grid(1,1) returns a table, so get the first element
+            local frames = npc.grid(1, 1)
+            local quad = frames[1]
+            local sprite_scale = self.scale * npc.sprite_scale
+
+            -- Draw green outline using shader
+            if outline_shader then
+                love.graphics.setShader(outline_shader)
+                local w, h = npc.spriteSheet:getDimensions()
+                local r, g, b = colors:unpackRGB(colors.for_minimap_npc_outline)
+                outline_shader:send("outline_color", {r, g, b})
+                outline_shader:send("stepSize", {1/w, 1/h})
+
+                colors:apply(colors.WHITE, 0.85)
+                love.graphics.draw(
+                    npc.spriteSheet,
+                    quad,
+                    nx,
+                    ny,
+                    0,
+                    sprite_scale,
+                    sprite_scale,
+                    npc.sprite_width / 2,
+                    npc.sprite_height / 2
+                )
+                love.graphics.setShader()
+            end
+
+            -- Draw main sprite
+            colors:apply(colors.WHITE, 0.85)
+            love.graphics.draw(
+                npc.spriteSheet,
+                quad,
+                nx,
+                ny,
+                0,
+                sprite_scale,
+                sprite_scale,
+                npc.sprite_width / 2,
+                npc.sprite_height / 2
+            )
+        end
+    end
+end
+
+-- Helper: Draw enemies on minimap with outline and color swap
+local function drawMinimapEnemies(self, x, y, canvas_offset_x, canvas_offset_y, enemies)
+    if not enemies then return end
+
+    -- Ensure shader is initialized
+    initialize_shader()
+
+    for _, enemy in ipairs(enemies) do
+        if enemy.x and enemy.y and enemy.health > 0 and enemy.spriteSheet and enemy.grid then
+            local ex = math.floor(x + canvas_offset_x + (enemy.x * self.scale))
+            local ey = math.floor(y + canvas_offset_y + (enemy.y * self.scale))
+
+            -- Draw first frame of sprite (1,1)
+            -- grid(1,1) returns a table, so get the first element
+            local frames = enemy.grid(1, 1)
+            local quad = frames[1]
+            local sprite_scale = self.scale * enemy.sprite_scale
+
+            -- Draw red outline using shader
+            if outline_shader then
+                love.graphics.setShader(outline_shader)
+                local w, h = enemy.spriteSheet:getDimensions()
+                local r, g, b = colors:unpackRGB(colors.for_minimap_enemy_outline)
+                outline_shader:send("outline_color", {r, g, b})
+                outline_shader:send("stepSize", {1/w, 1/h})
+
+                colors:apply(colors.WHITE, 0.85)
+                love.graphics.draw(
+                    enemy.spriteSheet,
+                    quad,
+                    ex,
+                    ey,
+                    0,
+                    sprite_scale,
+                    sprite_scale,
+                    enemy.sprite_width / 2,
+                    enemy.sprite_height / 2
+                )
+                love.graphics.setShader()
+            end
+
+            -- Draw main sprite
+            -- Apply color swap shader if enemy has target_color (e.g., green slime)
+            if enemy.target_color and color_swap_shader then
+                love.graphics.setShader(color_swap_shader)
+                color_swap_shader:send("target_color", enemy.target_color)
+            end
+
+            colors:apply(colors.WHITE, 0.85)
+            love.graphics.draw(
+                enemy.spriteSheet,
+                quad,
+                ex,
+                ey,
+                0,
+                sprite_scale,
+                sprite_scale,
+                enemy.sprite_width / 2,
+                enemy.sprite_height / 2
+            )
+
+            -- Reset shader
+            love.graphics.setShader()
+        end
+    end
+end
+
+-- Helper: Draw player arrow on minimap with gradient
+local function drawMinimapPlayer(self, x, y, center_x, center_y, player)
+    if not player or not player.x or not player.y then return end
+
+    local px = x + center_x
+    local py = y + center_y
+
+    -- Arrow shape (shorter length, wider width)
+    local arrow_length = 5 * 1.3 * 0.8  -- 4/5 of original length (80%)
+    local arrow_width = 5 * 1.3 * 0.6 * 1.3  -- 1.3x wider
+    local angle = player.facing_angle or 0
+
+    -- Arrow vertices (pointing right by default)
+    local points = {
+        arrow_length, 0,      -- tip
+        -arrow_length, -arrow_width,   -- top back
+        -arrow_length * 0.5, 0,  -- middle back
+        -arrow_length, arrow_width    -- bottom back
+    }
+
+    -- Transform and draw arrow with metallic gradient
+    love.graphics.push()
+    love.graphics.translate(px, py)
+    love.graphics.rotate(angle)
+
+    -- Draw metallic gradient (vertical: bright on top, dark on bottom)
+    local r1, g1, b1, a1 = colors:toVertex(colors.for_minimap_player_mid, 0.85)
+    local r2, g2, b2, a2 = colors:toVertex(colors.for_minimap_player_bright, 0.85)
+    local r3, g3, b3, a3 = colors:toVertex(colors.for_minimap_player_dim, 0.85)
+    local r4, g4, b4, a4 = colors:toVertex(colors.for_minimap_player_shadow, 0.85)
+
+    local mesh = love.graphics.newMesh({
+        {arrow_length, 0, 0, 0, r1, g1, b1, a1},  -- tip (mid-tone)
+        {-arrow_length, -arrow_width, 0, 0, r2, g2, b2, a2},  -- top back (bright highlight)
+        {-arrow_length * 0.5, 0, 0, 0, r3, g3, b3, a3},  -- middle (mid-tone)
+        {-arrow_length, arrow_width, 0, 0, r4, g4, b4, a4},  -- bottom back (dark shadow)
+    }, "fan", "static")
+    love.graphics.draw(mesh, 0, 0)
+
+    -- Draw thin outline
+    colors:apply(self.player_outline_color, 0.85)
+    love.graphics.setLineWidth(1)
+    love.graphics.polygon("line", points)
+
+    love.graphics.pop()
+end
+
 function minimap:draw(screen_width, screen_height, player, enemies, npcs)
     if not self.enabled or not self.canvas then return end
 
@@ -241,171 +413,10 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
     love.graphics.rectangle("fill", x, y, display_size, display_size)
     love.graphics.setBlendMode("alpha")
 
-    -- Draw NPCs with offset
-    if npcs then
-        -- Ensure shader is initialized
-        initialize_shader()
-
-        for _, npc in ipairs(npcs) do
-            if npc.x and npc.y and npc.spriteSheet and npc.grid then
-                local nx = math.floor(x + canvas_offset_x + (npc.x * self.scale))
-                local ny = math.floor(y + canvas_offset_y + (npc.y * self.scale))
-
-                -- Draw first frame of sprite (1,1)
-                -- grid(1,1) returns a table, so get the first element
-                local frames = npc.grid(1, 1)
-                local quad = frames[1]
-                local sprite_scale = self.scale * npc.sprite_scale
-
-                -- Draw green outline using shader
-                if outline_shader then
-                    love.graphics.setShader(outline_shader)
-                    local w, h = npc.spriteSheet:getDimensions()
-                    local r, g, b = colors:unpackRGB(colors.for_minimap_npc_outline)
-                    outline_shader:send("outline_color", {r, g, b})
-                    outline_shader:send("stepSize", {1/w, 1/h})
-
-                    colors:apply(colors.WHITE, 0.85)
-                    love.graphics.draw(
-                        npc.spriteSheet,
-                        quad,
-                        nx,
-                        ny,
-                        0,
-                        sprite_scale,
-                        sprite_scale,
-                        npc.sprite_width / 2,
-                        npc.sprite_height / 2
-                    )
-                    love.graphics.setShader()
-                end
-
-                -- Draw main sprite
-                colors:apply(colors.WHITE, 0.85)
-                love.graphics.draw(
-                    npc.spriteSheet,
-                    quad,
-                    nx,
-                    ny,
-                    0,
-                    sprite_scale,
-                    sprite_scale,
-                    npc.sprite_width / 2,
-                    npc.sprite_height / 2
-                )
-            end
-        end
-    end
-
-    -- Draw enemies with offset
-    if enemies then
-        -- Ensure shader is initialized
-        initialize_shader()
-
-        for _, enemy in ipairs(enemies) do
-            if enemy.x and enemy.y and enemy.health > 0 and enemy.spriteSheet and enemy.grid then
-                local ex = math.floor(x + canvas_offset_x + (enemy.x * self.scale))
-                local ey = math.floor(y + canvas_offset_y + (enemy.y * self.scale))
-
-                -- Draw first frame of sprite (1,1)
-                -- grid(1,1) returns a table, so get the first element
-                local frames = enemy.grid(1, 1)
-                local quad = frames[1]
-                local sprite_scale = self.scale * enemy.sprite_scale
-
-                -- Draw red outline using shader
-                if outline_shader then
-                    love.graphics.setShader(outline_shader)
-                    local w, h = enemy.spriteSheet:getDimensions()
-                    local r, g, b = colors:unpackRGB(colors.for_minimap_enemy_outline)
-                    outline_shader:send("outline_color", {r, g, b})
-                    outline_shader:send("stepSize", {1/w, 1/h})
-
-                    colors:apply(colors.WHITE, 0.85)
-                    love.graphics.draw(
-                        enemy.spriteSheet,
-                        quad,
-                        ex,
-                        ey,
-                        0,
-                        sprite_scale,
-                        sprite_scale,
-                        enemy.sprite_width / 2,
-                        enemy.sprite_height / 2
-                    )
-                    love.graphics.setShader()
-                end
-
-                -- Draw main sprite
-                -- Apply color swap shader if enemy has target_color (e.g., green slime)
-                if enemy.target_color and color_swap_shader then
-                    love.graphics.setShader(color_swap_shader)
-                    color_swap_shader:send("target_color", enemy.target_color)
-                end
-
-                colors:apply(colors.WHITE, 0.85)
-                love.graphics.draw(
-                    enemy.spriteSheet,
-                    quad,
-                    ex,
-                    ey,
-                    0,
-                    sprite_scale,
-                    sprite_scale,
-                    enemy.sprite_width / 2,
-                    enemy.sprite_height / 2
-                )
-
-                -- Reset shader
-                love.graphics.setShader()
-            end
-        end
-    end
-
-    -- Draw player as arrow at center
-    if player and player.x and player.y then
-        local px = x + center_x
-        local py = y + center_y
-
-        -- Arrow shape (shorter length, wider width)
-        local arrow_length = 5 * 1.3 * 0.8  -- 4/5 of original length (80%)
-        local arrow_width = 5 * 1.3 * 0.6 * 1.3  -- 1.3x wider
-        local angle = player.facing_angle or 0
-
-        -- Arrow vertices (pointing right by default)
-        local points = {
-            arrow_length, 0,      -- tip
-            -arrow_length, -arrow_width,   -- top back
-            -arrow_length * 0.5, 0,  -- middle back
-            -arrow_length, arrow_width    -- bottom back
-        }
-
-        -- Transform and draw arrow with metallic gradient
-        love.graphics.push()
-        love.graphics.translate(px, py)
-        love.graphics.rotate(angle)
-
-        -- Draw metallic gradient (vertical: bright on top, dark on bottom)
-        local r1, g1, b1, a1 = colors:toVertex(colors.for_minimap_player_mid, 0.85)
-        local r2, g2, b2, a2 = colors:toVertex(colors.for_minimap_player_bright, 0.85)
-        local r3, g3, b3, a3 = colors:toVertex(colors.for_minimap_player_dim, 0.85)
-        local r4, g4, b4, a4 = colors:toVertex(colors.for_minimap_player_shadow, 0.85)
-
-        local mesh = love.graphics.newMesh({
-            {arrow_length, 0, 0, 0, r1, g1, b1, a1},  -- tip (mid-tone)
-            {-arrow_length, -arrow_width, 0, 0, r2, g2, b2, a2},  -- top back (bright highlight)
-            {-arrow_length * 0.5, 0, 0, 0, r3, g3, b3, a3},  -- middle (mid-tone)
-            {-arrow_length, arrow_width, 0, 0, r4, g4, b4, a4},  -- bottom back (dark shadow)
-        }, "fan", "static")
-        love.graphics.draw(mesh, 0, 0)
-
-        -- Draw thin outline
-        colors:apply(self.player_outline_color, 0.85)
-        love.graphics.setLineWidth(1)
-        love.graphics.polygon("line", points)
-
-        love.graphics.pop()
-    end
+    -- Draw NPCs, enemies, and player using helper functions
+    drawMinimapNPCs(self, x, y, canvas_offset_x, canvas_offset_y, npcs)
+    drawMinimapEnemies(self, x, y, canvas_offset_x, canvas_offset_y, enemies)
+    drawMinimapPlayer(self, x, y, center_x, center_y, player)
 
     -- Disable stencil test
     love.graphics.setStencilTest()
