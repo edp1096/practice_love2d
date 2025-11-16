@@ -32,10 +32,7 @@ function input_handler.keypressed(self, key)
     -- Quickslot usage (1-5 number keys)
     if key >= "1" and key <= "5" then
         local slot_index = tonumber(key)
-        local success, message = self.inventory:useQuickslot(slot_index, self.player)
-        if not success and message then
-            print("[Quickslot] " .. message)
-        end
+        self.inventory:useQuickslot(slot_index, self.player)
         return
     end
 
@@ -184,10 +181,7 @@ function input_handler.gamepadpressed(self, joystick, button)
 
     -- D-pad Up: Use selected quickslot
     if button == "dpup" then
-        local success, message = self.inventory:useQuickslot(self.selected_quickslot, self.player)
-        if not success and message then
-            print("[Quickslot] " .. message)
-        end
+        self.inventory:useQuickslot(self.selected_quickslot, self.player)
         return
     end
 
@@ -389,10 +383,7 @@ function input_handler.checkQuickslotTouch(self, touch_x, touch_y)
         if vx >= slot_x and vx <= slot_x + SLOT_SIZE and
            vy >= y and vy <= y + SLOT_SIZE then
             -- Touch is on this slot, use it
-            local success, message = self.inventory:useQuickslot(i, self.player)
-            if not success and message then
-                print("[Quickslot] " .. message)
-            end
+            self.inventory:useQuickslot(i, self.player)
             return true
         end
     end
