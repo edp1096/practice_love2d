@@ -300,19 +300,21 @@ function Talkies.draw()
 
   -- message box
   local boxW = windowWidth - (2 * currentDialog.padding)
-  local boxH = Talkies.height or (windowHeight / 3) - (2 * currentDialog.padding)
+  local font = currentDialog.font or love.graphics.getFont()
+  local extra_height = font:getHeight() * 1.5
+  local boxH = Talkies.height or ((windowHeight * 0.4) - (2 * currentDialog.padding) + extra_height)
   local boxX = currentDialog.padding
   local boxY = windowHeight - (boxH + currentDialog.padding)
 
   -- image
-  local imgX, imgY, imgW, imgScale = boxX + currentDialog.padding, boxY + currentDialog.padding, 0, 0
+  local imgX, imgY, imgW, imgScale = boxX + currentDialog.padding - 5, boxY + currentDialog.padding, 0, 0
   if currentDialog.image ~= nil then
     imgScale = (boxH - (currentDialog.padding * 2)) / currentDialog.image:getHeight()
     imgW = currentDialog.image:getWidth() * imgScale
   end
 
   -- title box
-  local textX, textY = imgX + imgW + currentDialog.padding, boxY + 4
+  local textX, textY = imgX + imgW + currentDialog.padding, boxY + currentDialog.padding
 
   love.graphics.setFont(currentDialog.font)
 

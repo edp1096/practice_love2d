@@ -36,6 +36,9 @@ function quest:init()
         on_quest_turned_in = nil,   -- function(quest_id, rewards)
         on_objective_updated = nil  -- function(quest_id, objective_index, current, target)
     }
+
+    -- Inventory reference (injected from game)
+    self.inventory = nil
 end
 
 -- Register quest definitions (called from main.lua with game data)
@@ -74,7 +77,8 @@ function quest:_cloneQuestData(data)
             type = obj.type,
             target = obj.target,
             count = obj.count or 1,
-            description = obj.description
+            description = obj.description,
+            npc = obj.npc  -- For deliver quests
         }
     end
 
@@ -123,8 +127,34 @@ function quest:accept(quest_id)
         return false
     end
 
+    local def = self.quest_registry[quest_id]
     local state = self.quest_states[quest_id]
     state.state = self.STATE.ACTIVE
+
+    -- Check current inventory for collect/deliver quests
+    -- If player already has the items, count them towards progress
+    if self.inventory then
+        for obj_idx, obj in ipairs(def.objectives) do
+            if obj.type == self.TYPE.COLLECT or obj.type == self.TYPE.DELIVER then
+                local current_count = self.inventory:getItemCountByType(obj.target)
+                if current_count > 0 then
+                    -- Update progress with current inventory count
+                    local progress = state.objectives[obj_idx]
+                    progress.current = math.min(current_count, progress.target)
+
+                    -- Check if already completed
+                    if progress.current >= progress.target then
+                        progress.completed = true
+                    end
+                end
+            end
+        end
+
+        -- Check if all objectives completed immediately
+        if self:isObjectivesCompleted(quest_id) then
+            state.state = self.STATE.COMPLETED
+        end
+    end
 
     -- Trigger callback
     if self.callbacks.on_quest_accepted then
@@ -221,6 +251,11 @@ function quest:onNPCTalked(npc_id)
             for obj_idx, obj in ipairs(def.objectives) do
                 if obj.type == self.TYPE.TALK and obj.target == npc_id then
                     self:updateProgress(quest_id, obj_idx, 1)
+
+                    -- Auto turn in talk quests when completed
+                    if state.state == self.STATE.COMPLETED then
+                        self:turnIn(quest_id)
+                    end
                 end
             end
         end
@@ -255,6 +290,24 @@ function quest:onItemDelivered(item_type, npc_id)
             end
         end
     end
+end
+
+-- Helper: Get active delivery quest for NPC (returns quest_id, item_type, or nil)
+function quest:getActiveDeliveryQuest(npc_id)
+    for quest_id, def in pairs(self.quest_registry) do
+        local state = self.quest_states[quest_id]
+        if state and state.state == self.STATE.ACTIVE then
+            for obj_idx, obj in ipairs(def.objectives) do
+                if obj.type == self.TYPE.DELIVER and obj.npc == npc_id then
+                    -- Check if this objective is not yet completed
+                    if not state.objectives[obj_idx].completed then
+                        return quest_id, obj.target  -- Return quest_id and item_type
+                    end
+                end
+            end
+        end
+    end
+    return nil, nil
 end
 
 -- Turn in quest (claim rewards)

@@ -171,7 +171,7 @@ function npc:drawQuestIndicator(center_x, sprite_y)
 
     if indicator then
         -- Draw indicator above NPC head
-        local indicator_y = sprite_y - 25
+        local indicator_y = sprite_y - 5
         local font = love.graphics.newFont(20)
         love.graphics.setFont(font)
 

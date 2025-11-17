@@ -20,7 +20,7 @@
 --     rewards = {
 --       gold = 100,
 --       exp = 50,
---       items = { "health_potion", "sword" }
+--       items = { "small_potion", "sword" }
 --     },
 --     prerequisites = { "other_quest_id" }  -- Must complete these first
 --   }
@@ -51,6 +51,72 @@ quests.tutorial_talk = {
 }
 
 -- ============================================================================
+-- Test Quests (Simple versions for testing each quest type)
+-- ============================================================================
+
+quests.collect_test = {
+    id = "collect_test",
+    title = "Item Collection Test",
+    description = "Collect health potions to test the collection system.",
+    objectives = {
+        {
+            type = "collect",
+            target = "small_potion",  -- Using existing item type
+            count = 2,
+            description = "Collect 2 Health Potions"
+        }
+    },
+    giver_npc = "passerby_01",
+    rewards = {
+        gold = 50,
+        exp = 25
+    },
+    prerequisites = { "tutorial_talk" }
+}
+
+quests.explore_test = {
+    id = "explore_test",
+    title = "Exploration Test",
+    description = "Visit the second area to test the exploration system.",
+    objectives = {
+        {
+            type = "explore",
+            target = "level1_area2",  -- Map area ID
+            count = 1,
+            description = "Visit Area 2"
+        }
+    },
+    giver_npc = "passerby_01",
+    rewards = {
+        gold = 30,
+        exp = 20
+    },
+    prerequisites = { "tutorial_talk" }
+}
+
+quests.deliver_test = {
+    id = "deliver_test",
+    title = "Delivery Test",
+    description = "Deliver a small potion to test the delivery system.",
+    objectives = {
+        {
+            type = "deliver",
+            target = "small_potion",  -- Item to deliver
+            count = 1,
+            npc = "passerby_01",  -- Deliver to this NPC
+            description = "Deliver Small Potion to Villager"
+        }
+    },
+    giver_npc = "passerby_01",
+    receiver_npc = "passerby_01",  -- Same NPC (for testing)
+    rewards = {
+        gold = 40,
+        exp = 15
+    },
+    prerequisites = { "tutorial_talk" }
+}
+
+-- ============================================================================
 -- Combat Quests
 -- ============================================================================
 
@@ -71,7 +137,7 @@ quests.slime_menace = {
     rewards = {
         gold = 100,
         exp = 50,
-        items = { "health_potion" }
+        items = { "small_potion" }
     },
     prerequisites = { "tutorial_talk" }
 }
@@ -92,7 +158,7 @@ quests.forest_cleanup = {
     rewards = {
         gold = 250,
         exp = 120,
-        items = { "health_potion", "health_potion" }
+        items = { "small_potion", "small_potion" }
     },
     prerequisites = { "slime_menace" }
 }
@@ -117,7 +183,7 @@ quests.herb_gathering = {
     rewards = {
         gold = 80,
         exp = 30,
-        items = { "health_potion", "health_potion" }
+        items = { "small_potion", "small_potion" }
     }
 }
 
@@ -261,7 +327,7 @@ quests.village_hero = {
     rewards = {
         gold = 500,
         exp = 250,
-        items = { "hero_medal", "health_potion", "health_potion", "health_potion" }
+        items = { "iron_sword", "small_potion", "small_potion", "small_potion" }  -- TODO: Add hero_medal item
     },
     prerequisites = { "slime_menace", "herb_gathering" }
 }

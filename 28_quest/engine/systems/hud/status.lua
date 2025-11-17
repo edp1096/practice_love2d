@@ -17,6 +17,43 @@ function hud:draw_health_bar(x, y, w, h, hp, max_hp)
     shapes:drawHealthBar(x, y, w, h, hp, max_hp, true, self.small_font)
 end
 
+function hud:draw_exp_bar(x, y, w, h, current_exp, required_exp)
+    -- Background
+    colors:apply(colors.for_hud_exp_bg or {0.1, 0.1, 0.2}, 0.8)
+    love.graphics.rectangle("fill", x - 2, y - 2, w + 4, h + 4)
+
+    -- Border
+    colors:apply(colors.for_hud_exp_border or {0.3, 0.3, 0.5})
+    love.graphics.rectangle("line", x - 2, y - 2, w + 4, h + 4)
+
+    -- Exp bar fill
+    local progress = required_exp > 0 and (current_exp / required_exp) or 1.0
+    local fill_width = math.floor(w * progress)
+
+    if fill_width > 0 then
+        colors:apply(colors.for_hud_exp_fill or {0.4, 0.6, 1.0})
+        love.graphics.rectangle("fill", x, y, fill_width, h)
+    end
+
+    -- Text (exp / required)
+    local text = string.format("%d / %d", current_exp, required_exp)
+    local text_color = colors.WHITE or {1, 1, 1}
+    text_ui:draw(text, x + w / 2 - self.small_font:getWidth(text) / 2, y + 3, text_color, self.small_font)
+
+    colors:reset()
+end
+
+function hud:draw_level_info(x, y, level, gold)
+    -- Level text
+    local level_text = "Lv." .. level
+    text_ui:draw(level_text, x, y, colors.for_hud_level or {1, 1, 0}, self.small_font)
+
+    -- Gold text (right-aligned from x)
+    local gold_text = "Gold: " .. gold
+    local gold_x = x + 210 - self.small_font:getWidth(gold_text)
+    text_ui:draw(gold_text, gold_x, y, colors.for_hud_gold or {1, 0.8, 0}, self.small_font)
+end
+
 function hud:draw_cooldown(x, y, size, cd, max_cd, label, key_hint)
     -- Background panel
     colors:apply(colors.for_hud_cooldown_bg)

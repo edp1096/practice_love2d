@@ -90,7 +90,7 @@ scenes.ending = {
   options = { "New Game", "Quit to Menu" },
 
   actions = {
-    ["New Game"] = { action = "switch_scene", scene = "newgame" },
+    ["New Game"] = { action = "start_new_game" },  -- Start new game directly
     ["Quit to Menu"] = { action = "switch_scene", scene = "menu" }
   },
 

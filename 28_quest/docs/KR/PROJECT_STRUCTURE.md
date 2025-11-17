@@ -7,7 +7,7 @@ LÖVE2D 게임 엔진 프로젝트 구조 완전 참조 문서입니다.
 ## 루트 디렉토리
 
 ```
-27_dialogue/
+28_quest/
 ├── main.lua              - 진입점 (의존성 주입)
 ├── conf.lua              - LÖVE 설정
 ├── startup.lua           - 초기화 유틸리티
@@ -16,7 +16,7 @@ LÖVE2D 게임 엔진 프로젝트 구조 완전 참조 문서입니다.
 ├── config.ini            - 사용자 설정
 ├── package.json          - npm 스크립트 (웹 빌드)
 │
-├── engine/               - 100% 재사용 가능 게임 엔진 
+├── engine/               - 100% 재사용 가능 게임 엔진
 ├── game/                 - 게임 특화 콘텐츠
 ├── vendor/               - 외부 라이브러리
 ├── assets/               - 게임 리소스
@@ -46,6 +46,7 @@ core/
 ├── coords.lua            - 통합 좌표 시스템
 ├── sound.lua             - 오디오 시스템 (BGM, SFX)
 ├── save.lua              - 저장/로드 시스템 (슬롯 기반)
+├── quest.lua             - 퀘스트 시스템 (kill, collect, talk, explore, deliver)
 ├── debug.lua             - 디버그 오버레이 (F1-F6)
 ├── constants.lua         - 엔진 상수
 │
@@ -146,19 +147,14 @@ entities/
 
 ```
 scenes/
-├── builder.lua           - 데이터 기반 씬 팩토리 
+├── builder.lua           - 데이터 기반 씬 팩토리
 ├── cutscene.lua          - 컷씬/인트로 씬
 └── gameplay/             - 메인 게임플레이 씬
-    ├── init.lua          - 씬 코디네이터  지속성 관리!
+    ├── init.lua          - 씬 조정자 (퀘스트 시스템, 지속성)
     ├── update.lua        - 게임 루프
     ├── render.lua        - 그리기
     └── input.lua         - 입력 처리
 ```
-
-**gameplay/init.lua의 지속성:**
-- 저장 데이터로부터 `picked_items`와 `killed_enemies` 로드
-- `world:new()`에 전달하여 필터링
-- 저장 시 저장 파일로 다시 저장
 
 ### UI 시스템 (`engine/ui/`)
 
@@ -177,13 +173,20 @@ ui/
 │   ├── saveslot.lua      - 저장 화면
 │   ├── load/             - 로드 화면 (모듈형)
 │   ├── inventory/        - 인벤토리 UI (모듈형)
+│   ├── questlog/         - 퀘스트 로그 UI (모듈형)
 │   └── settings/         - 설정 화면 (모듈형)
 │
-├── dialogue.lua          - NPC 대화 시스템 (Talkies 래퍼)
+├── dialogue/             - 대화 시스템 (모듈화, ~1,350줄)
+│   ├── init.lua          - 메인 API (facade 패턴)
+│   ├── core.lua          - 핵심 로직 (트리, 상태, 입력)
+│   ├── render.lua        - 렌더링 (페이징, 선택지, 버튼)
+│   └── helpers.lua       - 헬퍼 (플래그, 히스토리, 액션)
+│                           기능:
 │                           - 간단한 대화 (문자열 메시지)
 │                           - 트리 대화 (선택 기반 대화)
 │                           - 다중 페이지 대화 (비주얼 노벨 스타일)
 │                           - 네비게이션: 키보드, 마우스, 게임패드, 터치
+│                           - 동적 선택지 색상 (방문 추적)
 │
 ├── prompt.lua            - 상호작용 프롬프트 (동적 버튼 아이콘)
 ├── shapes.lua            - 도형 렌더링 (버튼, 다이얼로그)
@@ -435,22 +438,28 @@ save_data = {
 **Engine 핵심:**
 - `engine/core/lifecycle.lua` - 메인 게임 루프 오케스트레이터
 - `engine/core/scene_control.lua` - 씬 관리
+- `engine/core/quest.lua` - 퀘스트 시스템 (5가지 타입, 상태 관리)
 - `engine/core/coords.lua` - 통합 좌표 변환
 - `engine/systems/world/init.lua` - 물리 & 맵 시스템
-- `engine/systems/collision.lua` - 충돌 시스템 (게임 모드 인식 NPC 충돌체)
-- `engine/systems/parallax/init.lua` - 패럴랙스 배경 (display 통합)
-- `engine/scenes/gameplay/init.lua` - 메인 게임플레이 씬  지속성!
+- `engine/systems/collision.lua` - 충돌 시스템 (이중 충돌체)
+- `engine/scenes/gameplay/init.lua` - 메인 게임플레이 씬
 
 **엔티티 시스템:**
 - `engine/entities/factory.lua` - Tiled로부터 엔티티 생성
-- `engine/entities/world_item/init.lua` - 드롭 아이템  리스폰 제어!
-- `engine/entities/enemy/init.lua` - Enemy 기본 클래스  리스폰 제어!
+- `engine/entities/player/` - 플레이어 시스템 (전투, 애니메이션, 렌더링)
+- `engine/entities/enemy/` - 적 AI (팩토리 기반, 리스폰 제어)
+- `engine/entities/weapon/` - 무기 전투 시스템
+- `engine/entities/npc/` - NPC 상호작용
+- `engine/entities/world_item/` - 드롭된 아이템 (리스폰 제어)
 
-**UI & 시스템:**
-- `engine/ui/colors.lua` - 중앙집중식 색상 시스템  Phase 2 완료!
-- `engine/systems/hud/minimap.lua` - 미니맵 (75% 불투명도)
+**UI 시스템:**
+- `engine/ui/colors.lua` - 중앙집중식 색상 시스템
+- `engine/ui/dialogue/` - 대화 시스템 (모듈화)
+- `engine/ui/screens/questlog/` - 퀘스트 로그 UI
+- `engine/ui/screens/inventory/` - 인벤토리 UI
+- `engine/systems/hud/status.lua` - 체력 바, 패리 UI
+- `engine/systems/hud/quest_tracker.lua` - 퀘스트 HUD 트래커
 - `engine/systems/hud/quickslots.lua` - 퀵슬롯 벨트
-- `engine/ui/screens/inventory/inventory_renderer.lua` - 인벤토리 UI
 
 **Game 설정:**
 - `game/data/player.lua` - 플레이어 스탯 (주입됨)
@@ -463,6 +472,6 @@ save_data = {
 
 ---
 
-**마지막 업데이트:** 2025-11-15
+**마지막 업데이트:** 2025-11-17
 **프레임워크:** LÖVE 11.5 + Lua 5.1
-**아키텍처:** Engine/Game 분리 + 의존성 주입 + 데이터 기반 + 지속성 + 중앙집중식 색상
+**아키텍처:** Engine/Game 분리 + 의존성 주입 + 데이터 기반

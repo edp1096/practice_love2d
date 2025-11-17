@@ -7,7 +7,7 @@ Complete reference for the LÖVE2D game engine project structure.
 ## Root Directory
 
 ```
-27_dialogue/
+28_quest/
 ├── main.lua              - Entry point (dependency injection)
 ├── conf.lua              - LÖVE configuration
 ├── startup.lua           - Initialization utilities
@@ -16,7 +16,7 @@ Complete reference for the LÖVE2D game engine project structure.
 ├── config.ini            - User settings
 ├── package.json          - npm scripts (web build)
 │
-├── engine/               - 100% reusable game engine 
+├── engine/               - 100% reusable game engine
 ├── game/                 - Game-specific content
 ├── vendor/               - External libraries
 ├── assets/               - Game resources
@@ -46,6 +46,7 @@ core/
 ├── coords.lua            - Unified coordinate system
 ├── sound.lua             - Audio system (BGM, SFX)
 ├── save.lua              - Save/load system (slot-based)
+├── quest.lua             - Quest system (kill, collect, talk, explore, deliver)
 ├── debug.lua             - Debug overlay (F1-F6)
 ├── constants.lua         - Engine constants
 │
@@ -153,19 +154,14 @@ entities/
 
 ```
 scenes/
-├── builder.lua           - Data-driven scene factory 
+├── builder.lua           - Data-driven scene factory
 ├── cutscene.lua          - Cutscene/intro scene
 └── gameplay/             - Main gameplay scene
-    ├── init.lua          - Scene coordinator  Manages persistence!
+    ├── init.lua          - Scene coordinator (quest system, persistence)
     ├── update.lua        - Game loop
     ├── render.lua        - Drawing
     └── input.lua         - Input handling
 ```
-
-**Persistence in gameplay/init.lua:**
-- Loads `picked_items` and `killed_enemies` from save data
-- Passes to `world:new()` for filtering
-- Saves back to save file on save
 
 ### UI Systems (`engine/ui/`)
 
@@ -184,13 +180,20 @@ ui/
 │   ├── saveslot.lua      - Save game screen
 │   ├── load/             - Load game screen (modular)
 │   ├── inventory/        - Inventory UI (modular)
+│   ├── questlog/         - Quest log UI (modular)
 │   └── settings/         - Settings screen (modular)
 │
-├── dialogue.lua          - NPC dialogue system (Talkies wrapper)
+├── dialogue/             - Dialogue system (modular, ~1,350 lines)
+│   ├── init.lua          - Main API (facade pattern)
+│   ├── core.lua          - Core logic (tree, state, input)
+│   ├── render.lua        - Rendering (paging, choices, buttons)
+│   └── helpers.lua       - Helpers (flags, history, actions)
+│                           Features:
 │                           - Simple dialogue (string messages)
 │                           - Tree dialogue (choice-based conversations)
 │                           - Multi-page dialogue (Visual Novel style)
 │                           - Navigation: keyboard, mouse, gamepad, touch
+│                           - Dynamic choice colors (visited tracking)
 │
 ├── prompt.lua            - Interaction prompts (dynamic button icons)
 ├── shapes.lua            - Shape rendering (buttons, dialogs)
@@ -246,7 +249,9 @@ game/
     ├── sounds.lua        - Sound definitions
     ├── input_config.lua  - Input mappings
     ├── intro_configs.lua - Cutscene configs
+    ├── quests.lua        - Quest definitions (5 types: kill, collect, talk, explore, deliver)
     └── dialogues.lua     - NPC dialogue trees (choice-based conversations)
+                            - Includes npc_id field for quest lookups
 ```
 
 **Data-Driven Menu Example:**
@@ -442,22 +447,28 @@ Examples:
 **Engine Core:**
 - `engine/core/lifecycle.lua` - Main game loop orchestrator
 - `engine/core/scene_control.lua` - Scene management
+- `engine/core/quest.lua` - Quest system (5 types, state management)
 - `engine/core/coords.lua` - Unified coordinate transformations
 - `engine/systems/world/init.lua` - Physics & map system
-- `engine/systems/collision.lua` - Collision system (NPC game mode-aware)
-- `engine/systems/parallax/init.lua` - Parallax backgrounds (display-integrated)
-- `engine/scenes/gameplay/init.lua` - Main gameplay scene  Persistence!
+- `engine/systems/collision.lua` - Collision system (dual collider)
+- `engine/scenes/gameplay/init.lua` - Main gameplay scene
 
 **Entity System:**
 - `engine/entities/factory.lua` - Creates entities from Tiled
-- `engine/entities/world_item/init.lua` - Dropped items  Respawn control!
-- `engine/entities/enemy/init.lua` - Enemy base class  Respawn control!
+- `engine/entities/player/` - Player system (combat, animation, rendering)
+- `engine/entities/enemy/` - Enemy AI (factory-based, respawn control)
+- `engine/entities/weapon/` - Weapon combat system
+- `engine/entities/npc/` - NPC interaction
+- `engine/entities/world_item/` - Dropped items (respawn control)
 
-**UI & Systems:**
-- `engine/ui/colors.lua` - Centralized color system  Phase 2 complete!
-- `engine/systems/hud/minimap.lua` - Minimap (75% opacity)
+**UI Systems:**
+- `engine/ui/colors.lua` - Centralized color system
+- `engine/ui/dialogue/` - Dialogue system (modular)
+- `engine/ui/screens/questlog/` - Quest log UI
+- `engine/ui/screens/inventory/` - Inventory UI
+- `engine/systems/hud/status.lua` - Health bars, parry UI
+- `engine/systems/hud/quest_tracker.lua` - Quest HUD tracker
 - `engine/systems/hud/quickslots.lua` - Quickslot belt
-- `engine/ui/screens/inventory/inventory_renderer.lua` - Inventory UI
 
 **Game Config:**
 - `game/data/player.lua` - Player stats (injected)
@@ -470,6 +481,6 @@ Examples:
 
 ---
 
-**Last Updated:** 2025-11-16
+**Last Updated:** 2025-11-17
 **Framework:** LÖVE 11.5 + Lua 5.1
-**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven + Dialogue System
+**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven

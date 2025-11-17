@@ -78,23 +78,50 @@ function input_handler.keypressed(self, key)
         -- F key: Interact with NPC, Save Point, or Pick up Item (A button on gamepad uses context logic)
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
-            -- Check for completable quests first
             local quest_system = require "engine.core.quest"
-            local completable_quest = self:getCompletableQuest(npc.id)
 
+            -- Process delivery quests first (might complete objectives)
+            self:processDeliveryQuests(npc.id)
+
+            -- Priority 1: Check for completable quests
+            local completable_quest = self:getCompletableQuest(npc.id)
             if completable_quest then
                 -- Show quest completion dialogue
                 self:showQuestTurnInDialogue(completable_quest, npc.name)
-            else
-                -- Regular NPC dialogue
-                local interaction_data = npc:interact()
-                if interaction_data.type == "tree" then
-                    -- New: dialogue tree system
-                    dialogue:showTreeById(interaction_data.dialogue_id)
-                else
-                    -- Simple dialogue: message array (non-interactive)
-                    dialogue:showMultiple(npc.name, interaction_data.messages)
+                quest_system:onNPCTalked(npc.id)
+                return
+            end
+
+            -- Priority 2: Check for delivery quests (automatic item delivery)
+            local delivery_quest_id, item_type = quest_system:getActiveDeliveryQuest(npc.id)
+            print("[DELIVERY] NPC:", npc.id, "Quest:", delivery_quest_id, "Item:", item_type)
+            if delivery_quest_id and item_type then
+                local has_item = self.inventory:hasItem(item_type)
+                print("[DELIVERY] Has item?", has_item)
+                -- Check if player has the item in inventory
+                if has_item then
+                    -- Remove item from inventory
+                    self.inventory:removeItemByType(item_type, 1)
+
+                    -- Update quest progress
+                    quest_system:onItemDelivered(item_type, npc.id)
+
+                    -- Show delivery message
+                    local item_name = item_type:gsub("_", " ")  -- Convert "small_potion" to "small potion"
+                    dialogue:showSimple(npc.name, "Thank you for bringing me the " .. item_name .. "!")
+                    quest_system:onNPCTalked(npc.id)
+                    return
                 end
+            end
+
+            -- Priority 3: Regular NPC dialogue
+            local interaction_data = npc:interact()
+            if interaction_data.type == "tree" then
+                -- New: dialogue tree system
+                dialogue:showTreeById(interaction_data.dialogue_id)
+            else
+                -- Simple dialogue: message array (non-interactive)
+                dialogue:showMultiple(npc.name, interaction_data.messages)
             end
 
             -- Track quest progress (talk quests)
@@ -218,23 +245,28 @@ function input_handler.gamepadpressed(self, joystick, button)
     elseif action == "interact_npc" then
         -- ctx is the NPC
         if ctx then
-            -- Check for completable quests first
             local quest_system = require "engine.core.quest"
-            local completable_quest = self:getCompletableQuest(ctx.id)
 
+            -- Process delivery quests first (might complete objectives)
+            self:processDeliveryQuests(ctx.id)
+
+            -- Priority 1: Check for completable quests
+            local completable_quest = self:getCompletableQuest(ctx.id)
             if completable_quest then
                 -- Show quest completion dialogue
                 self:showQuestTurnInDialogue(completable_quest, ctx.name)
+                quest_system:onNPCTalked(ctx.id)
+                return
+            end
+
+            -- Priority 2: Regular NPC dialogue
+            local interaction_data = ctx:interact()
+            if interaction_data.type == "tree" then
+                -- New: dialogue tree system
+                dialogue:showTreeById(interaction_data.dialogue_id)
             else
-                -- Regular NPC dialogue
-                local interaction_data = ctx:interact()
-                if interaction_data.type == "tree" then
-                    -- New: dialogue tree system
-                    dialogue:showTreeById(interaction_data.dialogue_id)
-                else
-                    -- Simple dialogue: message array (non-interactive)
-                    dialogue:showMultiple(ctx.name, interaction_data.messages)
-                end
+                -- Simple dialogue: message array (non-interactive)
+                dialogue:showMultiple(ctx.name, interaction_data.messages)
             end
 
             -- Track quest progress (talk quests)
@@ -260,23 +292,50 @@ function input_handler.gamepadpressed(self, joystick, button)
         -- Direct interact (Y button) - NPC, Save Point, or Pick up Item
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
-            -- Check for completable quests first
             local quest_system = require "engine.core.quest"
-            local completable_quest = self:getCompletableQuest(npc.id)
 
+            -- Process delivery quests first (might complete objectives)
+            self:processDeliveryQuests(npc.id)
+
+            -- Priority 1: Check for completable quests
+            local completable_quest = self:getCompletableQuest(npc.id)
             if completable_quest then
                 -- Show quest completion dialogue
                 self:showQuestTurnInDialogue(completable_quest, npc.name)
-            else
-                -- Regular NPC dialogue
-                local interaction_data = npc:interact()
-                if interaction_data.type == "tree" then
-                    -- New: dialogue tree system
-                    dialogue:showTreeById(interaction_data.dialogue_id)
-                else
-                    -- Simple dialogue: message array (non-interactive)
-                    dialogue:showMultiple(npc.name, interaction_data.messages)
+                quest_system:onNPCTalked(npc.id)
+                return
+            end
+
+            -- Priority 2: Check for delivery quests (automatic item delivery)
+            local delivery_quest_id, item_type = quest_system:getActiveDeliveryQuest(npc.id)
+            print("[DELIVERY] NPC:", npc.id, "Quest:", delivery_quest_id, "Item:", item_type)
+            if delivery_quest_id and item_type then
+                local has_item = self.inventory:hasItem(item_type)
+                print("[DELIVERY] Has item?", has_item)
+                -- Check if player has the item in inventory
+                if has_item then
+                    -- Remove item from inventory
+                    self.inventory:removeItemByType(item_type, 1)
+
+                    -- Update quest progress
+                    quest_system:onItemDelivered(item_type, npc.id)
+
+                    -- Show delivery message
+                    local item_name = item_type:gsub("_", " ")  -- Convert "small_potion" to "small potion"
+                    dialogue:showSimple(npc.name, "Thank you for bringing me the " .. item_name .. "!")
+                    quest_system:onNPCTalked(npc.id)
+                    return
                 end
+            end
+
+            -- Priority 3: Regular NPC dialogue
+            local interaction_data = npc:interact()
+            if interaction_data.type == "tree" then
+                -- New: dialogue tree system
+                dialogue:showTreeById(interaction_data.dialogue_id)
+            else
+                -- Simple dialogue: message array (non-interactive)
+                dialogue:showMultiple(npc.name, interaction_data.messages)
             end
 
             -- Track quest progress (talk quests)

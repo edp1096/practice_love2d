@@ -71,6 +71,9 @@ function setup.configure()
     -- Inject dialogue trees into dialogue system
     dialogue.dialogue_registry = dialogues
 
+    -- Inject quest system into dialogue (for quest acceptance actions)
+    dialogue.quest_system = quest_system
+
     -- Initialize quest system with quest definitions
     quest_system:registerQuests(quests)
 end

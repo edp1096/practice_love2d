@@ -85,16 +85,16 @@ The `game/` folder contains **only** game-specific content:
 ## Project Structure
 
 ```
-27_dialogue/
+28_quest/
 ├── engine/           # Reusable game engine (100% reusable)
-│   ├── core/         # Core systems (lifecycle, input, scene, etc.)
+│   ├── core/         # Core systems (lifecycle, input, scene, quest, etc.)
 │   ├── systems/      # Subsystems (world, effects, lighting, hud)
 │   ├── entities/     # All entities (player, enemy, weapon, npc, item)
 │   ├── scenes/       # Scene builders (builder, cutscene, gameplay)
-│   ├── ui/           # UI systems (menu, dialogue, widgets, colors)
+│   ├── ui/           # UI systems (menu, dialogue, questlog, widgets, colors)
 │   └── utils/        # Utilities
 ├── game/             # Game-specific content
-│   ├── data/         # Configuration files (player, scenes, sounds, etc.)
+│   ├── data/         # Configuration files (player, quests, scenes, sounds, etc.)
 │   └── scenes/       # Game scenes (menu, play, settings, inventory, load)
 ├── assets/           # Game resources (maps, images, sounds)
 ├── vendor/           # External libraries (STI, Windfield, anim8, etc.)
@@ -519,5 +519,5 @@ php -S localhost:8080
 ---
 
 **Framework:** LÖVE 11.5 + Lua 5.1
-**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven + Dialogue System
-**Last Updated:** 2025-11-16
+**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven + Dialogue System + Quest System
+**Last Updated:** 2025-11-17

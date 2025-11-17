@@ -130,6 +130,53 @@ function inventory:removeItem(item_id)
     return true
 end
 
+-- Check if player has item of given type
+function inventory:hasItem(item_type)
+    for item_id, item_data in pairs(self.items) do
+        if item_data.item.type == item_type and item_data.item.quantity > 0 then
+            return true
+        end
+    end
+    return false
+end
+
+-- Get total quantity of items by type
+function inventory:getItemCountByType(item_type)
+    local total = 0
+    for item_id, item_data in pairs(self.items) do
+        if item_data.item.type == item_type then
+            total = total + item_data.item.quantity
+        end
+    end
+    return total
+end
+
+-- Remove item by type (for quest delivery)
+function inventory:removeItemByType(item_type, quantity)
+    quantity = quantity or 1
+
+    -- Find item of this type
+    for item_id, item_data in pairs(self.items) do
+        if item_data.item.type == item_type then
+            local item = item_data.item
+
+            if item.quantity >= quantity then
+                -- Reduce quantity
+                item.quantity = item.quantity - quantity
+
+                -- Remove item if quantity reaches 0
+                if item.quantity == 0 then
+                    self:removeItem(item_id)
+                end
+
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
 -- Find empty space for item with given size
 function inventory:findEmptySpace(width, height)
     -- Scan from top-left to find first available space
@@ -164,6 +211,7 @@ end
 -- Add item to inventory (auto-placement)
 function inventory:addItem(item_type, quantity)
     quantity = quantity or 1
+    local original_quantity = quantity  -- Store for quest tracking
 
     -- Try to stack with existing item of same type
     for item_id, item_data in pairs(self.items) do
@@ -171,6 +219,9 @@ function inventory:addItem(item_type, quantity)
         if item.type == item_type and item.quantity < item.max_stack then
             local overflow = item:addQuantity(quantity)
             if overflow == 0 then
+                -- Notify quest system about item collection
+                local quest_system = require "engine.core.quest"
+                quest_system:onItemCollected(item_type, original_quantity)
                 return true  -- All added to existing stack
             else
                 quantity = overflow  -- Continue with overflow
@@ -192,6 +243,10 @@ function inventory:addItem(item_type, quantity)
         if not self.selected_item_id then
             self.selected_item_id = new_item.uuid
         end
+
+        -- Notify quest system about item collection
+        local quest_system = require "engine.core.quest"
+        quest_system:onItemCollected(item_type, original_quantity)
 
         return true, new_item.uuid  -- Return success and item ID
     else

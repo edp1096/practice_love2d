@@ -33,10 +33,10 @@ luac -p **/*.lua
 ### Project Structure
 
 ```
-27_dialogue/
+28_quest/
 ├── engine/           # Reusable game engine (100% reusable)
 ├── game/             # Game-specific content
-│   ├── data/         # Configuration files
+│   ├── data/         # Configuration files (player, quests, dialogues, etc.)
 │   └── scenes/       # Game scenes
 ├── vendor/           # External libraries
 ├── assets/           # Game resources
@@ -953,6 +953,6 @@ For code examples, see:
 
 ---
 
-**Last Updated:** 2025-11-16
-**Engine Version:** 27_dialogue
+**Last Updated:** 2025-11-17
+**Engine Version:** 28_quest
 **LÖVE Version:** 11.5

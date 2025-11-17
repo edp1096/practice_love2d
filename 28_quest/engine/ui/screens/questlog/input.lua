@@ -202,32 +202,30 @@ function input:gamepadpressed(joystick, button)
         return
     end
 
-    local input_config = require "game.data.input_config"
-
-    -- Map gamepad buttons
-    local action = input_config:getGamepadAction(button)
-
-    if action == "cancel" or action == "pause" then
+    -- Cancel/pause actions
+    if input_sys:wasPressed("cancel", "gamepad", button) or
+       input_sys:wasPressed("pause", "gamepad", button) then
         scene_control.pop()
         return
     end
 
-    if action == "move_left" then
+    -- Navigation using input system
+    if input_sys:wasPressed("move_left", "gamepad", button) then
         self:keypressed("left")
         return
     end
 
-    if action == "move_right" then
+    if input_sys:wasPressed("move_right", "gamepad", button) then
         self:keypressed("right")
         return
     end
 
-    if action == "move_up" then
+    if input_sys:wasPressed("move_up", "gamepad", button) then
         self:keypressed("up")
         return
     end
 
-    if action == "move_down" then
+    if input_sys:wasPressed("move_down", "gamepad", button) then
         self:keypressed("down")
         return
     end

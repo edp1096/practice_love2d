@@ -30,6 +30,7 @@ local lighting = require "engine.systems.lighting"
 local effects = require "engine.systems.effects"
 local weather = require "engine.systems.weather"
 local quest_system = require "engine.core.quest"
+local level_system = require "engine.core.level"
 
 -- Import sub-modules
 local update_module = require "engine.scenes.gameplay.update"
@@ -93,6 +94,19 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
         quest_system:importStates(save_data.quest_states)
     end
 
+    -- Initialize level system with player config
+    local level_config = gameplay.player_config.level_system
+    if level_config then
+        level_system:init(level_config)
+    else
+        level_system:init()  -- Use default config
+    end
+
+    -- Load level system data from save
+    if save_data and save_data.level_data then
+        level_system:deserialize(save_data.level_data)
+    end
+
     -- Create world with injected entity classes and persistence data
     self.world = world:new(mapPath, {
         enemy = enemy_class,
@@ -113,14 +127,6 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
     if save_data and save_data.hp then
         self.player.health = save_data.hp
         self.player.max_health = save_data.max_hp
-    end
-
-    if save_data and save_data.player_gold then
-        self.player.gold = save_data.player_gold
-    end
-
-    if save_data and save_data.player_exp then
-        self.player.exp = save_data.player_exp
     end
 
     self.world:addEntity(self.player)
@@ -162,6 +168,14 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
         end
     end
 
+    -- Inject inventory reference into quest system
+    -- (needed for collect quests to check current inventory on accept)
+    quest_system.inventory = self.inventory
+
+    -- Auto-accept tutorial quest for new game
+    if is_new_game then
+        quest_system:accept("tutorial_talk")
+    end
 
     self.transition_cooldown = 0
 
@@ -210,16 +224,35 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
         world = self.world
     })
 
-    -- AUTO-ACCEPT TEST QUEST (for testing quest system)
-    -- TODO: Remove this after implementing NPC quest UI
-    if quest_system:canAccept("tutorial_talk") then
-        quest_system:accept("tutorial_talk")
+    -- Setup level system callbacks
+    level_system.callbacks.on_level_up = function(new_level, stat_bonuses)
+        -- Increase player stats on level up
+        if stat_bonuses.max_health then
+            self.player.max_health = self.player.max_health + stat_bonuses.max_health
+            -- Also heal player by the bonus amount
+            self.player.health = math.min(self.player.health + stat_bonuses.max_health, self.player.max_health)
+        end
+
+        if stat_bonuses.speed then
+            self.player.speed = self.player.speed + stat_bonuses.speed
+        end
+
+        -- TODO: Show level up notification (visual effect, sound, UI message)
     end
 
-    -- FORCE ACCEPT slime_menace for testing (ignore prerequisites)
-    local slime_state = quest_system:getState("slime_menace")
-    if slime_state then
-        slime_state.state = quest_system.STATE.ACTIVE
+    -- Setup quest system callbacks for level rewards
+    quest_system.callbacks.on_quest_turned_in = function(quest_id, rewards)
+        -- Give gold rewards
+        if rewards.gold and rewards.gold > 0 then
+            level_system:addGold(rewards.gold)
+        end
+
+        -- Give exp rewards (may trigger level up)
+        if rewards.exp and rewards.exp > 0 then
+            level_system:addExp(rewards.exp)
+        end
+
+        -- Items are handled in showQuestTurnInDialogue
     end
 end
 
@@ -239,6 +272,7 @@ function gameplay:saveGame(slot)
     slot = slot or self.current_save_slot or 1
 
     local quest_system = require "engine.core.quest"
+    local level_system = require "engine.core.level"
     local save_data = {
         hp = self.player.health,
         max_hp = self.player.max_health,
@@ -250,8 +284,7 @@ function gameplay:saveGame(slot)
         killed_enemies = self.killed_enemies or {},
         dialogue_choices = dialogue:exportChoiceHistory(),
         quest_states = quest_system:exportStates(),
-        player_gold = self.player.gold or 0,
-        player_exp = self.player.exp or 0,
+        level_data = level_system:serialize(),
     }
 
     local success = save_sys:saveGame(slot, save_data)
@@ -349,6 +382,13 @@ function gameplay:switchMap(new_map_path, spawn_x, spawn_y)
     weather:cleanup()
 
     self.current_map_path = new_map_path
+
+    -- Track location for explore quests
+    local location_id = self:getLocationId(new_map_path)
+    if location_id then
+        local quest_system = require "engine.core.quest"
+        quest_system:onLocationVisited(location_id)
+    end
     -- Create world with injected entity classes and persistence data
     self.world = world:new(new_map_path, {
         enemy = enemy_class,
@@ -546,31 +586,159 @@ function gameplay:getCompletableQuest(npc_id)
     return nil
 end
 
+-- Helper: Get location ID from map path
+function gameplay:getLocationId(map_path)
+    -- Extract location ID from map path
+    -- Example: "assets/maps/level1/area2.lua" -> "level1_area2"
+    local level = map_path:match("level(%d+)")
+    local area = map_path:match("area(%d+)")
+
+    if level and area then
+        return "level" .. level .. "_area" .. area
+    end
+
+    return nil
+end
+
+-- Helper: Get first available quest for NPC
+function gameplay:getAvailableQuest(npc_id)
+    local quest_system = require "engine.core.quest"
+
+    for quest_id, quest_def in pairs(quest_system.quest_registry) do
+        if quest_def.giver_npc == npc_id and quest_system:canAccept(quest_id) then
+            local state = quest_system:getState(quest_id)
+            return {
+                id = quest_id,
+                def = quest_def,
+                state = state
+            }
+        end
+    end
+
+    return nil
+end
+
+-- Helper: Show quest offer dialogue (with accept/decline choices)
+function gameplay:showQuestOfferDialogue(quest_info, npc_name)
+    local quest_system = require "engine.core.quest"
+    local dialogue = require "engine.ui.dialogue"
+
+    -- Build quest description text
+    local description_lines = {
+        quest_info.def.title,
+        quest_info.def.description,
+        "",
+        "Objectives:"
+    }
+
+    -- Add objectives
+    for i, obj in ipairs(quest_info.def.objectives) do
+        table.insert(description_lines, string.format("- %s", obj.description))
+    end
+
+    -- Add rewards
+    local rewards = quest_info.def.rewards or {}
+    if rewards.gold or rewards.exp or (rewards.items and #rewards.items > 0) then
+        table.insert(description_lines, "")
+        table.insert(description_lines, "Rewards:")
+
+        if rewards.gold then
+            table.insert(description_lines, string.format("- %d Gold", rewards.gold))
+        end
+        if rewards.exp then
+            table.insert(description_lines, string.format("- %d EXP", rewards.exp))
+        end
+        if rewards.items then
+            for _, item in ipairs(rewards.items) do
+                table.insert(description_lines, string.format("- %s", item))
+            end
+        end
+    end
+
+    local description_text = table.concat(description_lines, "\n")
+
+    -- Create dialogue tree for quest offer
+    local quest_tree = {
+        start_node = "offer",
+        nodes = {
+            offer = {
+                text = description_text,
+                speaker = npc_name,
+                choices = {
+                    {
+                        text = "Accept Quest",
+                        next = "accepted",
+                        action = {
+                            type = "accept_quest",
+                            quest_id = quest_info.id
+                        }
+                    },
+                    {
+                        text = "Decline",
+                        next = "declined"
+                    }
+                }
+            },
+            accepted = {
+                text = "Good luck on your quest!",
+                speaker = npc_name,
+                next = nil  -- End dialogue
+            },
+            declined = {
+                text = "Come back if you change your mind.",
+                speaker = npc_name,
+                next = nil  -- End dialogue
+            }
+        }
+    }
+
+    -- Show dialogue tree
+    dialogue:showTree(quest_tree)
+end
+
+-- Helper: Process delivery quests when talking to NPC
+function gameplay:processDeliveryQuests(npc_id)
+    local quest_system = require "engine.core.quest"
+
+    -- Check all active quests for deliveries to this NPC
+    for quest_id, quest_def in pairs(quest_system.quest_registry) do
+        local state = quest_system:getState(quest_id)
+
+        if state and state.state == quest_system.STATE.ACTIVE then
+            -- Check each objective
+            for obj_idx, obj in ipairs(quest_def.objectives) do
+                if obj.type == quest_system.TYPE.DELIVER and obj.npc == npc_id then
+                    -- Check if player has the required item
+                    local item_type = obj.target
+                    local has_item = self.inventory:hasItem(item_type)
+
+                    if has_item then
+                        -- Remove item from inventory
+                        self.inventory:removeItemByType(item_type, 1)
+
+                        -- Track delivery progress
+                        quest_system:onItemDelivered(item_type, npc_id)
+                    end
+                end
+            end
+        end
+    end
+end
+
 -- Helper: Show quest turn-in dialogue
 function gameplay:showQuestTurnInDialogue(quest_info, npc_name)
     local quest_system = require "engine.core.quest"
     local dialogue = require "engine.ui.dialogue"
 
-    -- Turn in quest and get rewards
+    -- Turn in quest and get rewards (gold/exp handled by quest_system callback)
     local success, rewards = quest_system:turnIn(quest_info.id)
 
     if not success then
         return
     end
 
-    -- Distribute rewards to player
-    if rewards.gold and rewards.gold > 0 then
-        -- Add gold to player (initialize if doesn't exist)
-        self.player.gold = (self.player.gold or 0) + rewards.gold
-    end
-
-    if rewards.exp and rewards.exp > 0 then
-        -- Add exp to player (initialize if doesn't exist)
-        self.player.exp = (self.player.exp or 0) + rewards.exp
-    end
-
+    -- Add items to inventory (not handled by callback)
     if rewards.items then
-        -- Add items to inventory
         for _, item_type in ipairs(rewards.items) do
             self.inventory:addItem(item_type, 1)
         end

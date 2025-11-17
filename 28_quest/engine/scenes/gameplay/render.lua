@@ -15,6 +15,7 @@ local text_ui = require "engine.utils.text"
 local weather = require "engine.systems.weather"
 local quest_system = require "engine.core.quest"
 local quest_tracker = require "engine.systems.hud.quest_tracker"
+local level_system = require "engine.core.level"
 
 local render = {}
 
@@ -73,10 +74,21 @@ function render.draw(self)
     local vw, vh = display:GetVirtualDimensions()
     local pb = display.physical_bounds
 
+    -- Health bar
     hud:draw_health_bar(pb.x + 12, pb.y + 12, 210, 20, self.player.health, self.player.max_health)
 
+    -- Level and gold info (below health bar)
+    local level = level_system:getLevel()
+    local gold = level_system:getGold()
+    hud:draw_level_info(pb.x + 12, pb.y + 36, level, gold)
+
+    -- Experience bar (below level/gold)
+    local current_exp = level_system:getCurrentExp()
+    local required_exp = level_system:getRequiredExp(level)
+    hud:draw_exp_bar(pb.x + 12, pb.y + 52, 210, 16, current_exp, required_exp)
+
     if self.player:isInvincible() or self.player:isDodgeInvincible() then
-        text_ui:draw("INVINCIBLE", 17, 35, {1, 1, 0, 1}, hud.small_font)
+        text_ui:draw("INVINCIBLE", 17, 72, {1, 1, 0, 1}, hud.small_font)
     end
 
     if self.player.dodge_active then

@@ -60,4 +60,22 @@ player_config.spawn = {
   y = 100,
 }
 
+-- Level system configuration
+player_config.level_system = {
+  max_level = 50,
+  base_exp = 100,
+  exp_curve = 1.5,
+
+  -- Stat bonuses per level
+  stat_bonuses = {
+    max_health = 10,     -- +10 HP per level
+    attack_damage = 2,   -- +2 damage per level
+    speed = 5            -- +5 speed per level
+  },
+
+  -- Starting values
+  starting_level = 1,
+  starting_gold = 0
+}
+
 return player_config
