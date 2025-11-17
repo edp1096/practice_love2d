@@ -11,6 +11,7 @@ local text_ui = require "engine.utils.text"
 local input = require "engine.core.input"
 local colors = require "engine.ui.colors"
 local scene_control = require "engine.core.scene_control"
+local ui_constants = require "engine.ui.constants"
 
 -- Sub-screens
 local inventory_screen = require "engine.ui.screens.inventory"
@@ -45,16 +46,16 @@ function container:enter(previous, player_inventory, player, quest_system, initi
         input.virtual_gamepad:hide()
     end
 
-    -- Initialize fonts
-    self.title_font = fonts.info or love.graphics.getFont()  -- Smaller font (was fonts.option)
+    -- Initialize fonts (use shared constants)
+    self.title_font = fonts.info or love.graphics.getFont()
 
-    -- Close button settings
-    self.close_button_size = 30
-    self.close_button_padding = 15
+    -- Close button settings (use shared constants)
+    self.close_button_size = ui_constants.CLOSE_BUTTON_SIZE  -- 30
+    self.close_button_padding = ui_constants.CLOSE_BUTTON_PADDING  -- 15
     self.close_button_hovered = false
 
-    -- Tab button settings
-    self.tab_height = 30  -- Reduced from 40
+    -- Tab button settings (use shared constants)
+    self.tab_height = ui_constants.TAB_HEIGHT  -- 30
     self.tab_button_hovered = nil  -- Track which tab is hovered (nil or tab index)
 
     -- Color shortcuts
@@ -125,10 +126,10 @@ end
 function container:drawTabBar()
     local vw, vh = display:GetVirtualDimensions()
     local tab_width = 200
-    local tab_spacing = 10
+    local tab_spacing = ui_constants.PADDING_MEDIUM  -- 10
     local total_width = (#self.tabs * tab_width) + ((#self.tabs - 1) * tab_spacing)
     local start_x = (vw - total_width) / 2
-    local start_y = 20  -- Moved up from 60
+    local start_y = ui_constants.TAB_BAR_Y  -- 20
 
     for i, tab in ipairs(self.tabs) do
         local x = start_x + (i - 1) * (tab_width + tab_spacing)
@@ -181,7 +182,7 @@ end
 function container:drawCloseButton()
     local vw, vh = display:GetVirtualDimensions()
     local x = vw - self.close_button_size - self.close_button_padding
-    local y = 20  -- Same as tab bar Y position
+    local y = ui_constants.TAB_BAR_Y  -- 20, same as tab bar Y position
 
     shapes:drawCloseButton(x, y, self.close_button_size, self.close_button_hovered)
 end
@@ -244,10 +245,10 @@ function container:mousepressed(x, y, button)
 
     -- Check tab clicks
     local tab_width = 200
-    local tab_spacing = 10
+    local tab_spacing = ui_constants.PADDING_MEDIUM  -- 10
     local total_width = (#self.tabs * tab_width) + ((#self.tabs - 1) * tab_spacing)
     local start_x = (vw - total_width) / 2
-    local start_y = 20  -- Same as drawTabBar
+    local start_y = ui_constants.TAB_BAR_Y  -- 20
 
     for i, tab in ipairs(self.tabs) do
         local tab_x = start_x + (i - 1) * (tab_width + tab_spacing)
@@ -281,7 +282,7 @@ function container:mousemoved(x, y, dx, dy)
     -- Update close button hover state
     local vw, vh = display:GetVirtualDimensions()
     local close_x = vw - self.close_button_size - self.close_button_padding
-    local close_y = 20  -- Same as drawCloseButton
+    local close_y = ui_constants.TAB_BAR_Y  -- 20
 
     self.close_button_hovered = (
         vx >= close_x and vx <= close_x + self.close_button_size and
@@ -290,10 +291,10 @@ function container:mousemoved(x, y, dx, dy)
 
     -- Update tab hover state
     local tab_width = 200
-    local tab_spacing = 10
+    local tab_spacing = ui_constants.PADDING_MEDIUM  -- 10
     local total_width = (#self.tabs * tab_width) + ((#self.tabs - 1) * tab_spacing)
     local start_x = (vw - total_width) / 2
-    local start_y = 20  -- Same as drawTabBar
+    local start_y = ui_constants.TAB_BAR_Y  -- 20
 
     self.tab_button_hovered = nil
     for i, tab in ipairs(self.tabs) do

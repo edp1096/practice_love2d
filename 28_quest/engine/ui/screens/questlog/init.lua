@@ -6,6 +6,7 @@ local questlog = {}
 -- Separate module imports
 local render_module = require "engine.ui.screens.questlog.render"
 local input_module = require "engine.ui.screens.questlog.input"
+local config = require "engine.ui.screens.questlog.config"
 
 function questlog:enter(from, quest_system)
     self.previous_scene = from
@@ -57,13 +58,13 @@ function questlog:update(dt)
             local quests = self:getQuestsForCategory(self.selected_category)
             if #quests > 0 then
                 -- Scroll speed (pixels per second)
-                local scroll_speed = 300
+                local scroll_speed = config.SCROLL_SPEED
                 local scroll_delta = ry * scroll_speed * dt
 
                 -- Calculate max scroll
-                local item_height = 50
-                local padding = 5
-                local list_h = 310  -- panel_h (450) - 140
+                local item_height = config.ITEM_HEIGHT
+                local padding = config.PADDING
+                local list_h = config.LIST_HEIGHT
                 local visible_height = list_h - padding * 2
                 local total_content_height = #quests * item_height
                 local max_scroll = math.max(0, total_content_height - visible_height)
@@ -126,9 +127,9 @@ function questlog:touchmoved(id, x, y, dx, dy, pressure)
         local quests = self:getQuestsForCategory(self.selected_category)
         if #quests > 0 then
             -- Calculate max scroll
-            local item_height = 50
-            local padding = 5
-            local list_h = 310  -- panel_h (450) - 140
+            local item_height = config.ITEM_HEIGHT
+            local padding = config.PADDING
+            local list_h = config.LIST_HEIGHT
             local visible_height = list_h - padding * 2
             local total_content_height = #quests * item_height
             local max_scroll = math.max(0, total_content_height - visible_height)

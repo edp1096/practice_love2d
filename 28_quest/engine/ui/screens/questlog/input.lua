@@ -5,6 +5,7 @@ local scene_control = require "engine.core.scene_control"
 local display = require "engine.core.display"
 local coords = require "engine.core.coords"
 local input_sys = require "engine.core.input"
+local config = require "engine.ui.screens.questlog.config"
 
 local input = {}
 
@@ -19,9 +20,9 @@ function input:updateScrollToSelection()
     local quests = scene:getQuestsForCategory(scene.selected_category)
     if #quests == 0 then return end
 
-    local item_height = 50
-    local padding = 5
-    local list_h = 310  -- panel_h (450) - 140 (from render.lua:77)
+    local item_height = config.ITEM_HEIGHT
+    local padding = config.PADDING
+    local list_h = config.LIST_HEIGHT
     local visible_height = list_h - padding * 2
 
     -- Calculate selected item position
@@ -115,8 +116,8 @@ function input:mousepressed(x, y, button)
     local in_container = scene.previous_scene and scene.previous_scene.current_tab
 
     -- Panel dimensions (match render.lua)
-    local panel_w = 720  -- Match inventory width
-    local panel_h = 450  -- Reduced from 500
+    local panel_w = config.PANEL_WIDTH
+    local panel_h = config.PANEL_HEIGHT
     local panel_x = (SCREEN_W - panel_w) / 2
     local panel_y = in_container and 70 or (SCREEN_H - panel_h) / 2
 
@@ -135,9 +136,9 @@ function input:mousepressed(x, y, button)
 
     -- Category tabs (match render.lua)
     local tab_y = panel_y + 60
-    local tab_width = 130  -- Reduced from 150
-    local tab_height = 28  -- Reduced from 35
-    local spacing = 8  -- Reduced from 10
+    local tab_width = config.TAB_WIDTH
+    local tab_height = config.TAB_HEIGHT
+    local spacing = config.TAB_SPACING
     local start_x = panel_x + 20
 
     for i, category in ipairs(scene.categories) do
@@ -156,14 +157,14 @@ function input:mousepressed(x, y, button)
     -- Quest list (match render.lua)
     local list_x = panel_x + 20
     local list_y = tab_y + 50
-    local list_w = 320
-    local list_h = panel_h - 140
+    local list_w = config.LIST_WIDTH
+    local list_h = config.LIST_HEIGHT
 
     if vx >= list_x and vx <= list_x + list_w
        and vy >= list_y and vy <= list_y + list_h then
         local quests = scene:getQuestsForCategory(scene.selected_category)
-        local item_height = 50
-        local padding = 5
+        local item_height = config.ITEM_HEIGHT
+        local padding = config.PADDING
 
         -- Account for scroll offset when calculating clicked item
         local relative_y = vy - (list_y + padding) + scene.scroll_offset
@@ -188,8 +189,8 @@ function input:mousemoved(x, y, dx, dy)
     local in_container = scene.previous_scene and scene.previous_scene.current_tab
 
     -- Panel dimensions (match render.lua)
-    local panel_w = 720  -- Match inventory width
-    local panel_h = 450  -- Reduced from 500
+    local panel_w = config.PANEL_WIDTH
+    local panel_h = config.PANEL_HEIGHT
     local panel_x = (SCREEN_W - panel_w) / 2
     local panel_y = in_container and 70 or (SCREEN_H - panel_h) / 2
 
@@ -255,11 +256,11 @@ function input:wheelmoved(x, y)
     if #quests == 0 then return end
 
     -- Scroll amount per wheel tick (in pixels)
-    local scroll_amount = 50  -- One quest item height
+    local scroll_amount = config.SCROLL_AMOUNT
 
-    local item_height = 50
-    local padding = 5
-    local list_h = 310  -- panel_h (450) - 140
+    local item_height = config.ITEM_HEIGHT
+    local padding = config.PADDING
+    local list_h = config.LIST_HEIGHT
     local visible_height = list_h - padding * 2
     local total_content_height = #quests * item_height
     local max_scroll = math.max(0, total_content_height - visible_height)

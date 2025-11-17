@@ -207,13 +207,13 @@ end
 function input_handler.gamepadpressed(self, joystick, button)
     -- Dialogue takes priority
     if dialogue:isOpen() then
-        if input:wasPressed("menu_select", "gamepad", button) or input:wasPressed("interact", "gamepad", button) then
-            dialogue:onAction()
-        end
-        -- Start charging skip with menu_back button
+        -- Start charging skip with menu_back button (B/Circle)
         if input:wasPressed("menu_back", "gamepad", button) then
             self.skip_button_held = true
+            return
         end
+        -- Pass button to dialogue for choice navigation and selection
+        dialogue:handleInput("gamepad", button)
         return
     end
 

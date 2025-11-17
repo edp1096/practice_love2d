@@ -223,6 +223,7 @@ quests.explore_forest = {
         }
     },
     giver_npc = "villager_main",
+    receiver_npc = "passerby_01",  -- TEST: Easy to turn in (same as explore_test)
     rewards = {
         gold = 50,
         exp = 40

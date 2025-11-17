@@ -238,8 +238,9 @@ function render:drawChoices(dialogue)
         local is_selected = (i == dialogue.selected_choice_index)
 
         -- Check if this choice was previously selected
+        -- Exception: "Other quest?" is never marked as selected
         local choice_key = dialogue.current_node_id .. "|" .. choice.text
-        local was_selected = dialogue.selected_choices[choice_key]
+        local was_selected = choice.text ~= "Other quest?" and dialogue.selected_choices[choice_key]
 
         -- Button background (only depends on selection, NOT visited state)
         if is_selected then
@@ -275,21 +276,21 @@ function render:drawChoices(dialogue)
         }
         local is_common = common_choices[choice.text]
 
-        -- Special case: "Other quest?" - only grey out if NPC has no available quests
-        local is_dynamic_white = false
+        -- Special case: "Other quest?" - grey out if NPC has no available quests
+        local should_grey_out = false
         if choice.text == "Other quest?" then
             -- Check if this NPC has any available quests
             -- Use current_npc_id (not current_dialogue_id) for quest lookups
             if dialogue.quest_system and dialogue.current_npc_id then
                 local available_quests, _ = dialogue.quest_system:getQuestsFromNPC(dialogue.current_npc_id)
-                if #available_quests > 0 then
-                    is_dynamic_white = true  -- NPC has available quests, keep white
+                if #available_quests == 0 then
+                    should_grey_out = true  -- No available quests, grey out
                 end
             end
         end
 
-        if was_selected and not is_common and not is_dynamic_white then
-            colors:apply(colors.for_dialogue_choice_text_visited)  -- Dark grey text for previously selected
+        if (was_selected and not is_common) or should_grey_out then
+            colors:apply(colors.for_dialogue_choice_text_visited)  -- Dark grey text for previously selected or no quests
         else
             colors:apply(colors.for_dialogue_choice_text_normal)  -- White text for not yet selected or common choices
         end

@@ -12,6 +12,7 @@ local shapes = require "engine.utils.shapes"
 local text_ui = require "engine.utils.text"
 local input = require "engine.core.input"
 local colors = require "engine.ui.colors"
+local ui_constants = require "engine.ui.constants"
 
 -- Safe sound wrapper
 local function play_sound(category, name)
@@ -37,13 +38,13 @@ function inventory:enter(previous, player_inventory, player)
     self.grid_start_x = 0
     self.grid_start_y = 0
 
-    self.title_font = love.graphics.newFont(16)  -- Match questlog title size (was fonts.option = 22)
+    self.title_font = love.graphics.newFont(ui_constants.FONT_SIZE_TITLE)  -- 16
     self.item_font = fonts.info or love.graphics.getFont()  -- 14
     self.desc_font = fonts.info or love.graphics.getFont()  -- 14
 
-    -- Close button settings
-    self.close_button_size = 30
-    self.close_button_padding = 15
+    -- Close button settings (use shared constants)
+    self.close_button_size = ui_constants.CLOSE_BUTTON_SIZE  -- 30
+    self.close_button_padding = ui_constants.CLOSE_BUTTON_PADDING  -- 15
     self.close_button_hovered = false  -- Track close button hover state
 
     -- Drag and drop state
@@ -337,10 +338,10 @@ function inventory:draw()
     local vw, vh = display:GetVirtualDimensions()
 
     -- Draw window background (wider to fit equipment slots + grid + quickslots)
-    local window_w = 720  -- Proper width for balanced margins (20 + 130 + 30 + 590 + 20)
-    local window_h = 450  -- Reduced from 500 for 5-row grid (one row removed)
+    local window_w = ui_constants.PANEL_WIDTH   -- 720
+    local window_h = ui_constants.PANEL_HEIGHT  -- 450
     local window_x = (vw - window_w) / 2
-    local window_y = in_container and 70 or (vh - window_h) / 2  -- Higher position in container (tab bar at 20, tab height 30, margin 20)
+    local window_y = in_container and ui_constants.PANEL_Y_IN_CONTAINER or (vh - window_h) / 2  -- 70 when in container
 
     shapes:drawPanel(window_x, window_y, window_w, window_h, colors.for_inventory_bg, colors.for_inventory_border, 10)
 

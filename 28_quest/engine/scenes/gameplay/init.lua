@@ -240,7 +240,12 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
         -- TODO: Show level up notification (visual effect, sound, UI message)
     end
 
-    -- Setup quest system callbacks for level rewards
+    -- Setup quest system callbacks for quest completion and rewards
+    quest_system.callbacks.on_quest_completed = function(quest_id)
+        -- Quest completed (objectives done, ready to turn in)
+        -- TODO: Add visual notification (e.g., toast message, sound effect)
+    end
+
     quest_system.callbacks.on_quest_turned_in = function(quest_id, rewards)
         -- Give gold rewards
         if rewards.gold and rewards.gold > 0 then

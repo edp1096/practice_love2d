@@ -5,15 +5,16 @@ local display = require "engine.core.display"
 local text_ui = require "engine.utils.text"
 local shapes = require "engine.utils.shapes"
 local colors = require "engine.ui.colors"
+local config = require "engine.ui.screens.questlog.config"
 
 local render = {}
 
 -- Fonts
-render.title_font = love.graphics.newFont(16)  -- Reduced from 24 (match inventory title size)
-render.category_font = love.graphics.newFont(14)  -- Reduced from 16
-render.quest_title_font = love.graphics.newFont(14)
-render.text_font = love.graphics.newFont(12)
-render.small_font = love.graphics.newFont(10)
+render.title_font = love.graphics.newFont(config.FONT_TITLE)
+render.category_font = love.graphics.newFont(config.FONT_CATEGORY)
+render.quest_title_font = love.graphics.newFont(config.FONT_QUEST_TITLE)
+render.text_font = love.graphics.newFont(config.FONT_TEXT)
+render.small_font = love.graphics.newFont(config.FONT_SMALL)
 
 function render:init(questlog_scene)
     self.scene = questlog_scene
@@ -38,8 +39,8 @@ function render:draw()
     end
 
     -- Main panel (match inventory design)
-    local panel_w = 720  -- Match inventory width
-    local panel_h = 450  -- Reduced from 500 to match inventory
+    local panel_w = config.PANEL_WIDTH
+    local panel_h = config.PANEL_HEIGHT
     local panel_x = (SCREEN_W - panel_w) / 2
     local panel_y = in_container and 70 or (SCREEN_H - panel_h) / 2  -- Higher position in container (tab bar at 20, tab height 30, margin 20)
 
@@ -66,8 +67,8 @@ function render:draw()
     -- Quest list (left side)
     local list_x = panel_x + 20
     local list_y = tab_y + 50
-    local list_w = 320
-    local list_h = panel_h - 140
+    local list_w = config.LIST_WIDTH
+    local list_h = config.LIST_HEIGHT
     self:drawQuestList(list_x, list_y, list_w, list_h)
 
     -- Quest details (right side)
@@ -89,9 +90,9 @@ end
 
 function render:drawCategoryTabs(panel_x, tab_y, panel_w)
     local scene = self.scene
-    local tab_width = 130  -- Reduced from 150
-    local tab_height = 28  -- Reduced from 35
-    local spacing = 8  -- Reduced from 10
+    local tab_width = config.TAB_WIDTH
+    local tab_height = config.TAB_HEIGHT
+    local spacing = config.TAB_SPACING
     local start_x = panel_x + 20
 
     for i, category in ipairs(scene.categories) do
@@ -150,8 +151,8 @@ function render:drawQuestList(list_x, list_y, list_w, list_h)
     love.graphics.setScissor(phys_x, phys_y, phys_w, phys_h)
 
     -- Draw quest items
-    local item_height = 50
-    local padding = 5
+    local item_height = config.ITEM_HEIGHT
+    local padding = config.PADDING
     local current_y = list_y + padding - scene.scroll_offset
 
     for i, quest in ipairs(quests) do

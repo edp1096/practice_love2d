@@ -358,12 +358,15 @@ function core:selectChoice(dialogue, choice_index)
     end
 
     -- Mark this choice as selected (for grey-out effect)
-    local choice_key = dialogue.current_node_id .. "|" .. choice.text
-    dialogue.selected_choices[choice_key] = true
+    -- Exception: Don't mark "Other quest?" as selected (should remain available)
+    if choice.text ~= "Other quest?" then
+        local choice_key = dialogue.current_node_id .. "|" .. choice.text
+        dialogue.selected_choices[choice_key] = true
 
-    -- Note: dialogue.selected_choices is already a reference to
-    -- dialogue.all_dialogue_choices[dialogue.current_dialogue_id]
-    -- so no need to update global storage separately
+        -- Note: dialogue.selected_choices is already a reference to
+        -- dialogue.all_dialogue_choices[dialogue.current_dialogue_id]
+        -- so no need to update global storage separately
+    end
 
     -- Execute choice action (if any)
     if choice.action then
@@ -469,6 +472,35 @@ function core:update(dialogue, dt)
     -- Update next button hover state (desktop)
     if dialogue.next_button and dialogue.next_button.visible then
         dialogue.next_button:updateHover()
+    end
+
+    -- Check gamepad left stick for choice navigation
+    if dialogue.tree_mode and dialogue.current_choices and #dialogue.current_choices > 0 then
+        local joysticks = love.joystick.getJoysticks()
+        if #joysticks > 0 then
+            local joystick = joysticks[1]
+            local ly = joystick:getGamepadAxis("lefty")
+            local threshold = 0.5
+
+            -- Cooldown system to prevent rapid repeated movement
+            if not dialogue.stick_cooldown then
+                dialogue.stick_cooldown = 0
+            end
+
+            if dialogue.stick_cooldown > 0 then
+                dialogue.stick_cooldown = dialogue.stick_cooldown - dt
+            else
+                if ly < -threshold then
+                    -- Stick up -> move selection up
+                    self:moveChoiceSelection(dialogue, "up")
+                    dialogue.stick_cooldown = 0.25  -- 0.25 second cooldown
+                elseif ly > threshold then
+                    -- Stick down -> move selection down
+                    self:moveChoiceSelection(dialogue, "down")
+                    dialogue.stick_cooldown = 0.25
+                end
+            end
+        end
     end
 end
 
@@ -597,6 +629,25 @@ function core:handleInput(dialogue, source, ...)
         -- Touch move: update button hover states (doesn't consume input)
         helpers:touchMoved(dialogue, id, x, y)
         return false
+
+    elseif source == "gamepad" then
+        -- Gamepad: check for choice navigation first
+        local button = ...
+        if dialogue.tree_mode and dialogue.current_choices and #dialogue.current_choices > 0 then
+            local input_sys = require "engine.core.input"
+
+            -- D-pad or left stick navigation
+            if input_sys:wasPressed("move_up", "gamepad", button) then
+                self:moveChoiceSelection(dialogue, "up")
+                return true
+            elseif input_sys:wasPressed("move_down", "gamepad", button) then
+                self:moveChoiceSelection(dialogue, "down")
+                return true
+            end
+        end
+        -- Otherwise, advance dialogue/select choice with A/Cross button
+        self:onAction(dialogue)
+        return true
     end
 
     return false
