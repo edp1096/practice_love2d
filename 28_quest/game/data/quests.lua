@@ -1,0 +1,318 @@
+-- game/data/quests.lua
+-- Quest definitions (game-specific)
+--
+-- Structure:
+--   quest_id = {
+--     id = "quest_id",
+--     title = "Quest Title",
+--     description = "Quest description shown in log",
+--     objectives = {
+--       {
+--         type = "kill|collect|talk|explore|deliver",
+--         target = "enemy_type|item_type|npc_id|location_id",
+--         count = 5,  -- How many needed (default: 1)
+--         description = "Kill 5 slimes",  -- Shown in UI
+--         npc = "npc_receiver"  -- For deliver quests only
+--       }
+--     },
+--     giver_npc = "npc_id",        -- Who gives the quest
+--     receiver_npc = "npc_id",     -- Who receives completion (default: same as giver)
+--     rewards = {
+--       gold = 100,
+--       exp = 50,
+--       items = { "health_potion", "sword" }
+--     },
+--     prerequisites = { "other_quest_id" }  -- Must complete these first
+--   }
+
+local quests = {}
+
+-- ============================================================================
+-- Tutorial Quests
+-- ============================================================================
+
+quests.tutorial_talk = {
+    id = "tutorial_talk",
+    title = "Meet the Villager",
+    description = "Talk to the friendly villager to learn about the area.",
+    objectives = {
+        {
+            type = "talk",
+            target = "villager_main",
+            count = 1,
+            description = "Talk to the Villager"
+        }
+    },
+    giver_npc = "villager_main",
+    rewards = {
+        gold = 10,
+        exp = 5
+    }
+}
+
+-- ============================================================================
+-- Combat Quests
+-- ============================================================================
+
+quests.slime_menace = {
+    id = "slime_menace",
+    title = "Slime Menace",
+    description = "The village is being bothered by slimes. Help by defeating 5 of them.",
+    objectives = {
+        {
+            type = "kill",
+            target = "slime",
+            count = 5,
+            description = "Defeat 5 slimes"
+        }
+    },
+    giver_npc = "villager_main",
+    receiver_npc = "villager_main",
+    rewards = {
+        gold = 100,
+        exp = 50,
+        items = { "health_potion" }
+    },
+    prerequisites = { "tutorial_talk" }
+}
+
+quests.forest_cleanup = {
+    id = "forest_cleanup",
+    title = "Forest Cleanup",
+    description = "Clear out the forest by defeating 10 slimes.",
+    objectives = {
+        {
+            type = "kill",
+            target = "slime",
+            count = 10,
+            description = "Defeat 10 slimes in the forest"
+        }
+    },
+    giver_npc = "villager_main",
+    rewards = {
+        gold = 250,
+        exp = 120,
+        items = { "health_potion", "health_potion" }
+    },
+    prerequisites = { "slime_menace" }
+}
+
+-- ============================================================================
+-- Collection Quests
+-- ============================================================================
+
+quests.herb_gathering = {
+    id = "herb_gathering",
+    title = "Herb Gathering",
+    description = "The healer needs herbs for medicine. Collect 3 healing herbs.",
+    objectives = {
+        {
+            type = "collect",
+            target = "healing_herb",
+            count = 3,
+            description = "Collect 3 Healing Herbs"
+        }
+    },
+    giver_npc = "healer",
+    rewards = {
+        gold = 80,
+        exp = 30,
+        items = { "health_potion", "health_potion" }
+    }
+}
+
+quests.rare_materials = {
+    id = "rare_materials",
+    title = "Rare Materials",
+    description = "Find rare slime gel for the alchemist's research.",
+    objectives = {
+        {
+            type = "collect",
+            target = "slime_gel",
+            count = 5,
+            description = "Collect 5 Slime Gels"
+        }
+    },
+    giver_npc = "alchemist",
+    rewards = {
+        gold = 150,
+        exp = 75
+    }
+}
+
+-- ============================================================================
+-- Exploration Quests
+-- ============================================================================
+
+quests.explore_forest = {
+    id = "explore_forest",
+    title = "Explore the Forest",
+    description = "Venture into the eastern forest and discover what lies within.",
+    objectives = {
+        {
+            type = "explore",
+            target = "level1_area2",  -- Map area ID
+            count = 1,
+            description = "Visit the Eastern Forest"
+        }
+    },
+    giver_npc = "villager_main",
+    rewards = {
+        gold = 50,
+        exp = 40
+    }
+}
+
+quests.ancient_ruins = {
+    id = "ancient_ruins",
+    title = "Ancient Ruins",
+    description = "Explore the mysterious ruins to the north.",
+    objectives = {
+        {
+            type = "explore",
+            target = "level2_area1",
+            count = 1,
+            description = "Discover the Ancient Ruins"
+        }
+    },
+    giver_npc = "scholar",
+    rewards = {
+        gold = 200,
+        exp = 100
+    },
+    prerequisites = { "explore_forest" }
+}
+
+-- ============================================================================
+-- Delivery Quests
+-- ============================================================================
+
+quests.medicine_delivery = {
+    id = "medicine_delivery",
+    title = "Medicine Delivery",
+    description = "Deliver medicine from the healer to the sick merchant.",
+    objectives = {
+        {
+            type = "deliver",
+            target = "medicine_package",
+            count = 1,
+            npc = "merchant",
+            description = "Deliver medicine to the Merchant"
+        }
+    },
+    giver_npc = "healer",
+    receiver_npc = "merchant",
+    rewards = {
+        gold = 75,
+        exp = 35
+    }
+}
+
+quests.letter_delivery = {
+    id = "letter_delivery",
+    title = "Important Letter",
+    description = "Deliver an important letter from the village elder to the scholar.",
+    objectives = {
+        {
+            type = "deliver",
+            target = "sealed_letter",
+            count = 1,
+            npc = "scholar",
+            description = "Deliver the letter to the Scholar"
+        }
+    },
+    giver_npc = "elder",
+    receiver_npc = "scholar",
+    rewards = {
+        gold = 120,
+        exp = 60
+    }
+}
+
+-- ============================================================================
+-- Multi-Objective Quests
+-- ============================================================================
+
+quests.village_hero = {
+    id = "village_hero",
+    title = "Village Hero",
+    description = "Prove yourself as a hero by completing multiple tasks.",
+    objectives = {
+        {
+            type = "kill",
+            target = "slime",
+            count = 15,
+            description = "Defeat 15 slimes"
+        },
+        {
+            type = "collect",
+            target = "healing_herb",
+            count = 5,
+            description = "Collect 5 Healing Herbs"
+        },
+        {
+            type = "talk",
+            target = "elder",
+            count = 1,
+            description = "Report to the Elder"
+        }
+    },
+    giver_npc = "elder",
+    rewards = {
+        gold = 500,
+        exp = 250,
+        items = { "hero_medal", "health_potion", "health_potion", "health_potion" }
+    },
+    prerequisites = { "slime_menace", "herb_gathering" }
+}
+
+-- ============================================================================
+-- Story Quests (Chain)
+-- ============================================================================
+
+quests.mysterious_stranger = {
+    id = "mysterious_stranger",
+    title = "The Mysterious Stranger",
+    description = "A stranger has appeared in the village. Find out what they want.",
+    objectives = {
+        {
+            type = "talk",
+            target = "stranger",
+            count = 1,
+            description = "Talk to the Mysterious Stranger"
+        }
+    },
+    giver_npc = "villager_main",
+    rewards = {
+        gold = 50,
+        exp = 30
+    }
+}
+
+quests.strangers_request = {
+    id = "strangers_request",
+    title = "Stranger's Request",
+    description = "The stranger needs an ancient artifact from the ruins.",
+    objectives = {
+        {
+            type = "explore",
+            target = "level2_area1",
+            count = 1,
+            description = "Search the Ancient Ruins"
+        },
+        {
+            type = "collect",
+            target = "ancient_artifact",
+            count = 1,
+            description = "Find the Ancient Artifact"
+        }
+    },
+    giver_npc = "stranger",
+    rewards = {
+        gold = 300,
+        exp = 150
+    },
+    prerequisites = { "mysterious_stranger" }
+}
+
+return quests
