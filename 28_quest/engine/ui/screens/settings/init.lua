@@ -58,9 +58,7 @@ function settings:enter(previous, ...)
         if monitor_index > self.monitor_count or monitor_index < 1 then
             monitor_index = 1
             APP_CONFIG.monitor = 1  -- Reset to valid value
-            -- Save config immediately
-            local ini = require "engine.utils.ini"
-            ini:save_config(APP_CONFIG)
+            -- Note: Config save on exit will persist this change
         end
         current_monitor = monitor_index
     end
