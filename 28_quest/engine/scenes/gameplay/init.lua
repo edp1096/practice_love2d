@@ -58,6 +58,10 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
 
     self.current_map_path = mapPath
 
+    -- Store map entry coordinates (for "Restart from Here" functionality)
+    self.map_entry_x = spawn_x
+    self.map_entry_y = spawn_y
+
     -- Use screen module for proper scaling
     local vw, vh = display:GetVirtualDimensions()
     local sw, sh = display:GetScreenDimensions()

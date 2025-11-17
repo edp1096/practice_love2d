@@ -3,6 +3,7 @@
 
 local input = require "engine.core.input"
 local text_ui = require "engine.utils.text"
+local colors = require "engine.ui.colors"
 
 local prompt = {}
 
@@ -35,11 +36,11 @@ function prompt:draw(action, x, y, y_offset, color)
     local circle_radius = 24
 
     -- Draw semi-transparent background circle
-    love.graphics.setColor(0, 0, 0, 0.6)
+    colors:apply(colors.for_prompt_bg)
     love.graphics.circle("fill", circle_x, circle_y, circle_radius)
 
     -- Draw bright yellow outline circle
-    love.graphics.setColor(1, 1, 0, 1)
+    colors:apply(colors.for_prompt_outline)
     love.graphics.setLineWidth(2)
     love.graphics.circle("line", circle_x, circle_y, circle_radius)
     love.graphics.setLineWidth(1)
@@ -58,7 +59,7 @@ function prompt:draw(action, x, y, y_offset, color)
     end
 
     -- Text foreground (bright yellow)
-    text_ui:draw(button_text, text_x, text_y, {1, 1, 0, 1})
+    text_ui:draw(button_text, text_x, text_y, colors.for_prompt_outline)
 end
 
 return prompt

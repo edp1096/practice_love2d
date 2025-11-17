@@ -61,6 +61,7 @@ colors.LIGHT_RED_ALPHA = {1, 0.3, 0.3, 0.3}
 colors.BLACK_OVERLAY = {0, 0, 0, 0.85}
 colors.BLACK_DARK_OVERLAY = {0, 0, 0, 0.9}
 colors.BLACK_80 = {0, 0, 0, 0.8}
+colors.BLACK_60 = {0, 0, 0, 0.6}
 colors.DARK_BLUE_TRANSPARENT = {0.3, 0.3, 0.4, 0.8}
 colors.CHARCOAL_TRANSPARENT = {0.3, 0.3, 0.3, 0.7}
 colors.CHARCOAL_SELECTED = {0.4, 0.4, 0.4, 0.9}
@@ -186,6 +187,10 @@ colors.for_hud_text_dim = colors.MID_GRAY_TEXT
 colors.for_hud_parry_perfect = colors.PERFECT_PARRY_YELLOW
 colors.for_hud_parry_normal = colors.PARRY_BLUE
 colors.for_hud_slow_motion = colors.SLOW_MOTION_BLUE
+colors.for_hud_slot_selected_bg = colors.MEDIUM_BLUE
+colors.for_hud_slot_normal_bg = colors.DARK_CHARCOAL_80
+colors.for_hud_cooldown_ready = colors.SKY_BLUE
+colors.for_hud_cooldown_active = colors.BLUE_GRAY
 
 -- Quickslots
 colors.for_quickslot_bg = colors.DARK_CHARCOAL_80
@@ -204,6 +209,10 @@ colors.for_dialogue_choice_selected_border = colors.SKY_BLUE
 colors.for_dialogue_choice_normal_border = colors.MEDIUM_GRAY
 colors.for_dialogue_choice_text_normal = colors.WHITE
 colors.for_dialogue_choice_text_visited = colors.MEDIUM_GRAY
+
+-- Prompt System
+colors.for_prompt_bg = colors.BLACK_60
+colors.for_prompt_outline = colors.BRIGHT_YELLOW
 
 -- ========================================
 -- PART 3: CONSTANTS

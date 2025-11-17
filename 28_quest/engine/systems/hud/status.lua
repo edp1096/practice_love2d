@@ -167,18 +167,18 @@ function hud:draw_inventory(inventory, screen_w, screen_h)
 
         -- Background
         if i == inventory.selected_slot then
-            love.graphics.setColor(0.3, 0.5, 0.8, 0.9)
+            colors:apply(colors.for_hud_slot_selected_bg)
         else
-            love.graphics.setColor(0.2, 0.2, 0.3, 0.8)
+            colors:apply(colors.for_hud_slot_normal_bg)
         end
         love.graphics.rectangle("fill", x, y, slot_size, slot_size)
 
         -- Border
         if i == inventory.selected_slot then
-            love.graphics.setColor(0.5, 0.8, 1, 1)
+            colors:apply(colors.for_hud_cooldown_ready)
             love.graphics.setLineWidth(2)
         else
-            love.graphics.setColor(0.4, 0.4, 0.5, 1)
+            colors:apply(colors.for_hud_cooldown_active)
             love.graphics.setLineWidth(1)
         end
         love.graphics.rectangle("line", x, y, slot_size, slot_size)
@@ -196,7 +196,7 @@ function hud:draw_inventory(inventory, screen_w, screen_h)
         text_ui:draw(tostring(i), x + 5, y + 3, {0.7, 0.7, 0.7, 1}, self.small_font)
     end
 
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
     love.graphics.setLineWidth(1)
 end
 

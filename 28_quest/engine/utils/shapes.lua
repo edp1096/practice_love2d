@@ -27,14 +27,14 @@ function shapes:drawBox(x, y, w, h, color, border_color, border_width, rounding)
         love.graphics.setLineWidth(prev_width)
     end
 
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
 end
 
 -- Draw a panel (box with background and border)
 -- Simplified version for common UI panels
 function shapes:drawPanel(x, y, w, h, bg_color, border_color, rounding)
-    bg_color = bg_color or {0.2, 0.2, 0.25, 0.9}
-    border_color = border_color or {0.4, 0.4, 0.5, 1}
+    bg_color = bg_color or colors.DARK_CHARCOAL_80
+    border_color = border_color or colors.BLUE_GRAY
     rounding = rounding or 0
 
     self:drawBox(x, y, w, h, bg_color, border_color, 1, rounding)
@@ -95,9 +95,9 @@ end
 -- Draw an overlay (dark transparent layer)
 function shapes:drawOverlay(w, h, alpha)
     alpha = alpha or 0.7
-    love.graphics.setColor(0, 0, 0, alpha)
+    colors:apply(colors.BLACK, alpha)
     love.graphics.rectangle("fill", 0, 0, w, h)
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
 end
 
 -- Draw a progress bar
@@ -122,14 +122,14 @@ function shapes:drawProgressBar(x, y, w, h, ratio, bar_color, bg_color, low_colo
     end
     love.graphics.rectangle("fill", x, y, w * ratio, h)
 
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
 end
 
 -- Draw a health bar with background panel
 -- Combines panel + progress bar
 function shapes:drawHealthBar(x, y, w, h, hp, max_hp, show_text, font)
     -- Panel background
-    love.graphics.setColor(0, 0, 0, 0.7)
+    colors:apply(colors.for_hud_cooldown_bg)
     love.graphics.rectangle("fill", x - 2, y - 2, w + 4, h + 22)
 
     -- Progress bar
@@ -148,11 +148,11 @@ end
 -- Draw a cooldown indicator
 -- Similar to progress bar but inverted (fills up when cooling down)
 function shapes:drawCooldown(x, y, w, h, cd, max_cd, ready_color, cd_color)
-    ready_color = ready_color or {0.2, 0.7, 0.2, 1}
-    cd_color = cd_color or {0.3, 0.5, 1, 1}
+    ready_color = ready_color or colors.PALE_GREEN
+    cd_color = cd_color or colors.MEDIUM_BLUE
 
     -- Background
-    love.graphics.setColor(0.2, 0.2, 0.3, 1)
+    colors:apply(colors.DARK_CHARCOAL)
     love.graphics.rectangle("fill", x, y, w, h)
 
     if cd > 0 then
@@ -167,22 +167,22 @@ function shapes:drawCooldown(x, y, w, h, cd, max_cd, ready_color, cd_color)
         love.graphics.rectangle("fill", x, y, w, h)
     end
 
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
 end
 
 -- Draw a dialog box with title area
 -- Returns y position after title for content
 function shapes:drawDialog(x, y, w, h, title, title_font, title_color)
     -- Main panel
-    self:drawPanel(x, y, w, h, {0.15, 0.15, 0.2, 0.95}, {0.5, 0.5, 0.6, 1}, 10)
+    self:drawPanel(x, y, w, h, colors.NAVY_BLUE, colors.DIM_GRAY, 10)
 
     -- Title area (if provided)
     if title and title_font then
-        title_color = title_color or {1, 1, 1, 1}
+        title_color = title_color or colors.WHITE
         local text_ui = require "engine.utils.text"
 
         -- Title background
-        love.graphics.setColor(0.25, 0.25, 0.3, 1)
+        colors:apply(colors.CHARCOAL)
         love.graphics.rectangle("fill", x, y, w, 40, 10, 10)
 
         -- Title text
@@ -201,17 +201,17 @@ function shapes:drawCloseButton(x, y, size, is_hovered)
 
     -- Red background for delete/close buttons
     if is_hovered then
-        bg_color = {0.8, 0.2, 0.2, 0.9}      -- Bright red on hover
-        border_color = {1, 0.3, 0.3, 1}
+        bg_color = colors.for_button_delete_selected
+        border_color = colors.for_button_delete_border_selected
     else
-        bg_color = {0.5, 0.2, 0.2, 0.7}      -- Dark red normal
-        border_color = {0.7, 0.3, 0.3, 1}
+        bg_color = colors.for_button_delete_normal
+        border_color = colors.for_button_delete_border_normal
     end
 
     self:drawBox(x, y, size, size, bg_color, border_color, 1, rounding)
 
     -- Draw X
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:apply(colors.WHITE)
     local padding = size * 0.25
     love.graphics.setLineWidth(2)
     love.graphics.line(x + padding, y + padding, x + size - padding, y + size - padding)

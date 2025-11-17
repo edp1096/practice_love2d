@@ -145,7 +145,7 @@ end
 -- Draw semi-transparent overlay (for pause/settings menus)
 function helpers.drawOverlay(width, height, alpha)
     alpha = alpha or 0.7
-    love.graphics.setColor(0, 0, 0, alpha)
+    colors:apply(colors.BLACK, alpha)
     love.graphics.rectangle("fill", 0, 0, width, height)
 end
 
@@ -154,7 +154,7 @@ function helpers.drawConfirmDialog(title, subtitle, button_labels, selected, mou
     button_labels = button_labels or { "No", "Yes" }
 
     -- Dark overlay
-    love.graphics.setColor(0, 0, 0, 0.85)
+    colors:apply(colors.for_dialog_overlay)
     love.graphics.rectangle("fill", 0, 0, width, height)
 
     -- Title
@@ -192,19 +192,17 @@ function helpers.drawConfirmDialog(title, subtitle, button_labels, selected, mou
 
         -- Button background
         if i == 2 then -- Yes button (dangerous action)
-            love.graphics.setColor(is_selected and 0.8 or 0.5, 0.2, 0.2, is_selected and 0.9 or 0.7)
+            colors:apply(is_selected and colors.for_button_delete_selected or colors.for_button_delete_normal)
         else           -- No button (safe action)
-            love.graphics.setColor(is_selected and 0.4 or 0.3, is_selected and 0.4 or 0.3,
-                is_selected and 0.5 or 0.35, is_selected and 0.9 or 0.7)
+            colors:apply(is_selected and colors.for_button_action_selected or colors.for_button_action_normal)
         end
         love.graphics.rectangle("fill", button_x, button_y, button_width, button_height)
 
         -- Button border
         if i == 2 then
-            love.graphics.setColor(is_selected and 1 or 0.7, 0.3, 0.3, 1)
+            colors:apply(is_selected and colors.for_button_delete_border_selected or colors.for_button_delete_border_normal)
         else
-            love.graphics.setColor(is_selected and 0.7 or 0.5, is_selected and 0.7 or 0.5,
-                is_selected and 0.8 or 0.5, 1)
+            colors:apply(is_selected and colors.for_button_action_border_selected or colors.for_button_action_border_normal)
         end
         love.graphics.rectangle("line", button_x, button_y, button_width, button_height)
 
@@ -217,11 +215,11 @@ function helpers.drawConfirmDialog(title, subtitle, button_labels, selected, mou
             option_font = helpers.fallback_option_font
         end
         love.graphics.setFont(option_font)
-        love.graphics.setColor(is_selected and 1 or 0.9, is_selected and 1 or 0.9, is_selected and 1 or 0.9, 1)
+        colors:apply(is_selected and colors.for_text_normal or colors.for_text_light)
         love.graphics.printf(button_labels[i], button_x, button_y + 12, button_width, "center")
     end
 
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
 end
 
 -- Update mouse-over for confirmation dialog buttons
