@@ -48,11 +48,12 @@ The `game/` folder contains **only** game-specific content:
 - **Right Click / X** - Parry (perfect timing = slow-motion!)
 - **Shift / C** - Dodge (invincibility frames)
 - **F** - Interact (NPCs, Save Points, Items)
-- **I** - Inventory
-- **Q** - Use selected item
-- **Tab** - Cycle items
-- **1-5** - Quick select inventory slot
-- **Escape** - Pause
+- **I / J** - Toggle Inventory/Quest Log (opens tabbed container)
+- **Q / E** - Switch tabs in container (Inventory ↔ Quests)
+- **Q** - Use selected item (in gameplay)
+- **Tab** - Cycle items (in gameplay)
+- **1-5** - Quick select inventory slot (in gameplay)
+- **Escape** - Pause / Close menus
 - **F11** - Toggle Fullscreen
 
 **Debug Mode (if `APP_CONFIG.is_debug = true`):**
@@ -65,20 +66,21 @@ The `game/` folder contains **only** game-specific content:
 
 **Gamepad (Xbox / DualSense):**
 - **Left Stick / D-Pad** - Move
-- **Right Stick** - Aim weapon
+- **Right Stick** - Aim weapon / Scroll quest list
 - **A / Cross (✕)** - Attack / Interact
-- **B / Circle (○)** - Jump / Skip dialogue (hold 0.5s)
+- **B / Circle (○)** - Jump / Skip dialogue (hold 0.5s) / Close menus
 - **X / Square (□)** - Parry
 - **Y / Triangle (△)** - Interact (NPCs/Save Points)
-- **LB / L1** - Use item
-- **LT / L2** - Next item
-- **RB / R1** - Dodge
-- **RT / R2** - Inventory
+- **LB / L1** - Previous tab (in container)
+- **LT / L2** - Next item (in gameplay)
+- **RB / R1** - Next tab / Dodge (in gameplay)
+- **RT / R2** - Toggle Inventory/Quest Log container
 - **Start / Options** - Pause
 
 **Mobile (Touch):**
 - **Virtual Gamepad** - On-screen controls (auto-shows on Android/iOS)
 - **Touch anywhere** - Navigate menus / Advance dialogue
+- **Swipe** - Scroll quest list in Quest Log
 
 ---
 
@@ -130,11 +132,16 @@ The `game/` folder contains **only** game-specific content:
 - **Parry:** Right Click / X button (perfect timing = slow-motion!)
 - **Dodge:** Shift / R1 button (invincibility frames)
 
-### 4. Inventory System
-- Press **I** to open inventory
-- Use items: **Q** / **L1**
-- Cycle items: **Tab** / **L2**
-- Quick-select: **1-5** keys
+### 4. Inventory & Quest System
+- Press **I** or **R2** to open Inventory tab
+- Press **J** to open Quest Log tab
+- Both open the same **tabbed container**
+- Switch tabs: **Q/E** (keyboard) or **LB/RB** (gamepad)
+- Close: **ESC** or **R2** (toggle)
+- Use items: **Q** / **L1** (in gameplay)
+- Cycle items: **Tab** / **L2** (in gameplay)
+- Quick-select: **1-5** keys (in gameplay)
+- Scroll quests: **Mouse wheel** / **Right Stick** / **Swipe** (mobile)
 
 ### 5. Persistence System  NEW!
 - **One-time items:** Pick up starter weapons (staff, sword) once

@@ -176,6 +176,7 @@ ui/
 │   └── helpers.lua       - Menu helpers (layout, navigation)
 │
 ├── screens/              - Reusable UI screens
+│   ├── container.lua     - Tabbed container (inventory + quest log)
 │   ├── newgame.lua       - New game slot selection
 │   ├── saveslot.lua      - Save game screen
 │   ├── load/             - Load game screen (modular)

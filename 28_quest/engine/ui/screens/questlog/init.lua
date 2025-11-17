@@ -25,6 +25,15 @@ function questlog:enter(from, quest_system)
     }
     self.selected_category_index = 1
 
+    -- Touch swipe state (for mobile scrolling)
+    self.touch_state = {
+        active = false,
+        id = nil,
+        start_y = 0,
+        last_y = 0,
+        velocity = 0
+    }
+
     -- Initialize modules (only once)
     if not render_module.scene then
         render_module:init(self)
@@ -37,7 +46,34 @@ function questlog:leave()
 end
 
 function questlog:update(dt)
-    -- Nothing to update
+    -- Handle right stick scrolling (gamepad)
+    local joysticks = love.joystick.getJoysticks()
+    if #joysticks > 0 then
+        local joystick = joysticks[1]
+        local ry = joystick:getGamepadAxis("righty")
+        local threshold = 0.3
+
+        if math.abs(ry) > threshold then
+            local quests = self:getQuestsForCategory(self.selected_category)
+            if #quests > 0 then
+                -- Scroll speed (pixels per second)
+                local scroll_speed = 300
+                local scroll_delta = ry * scroll_speed * dt
+
+                -- Calculate max scroll
+                local item_height = 50
+                local padding = 5
+                local list_h = 310  -- panel_h (450) - 140
+                local visible_height = list_h - padding * 2
+                local total_content_height = #quests * item_height
+                local max_scroll = math.max(0, total_content_height - visible_height)
+
+                -- Apply scroll
+                self.scroll_offset = self.scroll_offset + scroll_delta
+                self.scroll_offset = math.max(0, math.min(self.scroll_offset, max_scroll))
+            end
+        end
+    end
 end
 
 function questlog:draw()
@@ -62,7 +98,46 @@ function questlog:gamepadpressed(joystick, button)
 end
 
 function questlog:touchpressed(id, x, y, dx, dy, pressure)
+    -- Delegate to input module for button clicks
     input_module:touchpressed(id, x, y, dx, dy, pressure)
+
+    -- Initialize touch state for swipe scrolling
+    self.touch_state.active = true
+    self.touch_state.id = id
+    self.touch_state.start_y = y
+    self.touch_state.last_y = y
+    self.touch_state.velocity = 0
+end
+
+function questlog:touchreleased(id, x, y, dx, dy, pressure)
+    -- End touch state
+    if self.touch_state.id == id then
+        self.touch_state.active = false
+        self.touch_state.id = nil
+    end
+end
+
+function questlog:touchmoved(id, x, y, dx, dy, pressure)
+    -- Handle swipe scrolling
+    if self.touch_state.active and self.touch_state.id == id then
+        local delta_y = y - self.touch_state.last_y
+        self.touch_state.last_y = y
+
+        local quests = self:getQuestsForCategory(self.selected_category)
+        if #quests > 0 then
+            -- Calculate max scroll
+            local item_height = 50
+            local padding = 5
+            local list_h = 310  -- panel_h (450) - 140
+            local visible_height = list_h - padding * 2
+            local total_content_height = #quests * item_height
+            local max_scroll = math.max(0, total_content_height - visible_height)
+
+            -- Apply scroll (inverted: swipe down = scroll up)
+            self.scroll_offset = self.scroll_offset - delta_y
+            self.scroll_offset = math.max(0, math.min(self.scroll_offset, max_scroll))
+        end
+    end
 end
 
 function questlog:wheelmoved(x, y)

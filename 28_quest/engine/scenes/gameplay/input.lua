@@ -42,12 +42,13 @@ function input_handler.keypressed(self, key)
         sound:playSFX("ui", "pause")
         sound:pauseBGM()
     elseif input:wasPressed("open_inventory", "keyboard", key) then
-        -- Open inventory UI (I key or R2 on gamepad)
-        scene_control.push("inventory", self.inventory, self.player)
-    elseif input:wasPressed("open_questlog", "keyboard", key) then
-        -- Open quest log UI (J key or Back button on gamepad)
+        -- Open container UI with inventory tab (I key or R2 on gamepad)
         local quest_system = require "engine.core.quest"
-        scene_control.push("questlog", quest_system)
+        scene_control.push("container", self.inventory, self.player, quest_system, "inventory")
+    elseif input:wasPressed("open_questlog", "keyboard", key) then
+        -- Open container UI with questlog tab (J key or Back button on gamepad)
+        local quest_system = require "engine.core.quest"
+        scene_control.push("container", self.inventory, self.player, quest_system, "questlog")
     elseif input:wasPressed("dodge", "keyboard", key) then
         -- Dodge (lshift key or R1 on gamepad) - works in both modes
         self.player:startDodge()
@@ -395,11 +396,12 @@ function input_handler.gamepadpressed(self, joystick, button)
         self.player:startDodge()
 
     elseif action == "open_inventory" then
-        scene_control.push("inventory", self.inventory, self.player)
+        local quest_system = require "engine.core.quest"
+        scene_control.push("container", self.inventory, self.player, quest_system, "inventory")
 
     elseif action == "open_questlog" then
         local quest_system = require "engine.core.quest"
-        scene_control.push("questlog", quest_system)
+        scene_control.push("container", self.inventory, self.player, quest_system, "questlog")
     end
 end
 
@@ -427,11 +429,12 @@ function input_handler.gamepadaxis(self, joystick, axis, value)
         end
 
     elseif action == "open_inventory" then
-        scene_control.push("inventory", self.inventory, self.player)
+        local quest_system = require "engine.core.quest"
+        scene_control.push("container", self.inventory, self.player, quest_system, "inventory")
 
     elseif action == "open_questlog" then
         local quest_system = require "engine.core.quest"
-        scene_control.push("questlog", quest_system)
+        scene_control.push("container", self.inventory, self.player, quest_system, "questlog")
     end
 end
 

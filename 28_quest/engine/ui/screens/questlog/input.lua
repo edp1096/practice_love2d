@@ -21,7 +21,7 @@ function input:updateScrollToSelection()
 
     local item_height = 50
     local padding = 5
-    local list_h = 360  -- panel_h (500) - 140 (from render.lua:69)
+    local list_h = 310  -- panel_h (450) - 140 (from render.lua:77)
     local visible_height = list_h - padding * 2
 
     -- Calculate selected item position
@@ -111,28 +111,33 @@ function input:mousepressed(x, y, button)
     -- Convert to virtual coordinates
     local vx, vy = coords:physicalToVirtual(x, y, display)
 
-    -- Panel dimensions
-    local panel_w = 800
-    local panel_h = 500
+    -- Check if we're inside a container
+    local in_container = scene.previous_scene and scene.previous_scene.current_tab
+
+    -- Panel dimensions (match render.lua)
+    local panel_w = 720  -- Match inventory width
+    local panel_h = 450  -- Reduced from 500
     local panel_x = (SCREEN_W - panel_w) / 2
-    local panel_y = (SCREEN_H - panel_h) / 2
+    local panel_y = in_container and 70 or (SCREEN_H - panel_h) / 2
 
-    -- Close button
-    local close_x = panel_x + panel_w - 40
-    local close_y = panel_y + 10
-    local close_size = 30
+    -- Close button (only if NOT in container)
+    if not in_container then
+        local close_x = panel_x + panel_w - 40
+        local close_y = panel_y + 10
+        local close_size = 30
 
-    if vx >= close_x and vx <= close_x + close_size
-       and vy >= close_y and vy <= close_y + close_size then
-        scene_control.pop()
-        return
+        if vx >= close_x and vx <= close_x + close_size
+           and vy >= close_y and vy <= close_y + close_size then
+            scene_control.pop()
+            return
+        end
     end
 
-    -- Category tabs
+    -- Category tabs (match render.lua)
     local tab_y = panel_y + 60
-    local tab_width = 150
-    local tab_height = 35
-    local spacing = 10
+    local tab_width = 130  -- Reduced from 150
+    local tab_height = 28  -- Reduced from 35
+    local spacing = 8  -- Reduced from 10
     local start_x = panel_x + 20
 
     for i, category in ipairs(scene.categories) do
@@ -148,7 +153,7 @@ function input:mousepressed(x, y, button)
         end
     end
 
-    -- Quest list
+    -- Quest list (match render.lua)
     local list_x = panel_x + 20
     local list_y = tab_y + 50
     local list_w = 320
@@ -178,19 +183,27 @@ function input:mousemoved(x, y, dx, dy)
     -- Convert to virtual coordinates
     local vx, vy = coords:physicalToVirtual(x, y, display)
 
-    -- Panel dimensions
-    local panel_w = 800
-    local panel_h = 500
+    -- Check if we're inside a container
+    local scene = self.scene
+    local in_container = scene.previous_scene and scene.previous_scene.current_tab
+
+    -- Panel dimensions (match render.lua)
+    local panel_w = 720  -- Match inventory width
+    local panel_h = 450  -- Reduced from 500
     local panel_x = (SCREEN_W - panel_w) / 2
-    local panel_y = (SCREEN_H - panel_h) / 2
+    local panel_y = in_container and 70 or (SCREEN_H - panel_h) / 2
 
-    -- Close button hover
-    local close_x = panel_x + panel_w - 40
-    local close_y = panel_y + 10
-    local close_size = 30
+    -- Close button hover (only if NOT in container)
+    if not in_container then
+        local close_x = panel_x + panel_w - 40
+        local close_y = panel_y + 10
+        local close_size = 30
 
-    self.hover_close = (vx >= close_x and vx <= close_x + close_size
-                       and vy >= close_y and vy <= close_y + close_size)
+        self.hover_close = (vx >= close_x and vx <= close_x + close_size
+                           and vy >= close_y and vy <= close_y + close_size)
+    else
+        self.hover_close = false
+    end
 end
 
 function input:gamepadpressed(joystick, button)
@@ -246,7 +259,7 @@ function input:wheelmoved(x, y)
 
     local item_height = 50
     local padding = 5
-    local list_h = 360  -- panel_h (500) - 140
+    local list_h = 310  -- panel_h (450) - 140
     local visible_height = list_h - padding * 2
     local total_content_height = #quests * item_height
     local max_scroll = math.max(0, total_content_height - visible_height)

@@ -169,6 +169,7 @@ ui/
 │   └── helpers.lua       - 메뉴 헬퍼 (레이아웃, 네비게이션)
 │
 ├── screens/              - 재사용 가능 UI 화면
+│   ├── container.lua     - 탭 컨테이너 (인벤토리 + 퀘스트 로그)
 │   ├── newgame.lua       - 새 게임 슬롯 선택
 │   ├── saveslot.lua      - 저장 화면
 │   ├── load/             - 로드 화면 (모듈형)

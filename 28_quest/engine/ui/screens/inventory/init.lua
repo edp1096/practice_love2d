@@ -37,9 +37,9 @@ function inventory:enter(previous, player_inventory, player)
     self.grid_start_x = 0
     self.grid_start_y = 0
 
-    self.title_font = fonts.option or love.graphics.getFont()
-    self.item_font = fonts.info or love.graphics.getFont()
-    self.desc_font = fonts.info or love.graphics.getFont()
+    self.title_font = love.graphics.newFont(16)  -- Match questlog title size (was fonts.option = 22)
+    self.item_font = fonts.info or love.graphics.getFont()  -- 14
+    self.desc_font = fonts.info or love.graphics.getFont()  -- 14
 
     -- Close button settings
     self.close_button_size = 30
@@ -316,23 +316,31 @@ function inventory:touchreleased(id, x, y, dx, dy, pressure)
 end
 
 function inventory:draw()
-    -- Draw previous scene (dimmed)
-    if self.previous_scene and self.previous_scene.draw then
-        self.previous_scene:draw()
-    end
+    -- Check if we're inside a container
+    local in_container = self.previous_scene and self.previous_scene.current_tab
 
-    display:Attach()
+    -- Only draw background if NOT in container
+    if not in_container then
+        -- Draw previous scene (dimmed)
+        if self.previous_scene and self.previous_scene.draw then
+            self.previous_scene:draw()
+        end
+
+        display:Attach()
+
+        local vw, vh = display:GetVirtualDimensions()
+
+        -- Draw dark overlay
+        shapes:drawOverlay(vw, vh, 0.7)
+    end
 
     local vw, vh = display:GetVirtualDimensions()
 
-    -- Draw dark overlay
-    shapes:drawOverlay(vw, vh, 0.7)
-
     -- Draw window background (wider to fit equipment slots + grid + quickslots)
     local window_w = 720  -- Proper width for balanced margins (20 + 130 + 30 + 590 + 20)
-    local window_h = 500  -- Adjusted for 6-row grid with proper margins
+    local window_h = 450  -- Reduced from 500 for 5-row grid (one row removed)
     local window_x = (vw - window_w) / 2
-    local window_y = (vh - window_h) / 2
+    local window_y = in_container and 70 or (vh - window_h) / 2  -- Higher position in container (tab bar at 20, tab height 30, margin 20)
 
     shapes:drawPanel(window_x, window_y, window_w, window_h, colors.for_inventory_bg, colors.for_inventory_border, 10)
 
@@ -341,18 +349,21 @@ function inventory:draw()
     local title_w = self.title_font:getWidth(title)
     text_ui:draw(title, (vw - title_w) / 2, window_y + 20, {1, 1, 1, 1}, self.title_font)
 
-    -- Draw close button (top-right corner)
-    self.close_button_bounds = slot_renderer.renderCloseButton(
-        window_x, window_y, window_w,
-        self.close_button_size, self.close_button_padding,
-        self.close_button_hovered
-    )
+    -- Draw close button and instructions (only if NOT in container)
+    if not in_container then
+        -- Draw close button (top-right corner)
+        self.close_button_bounds = slot_renderer.renderCloseButton(
+            window_x, window_y, window_w,
+            self.close_button_size, self.close_button_padding,
+            self.close_button_hovered
+        )
 
-    -- Draw close instruction with dynamic input prompts
-    local close_prompt1 = input:getPrompt("open_inventory") or "I"
-    local close_prompt2 = input:getPrompt("menu_back") or "ESC"
-    local close_text = string.format("Press %s or %s to close", close_prompt1, close_prompt2)
-    text_ui:draw(close_text, window_x + 20, window_y + 20, colors.for_text_mid_gray, self.desc_font)
+        -- Draw close instruction with dynamic input prompts
+        local close_prompt1 = input:getPrompt("open_inventory") or "I"
+        local close_prompt2 = input:getPrompt("menu_back") or "ESC"
+        local close_text = string.format("Press %s or %s to close", close_prompt1, close_prompt2)
+        text_ui:draw(close_text, window_x + 20, window_y + 20, colors.for_text_mid_gray, self.desc_font)
+    end
 
     -- Draw usage instruction (if item selected)
     if self.selected_item_id then
@@ -401,7 +412,10 @@ function inventory:draw()
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setLineWidth(1)
 
-    display:Detach()
+    -- Only detach if NOT in container
+    if not in_container then
+        display:Detach()
+    end
 end
 
 return inventory

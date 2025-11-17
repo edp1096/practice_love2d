@@ -87,6 +87,7 @@ function setup.getSceneLoader()
             saveslot = "engine.ui.screens.saveslot",
             inventory = "engine.ui.screens.inventory",
             questlog = "engine.ui.screens.questlog",
+            container = "engine.ui.screens.container",
             load = "engine.ui.screens.load",
             settings = "engine.ui.screens.settings"
         }

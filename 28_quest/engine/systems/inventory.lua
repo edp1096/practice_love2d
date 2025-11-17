@@ -12,7 +12,7 @@ function inventory:new(item_class)
 
     -- Grid configuration
     instance.grid_width = 10
-    instance.grid_height = 6  -- 10x6 grid (60 cells total)
+    instance.grid_height = 5  -- 10x5 grid (50 cells total, reduced from 6 for better UI fit)
 
     -- Grid storage: 2D array [y][x] = item_uuid or nil
     instance.grid = {}

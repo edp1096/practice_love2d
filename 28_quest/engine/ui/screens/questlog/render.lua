@@ -9,8 +9,8 @@ local colors = require "engine.ui.colors"
 local render = {}
 
 -- Fonts
-render.title_font = love.graphics.newFont(24)
-render.category_font = love.graphics.newFont(16)
+render.title_font = love.graphics.newFont(16)  -- Reduced from 24 (match inventory title size)
+render.category_font = love.graphics.newFont(14)  -- Reduced from 16
 render.quest_title_font = love.graphics.newFont(14)
 render.text_font = love.graphics.newFont(12)
 render.small_font = love.graphics.newFont(10)
@@ -23,40 +23,41 @@ function render:draw()
     local scene = self.scene
     local SCREEN_W, SCREEN_H = display:GetVirtualDimensions()
 
-    -- Attach for virtual coordinates
-    display:Attach()
+    -- Check if we're inside a container
+    local in_container = scene.previous_scene and scene.previous_scene.current_tab
 
-    -- Background overlay
-    colors:apply(colors.BLACK, 0.7)
-    love.graphics.rectangle("fill", 0, 0, SCREEN_W, SCREEN_H)
-    colors:reset()
+    -- Only draw background and attach if NOT in container
+    if not in_container then
+        -- Attach for virtual coordinates
+        display:Attach()
 
-    -- Main panel
-    local panel_w = 800
-    local panel_h = 500
+        -- Background overlay
+        colors:apply(colors.BLACK, 0.7)
+        love.graphics.rectangle("fill", 0, 0, SCREEN_W, SCREEN_H)
+        colors:reset()
+    end
+
+    -- Main panel (match inventory design)
+    local panel_w = 720  -- Match inventory width
+    local panel_h = 450  -- Reduced from 500 to match inventory
     local panel_x = (SCREEN_W - panel_w) / 2
-    local panel_y = (SCREEN_H - panel_h) / 2
+    local panel_y = in_container and 70 or (SCREEN_H - panel_h) / 2  -- Higher position in container (tab bar at 20, tab height 30, margin 20)
 
-    -- Panel background
-    colors:apply(colors.for_ui_panel_bg or {0.1, 0.1, 0.1}, 0.95)
-    love.graphics.rectangle("fill", panel_x, panel_y, panel_w, panel_h)
-
-    -- Panel border
-    colors:apply(colors.for_ui_panel_border or {0.3, 0.6, 0.9})
-    love.graphics.setLineWidth(3)
-    love.graphics.rectangle("line", panel_x, panel_y, panel_w, panel_h)
-    colors:reset()
+    -- Panel background and border (match inventory style)
+    shapes:drawPanel(panel_x, panel_y, panel_w, panel_h, colors.for_inventory_bg, colors.for_inventory_border, 10)
 
     -- Title
     local title_y = panel_y + 20
     text_ui:draw("Quest Log", panel_x + panel_w / 2 - 60, title_y, colors.for_ui_title or {1, 1, 1}, self.title_font)
 
-    -- Close button
-    local close_btn_size = 30
-    local close_btn_x = panel_x + panel_w - close_btn_size - 10
-    local close_btn_y = panel_y + 10
-    local is_close_hovered = false  -- TODO: Add hover detection if needed
-    shapes:drawCloseButton(close_btn_x, close_btn_y, close_btn_size, is_close_hovered)
+    -- Close button (only if NOT in container)
+    if not in_container then
+        local close_btn_size = 30
+        local close_btn_x = panel_x + panel_w - close_btn_size - 10
+        local close_btn_y = panel_y + 10
+        local is_close_hovered = false  -- TODO: Add hover detection if needed
+        shapes:drawCloseButton(close_btn_x, close_btn_y, close_btn_size, is_close_hovered)
+    end
 
     -- Category tabs
     local tab_y = panel_y + 60
@@ -76,19 +77,21 @@ function render:draw()
     local details_h = list_h
     self:drawQuestDetails(details_x, details_y, details_w, details_h)
 
-    -- Help text
-    local help_y = panel_y + panel_h - 30
-    local help_text = "ESC: Close  |  Arrow Keys: Navigate  |  Enter: Select"
-    text_ui:draw(help_text, panel_x + 20, help_y, colors.for_ui_hint or {0.7, 0.7, 0.7}, self.small_font)
+    -- Help text (only if NOT in container - container shows its own hints)
+    if not in_container then
+        local help_y = panel_y + panel_h - 30
+        local help_text = "ESC: Close  |  Arrow Keys: Navigate  |  Enter: Select"
+        text_ui:draw(help_text, panel_x + 20, help_y, colors.for_ui_hint or {0.7, 0.7, 0.7}, self.small_font)
 
-    display:Detach()
+        display:Detach()
+    end
 end
 
 function render:drawCategoryTabs(panel_x, tab_y, panel_w)
     local scene = self.scene
-    local tab_width = 150
-    local tab_height = 35
-    local spacing = 10
+    local tab_width = 130  -- Reduced from 150
+    local tab_height = 28  -- Reduced from 35
+    local spacing = 8  -- Reduced from 10
     local start_x = panel_x + 20
 
     for i, category in ipairs(scene.categories) do
