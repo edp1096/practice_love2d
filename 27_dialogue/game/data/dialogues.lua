@@ -69,7 +69,7 @@ dialogues.villager_greeting = {
             speaker = "Villager",
             choices = {
                 { text = "I'll think about it", next = "main_menu" },
-                { text = "Not interested", next = "end" }
+                { text = "Not interested", next = "main_menu" }
             }
         },
 
