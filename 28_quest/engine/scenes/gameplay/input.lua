@@ -44,6 +44,10 @@ function input_handler.keypressed(self, key)
     elseif input:wasPressed("open_inventory", "keyboard", key) then
         -- Open inventory UI (I key or R2 on gamepad)
         scene_control.push("inventory", self.inventory, self.player)
+    elseif input:wasPressed("open_questlog", "keyboard", key) then
+        -- Open quest log UI (J key or Back button on gamepad)
+        local quest_system = require "engine.core.quest"
+        scene_control.push("questlog", quest_system)
     elseif input:wasPressed("dodge", "keyboard", key) then
         -- Dodge (lshift key or R1 on gamepad) - works in both modes
         self.player:startDodge()
@@ -74,14 +78,27 @@ function input_handler.keypressed(self, key)
         -- F key: Interact with NPC, Save Point, or Pick up Item (A button on gamepad uses context logic)
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
-            local interaction_data = npc:interact()
-            if interaction_data.type == "tree" then
-                -- New: dialogue tree system
-                dialogue:showTreeById(interaction_data.dialogue_id)
+            -- Check for completable quests first
+            local quest_system = require "engine.core.quest"
+            local completable_quest = self:getCompletableQuest(npc.id)
+
+            if completable_quest then
+                -- Show quest completion dialogue
+                self:showQuestTurnInDialogue(completable_quest, npc.name)
             else
-                -- Simple dialogue: message array (non-interactive)
-                dialogue:showMultiple(npc.name, interaction_data.messages)
+                -- Regular NPC dialogue
+                local interaction_data = npc:interact()
+                if interaction_data.type == "tree" then
+                    -- New: dialogue tree system
+                    dialogue:showTreeById(interaction_data.dialogue_id)
+                else
+                    -- Simple dialogue: message array (non-interactive)
+                    dialogue:showMultiple(npc.name, interaction_data.messages)
+                end
             end
+
+            -- Track quest progress (talk quests)
+            quest_system:onNPCTalked(npc.id)
 
             return
         end
@@ -201,14 +218,27 @@ function input_handler.gamepadpressed(self, joystick, button)
     elseif action == "interact_npc" then
         -- ctx is the NPC
         if ctx then
-            local interaction_data = ctx:interact()
-            if interaction_data.type == "tree" then
-                -- New: dialogue tree system
-                dialogue:showTreeById(interaction_data.dialogue_id)
+            -- Check for completable quests first
+            local quest_system = require "engine.core.quest"
+            local completable_quest = self:getCompletableQuest(ctx.id)
+
+            if completable_quest then
+                -- Show quest completion dialogue
+                self:showQuestTurnInDialogue(completable_quest, ctx.name)
             else
-                -- Simple dialogue: message array (non-interactive)
-                dialogue:showMultiple(ctx.name, interaction_data.messages)
+                -- Regular NPC dialogue
+                local interaction_data = ctx:interact()
+                if interaction_data.type == "tree" then
+                    -- New: dialogue tree system
+                    dialogue:showTreeById(interaction_data.dialogue_id)
+                else
+                    -- Simple dialogue: message array (non-interactive)
+                    dialogue:showMultiple(ctx.name, interaction_data.messages)
+                end
             end
+
+            -- Track quest progress (talk quests)
+            quest_system:onNPCTalked(ctx.id)
         end
 
     elseif action == "interact_savepoint" then
@@ -230,14 +260,28 @@ function input_handler.gamepadpressed(self, joystick, button)
         -- Direct interact (Y button) - NPC, Save Point, or Pick up Item
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
-            local interaction_data = npc:interact()
-            if interaction_data.type == "tree" then
-                -- New: dialogue tree system
-                dialogue:showTreeById(interaction_data.dialogue_id)
+            -- Check for completable quests first
+            local quest_system = require "engine.core.quest"
+            local completable_quest = self:getCompletableQuest(npc.id)
+
+            if completable_quest then
+                -- Show quest completion dialogue
+                self:showQuestTurnInDialogue(completable_quest, npc.name)
             else
-                -- Simple dialogue: message array (non-interactive)
-                dialogue:showMultiple(npc.name, interaction_data.messages)
+                -- Regular NPC dialogue
+                local interaction_data = npc:interact()
+                if interaction_data.type == "tree" then
+                    -- New: dialogue tree system
+                    dialogue:showTreeById(interaction_data.dialogue_id)
+                else
+                    -- Simple dialogue: message array (non-interactive)
+                    dialogue:showMultiple(npc.name, interaction_data.messages)
+                end
             end
+
+            -- Track quest progress (talk quests)
+            quest_system:onNPCTalked(npc.id)
+
             return
         end
 
@@ -293,6 +337,10 @@ function input_handler.gamepadpressed(self, joystick, button)
 
     elseif action == "open_inventory" then
         scene_control.push("inventory", self.inventory, self.player)
+
+    elseif action == "open_questlog" then
+        local quest_system = require "engine.core.quest"
+        scene_control.push("questlog", quest_system)
     end
 end
 
@@ -321,6 +369,10 @@ function input_handler.gamepadaxis(self, joystick, axis, value)
 
     elseif action == "open_inventory" then
         scene_control.push("inventory", self.inventory, self.player)
+
+    elseif action == "open_questlog" then
+        local quest_system = require "engine.core.quest"
+        scene_control.push("questlog", quest_system)
     end
 end
 

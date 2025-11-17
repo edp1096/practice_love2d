@@ -52,7 +52,11 @@ function render:draw()
     text_ui:draw("Quest Log", panel_x + panel_w / 2 - 60, title_y, colors.for_ui_title or {1, 1, 1}, self.title_font)
 
     -- Close button
-    shapes:drawCloseButton(panel_x + panel_w - 40, panel_y + 10)
+    local close_btn_size = 30
+    local close_btn_x = panel_x + panel_w - close_btn_size - 10
+    local close_btn_y = panel_y + 10
+    local is_close_hovered = false  -- TODO: Add hover detection if needed
+    shapes:drawCloseButton(close_btn_x, close_btn_y, close_btn_size, is_close_hovered)
 
     -- Category tabs
     local tab_y = panel_y + 60
@@ -133,10 +137,19 @@ function render:drawQuestList(list_x, list_y, list_w, list_h)
         return
     end
 
+    -- Enable scissor to clip items outside visible area
+    -- Convert virtual coordinates to physical (screen) coordinates for scissor
+    local coords = require "engine.core.coords"
+    local phys_x, phys_y = coords:virtualToPhysical(list_x, list_y, display)
+    local phys_x2, phys_y2 = coords:virtualToPhysical(list_x + list_w, list_y + list_h, display)
+    local phys_w = phys_x2 - phys_x
+    local phys_h = phys_y2 - phys_y
+    love.graphics.setScissor(phys_x, phys_y, phys_w, phys_h)
+
     -- Draw quest items
     local item_height = 50
     local padding = 5
-    local current_y = list_y + padding
+    local current_y = list_y + padding - scene.scroll_offset
 
     for i, quest in ipairs(quests) do
         local def = quest.def
@@ -186,6 +199,33 @@ function render:drawQuestList(list_x, list_y, list_w, list_h)
         love.graphics.line(item_x, item_y + item_h, item_x + item_w, item_y + item_h)
 
         current_y = current_y + item_h
+        colors:reset()
+    end
+
+    -- Disable scissor
+    love.graphics.setScissor()
+
+    -- Draw scrollbar if needed
+    local total_content_height = #quests * item_height
+    local visible_height = list_h - padding * 2
+
+    if total_content_height > visible_height then
+        local scrollbar_x = list_x + list_w - 8
+        local scrollbar_w = 6
+        local scrollbar_track_h = list_h - 10
+        local scrollbar_y = list_y + 5
+
+        -- Scrollbar track
+        colors:apply({0.2, 0.2, 0.2}, 0.5)
+        love.graphics.rectangle("fill", scrollbar_x, scrollbar_y, scrollbar_w, scrollbar_track_h)
+
+        -- Scrollbar thumb
+        local thumb_height = math.max(20, (visible_height / total_content_height) * scrollbar_track_h)
+        local max_scroll = total_content_height - visible_height
+        local thumb_y = scrollbar_y + (scene.scroll_offset / max_scroll) * (scrollbar_track_h - thumb_height)
+
+        colors:apply({0.5, 0.5, 0.5}, 0.8)
+        love.graphics.rectangle("fill", scrollbar_x, thumb_y, scrollbar_w, thumb_height, 3, 3)
         colors:reset()
     end
 end

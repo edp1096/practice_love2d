@@ -38,12 +38,12 @@ quests.tutorial_talk = {
     objectives = {
         {
             type = "talk",
-            target = "villager_main",
+            target = "passerby_01",  -- Changed to match actual NPC in game
             count = 1,
             description = "Talk to the Villager"
         }
     },
-    giver_npc = "villager_main",
+    giver_npc = "passerby_01",  -- Changed to match actual NPC
     rewards = {
         gold = 10,
         exp = 5
@@ -61,13 +61,13 @@ quests.slime_menace = {
     objectives = {
         {
             type = "kill",
-            target = "slime",
-            count = 5,
-            description = "Defeat 5 slimes"
+            target = "red_slime",  -- Changed to match actual enemy type in game
+            count = 3,  -- Reduced to 3 for easier testing
+            description = "Defeat 3 red slimes"
         }
     },
-    giver_npc = "villager_main",
-    receiver_npc = "villager_main",
+    giver_npc = "passerby_01",  -- Changed to match actual NPC
+    receiver_npc = "passerby_01",
     rewards = {
         gold = 100,
         exp = 50,

@@ -8,6 +8,7 @@ local enemy_sound = require "engine.entities.enemy.sound"
 local weapon_class = require "engine.entities.weapon"
 local constants = require "engine.core.constants"
 local entity_base = require "engine.entities.base.entity"
+local quest_system = require "engine.core.quest"
 
 local enemy = {}
 enemy.__index = enemy
@@ -307,6 +308,9 @@ function enemy:takeDamage(damage)
 
         -- Play death sound
         enemy_sound.playDeath(self.type)
+
+        -- Track quest progress (kill quests)
+        quest_system:onEnemyKilled(self.type)
     else
         ai.setState(self, "hit")
 

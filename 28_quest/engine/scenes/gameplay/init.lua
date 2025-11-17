@@ -29,6 +29,7 @@ local minimap_class = require "engine.systems.hud.minimap"
 local lighting = require "engine.systems.lighting"
 local effects = require "engine.systems.effects"
 local weather = require "engine.systems.weather"
+local quest_system = require "engine.core.quest"
 
 -- Import sub-modules
 local update_module = require "engine.scenes.gameplay.update"
@@ -87,6 +88,11 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
         dialogue:importChoiceHistory(save_data.dialogue_choices)
     end
 
+    -- Load quest states
+    if save_data and save_data.quest_states then
+        quest_system:importStates(save_data.quest_states)
+    end
+
     -- Create world with injected entity classes and persistence data
     self.world = world:new(mapPath, {
         enemy = enemy_class,
@@ -107,6 +113,14 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
     if save_data and save_data.hp then
         self.player.health = save_data.hp
         self.player.max_health = save_data.max_hp
+    end
+
+    if save_data and save_data.player_gold then
+        self.player.gold = save_data.player_gold
+    end
+
+    if save_data and save_data.player_exp then
+        self.player.exp = save_data.player_exp
     end
 
     self.world:addEntity(self.player)
@@ -195,6 +209,18 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
         player = self.player,
         world = self.world
     })
+
+    -- AUTO-ACCEPT TEST QUEST (for testing quest system)
+    -- TODO: Remove this after implementing NPC quest UI
+    if quest_system:canAccept("tutorial_talk") then
+        quest_system:accept("tutorial_talk")
+    end
+
+    -- FORCE ACCEPT slime_menace for testing (ignore prerequisites)
+    local slime_state = quest_system:getState("slime_menace")
+    if slime_state then
+        slime_state.state = quest_system.STATE.ACTIVE
+    end
 end
 
 function gameplay:exit()
@@ -212,6 +238,7 @@ end
 function gameplay:saveGame(slot)
     slot = slot or self.current_save_slot or 1
 
+    local quest_system = require "engine.core.quest"
     local save_data = {
         hp = self.player.health,
         max_hp = self.player.max_health,
@@ -222,6 +249,9 @@ function gameplay:saveGame(slot)
         picked_items = self.picked_items or {},
         killed_enemies = self.killed_enemies or {},
         dialogue_choices = dialogue:exportChoiceHistory(),
+        quest_states = quest_system:exportStates(),
+        player_gold = self.player.gold or 0,
+        player_exp = self.player.exp or 0,
     }
 
     local success = save_sys:saveGame(slot, save_data)
@@ -494,6 +524,88 @@ function gameplay:shouldShowMinimap()
 
     -- 3. Default: show minimap
     return true
+end
+
+-- Helper: Get first completable quest for NPC
+function gameplay:getCompletableQuest(npc_id)
+    local quest_system = require "engine.core.quest"
+
+    for quest_id, quest_def in pairs(quest_system.quest_registry) do
+        local state = quest_system:getState(quest_id)
+        local receiver = quest_def.receiver_npc or quest_def.giver_npc
+
+        if receiver == npc_id and state and state.state == quest_system.STATE.COMPLETED then
+            return {
+                id = quest_id,
+                def = quest_def,
+                state = state
+            }
+        end
+    end
+
+    return nil
+end
+
+-- Helper: Show quest turn-in dialogue
+function gameplay:showQuestTurnInDialogue(quest_info, npc_name)
+    local quest_system = require "engine.core.quest"
+    local dialogue = require "engine.ui.dialogue"
+
+    -- Turn in quest and get rewards
+    local success, rewards = quest_system:turnIn(quest_info.id)
+
+    if not success then
+        return
+    end
+
+    -- Distribute rewards to player
+    if rewards.gold and rewards.gold > 0 then
+        -- Add gold to player (initialize if doesn't exist)
+        self.player.gold = (self.player.gold or 0) + rewards.gold
+    end
+
+    if rewards.exp and rewards.exp > 0 then
+        -- Add exp to player (initialize if doesn't exist)
+        self.player.exp = (self.player.exp or 0) + rewards.exp
+    end
+
+    if rewards.items then
+        -- Add items to inventory
+        for _, item_type in ipairs(rewards.items) do
+            self.inventory:addItem(item_type, 1)
+        end
+    end
+
+    -- Build rewards text for dialogue
+    local rewards_text = "Rewards: "
+    local reward_parts = {}
+
+    if rewards.gold then
+        table.insert(reward_parts, rewards.gold .. " gold")
+    end
+    if rewards.exp then
+        table.insert(reward_parts, rewards.exp .. " exp")
+    end
+    if rewards.items then
+        for _, item in ipairs(rewards.items) do
+            table.insert(reward_parts, item)
+        end
+    end
+
+    if #reward_parts > 0 then
+        rewards_text = rewards_text .. table.concat(reward_parts, ", ")
+    else
+        rewards_text = "Thank you!"
+    end
+
+    -- Show dialogue
+    local messages = {
+        "Quest Complete: " .. quest_info.def.title,
+        quest_info.def.description,
+        rewards_text
+    }
+
+    dialogue:showMultiple(npc_name, messages)
 end
 
 return gameplay

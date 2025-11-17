@@ -7,9 +7,9 @@ local questlog = {}
 local render_module = require "engine.ui.screens.questlog.render"
 local input_module = require "engine.ui.screens.questlog.input"
 
-function questlog:init(quest_system, scene_control)
+function questlog:enter(from, quest_system)
+    self.previous_scene = from
     self.quest_system = quest_system
-    self.scene_control = scene_control
 
     -- UI state
     self.selected_category = "active"  -- active, available, completed, all
@@ -25,16 +25,11 @@ function questlog:init(quest_system, scene_control)
     }
     self.selected_category_index = 1
 
-    -- Inject dependencies into modules
-    render_module:init(self)
-    input_module:init(self)
-end
-
-function questlog:enter(from)
-    self.selected_category_index = 1
-    self.selected_category = "active"
-    self.selected_quest_index = 1
-    self.scroll_offset = 0
+    -- Initialize modules (only once)
+    if not render_module.scene then
+        render_module:init(self)
+        input_module:init(self)
+    end
 end
 
 function questlog:leave()

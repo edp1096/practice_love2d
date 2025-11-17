@@ -13,6 +13,8 @@ local fonts = require "engine.utils.fonts"
 local lighting = require "engine.systems.lighting"
 local text_ui = require "engine.utils.text"
 local weather = require "engine.systems.weather"
+local quest_system = require "engine.core.quest"
+local quest_tracker = require "engine.systems.hud.quest_tracker"
 
 local render = {}
 
@@ -124,6 +126,9 @@ function render.draw(self)
 
     -- Draw quickslot belt
     quickslots_hud.draw(self.inventory, self.player, display, self.selected_quickslot)
+
+    -- Draw quest tracker (top-right, shows active quests)
+    quest_tracker:draw(quest_system, vw, vh, 3)
 
     -- Draw minimap (check game config and map properties)
     if self.minimap and self:shouldShowMinimap() then

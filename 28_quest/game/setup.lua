@@ -15,7 +15,8 @@ function setup.configure()
     local sound_data = require "game.data.sounds"
     local item_types = require "game.data.items"
     local loot_tables = require "game.data.loot_tables"
-    local dialogues = require "game.data.dialogues"  -- NEW: Dialogue trees
+    local dialogues = require "game.data.dialogues"  -- Dialogue trees
+    local quests = require "game.data.quests"  -- Quest definitions
 
     -- Load engine modules
     local enemy_class = require "engine.entities.enemy"
@@ -31,6 +32,7 @@ function setup.configure()
     local builder = require "engine.scenes.builder"
     local dialogue = require "engine.ui.dialogue"
     local prompt = require "engine.ui.prompt"
+    local quest_system = require "engine.core.quest"
 
     -- Inject entity type registries
     enemy_class.type_registry = entity_types.enemies
@@ -68,6 +70,9 @@ function setup.configure()
 
     -- Inject dialogue trees into dialogue system
     dialogue.dialogue_registry = dialogues
+
+    -- Initialize quest system with quest definitions
+    quest_system:registerQuests(quests)
 end
 
 -- Return scene loader function for engine's scene_control
@@ -78,6 +83,7 @@ function setup.getSceneLoader()
             newgame = "engine.ui.screens.newgame",
             saveslot = "engine.ui.screens.saveslot",
             inventory = "engine.ui.screens.inventory",
+            questlog = "engine.ui.screens.questlog",
             load = "engine.ui.screens.load",
             settings = "engine.ui.screens.settings"
         }

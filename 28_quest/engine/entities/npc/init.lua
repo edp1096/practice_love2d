@@ -133,6 +133,70 @@ function npc:interact()
     end
 end
 
+-- Draw quest indicator above NPC (! for available, ? for completable)
+function npc:drawQuestIndicator(center_x, sprite_y)
+    local quest_system = require "engine.core.quest"
+
+    -- Check if this NPC has any quests
+    local has_available = false
+    local has_completable = false
+
+    -- Check all quests
+    for quest_id, quest_def in pairs(quest_system.quest_registry) do
+        local state = quest_system:getState(quest_id)
+
+        -- Check if this NPC gives available quests
+        if quest_def.giver_npc == self.id and state and state.state == quest_system.STATE.AVAILABLE then
+            if quest_system:canAccept(quest_id) then
+                has_available = true
+            end
+        end
+
+        -- Check if this NPC receives completed quests
+        local receiver = quest_def.receiver_npc or quest_def.giver_npc
+        if receiver == self.id and state and state.state == quest_system.STATE.COMPLETED then
+            has_completable = true
+        end
+    end
+
+    -- Draw indicator (? takes priority over !)
+    local indicator = nil
+    local color = {1, 1, 0, 1}  -- Yellow
+
+    if has_completable then
+        indicator = "?"
+    elseif has_available then
+        indicator = "!"
+    end
+
+    if indicator then
+        -- Draw indicator above NPC head
+        local indicator_y = sprite_y - 25
+        local font = love.graphics.newFont(20)
+        love.graphics.setFont(font)
+
+        -- Text with outline for visibility
+        local text_w = font:getWidth(indicator)
+        local text_x = center_x - text_w / 2
+
+        -- Outline (black)
+        love.graphics.setColor(0, 0, 0, 1)
+        for ox = -1, 1 do
+            for oy = -1, 1 do
+                if ox ~= 0 or oy ~= 0 then
+                    love.graphics.print(indicator, text_x + ox, indicator_y + oy)
+                end
+            end
+        end
+
+        -- Main text (yellow)
+        love.graphics.setColor(color)
+        love.graphics.print(indicator, text_x, indicator_y)
+
+        love.graphics.setColor(1, 1, 1, 1)
+    end
+end
+
 function npc:draw()
     -- Use base class helpers for positions
     local collider_center_x, collider_center_y = self:getColliderCenter()
@@ -161,6 +225,9 @@ function npc:draw()
     if self.can_interact then
         prompt:draw("interact", collider_center_x, collider_center_y, -60)
     end
+
+    -- Draw quest indicators
+    self:drawQuestIndicator(collider_center_x, sprite_draw_y)
 
     love.graphics.setColor(1, 1, 1, 1)
 end

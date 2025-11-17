@@ -152,6 +152,12 @@ function scene_control.mousemoved(x, y, dx, dy)
     end
 end
 
+function scene_control.wheelmoved(x, y)
+    if scene_control.current and scene_control.current.wheelmoved then
+        scene_control.current:wheelmoved(x, y)
+    end
+end
+
 function scene_control.gamepadpressed(joystick, button)
     if scene_control.current and scene_control.current.gamepadpressed then
         scene_control.current:gamepadpressed(joystick, button)

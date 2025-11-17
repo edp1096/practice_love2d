@@ -385,6 +385,51 @@ function quest:resetAll()
     end
 end
 
+-- Export quest states for saving
+function quest:exportStates()
+    local export_data = {}
+
+    for quest_id, state in pairs(self.quest_states) do
+        export_data[quest_id] = {
+            state = state.state,
+            objectives = {}
+        }
+
+        -- Copy objective progress
+        for obj_idx, progress in ipairs(state.objectives) do
+            export_data[quest_id].objectives[obj_idx] = {
+                current = progress.current,
+                target = progress.target,
+                completed = progress.completed
+            }
+        end
+    end
+
+    return export_data
+end
+
+-- Import quest states from save data
+function quest:importStates(saved_states)
+    if not saved_states then return end
+
+    for quest_id, saved_state in pairs(saved_states) do
+        local state = self.quest_states[quest_id]
+
+        if state then
+            state.state = saved_state.state
+
+            -- Restore objective progress
+            for obj_idx, saved_progress in ipairs(saved_state.objectives) do
+                if state.objectives[obj_idx] then
+                    state.objectives[obj_idx].current = saved_progress.current
+                    state.objectives[obj_idx].target = saved_progress.target
+                    state.objectives[obj_idx].completed = saved_progress.completed
+                end
+            end
+        end
+    end
+end
+
 quest:init()
 
 return quest

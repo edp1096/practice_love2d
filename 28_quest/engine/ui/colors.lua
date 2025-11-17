@@ -8,6 +8,7 @@ local colors = {}
 -- ========================================
 
 -- Neutrals
+colors.BLACK = {0, 0, 0, 1}
 colors.WHITE = {1, 1, 1, 1}
 colors.LIGHT_GRAY = {0.9, 0.9, 0.9, 1}
 colors.GRAY = {0.8, 0.8, 0.8, 1}

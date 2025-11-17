@@ -79,6 +79,8 @@ function love.mousereleased(x, y, button) input_dispatcher:mousereleased(x, y, b
 
 function love.mousemoved(x, y, dx, dy) input_dispatcher:mousemoved(x, y, dx, dy) end
 
+function love.wheelmoved(x, y) scene_control.wheelmoved(x, y) end
+
 function love.touchpressed(id, x, y, dx, dy, pressure) input_dispatcher:touchpressed(id, x, y, dx, dy, pressure) end
 
 function love.touchreleased(id, x, y, dx, dy, pressure) input_dispatcher:touchreleased(id, x, y, dx, dy, pressure) end

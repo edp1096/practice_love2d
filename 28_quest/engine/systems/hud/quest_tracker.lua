@@ -12,24 +12,36 @@ quest_tracker.objective_font = love.graphics.newFont(12)
 quest_tracker.small_font = love.graphics.newFont(10)
 
 function quest_tracker:draw(quest_system, screen_w, screen_h, max_quests)
-    max_quests = max_quests or 3  -- Show up to 3 active quests
+    max_quests = max_quests or 3  -- Show up to 3 quests
 
+    -- Get both active and completed quests
     local active_quests = quest_system:getActiveQuests()
-    if #active_quests == 0 then return end
+    local completed_quests = quest_system:getQuestsByState(quest_system.STATE.COMPLETED)
 
-    -- Position: top-right corner
-    local panel_x = screen_w - 320
-    local panel_y = 20
+    -- Combine: show active quests first, then completed
+    local all_quests = {}
+    for _, q in ipairs(active_quests) do
+        table.insert(all_quests, q)
+    end
+    for _, q in ipairs(completed_quests) do
+        table.insert(all_quests, q)
+    end
+
+    if #all_quests == 0 then return end
+
+    -- Position: top-right corner, left of minimap
+    local panel_x = screen_w - 450  -- Moved left to avoid minimap overlap
+    local panel_y = 10              -- Aligned with minimap top (padding = 10)
     local panel_width = 300
     local line_height = 18
     local padding = 10
 
     -- Calculate panel height dynamically
     local total_height = padding * 2 + 20  -- Header
-    local quest_count = math.min(#active_quests, max_quests)
+    local quest_count = math.min(#all_quests, max_quests)
 
     for i = 1, quest_count do
-        local quest = active_quests[i]
+        local quest = all_quests[i]
         local def = quest.def
         total_height = total_height + 30  -- Quest title space
         total_height = total_height + (#def.objectives * line_height)  -- Objectives
@@ -50,13 +62,13 @@ function quest_tracker:draw(quest_system, screen_w, screen_h, max_quests)
 
     -- Header
     local header_y = panel_y + padding
-    text_ui:draw("Active Quests", panel_x + padding, header_y, colors.for_hud_quest_header or {1, 1, 0}, self.title_font)
+    text_ui:draw("Quests", panel_x + padding, header_y, colors.for_hud_quest_header or {1, 1, 0}, self.title_font)
 
     -- Draw quests
     local current_y = header_y + 25
 
     for i = 1, quest_count do
-        local quest = active_quests[i]
+        local quest = all_quests[i]
         local def = quest.def
         local state = quest.state
 
@@ -114,10 +126,10 @@ function quest_tracker:draw(quest_system, screen_w, screen_h, max_quests)
     end
 
     -- "More quests..." indicator
-    if #active_quests > max_quests then
+    if #all_quests > max_quests then
         local more_text = string.format("+ %d more quest%s...",
-            #active_quests - max_quests,
-            (#active_quests - max_quests) > 1 and "s" or "")
+            #all_quests - max_quests,
+            (#all_quests - max_quests) > 1 and "s" or "")
         text_ui:draw(more_text, panel_x + padding, current_y, colors.for_hud_quest_more or {0.7, 0.7, 0.7}, self.small_font)
     end
 

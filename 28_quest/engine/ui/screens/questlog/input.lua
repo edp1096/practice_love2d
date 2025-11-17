@@ -1,8 +1,10 @@
 -- engine/ui/screens/questlog/input.lua
 -- Quest log input handling
 
+local scene_control = require "engine.core.scene_control"
 local display = require "engine.core.display"
 local coords = require "engine.core.coords"
+local input_sys = require "engine.core.input"
 
 local input = {}
 
@@ -11,11 +13,47 @@ function input:init(questlog_scene)
     self.hover_close = false
 end
 
+-- Helper: Auto-scroll to keep selected item visible
+function input:updateScrollToSelection()
+    local scene = self.scene
+    local quests = scene:getQuestsForCategory(scene.selected_category)
+    if #quests == 0 then return end
+
+    local item_height = 50
+    local padding = 5
+    local list_h = 360  -- panel_h (500) - 140 (from render.lua:69)
+    local visible_height = list_h - padding * 2
+
+    -- Calculate selected item position
+    local selected_y = (scene.selected_quest_index - 1) * item_height
+    local selected_bottom = selected_y + item_height
+
+    -- Adjust scroll to keep selection visible
+    if selected_y < scene.scroll_offset then
+        -- Item is above visible area, scroll up
+        scene.scroll_offset = selected_y
+    elseif selected_bottom > scene.scroll_offset + visible_height then
+        -- Item is below visible area, scroll down
+        scene.scroll_offset = selected_bottom - visible_height
+    end
+
+    -- Clamp scroll to valid range
+    local total_content_height = #quests * item_height
+    local max_scroll = math.max(0, total_content_height - visible_height)
+    scene.scroll_offset = math.max(0, math.min(scene.scroll_offset, max_scroll))
+end
+
 function input:keypressed(key)
     local scene = self.scene
 
+    -- J key to toggle questlog (same as I key for inventory)
+    if input_sys:wasPressed("open_questlog", "keyboard", key) then
+        scene_control.pop()
+        return
+    end
+
     if key == "escape" or key == "q" then
-        scene.scene_control:pop()
+        scene_control.pop()
         return
     end
 
@@ -27,6 +65,7 @@ function input:keypressed(key)
         end
         scene.selected_category = scene.categories[scene.selected_category_index].id
         scene.selected_quest_index = 1
+        scene.scroll_offset = 0  -- Reset scroll when changing category
         return
     end
 
@@ -37,6 +76,7 @@ function input:keypressed(key)
         end
         scene.selected_category = scene.categories[scene.selected_category_index].id
         scene.selected_quest_index = 1
+        scene.scroll_offset = 0  -- Reset scroll when changing category
         return
     end
 
@@ -47,6 +87,7 @@ function input:keypressed(key)
             local quests = scene:getQuestsForCategory(scene.selected_category)
             scene.selected_quest_index = math.max(1, #quests)
         end
+        self:updateScrollToSelection()
         return
     end
 
@@ -56,6 +97,7 @@ function input:keypressed(key)
         if scene.selected_quest_index > #quests then
             scene.selected_quest_index = 1
         end
+        self:updateScrollToSelection()
         return
     end
 end
@@ -82,7 +124,7 @@ function input:mousepressed(x, y, button)
 
     if vx >= close_x and vx <= close_x + close_size
        and vy >= close_y and vy <= close_y + close_size then
-        scene.scene_control:pop()
+        scene_control.pop()
         return
     end
 
@@ -101,6 +143,7 @@ function input:mousepressed(x, y, button)
             scene.selected_category_index = i
             scene.selected_category = category.id
             scene.selected_quest_index = 1
+            scene.scroll_offset = 0  -- Reset scroll when changing category
             return
         end
     end
@@ -117,11 +160,13 @@ function input:mousepressed(x, y, button)
         local item_height = 50
         local padding = 5
 
-        local relative_y = vy - (list_y + padding)
+        -- Account for scroll offset when calculating clicked item
+        local relative_y = vy - (list_y + padding) + scene.scroll_offset
         local clicked_index = math.floor(relative_y / item_height) + 1
 
         if clicked_index >= 1 and clicked_index <= #quests then
             scene.selected_quest_index = clicked_index
+            self:updateScrollToSelection()
         end
         return
     end
@@ -150,13 +195,20 @@ end
 
 function input:gamepadpressed(joystick, button)
     local scene = self.scene
+
+    -- Toggle questlog with same button (Back button)
+    if input_sys:wasPressed("open_questlog", "gamepad", button) then
+        scene_control.pop()
+        return
+    end
+
     local input_config = require "game.data.input_config"
 
     -- Map gamepad buttons
     local action = input_config:getGamepadAction(button)
 
     if action == "cancel" or action == "pause" then
-        scene.scene_control:pop()
+        scene_control.pop()
         return
     end
 
@@ -188,22 +240,29 @@ end
 
 function input:wheelmoved(x, y)
     local scene = self.scene
+    local quests = scene:getQuestsForCategory(scene.selected_category)
+    if #quests == 0 then return end
+
+    -- Scroll amount per wheel tick (in pixels)
+    local scroll_amount = 50  -- One quest item height
+
+    local item_height = 50
+    local padding = 5
+    local list_h = 360  -- panel_h (500) - 140
+    local visible_height = list_h - padding * 2
+    local total_content_height = #quests * item_height
+    local max_scroll = math.max(0, total_content_height - visible_height)
 
     if y > 0 then
         -- Scroll up
-        scene.selected_quest_index = scene.selected_quest_index - 1
-        if scene.selected_quest_index < 1 then
-            local quests = scene:getQuestsForCategory(scene.selected_category)
-            scene.selected_quest_index = math.max(1, #quests)
-        end
+        scene.scroll_offset = scene.scroll_offset - scroll_amount
     elseif y < 0 then
         -- Scroll down
-        local quests = scene:getQuestsForCategory(scene.selected_category)
-        scene.selected_quest_index = scene.selected_quest_index + 1
-        if scene.selected_quest_index > #quests then
-            scene.selected_quest_index = 1
-        end
+        scene.scroll_offset = scene.scroll_offset + scroll_amount
     end
+
+    -- Clamp scroll to valid range
+    scene.scroll_offset = math.max(0, math.min(scene.scroll_offset, max_scroll))
 end
 
 return input
