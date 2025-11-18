@@ -41,12 +41,25 @@ dialogues.villager_greeting = {
                 {
                     text = "Other quest?",
                     next = "quest_list",
-                    -- Show only if slime quest has been accepted
+                    -- Show only if there are more quests to offer
                     condition = function(ctx)
-                        local quest_state = ctx.quest_system:getState("slime_menace")
-                        if not quest_state then return false end
-                        -- Show if quest is ACTIVE, COMPLETED, or TURNED_IN
-                        return quest_state.state ~= ctx.quest_system.STATE.AVAILABLE
+                        -- Check if any quest in quest_list is still available
+                        local quest_order = {
+                            "collect_test", "explore_test", "deliver_test",
+                            "mysterious_stranger", "explore_forest"
+                        }
+
+                        for _, quest_id in ipairs(quest_order) do
+                            local quest_state = ctx.quest_system:getState(quest_id)
+                            if quest_state and quest_state.state == ctx.quest_system.STATE.AVAILABLE then
+                                local can_accept = ctx.quest_system:canAccept(quest_id)
+                                if can_accept then
+                                    return true  -- At least one quest available
+                                end
+                            end
+                        end
+
+                        return false  -- No quests available
                     end
                 },
                 { text = "Goodbye", next = "end" }

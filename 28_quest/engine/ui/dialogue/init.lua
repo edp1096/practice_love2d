@@ -120,4 +120,8 @@ function dialogue:clearAllFlags()
     helpers:clearAllFlags(self)
 end
 
+function dialogue:clearChoiceHistory()
+    helpers:clearChoiceHistory(self)
+end
+
 return dialogue

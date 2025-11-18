@@ -64,14 +64,30 @@ function quest:_cloneQuestData(data)
         objectives = {},
         giver_npc = data.giver_npc,
         receiver_npc = data.receiver_npc or data.giver_npc,  -- Default to giver
-        rewards = data.rewards and {
-            gold = data.rewards.gold,
-            exp = data.rewards.exp,
-            items = data.rewards.items and {unpack(data.rewards.items)} or {}
-        } or {},
-        prerequisites = data.prerequisites and {unpack(data.prerequisites)} or {}
+        rewards = {},
+        prerequisites = {}
     }
 
+    -- Clone rewards
+    if data.rewards then
+        clone.rewards.gold = data.rewards.gold
+        clone.rewards.exp = data.rewards.exp
+        clone.rewards.items = {}
+        if data.rewards.items then
+            for i, item in ipairs(data.rewards.items) do
+                clone.rewards.items[i] = item
+            end
+        end
+    end
+
+    -- Clone prerequisites
+    if data.prerequisites then
+        for i, prereq in ipairs(data.prerequisites) do
+            clone.prerequisites[i] = prereq
+        end
+    end
+
+    -- Clone objectives
     for i, obj in ipairs(data.objectives) do
         clone.objectives[i] = {
             type = obj.type,
@@ -402,20 +418,6 @@ function quest:getQuestsFromNPC(npc_id)
     end
 
     return available, completable
-end
-
--- Serialize for save system
-function quest:serialize()
-    return {
-        quest_states = self.quest_states
-    }
-end
-
--- Deserialize from save system
-function quest:deserialize(data)
-    if data and data.quest_states then
-        self.quest_states = data.quest_states
-    end
 end
 
 -- Reset quest state (for testing)

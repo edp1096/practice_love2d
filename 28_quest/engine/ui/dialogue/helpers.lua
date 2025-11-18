@@ -289,6 +289,11 @@ function helpers:clearAllFlags(dialogue)
     dialogue.dialogue_flags = {}
 end
 
+-- Clear all dialogue choice history (for New Game)
+function helpers:clearChoiceHistory(dialogue)
+    dialogue.all_dialogue_choices = {}
+end
+
 -- Evaluate a condition function
 function helpers:evaluateCondition(condition, context)
     if not condition then

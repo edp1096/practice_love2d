@@ -34,6 +34,9 @@ debug.show_bounds = false
 -- === Effects Debug ===
 debug.show_effects = false
 
+-- === Quest Debug ===
+debug.show_quest_debug = false
+
 -- === Advanced Features ===
 debug.hand_marking_active = false
 debug.manual_frame = 1
@@ -73,6 +76,7 @@ function debug:toggle()
         self.show_virtual_mouse = false
         self.show_effects = false
         self.show_bounds = false
+        self.show_quest_debug = false
 
         -- Reset virtual gamepad debug override
         local virtual_gamepad = require "engine.core.input.virtual_gamepad"
@@ -180,6 +184,11 @@ function debug:handleInput(key, context)
         local mouse_x, mouse_y = love.mouse.getPosition()
         local world_x, world_y = coords:cameraToWorld(mouse_x, mouse_y, context.camera)
         get_effects():test(world_x, world_y)
+
+    elseif key == "f7" then
+        -- F7: Toggle quest debug info
+        self.show_quest_debug = not self.show_quest_debug
+        dprint("Quest Debug:", self.show_quest_debug)
 
         -- === Hand Marking Mode ===
     elseif key == "h" and context.player then

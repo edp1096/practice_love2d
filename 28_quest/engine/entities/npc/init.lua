@@ -133,40 +133,31 @@ function npc:interact()
     end
 end
 
--- Draw quest indicator above NPC (! for available, ? for completable)
+-- Draw quest indicator above NPC (? for completable quests only)
 function npc:drawQuestIndicator(center_x, sprite_y)
     local quest_system = require "engine.core.quest"
 
-    -- Check if this NPC has any quests
-    local has_available = false
+    -- Check if this NPC has completable quests
     local has_completable = false
 
     -- Check all quests
     for quest_id, quest_def in pairs(quest_system.quest_registry) do
         local state = quest_system:getState(quest_id)
 
-        -- Check if this NPC gives available quests
-        if quest_def.giver_npc == self.id and state and state.state == quest_system.STATE.AVAILABLE then
-            if quest_system:canAccept(quest_id) then
-                has_available = true
-            end
-        end
-
         -- Check if this NPC receives completed quests
         local receiver = quest_def.receiver_npc or quest_def.giver_npc
         if receiver == self.id and state and state.state == quest_system.STATE.COMPLETED then
             has_completable = true
+            break
         end
     end
 
-    -- Draw indicator (? takes priority over !)
+    -- Draw indicator (? for completable quests only)
     local indicator = nil
     local color = {1, 1, 0, 1}  -- Yellow
 
     if has_completable then
         indicator = "?"
-    elseif has_available then
-        indicator = "!"
     end
 
     if indicator then

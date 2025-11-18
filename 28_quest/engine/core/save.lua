@@ -163,7 +163,7 @@ function save:deserialize(str)
     return result
 end
 
-function save:saveGame(slot, data, quest_system)
+function save:saveGame(slot, data)
     if slot < 1 or slot > self.MAX_SLOTS then
         print("ERROR: Invalid save slot: " .. slot)
         return false
@@ -171,11 +171,6 @@ function save:saveGame(slot, data, quest_system)
 
     data.timestamp = os.time()
     data.slot = slot
-
-    -- Save quest data if quest_system provided
-    if quest_system then
-        data.quests = quest_system:serialize()
-    end
 
     local serialized = self:serialize(data)
     if not serialized then
@@ -195,7 +190,7 @@ function save:saveGame(slot, data, quest_system)
     end
 end
 
-function save:loadGame(slot, quest_system)
+function save:loadGame(slot)
     if slot < 1 or slot > self.MAX_SLOTS then
         print("ERROR: Invalid save slot: " .. slot)
         return nil
@@ -217,11 +212,6 @@ function save:loadGame(slot, quest_system)
     if not data then
         print("ERROR: Failed to deserialize save data")
         return nil
-    end
-
-    -- Restore quest data if quest_system provided
-    if quest_system and data.quests then
-        quest_system:deserialize(data.quests)
     end
 
     self:saveRecentSlot(slot)

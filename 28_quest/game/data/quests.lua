@@ -38,7 +38,7 @@ quests.tutorial_talk = {
     objectives = {
         {
             type = "talk",
-            target = "passerby_01",  -- Changed to match actual NPC in game
+            target = "passerby_01",  -- Talk to this NPC
             count = 1,
             description = "Talk to the Villager"
         }

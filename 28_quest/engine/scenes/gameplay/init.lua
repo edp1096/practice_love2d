@@ -88,14 +88,21 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
         self.killed_enemies = save_data.killed_enemies
     end
 
-    -- Load dialogue choice history
+    -- Load or reset dialogue choice history
     if save_data and save_data.dialogue_choices then
         dialogue:importChoiceHistory(save_data.dialogue_choices)
+    else
+        -- New Game: Clear all dialogue history
+        dialogue:clearChoiceHistory()
+        dialogue:clearAllFlags()
     end
 
-    -- Load quest states
+    -- Load or reset quest states
     if save_data and save_data.quest_states then
         quest_system:importStates(save_data.quest_states)
+    else
+        -- New Game: Reset all quests to initial state
+        quest_system:resetAll()
     end
 
     -- Initialize level system with player config
@@ -106,9 +113,12 @@ function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
         level_system:init()  -- Use default config
     end
 
-    -- Load level system data from save
+    -- Load level system data from save or reset
     if save_data and save_data.level_data then
         level_system:deserialize(save_data.level_data)
+    else
+        -- New Game: Reset level to 1
+        level_system:reset()
     end
 
     -- Create world with injected entity classes and persistence data
