@@ -49,6 +49,10 @@ return {
             keyboard = { "lshift", "rshift" }, -- Shift for dodge
             gamepad = "rightshoulder" -- R1 button (DualSense)
         },
+        evade = {
+            keyboard = { "lalt", "ralt", "/" }, -- Alt or / for evade (stationary invincibility)
+            gamepad = "righttrigger" -- R2 button (DualSense)
+        },
         jump = {
             keyboard = { "space" }, -- Space only for jump (both modes)
             gamepad = "b"           -- Circle button (B) for jump (both modes)
@@ -57,13 +61,17 @@ return {
             keyboard = { "f" },
             gamepad = "y" -- Triangle button (DualSense)
         },
-        use_item = {
-            keyboard = { "q" },
-            gamepad = "leftshoulder" -- L1 button (DualSense)
+        use_quickslot_potion = {
+            keyboard = { "q" },  -- Q key for use potion
+            gamepad = "leftshoulder" -- L1 button (DualSense) - use quickslot potion
         },
         next_item = {
             keyboard = { "tab" },
-            gamepad = "lefttrigger" -- L2 button (DualSense)
+            gamepad = "dpdown" -- D-pad Down (DualSense) - cycle inventory selection
+        },
+        next_quickslot = {
+            keyboard = { "e" },  -- E key for next quickslot
+            gamepad = "lefttrigger" -- L2 button (DualSense) - cycle quickslot right (1->2->3->4->5)
         }
     },
 
@@ -71,7 +79,7 @@ return {
     inventory = {
         open_inventory = {
             keyboard = { "i" },
-            gamepad = "righttrigger" -- R2 button (DualSense)
+            gamepad = "back" -- Select/Back button (DualSense)
         },
         slot_1 = {
             keyboard = { "1" }
@@ -94,7 +102,7 @@ return {
     quest = {
         open_questlog = {
             keyboard = { "j" },          -- J for journal/quest log
-            gamepad = "back"             -- Select/Back button (DualSense)
+            gamepad = "dpleft"           -- D-pad Left (DualSense) - will open inventory instead
         }
     },
 

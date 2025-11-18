@@ -108,9 +108,17 @@ function physical_gamepad_input:isActionDown(action_mapping)
         return false
     end
 
-    -- Check gamepad button
+    -- Check gamepad button (support both string and array)
     if action_mapping.gamepad then
-        if self.joystick:isGamepadDown(action_mapping.gamepad) then
+        if type(action_mapping.gamepad) == "table" then
+            -- Array of buttons
+            for _, btn in ipairs(action_mapping.gamepad) do
+                if self.joystick:isGamepadDown(btn) then
+                    return true
+                end
+            end
+        elseif self.joystick:isGamepadDown(action_mapping.gamepad) then
+            -- Single button
             return true
         end
     end
@@ -147,8 +155,19 @@ function physical_gamepad_input:wasActionPressed(action_mapping, source, value)
 
     -- Handle button events
     if source == "gamepad" and value then
-        if action_mapping.gamepad and action_mapping.gamepad == value then
-            return true
+        -- Check gamepad button (support both string and array)
+        if action_mapping.gamepad then
+            if type(action_mapping.gamepad) == "table" then
+                -- Array of buttons
+                for _, btn in ipairs(action_mapping.gamepad) do
+                    if btn == value then
+                        return true
+                    end
+                end
+            elseif action_mapping.gamepad == value then
+                -- Single button
+                return true
+            end
         end
 
         if action_mapping.gamepad_dpad and ("dp" .. action_mapping.gamepad_dpad) == value then

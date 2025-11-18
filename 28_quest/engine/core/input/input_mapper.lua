@@ -298,7 +298,7 @@ function input_mapper:handleGamepadPressed(joystick, button)
         end
     end
 
-    -- Map other buttons to actions
+    -- Map other buttons to actions using input_config
     if button == "start" then
         return "pause"
     elseif button == "b" then
@@ -307,14 +307,29 @@ function input_mapper:handleGamepadPressed(joystick, button)
         return "parry"
     elseif button == "y" then
         return "interact" -- Direct interact (not context-based)
-    elseif button == "leftshoulder" then
-        return "use_item"
-    elseif button == "lefttrigger" then
-        return "next_item"
     elseif button == "rightshoulder" then
         return "dodge"
-    elseif button == "righttrigger" then
-        return "open_inventory"
+    end
+
+    -- Check input_config for remaining buttons (support arrays)
+    for category, actions in pairs(self.input_config) do
+        if type(actions) == "table" and category ~= "gamepad_settings" and category ~= "button_prompts" and category ~= "mode_overrides" then
+            for action_name, mapping in pairs(actions) do
+                if mapping.gamepad then
+                    if type(mapping.gamepad) == "table" then
+                        -- Array of buttons
+                        for _, btn in ipairs(mapping.gamepad) do
+                            if btn == button then
+                                return action_name
+                            end
+                        end
+                    elseif mapping.gamepad == button then
+                        -- Single button
+                        return action_name
+                    end
+                end
+            end
+        end
     end
 
     return nil
@@ -339,11 +354,28 @@ function input_mapper:handleGamepadAxis(joystick, axis, value)
 
     -- Detect trigger press (crossing threshold)
     if is_pressed and not was_pressed then
-        -- Trigger was just pressed
-        if axis == "triggerleft" then
-            return "next_item"
-        elseif axis == "triggerright" then
-            return "open_inventory"
+        -- Trigger was just pressed - check input_config for mapping
+        local trigger_button = (axis == "triggerleft") and "lefttrigger" or "righttrigger"
+
+        -- Check input_config for trigger mapping (support arrays)
+        for category, actions in pairs(self.input_config) do
+            if type(actions) == "table" and category ~= "gamepad_settings" and category ~= "button_prompts" and category ~= "mode_overrides" then
+                for action_name, mapping in pairs(actions) do
+                    if mapping.gamepad then
+                        if type(mapping.gamepad) == "table" then
+                            -- Array of buttons
+                            for _, btn in ipairs(mapping.gamepad) do
+                                if btn == trigger_button then
+                                    return action_name
+                                end
+                            end
+                        elseif mapping.gamepad == trigger_button then
+                            -- Single button
+                            return action_name
+                        end
+                    end
+                end
+            end
         end
     end
 

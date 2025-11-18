@@ -45,14 +45,22 @@ function combat.initialize(player, cfg)
     player.dodge_active = false
     player.dodge_duration = cfg.dodge_duration or 0.3
     player.dodge_timer = 0
-    player.dodge_cooldown = 0
-    player.dodge_cooldown_duration = cfg.dodge_cooldown or 1.0
     player.dodge_distance = cfg.dodge_distance or 150
     player.dodge_speed = 0
     player.dodge_direction_x = 0
     player.dodge_direction_y = 0
     player.dodge_invincible_duration = cfg.dodge_invincible_duration or 0.25
     player.dodge_invincible_timer = 0
+
+    -- Evade (stationary invincibility with movement allowed)
+    player.evade_active = false
+    player.evade_duration = cfg.evade_duration or 0.5
+    player.evade_timer = 0
+    player.evade_invincible_duration = cfg.evade_invincible_duration or 0.5
+
+    -- Shared cooldown for dodge and evade
+    player.dodge_evade_cooldown = 0
+    player.dodge_evade_cooldown_duration = cfg.dodge_evade_cooldown or 1.5
 
     -- Initialize player sounds
     player_sound.initialize()
@@ -79,8 +87,18 @@ function combat.updateTimers(player, dt)
         player.parry_cooldown = player.parry_cooldown - dt
     end
 
-    if player.dodge_cooldown > 0 then
-        player.dodge_cooldown = player.dodge_cooldown - dt
+    -- Shared dodge/evade cooldown
+    if player.dodge_evade_cooldown > 0 then
+        player.dodge_evade_cooldown = player.dodge_evade_cooldown - dt
+    end
+
+    if player.evade_active then
+        player.evade_timer = player.evade_timer - dt
+        if player.evade_timer <= 0 then
+            player.evade_active = false
+            player.state = "idle"
+            -- Restore collision class (evade doesn't change collision class)
+        end
     end
 
     if player.dodge_active then
@@ -223,7 +241,7 @@ function combat.startParry(player)
 end
 
 function combat.startDodge(player)
-    if player.dodge_cooldown > 0 or player.state == "attacking" or player.parry_active or player.dodge_active then
+    if player.dodge_evade_cooldown > 0 or player.state == "attacking" or player.parry_active or player.dodge_active or player.evade_active then
         return false
     end
 
@@ -270,7 +288,7 @@ function combat.startDodge(player)
     player.dodge_speed = player.dodge_distance / player.dodge_duration
     player.dodge_direction_x = dir_x
     player.dodge_direction_y = dir_y
-    player.dodge_cooldown = player.dodge_cooldown_duration
+    player.dodge_evade_cooldown = player.dodge_evade_cooldown_duration
     player.dodge_invincible_timer = player.dodge_invincible_duration
     player.state = "dodging"
 
@@ -285,6 +303,32 @@ function combat.startDodge(player)
     local v = constants.VIBRATION.DODGE; input:vibrate(v.duration, v.left, v.right)
 
     -- Play dodge sound
+    player_sound.playDodge()
+
+    return true
+end
+
+function combat.startEvade(player)
+    -- Cannot evade during other actions (uses shared cooldown)
+    if player.dodge_evade_cooldown > 0 or player.state == "attacking" or player.parry_active or player.dodge_active or player.evade_active then
+        return false
+    end
+
+    -- Evade is stationary - no direction needed
+    player.evade_active = true
+    player.evade_timer = player.evade_duration
+    player.dodge_evade_cooldown = player.dodge_evade_cooldown_duration
+    player.state = "evading"
+
+    -- Evade doesn't change collision class (stays as Player)
+    -- Player can still move during evade
+
+    player.last_action_time = 0
+
+    -- Haptic feedback for evade (lighter than dodge)
+    local v = constants.VIBRATION.DODGE; input:vibrate(v.duration * 0.5, v.left * 0.6, v.right * 0.6)
+
+    -- Play evade sound (can use dodge sound for now, or add new evade sound later)
     player_sound.playDodge()
 
     return true
@@ -334,6 +378,10 @@ function combat.takeDamage(player, damage, shake_callback)
         return false, false, false
     end
 
+    if player.evade_active then
+        return false, false, false
+    end
+
     if player.invincible_timer > 0 then
         return false, false, false
     end
@@ -377,6 +425,10 @@ end
 
 function combat.isDodgeInvincible(player)
     return player.dodge_invincible_timer > 0
+end
+
+function combat.isEvading(player)
+    return player.evade_active
 end
 
 -- ============================================================================

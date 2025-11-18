@@ -230,8 +230,8 @@ function touch.triggerButtonPress(button_name, vgp)
     end
 
     -- Map virtual button to gamepad button action
-    -- New layout: A=attack/interact, B=jump, X=parry, Y=reserved
-    --             L1=use_item, L2=next_item, R1=dodge, R2=inventory
+    -- Mobile layout: A=attack/interact, B=jump, X=parry, Y=reserved
+    --                L1=inventory, L2=questlog, R1=dodge, R2=evade
     local action = button.action
 
     if action == "attack_or_interact" then
@@ -246,18 +246,26 @@ function touch.triggerButtonPress(button_name, vgp)
     elseif action == "reserved" then
         -- Y button: reserved for future use
         scene_control.current:gamepadpressed(nil, "y")
-    elseif action == "use_item" then
-        -- L1 button: use item
-        scene_control.current:gamepadpressed(nil, "leftshoulder")
-    elseif action == "next_item" then
-        -- L2 button: next item
-        scene_control.current:gamepadpressed(nil, "lefttrigger")
+    elseif action == "open_inventory" then
+        -- L1 button: open inventory directly
+        local quest_system = require "engine.core.quest"
+        if scene_control.current.inventory and scene_control.current.player then
+            scene_control.push("container", scene_control.current.inventory, scene_control.current.player, quest_system, "inventory")
+        end
+    elseif action == "open_questlog" then
+        -- L2 button: open quest log directly
+        local quest_system = require "engine.core.quest"
+        if scene_control.current.inventory and scene_control.current.player then
+            scene_control.push("container", scene_control.current.inventory, scene_control.current.player, quest_system, "questlog")
+        end
     elseif action == "dodge" then
         -- R1 button: dodge
         scene_control.current:gamepadpressed(nil, "rightshoulder")
-    elseif action == "open_inventory" then
-        -- R2 button: open inventory
-        scene_control.current:gamepadpressed(nil, "righttrigger")
+    elseif action == "evade" then
+        -- R2 button: evade (gamepadaxis)
+        if scene_control.current.gamepadaxis then
+            scene_control.current:gamepadaxis(nil, "triggerright", 1.0)
+        end
     end
 end
 
@@ -270,6 +278,19 @@ function touch.triggerButtonRelease(button_name, vgp)
     local scene_control = require "engine.core.scene_control"
     if not scene_control.current or not scene_control.current.gamepadreleased then
         return
+    end
+
+    -- Special handling for trigger axes (L2/R2)
+    if button_name == "l2" then
+        -- Reset left trigger axis to 0
+        if scene_control.current.gamepadaxis then
+            scene_control.current:gamepadaxis(nil, "triggerleft", 0.0)
+        end
+    elseif button_name == "r2" then
+        -- Reset right trigger axis to 0
+        if scene_control.current.gamepadaxis then
+            scene_control.current:gamepadaxis(nil, "triggerright", 0.0)
+        end
     end
 
     -- Map virtual buttons to gamepad buttons

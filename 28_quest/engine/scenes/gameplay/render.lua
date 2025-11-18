@@ -91,11 +91,17 @@ function render.draw(self)
         text_ui:draw("INVINCIBLE", 17, 72, {1, 1, 0, 1}, hud.small_font)
     end
 
+    -- Dodge/Evade display (shared cooldown)
     if self.player.dodge_active then
         hud:draw_cooldown(pb.x + 12, pb.h - 52, 210, 0, 1, "Dodge", input:getPrompt("dodge"))
         text_ui:draw("DODGING", 17, vh - 29, {0.3, 1, 0.3, 1}, hud.small_font)
+    elseif self.player.evade_active then
+        hud:draw_cooldown(pb.x + 12, pb.h - 52, 210, 0, 1, "Evade", input:getPrompt("evade"))
+        text_ui:draw("EVADING", 17, vh - 29, {0.3, 1, 0.6, 1}, hud.small_font)
     else
-        hud:draw_cooldown(pb.x + 12, pb.h - 52, 210, self.player.dodge_cooldown, self.player.dodge_cooldown_duration, "Dodge", input:getPrompt("dodge"))
+        -- Show combined dodge/evade cooldown
+        local prompt = input:getPrompt("dodge") .. "/" .. input:getPrompt("evade")
+        hud:draw_cooldown(pb.x + 12, pb.h - 52, 210, self.player.dodge_evade_cooldown, self.player.dodge_evade_cooldown_duration, "Dodge/Evade", prompt)
     end
 
     if self.player.parry_cooldown > 0 then

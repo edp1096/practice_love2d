@@ -52,6 +52,9 @@ function input_handler.keypressed(self, key)
     elseif input:wasPressed("dodge", "keyboard", key) then
         -- Dodge (lshift key or R1 on gamepad) - works in both modes
         self.player:startDodge()
+    elseif input:wasPressed("evade", "keyboard", key) then
+        -- Evade (Alt or / key, or R2 on gamepad) - stationary invincibility
+        self.player:startEvade()
     elseif input:wasPressed("jump", "keyboard", key) then
         -- Jump works in both modes
         -- Platformer: physics-based jump
@@ -217,14 +220,14 @@ function input_handler.gamepadpressed(self, joystick, button)
         return
     end
 
-    -- LB button: Cycle quickslot (1 -> 2 -> 3 -> 4 -> 5 -> 1)
-    if button == "leftshoulder" then
+    -- D-pad Right: Cycle quickslot right (1 -> 2 -> 3 -> 4 -> 5 -> 1)
+    if button == "dpright" then
         self.selected_quickslot = self.selected_quickslot % 5 + 1
         sound:playSFX("ui", "move")
         return
     end
 
-    -- D-pad Up: Use selected quickslot
+    -- D-pad Up: Use selected quickslot (unchanged)
     if button == "dpup" then
         self.inventory:useQuickslot(self.selected_quickslot, self.player)
         return
@@ -395,13 +398,21 @@ function input_handler.gamepadpressed(self, joystick, button)
     elseif action == "dodge" then
         self.player:startDodge()
 
+    elseif action == "evade" then
+        self.player:startEvade()
+
+    elseif action == "use_quickslot_potion" then
+        -- L1: Use quickslot 1 (potion slot)
+        self.inventory:useQuickslot(1, self.player)
+
     elseif action == "open_inventory" then
         local quest_system = require "engine.core.quest"
         scene_control.push("container", self.inventory, self.player, quest_system, "inventory")
 
     elseif action == "open_questlog" then
+        -- D-pad Left: Open inventory instead of quest log
         local quest_system = require "engine.core.quest"
-        scene_control.push("container", self.inventory, self.player, quest_system, "questlog")
+        scene_control.push("container", self.inventory, self.player, quest_system, "inventory")
     end
 end
 
@@ -427,6 +438,14 @@ function input_handler.gamepadaxis(self, joystick, axis, value)
         if self.inventory then
             self.inventory:selectNext()
         end
+
+    elseif action == "next_quickslot" then
+        -- L2: Cycle quickslot right - 1 -> 2 -> 3 -> 4 -> 5 -> 1
+        self.selected_quickslot = self.selected_quickslot % 5 + 1
+        sound:playSFX("ui", "move")
+
+    elseif action == "evade" then
+        self.player:startEvade()
 
     elseif action == "open_inventory" then
         local quest_system = require "engine.core.quest"

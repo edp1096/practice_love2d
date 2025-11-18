@@ -50,10 +50,10 @@ virtual_gamepad.buttons = {
     y = { x = 0, y = 0, pressed = false, label = "Y", action = "reserved" },            -- Reserved for future use
 
     -- Shoulder/Trigger buttons
-    l1 = { x = 0, y = 0, pressed = false, label = "L1", action = "use_item" },          -- Use item
-    l2 = { x = 0, y = 0, pressed = false, label = "L2", action = "next_item" },         -- Next item
-    r1 = { x = 0, y = 0, pressed = false, label = "R1", action = "dodge" },             -- Dodge
-    r2 = { x = 0, y = 0, pressed = false, label = "R2", action = "open_inventory" },    -- Open inventory
+    l1 = { x = 0, y = 0, pressed = false, label = "L1", action = "open_inventory" },        -- Open Inventory
+    l2 = { x = 0, y = 0, pressed = false, label = "L2", action = "open_questlog" },         -- Open Quest Log
+    r1 = { x = 0, y = 0, pressed = false, label = "R1", action = "dodge" },                 -- Dodge
+    r2 = { x = 0, y = 0, pressed = false, label = "R2", action = "evade" },                 -- Evade (stationary invincibility)
 }
 
 virtual_gamepad.menu_button = {

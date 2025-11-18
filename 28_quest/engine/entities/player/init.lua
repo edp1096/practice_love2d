@@ -83,6 +83,8 @@ function player:startParry() return combat.startParry(self) end
 
 function player:startDodge() return combat.startDodge(self) end
 
+function player:startEvade() return combat.startEvade(self) end
+
 function player:jump()
     if self.game_mode == "platformer" then
         -- Platformer: Physics-based jump
@@ -119,6 +121,8 @@ function player:isParrying() return combat.isParrying(self) end
 function player:isDodging() return combat.isDodging(self) end
 
 function player:isDodgeInvincible() return combat.isDodgeInvincible(self) end
+
+function player:isEvading() return combat.isEvading(self) end
 
 function player:draw() render.draw(self) end
 

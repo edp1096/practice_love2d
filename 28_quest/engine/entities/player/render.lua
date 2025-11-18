@@ -68,6 +68,14 @@ function render.draw(player)
         should_draw = (blink_cycle % 2 == 0)
     end
 
+    -- Evade effect: semi-transparent glow (no blinking, no afterimages)
+    local evade_alpha = nil
+    if player.evade_active then
+        -- Pulsing transparency effect (0.1 ~ 0.5 range for strong transparency)
+        local pulse = 0.3 + 0.2 * math.sin(love.timer.getTime() * 12)
+        evade_alpha = pulse
+    end
+
     -- Dodge afterimages
     if player.dodge_active then
         local progress = 1 - (player.dodge_timer / player.dodge_duration)
@@ -86,6 +94,14 @@ function render.draw(player)
     end
 
     if should_draw then
+        -- Evade glow (different from parry - greenish tint)
+        if evade_alpha then
+            love.graphics.setBlendMode("add")
+            love.graphics.setColor(0.3, 1, 0.6, 0.3)
+            player.anim:draw(player.spriteSheet, draw_x, draw_y, nil, 3, nil, 24, 24)
+            love.graphics.setBlendMode("alpha")
+        end
+
         -- Parry glow
         if player.parry_active then
             love.graphics.setBlendMode("add")
@@ -94,8 +110,12 @@ function render.draw(player)
             love.graphics.setBlendMode("alpha")
         end
 
-        -- Normal sprite
-        love.graphics.setColor(1, 1, 1, 1)
+        -- Normal sprite (with evade transparency if active)
+        if evade_alpha then
+            love.graphics.setColor(1, 1, 1, evade_alpha)
+        else
+            love.graphics.setColor(1, 1, 1, 1)
+        end
         player.anim:draw(player.spriteSheet, draw_x, draw_y, nil, 3, nil, 24, 24)
 
         -- Hit flash

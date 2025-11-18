@@ -622,7 +622,7 @@ function core:handleInput(dialogue, source, ...)
     elseif source == "touch_release" then
         local id, x, y = ...
         -- Touch release: handle button actions
-        return helpers:touchReleased(dialogue, 0, x, y)
+        return helpers:touchReleased(dialogue, id, x, y)
 
     elseif source == "touch_move" then
         local id, x, y = ...
