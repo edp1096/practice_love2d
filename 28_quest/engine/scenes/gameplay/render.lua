@@ -77,6 +77,13 @@ function render.draw(self)
     -- Health bar
     hud:draw_health_bar(pb.x + 12, pb.y + 12, 210, 20, self.player.health, self.player.max_health)
 
+    -- Joystick info (right of HP bar, green text)
+    if input:hasGamepad() then
+        local colors = require "engine.utils.colors"
+        local joystick_text = "Joystick: " .. input.joystick_name
+        text_ui:draw(joystick_text, pb.x + 12 + 210 + 12, pb.y + 16, colors.for_menu_controller_info, hud.small_font)
+    end
+
     -- Level and gold info (below health bar)
     local level = level_system:getLevel()
     local gold = level_system:getGold()

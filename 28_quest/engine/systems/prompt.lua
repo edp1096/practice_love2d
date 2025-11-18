@@ -4,11 +4,22 @@
 local input = require "engine.core.input"
 local text_ui = require "engine.utils.text"
 local colors = require "engine.utils.colors"
+local button_icons = require "engine.utils.button_icons"
 
 local prompt = {}
 
 -- Reference to dialogue system (set by main.lua)
 prompt.dialogue = nil
+
+-- Map action names to PlayStation button names (for icon drawing)
+local ps_button_map = {
+    interact = "triangle",      -- Triangle
+    attack = "cross",           -- Cross (X)
+    dodge = "circle",           -- Circle (O)
+    parry = "square",           -- Square
+    menu_select = "cross",      -- Cross
+    menu_back = "circle"        -- Circle
+}
 
 -- Draw interaction prompt (button icon in circle)
 -- Parameters:
@@ -25,12 +36,6 @@ function prompt:draw(action, x, y, y_offset, color)
     y_offset = y_offset or -30
     color = color or {1, 1, 0, 1}
 
-    -- Get button prompt based on current input method
-    local button_text = input:getPrompt(action)
-    local font = love.graphics.getFont()
-    local text_width = font:getWidth(button_text)
-    local text_height = font:getHeight()
-
     local circle_x = x
     local circle_y = y + y_offset
     local circle_radius = 24
@@ -45,21 +50,31 @@ function prompt:draw(action, x, y, y_offset, color)
     love.graphics.circle("line", circle_x, circle_y, circle_radius)
     love.graphics.setLineWidth(1)
 
-    -- Draw button text with outline for better visibility
-    local text_x = circle_x - text_width / 2
-    local text_y = circle_y - text_height / 2
+    -- Draw button icon/text
+    if input.gamepad_type == "playstation" and ps_button_map[action] then
+        -- Draw PlayStation icon (colored shapes)
+        button_icons:drawPlayStation(circle_x, circle_y, ps_button_map[action], 20)
+    else
+        -- Draw text (Xbox or keyboard)
+        local button_text = input:getPrompt(action)
+        local font = love.graphics.getFont()
+        local text_width = font:getWidth(button_text)
+        local text_height = font:getHeight()
+        local text_x = circle_x - text_width / 2
+        local text_y = circle_y - text_height / 2
 
-    -- Text outline (black)
-    for ox = -1, 1 do
-        for oy = -1, 1 do
-            if ox ~= 0 or oy ~= 0 then
-                text_ui:draw(button_text, text_x + ox, text_y + oy, {0, 0, 0, 0.8})
+        -- Text outline (black)
+        for ox = -1, 1 do
+            for oy = -1, 1 do
+                if ox ~= 0 or oy ~= 0 then
+                    text_ui:draw(button_text, text_x + ox, text_y + oy, {0, 0, 0, 0.8})
+                end
             end
         end
-    end
 
-    -- Text foreground (bright yellow)
-    text_ui:draw(button_text, text_x, text_y, colors.for_prompt_outline)
+        -- Text foreground (bright yellow)
+        text_ui:draw(button_text, text_x, text_y, colors.for_prompt_outline)
+    end
 end
 
 return prompt

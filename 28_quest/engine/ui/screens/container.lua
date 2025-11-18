@@ -80,8 +80,10 @@ function container:exit()
         input.virtual_gamepad:show()
     end
 
-    -- Cleanup sub-screens
+    -- Cleanup sub-screens (try both exit and leave for compatibility)
+    if inventory_screen.exit then inventory_screen:exit() end
     if inventory_screen.leave then inventory_screen:leave() end
+    if questlog_screen.exit then questlog_screen:exit() end
     if questlog_screen.leave then questlog_screen:leave() end
 end
 
@@ -133,10 +135,15 @@ end
 
 function container:drawTabBar()
     local vw, vh = display:GetVirtualDimensions()
-    local tab_width = 200
+    local tab_width = 130  -- Reduced from 200 to ~2/3
     local tab_spacing = ui_constants.PADDING_MEDIUM  -- 10
-    local total_width = (#self.tabs * tab_width) + ((#self.tabs - 1) * tab_spacing)
-    local start_x = (vw - total_width) / 2
+
+    -- Calculate panel position (same as inventory/questlog panels)
+    local panel_w = ui_constants.PANEL_WIDTH  -- 720
+    local panel_x = (vw - panel_w) / 2
+
+    -- Tabs start from left edge of panel
+    local start_x = panel_x + 20  -- 20px from panel left edge
     local start_y = ui_constants.TAB_BAR_Y  -- 20
 
     for i, tab in ipairs(self.tabs) do
@@ -189,7 +196,13 @@ end
 
 function container:drawCloseButton()
     local vw, vh = display:GetVirtualDimensions()
-    local x = vw - self.close_button_size - self.close_button_padding
+
+    -- Calculate panel position (same as inventory/questlog panels)
+    local panel_w = ui_constants.PANEL_WIDTH  -- 720
+    local panel_x = (vw - panel_w) / 2
+
+    -- Close button at right edge of panel
+    local x = panel_x + panel_w - self.close_button_size - self.close_button_padding
     local y = ui_constants.TAB_BAR_Y  -- 20, same as tab bar Y position
 
     shapes:drawCloseButton(x, y, self.close_button_size, self.close_button_hovered)
@@ -246,11 +259,15 @@ end
 
 function container:mousepressed(x, y, button)
     local vx, vy = display:ToVirtualCoords(x, y)
+    local vw, vh = display:GetVirtualDimensions()
+
+    -- Calculate panel position
+    local panel_w = ui_constants.PANEL_WIDTH  -- 720
+    local panel_x = (vw - panel_w) / 2
 
     -- Check close button click
-    local vw, vh = display:GetVirtualDimensions()
-    local close_x = vw - self.close_button_size - self.close_button_padding
-    local close_y = 20  -- Same as drawCloseButton
+    local close_x = panel_x + panel_w - self.close_button_size - self.close_button_padding
+    local close_y = ui_constants.TAB_BAR_Y  -- 20
 
     if vx >= close_x and vx <= close_x + self.close_button_size and
        vy >= close_y and vy <= close_y + self.close_button_size then
@@ -260,10 +277,9 @@ function container:mousepressed(x, y, button)
     end
 
     -- Check tab clicks
-    local tab_width = 200
+    local tab_width = 130  -- Reduced from 200 to ~2/3
     local tab_spacing = ui_constants.PADDING_MEDIUM  -- 10
-    local total_width = (#self.tabs * tab_width) + ((#self.tabs - 1) * tab_spacing)
-    local start_x = (vw - total_width) / 2
+    local start_x = panel_x + 20  -- 20px from panel left edge
     local start_y = ui_constants.TAB_BAR_Y  -- 20
 
     for i, tab in ipairs(self.tabs) do
@@ -294,10 +310,14 @@ end
 
 function container:mousemoved(x, y, dx, dy)
     local vx, vy = display:ToVirtualCoords(x, y)
+    local vw, vh = display:GetVirtualDimensions()
+
+    -- Calculate panel position
+    local panel_w = ui_constants.PANEL_WIDTH  -- 720
+    local panel_x = (vw - panel_w) / 2
 
     -- Update close button hover state
-    local vw, vh = display:GetVirtualDimensions()
-    local close_x = vw - self.close_button_size - self.close_button_padding
+    local close_x = panel_x + panel_w - self.close_button_size - self.close_button_padding
     local close_y = ui_constants.TAB_BAR_Y  -- 20
 
     self.close_button_hovered = (
@@ -306,10 +326,9 @@ function container:mousemoved(x, y, dx, dy)
     )
 
     -- Update tab hover state
-    local tab_width = 200
+    local tab_width = 130  -- Reduced from 200 to ~2/3
     local tab_spacing = ui_constants.PADDING_MEDIUM  -- 10
-    local total_width = (#self.tabs * tab_width) + ((#self.tabs - 1) * tab_spacing)
-    local start_x = (vw - total_width) / 2
+    local start_x = panel_x + 20  -- 20px from panel left edge
     local start_y = ui_constants.TAB_BAR_Y  -- 20
 
     self.tab_button_hovered = nil

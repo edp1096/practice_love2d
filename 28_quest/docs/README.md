@@ -143,7 +143,7 @@ The `game/` folder contains **only** game-specific content:
 - Quick-select: **1-5** keys (in gameplay)
 - Scroll quests: **Mouse wheel** / **Right Stick** / **Swipe** (mobile)
 
-### 5. Persistence System  NEW!
+### 5. Persistence System
 - **One-time items:** Pick up starter weapons (staff, sword) once
 - **One-time enemies:** Kill bosses once, they stay dead
 - **Respawning:** Regular items/enemies respawn by default
@@ -525,6 +525,16 @@ php -S localhost:8080
 
 ---
 
+## Recent Changes
+
+**2025-11-19: Controller Input Polish**
+- **PlayStation Button Icons**: DualSense controllers now show colored button shapes (✕○□△) instead of Xbox names (A/B/X/Y)
+- **Gamepad Auto-Detection**: Automatically detects controller type (Xbox vs PlayStation) and displays appropriate button prompts
+- **Dynamic Button Prompts**: All UI elements (Skip/Next buttons, interaction prompts, inventory instructions) dynamically adapt to active controller
+- **UI Layout Improvements**: Inventory/Quest tabs left-aligned, close button right-aligned to panel, tab width reduced for cleaner design
+
+---
+
 **Framework:** LÖVE 11.5 + Lua 5.1
-**Architecture:** Layered Pyramid Architecture (99.2% clean) + Engine/Game Separation + Dependency Injection + Data-Driven
-**Last Updated:** 2025-11-18
+**Architecture:** Layered Pyramid Architecture (99.2% clean) + Engine/Game Separation + Dependency Injection + Data-Driven + Controller Support
+**Last Updated:** 2025-11-19

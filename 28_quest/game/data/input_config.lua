@@ -93,6 +93,10 @@ return {
             keyboard = { "escape", "j" },  -- ESC, J for close only
             gamepad = { "b", "start" }     -- B, Start for close only (back button removed - now toggle)
         },
+        use_item = {
+            keyboard = { "return", "space" },  -- ENTER or SPACE to use selected item
+            gamepad = { "y", "b" }  -- Y (Triangle) or B (Circle) - double-press to use
+        },
         prev_tab = {
             keyboard = { "q", "tab" },  -- Q or Tab
             gamepad = "leftshoulder"

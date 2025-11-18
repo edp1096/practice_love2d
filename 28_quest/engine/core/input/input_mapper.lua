@@ -6,6 +6,7 @@ local virtual_pad = require "engine.core.input.sources.virtual_pad"
 local gamepad = require "engine.core.input.sources.gamepad"
 local mouse_input = require "engine.core.input.sources.mouse_input"
 local keyboard_input = require "engine.core.input.sources.keyboard_input"
+local dprint = require("engine.core.debug").dprint
 
 local input_mapper = {}
 
@@ -293,7 +294,7 @@ end
 -- Handle gamepad button pressed event
 -- Returns action name(s) to be handled by scene, or nil if handled internally
 function input_mapper:handleGamepadPressed(joystick, button)
-    print(string.format("DEBUG: scene_context=%s, button=%s", self.scene_context or "nil", button))
+    dprint(string.format("scene_context=%s, button=%s", self.scene_context or "nil", button))
 
     -- Check context action first (A button in gameplay)
     if button == "a" and self.scene_context == "gameplay" and self.game_context then
@@ -336,13 +337,13 @@ function input_mapper:handleGamepadPressed(joystick, button)
                         -- Array of buttons
                         for _, btn in ipairs(mapping.gamepad) do
                             if btn == button then
-                                print(string.format("DEBUG: button=%s -> action=%s (category=%s)", button, action_name, category))
+                                dprint(string.format("button=%s -> action=%s (category=%s)", button, action_name, category))
                                 return action_name
                             end
                         end
                     elseif mapping.gamepad == button then
                         -- Single button
-                        print(string.format("DEBUG: button=%s -> action=%s (category=%s)", button, action_name, category))
+                        dprint(string.format("button=%s -> action=%s (category=%s)", button, action_name, category))
                         return action_name
                     end
                 end
@@ -350,7 +351,7 @@ function input_mapper:handleGamepadPressed(joystick, button)
         end
     end
 
-    print(string.format("DEBUG: button=%s -> no action found", button))
+    dprint(string.format("button=%s -> no action found", button))
     return nil
 end
 

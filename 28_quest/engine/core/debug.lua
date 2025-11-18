@@ -388,13 +388,7 @@ function debug:drawInfo(display, player, current_save_slot, effects_sys, quest_s
         effects_count = effects_sys:getCount()
     end
 
-    local gamepad_info = nil
-    local has_gamepad = pcall(function()
-        local input = require "engine.core.input"
-        if input:hasGamepad() then
-            gamepad_info = input:getDebugInfo()
-        end
-    end)
+    -- Gamepad info removed - now shown in gameplay HUD (right of HP bar)
 
     -- Get quest info (if quest debug enabled)
     local quest_info = nil
@@ -409,8 +403,7 @@ function debug:drawInfo(display, player, current_save_slot, effects_sys, quest_s
     local mobile_extra = display.is_mobile and 60 or 0
     local player_extra = player and 120 or 0
     local effects_extra = has_effects and 20 or 0
-    local gamepad_extra = gamepad_info and 40 or 0
-    local panel_height = base_height + mobile_extra + player_extra + effects_extra + gamepad_extra + quest_extra
+    local panel_height = base_height + mobile_extra + player_extra + effects_extra + quest_extra
 
     -- Offset to avoid overlapping HP bar and inventory (height ~60)
     local y_start = 70
@@ -482,12 +475,6 @@ function debug:drawInfo(display, player, current_save_slot, effects_sys, quest_s
     if has_effects then
         text_ui:draw("Active Effects: " .. effects_count, 10, y_offset, white)
         y_offset = y_offset + 20
-    end
-
-    -- Gamepad info (if connected)
-    if gamepad_info then
-        text_ui:draw(gamepad_info, 10, y_offset, white)
-        y_offset = y_offset + 40
     end
 
     -- Quest debug info (if enabled)

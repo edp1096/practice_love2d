@@ -19,7 +19,7 @@ constants.FONT_SIZE_SMALL = 12  -- Small text, hints
 
 -- Close button settings
 constants.CLOSE_BUTTON_SIZE = 30
-constants.CLOSE_BUTTON_PADDING = 15
+constants.CLOSE_BUTTON_PADDING = 10  -- Distance from panel edge
 
 -- Common spacing values
 constants.PADDING_SMALL = 5

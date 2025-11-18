@@ -411,7 +411,7 @@ function slot_renderer.renderItemDetails(inventory, selected_item_id, player, wi
         status_text = "✓ Can use"
         status_color = colors.for_item_usable
     else
-        status_text = "✗ Cannot use (HP full)"
+        status_text = "X Cannot use (HP full)"
         status_color = colors.for_item_unusable
     end
 

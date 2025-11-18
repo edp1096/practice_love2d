@@ -10,6 +10,7 @@ local input_handler = require "engine.ui.screens.inventory.input"
 local fonts = require "engine.utils.fonts"
 local shapes = require "engine.utils.shapes"
 local text_ui = require "engine.utils.text"
+local button_icons = require "engine.utils.button_icons"
 local input = require "engine.core.input"
 local colors = require "engine.utils.colors"
 local ui_constants = require "engine.ui.constants"
@@ -116,6 +117,63 @@ function inventory:exit()
     if input.virtual_gamepad then
         input.virtual_gamepad:show()
     end
+
+    -- Reset all drag states and return items to original positions
+    self:cancelAllDrags()
+end
+
+-- Helper: Cancel all drag operations and restore items
+function inventory:cancelAllDrags()
+    -- Reset mouse drag state (return item if dragging from quickslot)
+    if self.drag_state.active then
+        if self.drag_state.item_id and self.drag_state.from_quickslot_index then
+            self.inventory:setQuickslot(self.drag_state.from_quickslot_index, self.drag_state.item_id)
+        end
+        self:resetDragState()
+    end
+
+    -- Reset gamepad drag state (restore item to original grid position)
+    if self.gamepad_drag.active then
+        if self.gamepad_drag.item_id and self.gamepad_drag.item_obj then
+            self.inventory:placeItem(
+                self.gamepad_drag.item_id,
+                self.gamepad_drag.item_obj,
+                self.gamepad_drag.origin_x,
+                self.gamepad_drag.origin_y,
+                self.gamepad_drag.origin_width,
+                self.gamepad_drag.origin_height,
+                self.gamepad_drag.origin_rotated
+            )
+        end
+        self:resetGamepadDragState()
+    end
+
+    -- Reset other states
+    self.cursor_mode = false
+    self:resetQuickslotHold()
+end
+
+-- Helper: Reset mouse drag state
+function inventory:resetDragState()
+    self.drag_state.active = false
+    self.drag_state.item_id = nil
+    self.drag_state.item_obj = nil
+    self.drag_state.from_quickslot_index = nil
+end
+
+-- Helper: Reset gamepad drag state
+function inventory:resetGamepadDragState()
+    self.gamepad_drag.active = false
+    self.gamepad_drag.item_id = nil
+    self.gamepad_drag.item_obj = nil
+end
+
+-- Helper: Reset quickslot hold state
+function inventory:resetQuickslotHold()
+    self.quickslot_hold.active = false
+    self.quickslot_hold.slot_index = nil
+    self.quickslot_hold.timer = 0
+    self.quickslot_hold.source = nil
 end
 
 function inventory:update(dt)
@@ -171,10 +229,7 @@ function inventory:update(dt)
                     end
 
                     -- Reset hold state
-                    self.quickslot_hold.active = false
-                    self.quickslot_hold.slot_index = nil
-                    self.quickslot_hold.timer = 0
-                    self.quickslot_hold.source = nil
+                    self:resetQuickslotHold()
                 end
             end
         end
@@ -348,10 +403,10 @@ function inventory:draw()
 
     shapes:drawPanel(window_x, window_y, window_w, window_h, colors.for_inventory_bg, colors.for_inventory_border, 10)
 
-    -- Draw title
+    -- Draw title (center-aligned)
     local title = "INVENTORY"
     local title_w = self.title_font:getWidth(title)
-    text_ui:draw(title, (vw - title_w) / 2, window_y + 20, {1, 1, 1, 1}, self.title_font)
+    text_ui:draw(title, window_x + (window_w - title_w) / 2, window_y + 20, {1, 1, 1, 1}, self.title_font)
 
     -- Draw close button and instructions (only if NOT in container)
     if not in_container then
@@ -371,9 +426,53 @@ function inventory:draw()
 
     -- Draw usage instruction (if item selected)
     if self.selected_item_id then
-        local use_prompt = input:getPrompt("use_item") or input:getPrompt("menu_select") or "ENTER"
-        local use_text = string.format("Press %s to use", use_prompt)
-        text_ui:draw(use_text, window_x + 20, window_y + 38, {0.6, 0.8, 1, 1}, self.desc_font)
+        local instruction_x = window_x + 20
+        local instruction_y = window_y + 38
+        local instruction_color = {0.6, 0.8, 1, 1}
+
+        -- Different instructions for keyboard vs gamepad
+        if input:hasGamepad() then
+            -- Gamepad: Draw "Press [icon] twice to use" with shape icon for PlayStation
+            local press_text = "Press "
+            local twice_text = " twice to use"
+
+            -- Draw "Press "
+            text_ui:draw(press_text, instruction_x, instruction_y, instruction_color, self.desc_font)
+            local press_width = self.desc_font:getWidth(press_text)
+
+            -- Draw button icon or text
+            local icon_x = instruction_x + press_width
+            if input.gamepad_type == "playstation" then
+                -- Draw PlayStation shape icon (Triangle or Circle)
+                local mapping = input.input_config.inventory.use_item.gamepad
+                local button = type(mapping) == "table" and mapping[1] or mapping
+
+                -- Map gamepad button to PlayStation shape
+                local ps_button_map = {
+                    y = "triangle",
+                    b = "circle"
+                }
+                local shape = ps_button_map[button] or "triangle"
+
+                -- Draw icon centered vertically with text
+                local text_height = self.desc_font:getHeight()
+                button_icons:drawPlayStation(icon_x + 8, instruction_y + text_height / 2, shape, 14)
+                icon_x = icon_x + 16  -- Icon takes 16px width
+            else
+                -- Draw Xbox text
+                local button_text = input:getPrompt("use_item")
+                text_ui:draw(button_text, icon_x, instruction_y, instruction_color, self.desc_font)
+                icon_x = icon_x + self.desc_font:getWidth(button_text)
+            end
+
+            -- Draw " twice to use"
+            text_ui:draw(twice_text, icon_x, instruction_y, instruction_color, self.desc_font)
+        else
+            -- Keyboard: Single press ENTER or SPACE
+            local use_prompt = input:getPrompt("use_item")
+            local use_text = string.format("Press %s to use", use_prompt)
+            text_ui:draw(use_text, instruction_x, instruction_y, instruction_color, self.desc_font)
+        end
     end
 
     -- Draw equipment slots panel (left side)

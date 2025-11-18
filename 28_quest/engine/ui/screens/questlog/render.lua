@@ -47,9 +47,11 @@ function render:draw()
     -- Panel background and border (match inventory style)
     shapes:drawPanel(panel_x, panel_y, panel_w, panel_h, colors.for_inventory_bg, colors.for_inventory_border, 10)
 
-    -- Title
+    -- Title (center-aligned)
     local title_y = panel_y + 20
-    text_ui:draw("Quest Log", panel_x + panel_w / 2 - 60, title_y, colors.for_ui_title or {1, 1, 1}, self.title_font)
+    local title_text = "Quest Log"
+    local title_w = self.title_font:getWidth(title_text)
+    text_ui:draw(title_text, panel_x + (panel_w - title_w) / 2, title_y, colors.for_ui_title or {1, 1, 1}, self.title_font)
 
     -- Close button (only if NOT in container)
     if not in_container then

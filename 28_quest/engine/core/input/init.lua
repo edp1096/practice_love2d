@@ -9,6 +9,7 @@ local input = {}
 input.mapper = nil
 input.joystick = nil
 input.joystick_name = "No Controller"
+input.gamepad_type = "xbox"  -- Default to xbox, can be "xbox" or "playstation"
 input.settings = {
     deadzone = 0.15,
     vibration_enabled = true,
@@ -111,15 +112,39 @@ function input:setVirtualGamepad(vgp)
     end
 end
 
+-- Detect gamepad type from name
+local function detectGamepadType(joystick_name)
+    if not joystick_name then
+        return "xbox"  -- Default
+    end
+
+    local name_lower = joystick_name:lower()
+
+    -- PlayStation/DualSense detection
+    if name_lower:find("dualsense") or
+       name_lower:find("dualshock") or
+       name_lower:find("playstation") or
+       name_lower:find("ps5") or
+       name_lower:find("ps4") or
+       name_lower:find("ps3") then
+        return "playstation"
+    end
+
+    -- Default to Xbox for everything else
+    return "xbox"
+end
+
 function input:detectJoystick()
     local joysticks = love.joystick.getJoysticks()
     if #joysticks > 0 then
         self.joystick = joysticks[1]
         self.joystick_name = self.joystick:getName()
+        self.gamepad_type = detectGamepadType(self.joystick_name)
         return true
     else
         self.joystick = nil
         self.joystick_name = "No Controller"
+        self.gamepad_type = "xbox"  -- Reset to default
         return false
     end
 end
@@ -129,6 +154,7 @@ function input:joystickAdded(joystick)
     if not self.joystick then
         self.joystick = joystick
         self.joystick_name = joystick:getName()
+        self.gamepad_type = detectGamepadType(self.joystick_name)
 
         if self.mapper then
             self.mapper:setJoystick(joystick, self.settings)
@@ -140,6 +166,7 @@ function input:joystickRemoved(joystick)
     if self.joystick == joystick then
         self.joystick = nil
         self.joystick_name = "No Controller"
+        self.gamepad_type = "xbox"  -- Reset to default
 
         if self.mapper then
             self.mapper:setJoystick(nil)
@@ -268,13 +295,16 @@ function input:hasGamepad()
 end
 
 -- Helper function to convert gamepad button names to readable format
-local function formatGamepadButton(button)
-    local button_names = {
+local function formatGamepadButton(button, gamepad_type)
+    local button_lower = button:lower()
+
+    -- Xbox button names (default)
+    local xbox_names = {
         -- Shoulder buttons
-        leftshoulder = "L1",
-        rightshoulder = "R1",
-        lefttrigger = "L2",
-        righttrigger = "R2",
+        leftshoulder = "LB",
+        rightshoulder = "RB",
+        lefttrigger = "LT",
+        righttrigger = "RT",
 
         -- Face buttons
         a = "A",
@@ -289,49 +319,83 @@ local function formatGamepadButton(button)
         dpright = "D-Right",
 
         -- System buttons
-        start = "START",
-        back = "SELECT",
-        guide = "HOME",
+        start = "Menu",
+        back = "View",
+        guide = "Xbox",
 
         -- Stick buttons
         leftstick = "L3",
         rightstick = "R3"
     }
 
-    return button_names[button:lower()] or button:upper()
+    -- PlayStation button names (using text instead of symbols due to font limitations)
+    local ps_names = {
+        -- Shoulder buttons
+        leftshoulder = "L1",
+        rightshoulder = "R1",
+        lefttrigger = "L2",
+        righttrigger = "R2",
+
+        -- Face buttons (text representation)
+        a = "Cross",
+        b = "Circle",
+        x = "Square",
+        y = "Triangle",
+
+        -- D-pad
+        dpup = "D-Up",
+        dpdown = "D-Down",
+        dpleft = "D-Left",
+        dpright = "D-Right",
+
+        -- System buttons
+        start = "Options",
+        back = "Share",
+        guide = "PS",
+
+        -- Stick buttons
+        leftstick = "L3",
+        rightstick = "R3"
+    }
+
+    -- Select button names based on gamepad type
+    local button_names = (gamepad_type == "playstation") and ps_names or xbox_names
+    return button_names[button_lower] or button:upper()
 end
 
 function input:getPrompt(action)
     local mapping = getActionMapping(action)
     if not mapping then return "?" end
 
-    -- Virtual gamepad prompts
+    -- Virtual gamepad prompts (use text for mobile)
     if self.virtual_gamepad and self.virtual_gamepad.enabled then
         if action == "attack" then
-            return "A"
+            return "Cross"
         elseif action == "dodge" then
-            return "B"
+            return "Circle"
         elseif action == "parry" then
-            return "X"
+            return "Square"
         elseif action == "interact" then
-            return "Y"
+            return "Triangle"
         elseif action == "pause" then
-            return "START"
+            return "Options"
         elseif action == "use_item" then
             return "L1"
         elseif action == "menu_select" then
-            return "A"
+            return "Cross"
         elseif action == "open_inventory" then
-            return "R2"
+            return "L2"
         elseif action == "menu_back" then
-            return "B"
+            return "Circle"
         end
     end
 
-    -- Physical gamepad prompts
+    -- Physical gamepad prompts (use detected gamepad type)
     if self.joystick then
         if mapping.gamepad then
-            return formatGamepadButton(mapping.gamepad)
+            -- Handle both single button and array of buttons
+            local button = type(mapping.gamepad) == "table" and mapping.gamepad[1] or mapping.gamepad
+            return formatGamepadButton(button, self.gamepad_type)
         end
     end
 

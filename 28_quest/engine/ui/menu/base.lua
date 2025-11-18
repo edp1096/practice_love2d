@@ -144,7 +144,8 @@ function MenuSceneBase:create(config)
         -- Debug info
         if config.show_debug then
             if input:hasGamepad() then
-                text_ui:draw("Controller: " .. input.joystick_name, 10, 10, colors.for_menu_controller_info)
+                local short_name = input.joystick_name:match("(%S+)") or input.joystick_name
+                text_ui:draw("Joystick: " .. short_name, 10, 10, colors.for_menu_controller_info)
             end
 
             if debug.enabled then
