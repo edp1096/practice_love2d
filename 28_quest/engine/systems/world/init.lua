@@ -21,7 +21,7 @@ world.healing_point_class = nil
 world.world_item_class = nil
 world.loot_tables = nil
 
-function world:new(map_path, entity_classes, picked_items, killed_enemies)
+function world:new(map_path, entity_classes, picked_items, killed_enemies, transformed_npcs)
     local instance = setmetatable({}, world)
 
     -- Store injected entity classes (fallback to class-level if not provided)
@@ -35,6 +35,7 @@ function world:new(map_path, entity_classes, picked_items, killed_enemies)
     -- Store persistence lists
     instance.picked_items = picked_items or {}
     instance.killed_enemies = killed_enemies or {}
+    instance.transformed_npcs = transformed_npcs or {}
 
     local map_info = love.filesystem.getInfo(map_path)
     if not map_info then
@@ -166,6 +167,8 @@ world.addWorldItem = entities.addWorldItem
 world.updateWorldItems = entities.updateWorldItems
 world.getInteractableWorldItem = entities.getInteractableWorldItem
 world.removeWorldItem = entities.removeWorldItem
+world.transformNPCToEnemy = entities.transformNPCToEnemy
+world.transformEnemyToNPC = entities.transformEnemyToNPC
 
 -- Delegate rendering functions
 world.draw = rendering.draw

@@ -182,6 +182,10 @@ entity_types.enemies = {
 
         attack_frames = { up = "5-8", down = "1-4", left = "1-4", right = "5-8" },
         attack_rows = { up = 11, down = 11, left = 12, right = 12 },
+
+        -- Surrender settings (Enemy → NPC transformation)
+        surrender_threshold = 0.3,  -- Surrender when HP <= 30%
+        surrender_npc = "surrendered_bandit",  -- Transform to this NPC type
     },
 
     rogue = {
@@ -415,6 +419,34 @@ entity_types.npcs = {
         idle_row_left = 4,
         idle_row_right = 5,
         idle_row_up = 4,
+    },
+
+    surrendered_bandit = {
+        name = "Surrendered Bandit",
+        sprite_sheet = "assets/images/enemy-sheet-human.png",
+        dialogue_id = "surrendered_bandit",  -- References game/data/dialogues.lua
+        interaction_range = 80,
+
+        sprite_width = 48,
+        sprite_height = 48,
+        sprite_scale = 3,
+
+        collider_width = 32,
+        collider_height = 32,
+        collider_offset_x = 32,
+        collider_offset_y = 32,
+
+        sprite_draw_offset_x = -72,
+        sprite_draw_offset_y = -104,
+
+        idle_down = "1-4",
+        idle_left = "1-4",
+        idle_right = "5-8",
+        idle_up = "5-8",
+        idle_row_down = 1,
+        idle_row_left = 2,
+        idle_row_right = 2,
+        idle_row_up = 1,
     },
 }
 

@@ -4,10 +4,10 @@
 local container = {}
 
 local display = require "engine.core.display"
+local coords = require "engine.core.coords"
 local sound = require "engine.core.sound"
 local fonts = require "engine.utils.fonts"
 local shapes = require "engine.utils.shapes"
-local text_ui = require "engine.utils.text"
 local input = require "engine.core.input"
 local colors = require "engine.utils.colors"
 local scene_control = require "engine.core.scene_control"
@@ -258,7 +258,7 @@ function container:keypressed(key)
 end
 
 function container:mousepressed(x, y, button)
-    local vx, vy = display:ToVirtualCoords(x, y)
+    local vx, vy = coords:physicalToVirtual(x, y, display)
     local vw, vh = display:GetVirtualDimensions()
 
     -- Calculate panel position
@@ -309,7 +309,7 @@ function container:mousereleased(x, y, button)
 end
 
 function container:mousemoved(x, y, dx, dy)
-    local vx, vy = display:ToVirtualCoords(x, y)
+    local vx, vy = coords:physicalToVirtual(x, y, display)
     local vw, vh = display:GetVirtualDimensions()
 
     -- Calculate panel position

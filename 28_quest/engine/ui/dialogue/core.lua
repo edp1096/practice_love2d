@@ -505,6 +505,11 @@ function core:selectChoice(dialogue, choice_index)
         helpers:executeAction(dialogue, choice.action)
     end
 
+    -- Execute on_select callback (for custom game logic like NPC→Enemy transformation)
+    if choice.on_select and dialogue.game_context then
+        choice.on_select(dialogue.game_context)
+    end
+
     -- Navigate to next node
     if choice.next then
         -- Clear current state completely before navigating

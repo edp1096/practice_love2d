@@ -73,6 +73,11 @@ function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_sl
         scene.killed_enemies = save_data.killed_enemies
     end
 
+    scene.transformed_npcs = {}
+    if save_data and save_data.transformed_npcs then
+        scene.transformed_npcs = save_data.transformed_npcs
+    end
+
     -- Load or reset dialogue choice history
     if save_data and save_data.dialogue_choices then
         dialogue:importChoiceHistory(save_data.dialogue_choices)
@@ -150,7 +155,7 @@ function scene_setup.createWorld(scene, mapPath)
         healing_point = healing_point_class,
         world_item = world_item_class,
         loot_tables = scene.loot_tables
-    }, scene.picked_items, scene.killed_enemies)
+    }, scene.picked_items, scene.killed_enemies, scene.transformed_npcs)
 end
 
 -- Create player
@@ -327,6 +332,9 @@ function scene_setup.setupLighting(scene)
     local ambient = scene.world.map.properties.ambient or "day"
     lighting:setAmbient(ambient)
 
+    -- Give world access to lighting system (for entity transformations)
+    scene.world.lighting_sys = lighting
+
     -- Add lights only for dark environments (not day mode)
     if ambient ~= "day" then
         -- Add player light
@@ -418,7 +426,7 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
         healing_point = healing_point_class,
         world_item = world_item_class,
         loot_tables = scene.loot_tables
-    }, scene.picked_items, scene.killed_enemies)
+    }, scene.picked_items, scene.killed_enemies, scene.transformed_npcs)
 
     -- Reinitialize weather for new map
     weather:initialize(scene.world.map)

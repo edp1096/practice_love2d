@@ -195,8 +195,8 @@ function loaders.loadEnemies(self, killed_enemies)
                 respawn = true
             end
 
-            -- Skip non-respawning enemies that were already killed
-            if not (not respawn and killed_enemies[map_id]) then
+            -- Skip if enemy was killed/transformed (respawning enemies still skip if killed)
+            if not killed_enemies[map_id] then
                 -- Use factory to create from Tiled properties
                 local new_enemy = factory:createEnemy(obj, self.enemy_class, map_name)
 
@@ -242,6 +242,19 @@ function loaders.loadNPCs(self)
             -- Create NPC collider using collision module
             collision.createNPCCollider(new_npc, self.physicsWorld, self.game_mode)
 
+            table.insert(self.npcs, new_npc)
+        end
+    end
+
+    -- Load transformed NPCs (enemies that became NPCs)
+    if self.transformed_npcs then
+        for map_id, npc_data in pairs(self.transformed_npcs) do
+            local new_npc = self.npc_class:new(npc_data.x, npc_data.y, npc_data.npc_type)
+            new_npc.facing = npc_data.facing
+            new_npc.map_id = map_id
+            new_npc.world = self
+
+            collision.createNPCCollider(new_npc, self.physicsWorld, self.game_mode)
             table.insert(self.npcs, new_npc)
         end
     end

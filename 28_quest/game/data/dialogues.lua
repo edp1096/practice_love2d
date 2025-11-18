@@ -196,4 +196,43 @@ dialogues.guard_greeting = {
     }
 }
 
+-- Surrendered Bandit (Enemy → NPC transformation demo)
+dialogues.surrendered_bandit = {
+    start_node = "surrender",
+    nodes = {
+        surrender = {
+            text = "Please... spare me! I surrender!",
+            speaker = "Bandit",
+            next = "main_menu"
+        },
+
+        main_menu = {
+            text = "I'll tell you anything you want to know!",
+            speaker = "Bandit",
+            choices = {
+                { text = "Why did you attack me?", next = "reason" },
+                { text = "Where is your hideout?", next = "hideout" },
+                { text = "I'll let you go this time.", next = "mercy" },
+            }
+        },
+
+        reason = {
+            text = "I... I was desperate! The village cut off our supplies...",
+            speaker = "Bandit",
+            next = "main_menu"
+        },
+
+        hideout = {
+            text = "It's in the northern woods! But please, don't hurt my friends!",
+            speaker = "Bandit",
+            next = "main_menu"
+        },
+
+        mercy = {
+            text = "Thank you! I won't forget this kindness...",
+            speaker = "Bandit",
+        }
+    }
+}
+
 return dialogues

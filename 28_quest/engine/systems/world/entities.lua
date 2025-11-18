@@ -115,6 +115,13 @@ function entities.updateEnemies(self, dt, player_x, player_y)
                 table.remove(self.enemies, i)
             end
         else
+            -- Check if enemy should transform to NPC (surrender)
+            if enemy.should_transform_to_npc and enemy.surrender_npc then
+                self:transformEnemyToNPC(enemy, enemy.surrender_npc)
+                table.remove(self.enemies, i)
+                goto continue
+            end
+
             local vx, vy = enemy:update(dt, player_x, player_y)
 
             if self.game_mode == "topdown" then
@@ -161,6 +168,8 @@ function entities.updateEnemies(self, dt, player_x, player_y)
                 end
             end
         end
+
+        ::continue::
     end
 end
 
@@ -287,6 +296,115 @@ function entities.removeWorldItem(self, item_id)
     end
 
     return false
+end
+
+-- Transform NPC to Enemy (for hostile NPCs)
+function entities.transformNPCToEnemy(self, npc, enemy_type)
+    if not npc or not enemy_type then return nil end
+
+    -- Save NPC position and state
+    local x, y = npc.x, npc.y
+    local facing = npc.facing or "down"
+
+    -- Remove NPC (cleanup collider)
+    if npc.collider then
+        npc.collider:destroy()
+        npc.collider = nil
+    end
+    for i = #self.npcs, 1, -1 do
+        if self.npcs[i] == npc then
+            table.remove(self.npcs, i)
+            break
+        end
+    end
+
+    -- Create enemy at same position
+    local enemy = self.enemy_class:new(x, y, enemy_type)
+    if enemy then
+        enemy.facing = facing
+        -- Make enemy immediately aggressive
+        enemy.state = "chase"
+        enemy.target = self.player
+        -- Add to world
+        self:addEnemy(enemy)
+    end
+
+    return enemy
+end
+
+-- Transform Enemy to NPC (for surrendering enemies)
+function entities.transformEnemyToNPC(self, enemy, npc_type)
+    if not enemy or not npc_type then return nil end
+
+    -- Get accurate position from collider (before it's destroyed)
+    local x, y = enemy.x, enemy.y
+    if self.game_mode == "topdown" and enemy.foot_collider then
+        x = enemy.foot_collider:getX()
+        y = enemy.foot_collider:getY()
+    elseif enemy.collider then
+        x = enemy.collider:getX()
+        y = enemy.collider:getY()
+    end
+
+    local facing = enemy.facing or "down"
+
+    -- Remove enemy light (if exists)
+    if enemy.light and self.lighting_sys then
+        self.lighting_sys:removeLight(enemy.light)
+        enemy.light = nil
+    end
+
+    -- Mark enemy as "killed" for persistence (prevent respawn)
+    if enemy.map_id then
+        self.killed_enemies[enemy.map_id] = true
+
+        -- Save transformed NPC info for persistence
+        if not self.transformed_npcs then
+            self.transformed_npcs = {}
+        end
+        self.transformed_npcs[enemy.map_id] = {
+            npc_type = npc_type,
+            x = x,
+            y = y,
+            facing = facing
+        }
+    end
+
+    -- Destroy enemy colliders
+    if enemy.collider then
+        enemy.collider:destroy()
+        enemy.collider = nil
+    end
+    if enemy.foot_collider then
+        enemy.foot_collider:destroy()
+        enemy.foot_collider = nil
+    end
+
+    -- Create NPC at same position
+    local npc = self.npc_class:new(x, y, npc_type)
+    if npc then
+        npc.facing = facing
+        npc.map_id = enemy.map_id  -- Store map_id for future reference
+
+        -- Add to world
+        table.insert(self.npcs, npc)
+        collision.createNPCCollider(npc, self.physicsWorld)
+
+        -- Add NPC light (cyan/blue-white color, matching other NPCs)
+        if self.lighting_sys then
+            npc.light = self.lighting_sys:addLight({
+                type = "point",
+                x = x,
+                y = y,
+                radius = 120,
+                color = {0.8, 0.9, 1.0},  -- Cyan/blue-white (same as other NPCs)
+                intensity = 0.7,
+                entity = npc
+            })
+        end
+    end
+
+    return npc
 end
 
 return entities

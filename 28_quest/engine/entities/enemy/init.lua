@@ -155,6 +155,10 @@ function enemy:new(x, y, enemy_type, config, map_id, respawn)
     instance.detection_range = config.detection_range
     instance.attack_range = config.attack_range
 
+    -- Surrender settings (Enemy → NPC transformation)
+    instance.surrender_threshold = config.surrender_threshold
+    instance.surrender_npc = config.surrender_npc
+
     -- Color swap
     instance.source_color = config.source_color
     instance.target_color = config.target_color
@@ -312,6 +316,17 @@ function enemy:takeDamage(damage)
         -- Track quest progress (kill quests)
         quest_system:onEnemyKilled(self.type)
     else
+        -- Check for surrender threshold (e.g., HP below 40%)
+        if self.surrender_threshold and not self.surrendered then
+            local hp_percent = self.health / self.max_health
+            if hp_percent <= self.surrender_threshold then
+                self.surrendered = true
+                -- Signal to world that this enemy should transform to NPC
+                self.should_transform_to_npc = true
+                return
+            end
+        end
+
         ai.setState(self, "hit")
 
         -- Play hurt sound

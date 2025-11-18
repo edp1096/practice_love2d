@@ -22,6 +22,7 @@ function save_manager.saveGame(scene, slot)
         inventory = scene.inventory and scene.inventory:save() or nil,
         picked_items = scene.picked_items or {},
         killed_enemies = scene.killed_enemies or {},
+        transformed_npcs = scene.transformed_npcs or {},
         dialogue_choices = dialogue:exportChoiceHistory(),
         quest_states = quest_system:exportStates(),
         level_data = level_system:serialize(),
