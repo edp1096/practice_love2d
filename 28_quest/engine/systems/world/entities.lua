@@ -366,7 +366,8 @@ function entities.transformEnemyToNPC(self, enemy, npc_type)
             npc_type = npc_type,
             x = x,
             y = y,
-            facing = facing
+            facing = facing,
+            map_name = self.map.properties.name or "unknown"  -- Explicit map tracking
         }
     end
 

@@ -248,14 +248,18 @@ function loaders.loadNPCs(self)
 
     -- Load transformed NPCs (enemies that became NPCs)
     if self.transformed_npcs then
+        local current_map_name = self.map.properties.name or "unknown"
         for map_id, npc_data in pairs(self.transformed_npcs) do
-            local new_npc = self.npc_class:new(npc_data.x, npc_data.y, npc_data.npc_type)
-            new_npc.facing = npc_data.facing
-            new_npc.map_id = map_id
-            new_npc.world = self
+            -- Only load NPCs that belong to this map (explicit map_name check)
+            if npc_data.map_name == current_map_name then
+                local new_npc = self.npc_class:new(npc_data.x, npc_data.y, npc_data.npc_type)
+                new_npc.facing = npc_data.facing
+                new_npc.map_id = map_id
+                new_npc.world = self
 
-            collision.createNPCCollider(new_npc, self.physicsWorld, self.game_mode)
-            table.insert(self.npcs, new_npc)
+                collision.createNPCCollider(new_npc, self.physicsWorld, self.game_mode)
+                table.insert(self.npcs, new_npc)
+            end
         end
     end
 end
