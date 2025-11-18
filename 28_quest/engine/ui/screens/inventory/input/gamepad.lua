@@ -147,21 +147,34 @@ function gamepad_input.gamepadpressed(self, joystick, button, helpers)
         return
     end
 
-    -- Y button or B button: Use selected item
+    -- Y button or B button: Use selected item (double-press logic)
     if input:wasPressed("interact", "gamepad", button) or input:wasPressed("jump", "gamepad", button) then
         -- Auto-select item at cursor
         local item_id = self.inventory.grid[self.cursor_y][self.cursor_x]
         if item_id then
             self.selected_item_id = item_id
             self.inventory.selected_item_id = item_id
-        end
 
-        helpers.useSelectedItem(self)
+            -- Double-press logic: First press selects, second press uses
+            if not self.last_selected_item_for_use or self.last_selected_item_for_use ~= item_id then
+                -- First press or different item - just select
+                self.last_selected_item_for_use = item_id
+                helpers.play_sound("ui", "select")
+            else
+                -- Second press on same item - use it
+                helpers.useSelectedItem(self)
+                self.last_selected_item_for_use = nil  -- Reset after use
+            end
+        else
+            -- No item at cursor - reset double-press state
+            self.last_selected_item_for_use = nil
+        end
         return
     end
 
     -- L1/LB button: Toggle between grid and quickslot mode (quick navigation)
-    if button == "leftshoulder" then
+    local input = require "engine.core.input"
+    if input:wasPressed("toggle_cursor_mode", "gamepad", button) then
         self.cursor_mode = true
         if self.quickslot_mode then
             -- Exit quickslot mode, return to grid (last cursor position)

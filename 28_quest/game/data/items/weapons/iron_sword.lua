@@ -1,13 +1,15 @@
--- entities/item/types/iron_sword.lua
--- Iron sword equipment configuration
+-- game/data/items/weapons/iron_sword.lua
+-- Iron sword equipment configuration (pure data - no logic)
 
 local iron_sword = {
     name = "Iron Sword",
     description = "A sturdy iron sword",
     size = { width = 1, height = 1 },  -- Grid size: 1x1 (16x16 sprite)
+    max_stack = 1,  -- Equipment cannot be stacked
+
+    -- Item type (explicit declaration)
     item_type = "equipment",
     equipment_slot = "weapon",  -- Can only be equipped to weapon slot
-    max_stack = 1,  -- Equipment cannot be stacked
 
     -- Weapon type for player weapon system
     weapon_type = "sword",  -- Must match game/data/entities/types.lua weapons table
@@ -26,18 +28,12 @@ local iron_sword = {
     stats = {
         damage = 15,
         attack_speed = 1.0
+    },
+
+    -- Use condition (explicit declaration - equipment cannot be used)
+    use_condition = {
+        type = "never"
     }
 }
-
-function iron_sword.use(player)
-    -- Equipment items don't have "use" - they are equipped via drag & drop
-    -- But we keep this function for compatibility
-    return false
-end
-
-function iron_sword.canUse(player)
-    -- Equipment cannot be "used" directly
-    return false
-end
 
 return iron_sword

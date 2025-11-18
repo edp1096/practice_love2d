@@ -1,12 +1,11 @@
--- entities/item/types/strawberry.lua
--- Strawberry (large healing fruit)
+-- game/data/items/consumables/strawberry.lua
+-- Strawberry (large healing fruit) - pure data, no logic
 
 local strawberry = {
     name = "Strawberry",
     description = "Restores 20 HP",
     size = { width = 1, height = 1 },  -- Grid size: 1x1
     max_stack = 99,
-    heal_amount = 20,
 
     -- Sprite information for world item (animation)
     sprite = {
@@ -22,27 +21,21 @@ local strawberry = {
         w = 32, -- Frame width
         h = 32, -- Frame height
         scale = 1  -- 1:1 scale
+    },
+
+    -- Item type (explicit declaration)
+    item_type = "consumable",
+
+    -- Use condition (explicit declaration)
+    use_condition = {
+        type = "health_not_full"
+    },
+
+    -- Effects when used (explicit declaration)
+    effects = {
+        { type = "heal", amount = 20 },
+        { type = "play_sound", category = "item", name = "eat" }
     }
 }
-
-function strawberry.use(player)
-    if player.health >= player.max_health then
-        return false
-    end
-
-    player.health = math.min(player.max_health, player.health + strawberry.heal_amount)
-
-    -- Play heal sound effect if available
-    local sound = require("engine.core.sound")
-    if sound.playSFX then
-        sound:playSFX("item", "eat")
-    end
-
-    return true
-end
-
-function strawberry.canUse(player)
-    return player.health < player.max_health
-end
 
 return strawberry

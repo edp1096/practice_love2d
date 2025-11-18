@@ -140,7 +140,6 @@ function display:EnableFullScreen()
         self.screen_wh.w, self.screen_wh.h = love.graphics.getDimensions()
     end
 
-    -- self.window.x, self.window.y = 0, 0
     self.window.x, self.window.y = 0, -1
     self.window.resizable = false
 

@@ -22,6 +22,9 @@ function cutscene:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot, 
         input.virtual_gamepad:hide()
     end
 
+    -- Set scene context for input priority
+    input:setSceneContext("menu")
+
     self.intro_id = intro_id
     self.target_map = target_map
     self.spawn_x = spawn_x

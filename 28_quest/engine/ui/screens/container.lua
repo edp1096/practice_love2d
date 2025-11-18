@@ -9,7 +9,7 @@ local fonts = require "engine.utils.fonts"
 local shapes = require "engine.utils.shapes"
 local text_ui = require "engine.utils.text"
 local input = require "engine.core.input"
-local colors = require "engine.ui.colors"
+local colors = require "engine.utils.colors"
 local scene_control = require "engine.core.scene_control"
 local ui_constants = require "engine.ui.constants"
 
@@ -46,6 +46,9 @@ function container:enter(previous, player_inventory, player, quest_system, initi
         input.virtual_gamepad:hide()
     end
 
+    -- Set scene context for input priority based on current tab
+    input:setSceneContext(self.current_tab)
+
     -- Initialize fonts (use shared constants)
     self.title_font = fonts.info or love.graphics.getFont()
 
@@ -71,7 +74,7 @@ function container:enter(previous, player_inventory, player, quest_system, initi
     questlog_screen:enter(self, quest_system)
 end
 
-function container:leave()
+function container:exit()
     -- Show virtual gamepad when leaving (mobile)
     if input.virtual_gamepad then
         input.virtual_gamepad:show()
@@ -80,6 +83,11 @@ function container:leave()
     -- Cleanup sub-screens
     if inventory_screen.leave then inventory_screen:leave() end
     if questlog_screen.leave then questlog_screen:leave() end
+end
+
+-- Alias for compatibility
+function container:leave()
+    self:exit()
 end
 
 function container:update(dt)
@@ -194,25 +202,33 @@ function container:switchTab(tab_index)
     self.current_tab_index = tab_index
     self.current_tab = self.tabs[tab_index].id
 
+    -- Update scene context for input priority
+    input:setSceneContext(self.current_tab)
+
     play_sound("ui", "select")
 end
 
 function container:keypressed(key)
-    -- Close container
-    if key == "escape" or key == "i" or key == "j" then
+    local input = require "engine.core.input"
+
+    -- Close container (toggle or explicit close)
+    if input:wasPressed("toggle_inventory", "keyboard", key) or
+       input:wasPressed("toggle_questlog", "keyboard", key) or
+       input:wasPressed("close_inventory", "keyboard", key) or
+       input:wasPressed("close_questlog", "keyboard", key) then
         play_sound("ui", "back")
         scene_control.pop()
         return
     end
 
     -- Tab switching
-    if key == "q" or key == "tab" then
+    if input:wasPressed("prev_tab", "keyboard", key) then
         -- Previous tab
         local new_index = self.current_tab_index - 1
         if new_index < 1 then new_index = #self.tabs end
         self:switchTab(new_index)
         return
-    elseif key == "e" then
+    elseif input:wasPressed("next_tab", "keyboard", key) then
         -- Next tab
         local new_index = self.current_tab_index + 1
         if new_index > #self.tabs then new_index = 1 end
@@ -315,21 +331,26 @@ function container:mousemoved(x, y, dx, dy)
 end
 
 function container:gamepadpressed(joystick, button)
-    -- Close container with B button or R2 (toggle)
-    if button == "b" or button == "back" or button == "start" then
+    local input = require "engine.core.input"
+
+    -- Close container (toggle or explicit close)
+    if input:wasPressed("toggle_inventory", "gamepad", button) or
+       input:wasPressed("toggle_questlog", "gamepad", button) or
+       input:wasPressed("close_inventory", "gamepad", button) or
+       input:wasPressed("close_questlog", "gamepad", button) then
         play_sound("ui", "back")
         scene_control.pop()
         return
     end
 
     -- Tab switching
-    if button == "leftshoulder" then
+    if input:wasPressed("prev_tab", "gamepad", button) then
         -- Previous tab
         local new_index = self.current_tab_index - 1
         if new_index < 1 then new_index = #self.tabs end
         self:switchTab(new_index)
         return
-    elseif button == "rightshoulder" then
+    elseif input:wasPressed("next_tab", "gamepad", button) then
         -- Next tab
         local new_index = self.current_tab_index + 1
         if new_index > #self.tabs then new_index = 1 end

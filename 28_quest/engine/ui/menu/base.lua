@@ -11,7 +11,7 @@ local input = require "engine.core.input"
 local ui_helpers = require "engine.ui.menu.helpers"
 local debug = require "engine.core.debug"
 local text_ui = require "engine.utils.text"
-local colors = require "engine.ui.colors"
+local colors = require "engine.utils.colors"
 
 -- Create a new menu scene with common boilerplate
 -- config = {

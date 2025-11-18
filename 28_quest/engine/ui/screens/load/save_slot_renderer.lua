@@ -4,7 +4,7 @@
 local slot_renderer = {}
 local shapes = require "engine.utils.shapes"
 local text_ui = require "engine.utils.text"
-local colors = require "engine.ui.colors"
+local colors = require "engine.utils.colors"
 
 -- Render individual save slot
 function slot_renderer.drawSlot(load_scene, slot, i, is_selected)

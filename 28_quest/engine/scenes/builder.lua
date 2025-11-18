@@ -141,6 +141,10 @@ function builder:buildMenu(cfg)
       self.flash_color = cfg.flash.color or { 1, 1, 1 }
     end
 
+    -- Set scene context for input priority
+    local input = require "engine.core.input"
+    input:setSceneContext("menu")
+
     -- Play BGM (rewind=false to avoid restarting same BGM)
     if cfg.bgm then sound:playBGM(cfg.bgm, 1.0, false) end
   end

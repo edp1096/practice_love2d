@@ -1,5 +1,5 @@
--- engine/ui/colors.lua
--- Centralized color palette for UI elements
+-- engine/utils/colors.lua
+-- Centralized color palette (utils layer - no dependencies)
 
 local colors = {}
 

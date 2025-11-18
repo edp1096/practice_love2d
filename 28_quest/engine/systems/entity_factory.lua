@@ -1,5 +1,5 @@
--- engine/factory.lua
--- Data-driven entity factory: creates entities from Tiled properties
+-- engine/systems/entity_factory.lua
+-- Entity creation system (systems layer - no engine dependencies)
 
 local factory = {}
 
@@ -115,6 +115,7 @@ function factory:createNPC(obj, npc_class)
     name = prop(obj, "name", d.name),
     sprite_sheet = prop(obj, "spr", d.spr),
     dialogue = dialogue,
+    dialogue_id = prop(obj, "dialogue_id", nil),  -- For tree-based dialogue
     interaction_range = prop(obj, "int_rng", d.int_rng),
 
     sprite_width = prop(obj, "spr_w", d.spr_w),

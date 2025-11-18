@@ -1,7 +1,7 @@
 -- systems/hud/quickslots.lua
 -- Quickslot belt UI rendering and management
 
-local colors = require "engine.ui.colors"
+local colors = require "engine.utils.colors"
 
 local quickslots = {}
 

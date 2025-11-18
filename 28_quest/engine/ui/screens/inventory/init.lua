@@ -11,7 +11,7 @@ local fonts = require "engine.utils.fonts"
 local shapes = require "engine.utils.shapes"
 local text_ui = require "engine.utils.text"
 local input = require "engine.core.input"
-local colors = require "engine.ui.colors"
+local colors = require "engine.utils.colors"
 local ui_constants = require "engine.ui.constants"
 
 -- Safe sound wrapper
@@ -102,6 +102,9 @@ function inventory:enter(previous, player_inventory, player)
         origin_height = 0,
         origin_rotated = false
     }
+
+    -- Y button double-press state (for item usage)
+    self.last_selected_item_for_use = nil  -- Track which item was selected on first Y press
 
     play_sound("ui", "open")
 end

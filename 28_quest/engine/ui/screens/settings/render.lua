@@ -7,7 +7,7 @@ local display = require "engine.core.display"
 local input = require "engine.core.input"
 local text_ui = require "engine.utils.text"
 local options_module = require "engine.ui.screens.settings.options"
-local colors = require "engine.ui.colors"
+local colors = require "engine.utils.colors"
 
 function render:draw(state)
     -- Draw previous scene in background if it exists

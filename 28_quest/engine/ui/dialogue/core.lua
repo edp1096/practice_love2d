@@ -4,7 +4,7 @@
 local Talkies = require "vendor.talkies"
 local skip_button_widget = require "engine.ui.widgets.button.skip"
 local next_button_widget = require "engine.ui.widgets.button.next"
-local colors = require "engine.ui.colors"
+local colors = require "engine.utils.colors"
 
 local core = {}
 
@@ -125,14 +125,26 @@ end
 -- ============================================================================
 
 -- Start a dialogue tree by ID (loads from registry)
-function core:showTreeById(dialogue, dialogue_id)
+function core:showTreeById(dialogue, dialogue_id, npc_id)
     local dialogue_tree = dialogue.dialogue_registry[dialogue_id]
     if not dialogue_tree then
         return
     end
     -- Store dialogue ID for persistence
     dialogue.current_dialogue_id = dialogue_id
-    self:showTree(dialogue, dialogue_tree)
+
+    -- Override NPC ID if provided (for dynamic NPC association)
+    if npc_id then
+        -- Clone the tree to avoid modifying the original
+        local tree_copy = {}
+        for k, v in pairs(dialogue_tree) do
+            tree_copy[k] = v
+        end
+        tree_copy.npc_id = npc_id
+        self:showTree(dialogue, tree_copy)
+    else
+        self:showTree(dialogue, dialogue_tree)
+    end
 end
 
 -- Start a dialogue tree (choice-based conversation)
@@ -146,6 +158,10 @@ function core:showTree(dialogue, dialogue_tree)
 
     -- Store NPC ID for quest lookups (if provided)
     dialogue.current_npc_id = dialogue_tree.npc_id
+    print(string.format("[SHOW_TREE] dialogue_id=%s, tree.npc_id=%s, current_npc_id=%s",
+        tostring(dialogue.current_dialogue_id),
+        tostring(dialogue_tree.npc_id),
+        tostring(dialogue.current_npc_id)))
 
     -- Load selected choices for this dialogue (instead of resetting)
     if dialogue.current_dialogue_id then
@@ -198,6 +214,113 @@ function core:showNode(dialogue, node_id)
             -- Redirect to different node
             self:showNode(dialogue, redirect_node)
             return
+        end
+    end
+
+    -- Check for quest_offer node type (dynamic quest dialogue generation)
+    if node.type == "quest_offer" then
+        -- Find available quest for this NPC
+        -- Use node.npc_id if specified, otherwise use current NPC from dialogue
+        local npc_id = node.npc_id or dialogue.current_npc_id
+        local quest_system = dialogue.quest_system
+
+        print(string.format("[QUEST_OFFER] npc_id=%s, has_quest_system=%s, has_registry=%s",
+            tostring(npc_id),
+            tostring(quest_system ~= nil),
+            tostring(quest_system and quest_system.quest_registry ~= nil)))
+
+        if quest_system and quest_system.quest_registry and npc_id then
+            -- Find first available quest for this NPC
+            local available_quest = nil
+            for quest_id, quest_data in pairs(quest_system.quest_registry) do
+                print(string.format("[QUEST_SCAN] quest_id=%s, giver=%s, has_dlg=%s, npc_match=%s",
+                    quest_id, tostring(quest_data.giver_npc), tostring(quest_data.dialogue ~= nil),
+                    tostring(quest_data.giver_npc == npc_id)))
+
+                if quest_data.giver_npc == npc_id and quest_data.dialogue then
+                    -- Check quest state first
+                    local quest_state = quest_system.quest_states[quest_id]
+                    local state_str = quest_state and quest_state.state or "NO_STATE"
+
+                    -- Use canAccept() to check prerequisites
+                    local can_accept = quest_system:canAccept(quest_id)
+                    print(string.format("[QUEST_CHECK] quest_id=%s, state=%s, canAccept=%s",
+                        quest_id, state_str, tostring(can_accept)))
+
+                    if can_accept then
+                        available_quest = { id = quest_id, data = quest_data }
+                        break
+                    end
+                end
+            end
+
+            if available_quest then
+                -- Generate quest offer node dynamically
+                local quest_id = available_quest.id
+                local quest_data = available_quest.data
+                local dlg = quest_data.dialogue
+
+                print(string.format("[QUEST_FOUND] quest_id=%s, offer_text=%s",
+                    quest_id, tostring(dlg and dlg.offer_text)))
+
+                -- Create virtual node with quest offer text
+                local virtual_node = {
+                    text = dlg.offer_text,
+                    speaker = node.speaker or "???",
+                    choices = {
+                        {
+                            text = "Accept Quest",
+                            next = "quest_accepted_" .. quest_id,
+                            action = {
+                                type = "accept_quest",
+                                quest_id = quest_id
+                            }
+                        },
+                        {
+                            text = "Decline",
+                            next = dlg.decline_response or "end"
+                        }
+                    }
+                }
+
+                print(string.format("[VIRTUAL_NODE] text=%s, has_choices=%s",
+                    tostring(virtual_node.text), tostring(virtual_node.choices ~= nil)))
+
+                -- Create acceptance response virtual node (persistent)
+                dialogue.current_tree.nodes["quest_accepted_" .. quest_id] = {
+                    text = dlg.accept_text,
+                    speaker = node.speaker or "???",
+                    choices = {
+                        { text = "Continue", next = dlg.decline_response or "end" }
+                    }
+                }
+
+                -- IMPORTANT: Don't store virtual_node in tree!
+                -- quest_offer nodes are dynamic - they regenerate on each visit
+                -- Just replace current node for immediate display
+                node = virtual_node
+                print(string.format("[QUEST_OFFER] Using dynamic virtual_node for %s", quest_id))
+            else
+                -- No available quests - redirect to fallback or end
+                local fallback = node.no_quest_fallback or "end"
+                if fallback == "end" then
+                    self:clear(dialogue)
+                    return
+                else
+                    self:showNode(dialogue, fallback)
+                    return
+                end
+            end
+        else
+            -- No quest system or NPC - redirect to fallback or end
+            local fallback = node.no_quest_fallback or "end"
+            if fallback == "end" then
+                self:clear(dialogue)
+                return
+            else
+                self:showNode(dialogue, fallback)
+                return
+            end
         end
     end
 
@@ -263,6 +386,9 @@ function core:showNode(dialogue, node_id)
         dialogue.pending_choices = nil
         dialogue.selected_choice_index = 1
     end
+
+    -- Store current node for rendering (especially for dynamic virtual nodes)
+    dialogue.current_node = node
 
     -- Update button visibility (hide if choices shown)
     local render = require "engine.ui.dialogue.render"
@@ -354,6 +480,11 @@ function core:selectChoice(dialogue, choice_index)
 
     local choice = dialogue.current_choices[choice_index]
     if not choice then
+        return
+    end
+
+    -- Prevent selecting disabled choices
+    if choice._is_disabled then
         return
     end
 
@@ -578,11 +709,12 @@ function core:handleInput(dialogue, source, ...)
     if source == "keyboard" then
         -- Keyboard: check for choice navigation first
         local key = ...
+        local input_sys = require "engine.core.input"
         if dialogue.tree_mode and dialogue.current_choices and #dialogue.current_choices > 0 then
-            if key == "up" or key == "w" then
+            if input_sys:wasPressed("move_up", "keyboard", key) then
                 self:moveChoiceSelection(dialogue, "up")
                 return true
-            elseif key == "down" or key == "s" then
+            elseif input_sys:wasPressed("move_down", "keyboard", key) then
                 self:moveChoiceSelection(dialogue, "down")
                 return true
             end

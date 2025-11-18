@@ -65,7 +65,8 @@ function quest:_cloneQuestData(data)
         giver_npc = data.giver_npc,
         receiver_npc = data.receiver_npc or data.giver_npc,  -- Default to giver
         rewards = {},
-        prerequisites = {}
+        prerequisites = {},
+        dialogue = nil  -- Will be cloned below if present
     }
 
     -- Clone rewards
@@ -95,6 +96,15 @@ function quest:_cloneQuestData(data)
             count = obj.count or 1,
             description = obj.description,
             npc = obj.npc  -- For deliver quests
+        }
+    end
+
+    -- Clone dialogue (for quest offer system)
+    if data.dialogue then
+        clone.dialogue = {
+            offer_text = data.dialogue.offer_text,
+            accept_text = data.dialogue.accept_text,
+            decline_response = data.dialogue.decline_response
         }
     end
 

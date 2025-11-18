@@ -67,6 +67,8 @@ systems/
 │                           - Dual collider for topdown mode
 │                           - Game mode-aware NPC colliders
 ├── inventory.lua         - Inventory system
+├── entity_factory.lua    - Creates entities from Tiled properties
+├── prompt.lua            - Interaction prompts (dynamic button icons)
 │
 ├── world/                - Physics & map system
 │   ├── init.lua          - World coordinator (Windfield + STI)
@@ -97,17 +99,16 @@ systems/
 └── hud/                  - In-game HUD
     ├── status.lua        - Health bars, cooldowns, parry UI
     ├── minimap.lua       - Minimap rendering (75% opacity)
-    └── quickslots.lua    - Quickslot belt UI (bottom center)
+    ├── quickslots.lua    - Quickslot belt UI (bottom center)
+    └── quest_tracker.lua - Quest tracker HUD (3 active quests)
 ```
 
-### Entities (`engine/entities/`) 
+### Entities (`engine/entities/`)
 
 **ALL entities are 100% reusable! No game-specific code.**
 
 ```
 entities/
-├── factory.lua           - Creates entities from Tiled properties
-│
 ├── player/               - Player system (config injected)
 │   ├── init.lua          - Main coordinator
 │   ├── animation.lua     - Animation state machine
@@ -156,21 +157,20 @@ entities/
 scenes/
 ├── builder.lua           - Data-driven scene factory
 ├── cutscene.lua          - Cutscene/intro scene
-└── gameplay/             - Main gameplay scene
-    ├── init.lua          - Scene coordinator (quest system, persistence)
-    ├── update.lua        - Game loop
-    ├── render.lua        - Drawing
-    └── input.lua         - Input handling
+└── gameplay/             - Main gameplay scene (modular, ~2,100 lines)
+    ├── init.lua          - Scene coordinator (~195 lines)
+    ├── scene_setup.lua   - Initialization & lifecycle (~505 lines)
+    ├── save_manager.lua  - Save/load system (~45 lines)
+    ├── quest_interactions.lua - Quest NPC interactions (~195 lines)
+    ├── update.lua        - Game loop (~460 lines)
+    ├── render.lua        - Drawing (~170 lines)
+    └── input.lua         - Input handling (~555 lines)
 ```
 
 ### UI Systems (`engine/ui/`)
 
 ```
 ui/
-├── colors.lua            -  Centralized color system
-│                           - Base palette + semantic mappings
-│                           - Helper functions (apply, withAlpha, etc.)
-│
 ├── menu/                 - Menu UI system
 │   ├── base.lua          - MenuSceneBase (base class)
 │   └── helpers.lua       - Menu helpers (layout, navigation)
@@ -196,18 +196,12 @@ ui/
 │                           - Navigation: keyboard, mouse, gamepad, touch
 │                           - Dynamic choice colors (visited tracking)
 │
-├── prompt.lua            - Interaction prompts (dynamic button icons)
-├── shapes.lua            - Shape rendering (buttons, dialogs)
+├── constants.lua         - UI constants (shared dimensions)
 └── widgets/              - Reusable widgets
-    ├── skip_button.lua   - Skip button (0.5s hold charge)
-    └── next_button.lua   - Next button for advancing dialogue
+    └── button/
+        ├── skip.lua      - Skip button (0.5s hold charge)
+        └── next.lua      - Next button for advancing dialogue
 ```
-
-**Color System (`colors.lua`):**
-- **5 Helper Functions:** `apply()`, `withAlpha()`, `unpackRGB()`, `unpackRGBA()`, `toVertex()`
-- **Base Palette:** Pure colors (WHITE, DARK_CHARCOAL, SKY_BLUE, etc.)
-- **Semantic Mappings:** Purpose-based names (for_text_normal, for_menu_selected, etc.)
-- **Coverage:** All HUD & UI screens use centralized colors (Phase 2 complete)
 
 ### Utilities (`engine/utils/`)
 
@@ -216,10 +210,20 @@ utils/
 ├── util.lua              - General utilities
 ├── text.lua              - Text rendering wrapper
 ├── fonts.lua             - Font management
+├── shapes.lua            - Shape rendering (buttons, dialogs)
+├── colors.lua            - Centralized color system
+│                           - Base palette + semantic mappings
+│                           - Helper functions (apply, withAlpha, etc.)
 ├── restart.lua           - Game restart logic
 ├── convert.lua           - Data conversion
 └── ini.lua               - INI file parser
 ```
+
+**Color System (`utils/colors.lua`):**
+- **6 Helper Functions:** `apply()`, `withAlpha()`, `unpackRGB()`, `unpackRGBA()`, `toVertex()`, `reset()`
+- **Base Palette:** Pure colors (WHITE, DARK_CHARCOAL, SKY_BLUE, etc.)
+- **Semantic Mappings:** Purpose-based names (for_text_normal, for_menu_selected, etc.)
+- **Coverage:** All HUD & UI screens use centralized colors
 
 ---
 
@@ -444,18 +448,20 @@ Examples:
 - `main.lua` - Dependency injection, LÖVE callbacks
 - `conf.lua` - LÖVE configuration
 - `startup.lua` - Initialization (error handler, platform detection)
+- `game/setup.lua` - Game-specific configuration injection
 
 **Engine Core:**
 - `engine/core/lifecycle.lua` - Main game loop orchestrator
 - `engine/core/scene_control.lua` - Scene management
 - `engine/core/quest.lua` - Quest system (5 types, state management)
+- `engine/core/level.lua` - Level/XP system
 - `engine/core/coords.lua` - Unified coordinate transformations
 - `engine/systems/world/init.lua` - Physics & map system
 - `engine/systems/collision.lua` - Collision system (dual collider)
-- `engine/scenes/gameplay/init.lua` - Main gameplay scene
+- `engine/scenes/gameplay/` - Main gameplay scene (modular)
 
-**Entity System:**
-- `engine/entities/factory.lua` - Creates entities from Tiled
+**Entity & Creation System:**
+- `engine/systems/entity_factory.lua` - Creates entities from Tiled
 - `engine/entities/player/` - Player system (combat, animation, rendering)
 - `engine/entities/enemy/` - Enemy AI (factory-based, respawn control)
 - `engine/entities/weapon/` - Weapon combat system
@@ -463,18 +469,20 @@ Examples:
 - `engine/entities/world_item/` - Dropped items (respawn control)
 
 **UI Systems:**
-- `engine/ui/colors.lua` - Centralized color system
+- `engine/utils/colors.lua` - Centralized color system
 - `engine/ui/dialogue/` - Dialogue system (modular)
 - `engine/ui/screens/questlog/` - Quest log UI
 - `engine/ui/screens/inventory/` - Inventory UI
 - `engine/systems/hud/status.lua` - Health bars, parry UI
 - `engine/systems/hud/quest_tracker.lua` - Quest HUD tracker
 - `engine/systems/hud/quickslots.lua` - Quickslot belt
+- `engine/systems/prompt.lua` - Interaction prompts
 
 **Game Config:**
 - `game/data/player.lua` - Player stats (injected)
 - `game/data/entities/types.lua` - Enemy types (injected)
 - `game/data/scenes.lua` - Menu configs (data-driven)
+- `game/data/quests.lua` - Quest definitions
 
 **Map Files:**
 - `assets/maps/level1/area1.tmx` - Tiled source  Set respawn here!
@@ -482,6 +490,6 @@ Examples:
 
 ---
 
-**Last Updated:** 2025-11-17
+**Last Updated:** 2025-11-18
 **Framework:** LÖVE 11.5 + Lua 5.1
-**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven
+**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven + Layered Pyramid (99.2% clean)

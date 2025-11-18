@@ -133,7 +133,7 @@ scene_control.pop()               -- Return to previous
 
 **Available enemy types:** See `game/data/entities/types.lua`
 
-**Factory defaults:** See `engine/entities/factory.lua` DEFAULTS section
+**Factory defaults:** See `engine/systems/entity_factory.lua` DEFAULTS section
 
 ### Adding a Menu Scene (Data-Driven!)
 
@@ -721,7 +721,8 @@ local CONSTANT_VALUE = 100     -- UPPER_CASE
 **Creating:**
 ```lua
 -- Use factory for Tiled objects
-local enemy = factory:createEnemy(obj, enemy_class, map_name)
+local entity_factory = require "engine.systems.entity_factory"
+local enemy = entity_factory:createEnemy(obj, enemy_class, map_name)
 
 -- Or direct construction
 local player = player_module:new(x, y, config)
@@ -953,6 +954,6 @@ For code examples, see:
 
 ---
 
-**Last Updated:** 2025-11-17
-**Engine Version:** 28_quest
+**Last Updated:** 2025-11-18
+**Engine Version:** 28_quest (Layered Pyramid Architecture - 99.2% clean)
 **LÖVE Version:** 11.5

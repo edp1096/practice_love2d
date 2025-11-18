@@ -2,7 +2,7 @@
 -- Dialogue rendering functions
 
 local Talkies = require "vendor.talkies"
-local colors = require "engine.ui.colors"
+local colors = require "engine.utils.colors"
 
 local render = {}
 
@@ -154,7 +154,10 @@ function render:drawDialogueBoxForChoices(dialogue)
     local boxX = padding
 
     -- Get current node for speaker and text
-    local node = dialogue.current_tree and dialogue.current_tree.nodes[dialogue.current_node_id]
+    -- Priority: Use dialogue.current_node (for dynamic virtual nodes)
+    -- Fallback: Lookup in tree by ID
+    local node = dialogue.current_node or
+                 (dialogue.current_tree and dialogue.current_tree.nodes[dialogue.current_node_id])
     local speaker = node and node.speaker or "???"
     local text = node and node.text or ""
 
@@ -260,39 +263,45 @@ function render:drawChoices(dialogue)
         end
         love.graphics.rectangle("line", start_x, y, choice_width, choice_height, 5, 5)
 
-        -- Button text (only depends on whether this choice was previously selected)
-        -- Exception: Common/repeating choices are always shown in white
-        local common_choices = {
-            ["Accept Quest"] = true,  -- Quest offer
-            ["Decline"] = true,
-            ["I'll think about it"] = true,
-            ["Not interested"] = true,
-            ["Yes"] = true,
-            ["No"] = true,
-            ["Goodbye"] = true,
-            ["Thanks"] = true,
-            ["Good to know"] = true,
-            ["Thanks for the info"] = true
-        }
-        local is_common = common_choices[choice.text]
-
-        -- Special case: "Other quest?" - grey out if NPC has no available quests
+        -- Determine if choice should be greyed out (disabled appearance)
+        -- Priority: 1. Explicit disabled flag (set by helpers) > 2. Previous selection
         local should_grey_out = false
-        if choice.text == "Other quest?" then
-            -- Check if this NPC has any available quests
-            -- Use current_npc_id (not current_dialogue_id) for quest lookups
-            if dialogue.quest_system and dialogue.current_npc_id then
-                local available_quests, _ = dialogue.quest_system:getQuestsFromNPC(dialogue.current_npc_id)
-                if #available_quests == 0 then
-                    should_grey_out = true  -- No available quests, grey out
-                end
+
+        -- 1. Check if choice is explicitly disabled (set during filtering)
+        if choice._is_disabled then
+            should_grey_out = true
+        end
+
+        -- 2. Check previous selection (only for non-repeating choices)
+        -- Common/repeating choices are always shown in white (never greyed)
+        if not should_grey_out then
+            local always_available_choices = {
+                ["Accept Quest"] = true,  -- Quest system buttons
+                ["Decline"] = true,
+                ["Continue"] = true,
+                ["I'll think about it"] = true,
+                ["Not interested"] = true,
+                ["Yes"] = true,
+                ["No"] = true,
+                ["Goodbye"] = true,
+                ["Thanks"] = true,
+                ["Good to know"] = true,
+                ["Thanks for the info"] = true,
+                ["Tell me more"] = true,
+                ["I'll get right on it"] = true
+            }
+            local is_always_available = always_available_choices[choice.text]
+
+            if was_selected and not is_always_available then
+                should_grey_out = true
             end
         end
 
-        if (was_selected and not is_common) or should_grey_out then
-            colors:apply(colors.for_dialogue_choice_text_visited)  -- Dark grey text for previously selected or no quests
+        -- Apply color
+        if should_grey_out then
+            colors:apply(colors.for_dialogue_choice_text_visited)  -- Dark grey for disabled/selected
         else
-            colors:apply(colors.for_dialogue_choice_text_normal)  -- White text for not yet selected or common choices
+            colors:apply(colors.for_dialogue_choice_text_normal)  -- White for available
         end
         local text_y = y + (choice_height - dialogue.choice_font:getHeight()) / 2
         love.graphics.printf(choice.text, start_x + 10, text_y, choice_width - 20, "left")

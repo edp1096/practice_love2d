@@ -204,3 +204,9 @@ Controls:
 ---
 
 That's it. You now have a working game engine.
+
+---
+
+**Last Updated:** 2025-11-18
+**Architecture:** Engine/Game Separation + Dependency Injection
+**Version:** LÖVE 11.5, Lua 5.1

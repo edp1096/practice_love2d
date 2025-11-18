@@ -1,7 +1,7 @@
 -- systems/world/loaders.lua
 -- Contains all loading functions for map objects
 
-local factory = require "engine.entities.factory"
+local factory = require "engine.systems.entity_factory"
 local constants = require "engine.core.constants"
 local collision = require "engine.systems.collision"
 

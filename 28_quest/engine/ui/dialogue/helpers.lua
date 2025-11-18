@@ -224,10 +224,15 @@ function helpers:executeAction(dialogue, action)
 
     -- Quest actions
     if action.type == "accept_quest" then
+        print(string.format("[ACTION] accept_quest, quest_id=%s, has_quest_system=%s",
+            tostring(action.quest_id), tostring(dialogue.quest_system ~= nil)))
         if dialogue.quest_system and action.quest_id then
             local success = dialogue.quest_system:accept(action.quest_id)
+            print(string.format("[ACTION] quest:accept() returned %s", tostring(success)))
             if success then
-                -- Could trigger notification here
+                print("[ACTION] Quest accepted successfully!")
+            else
+                print("[ACTION] Quest accept FAILED!")
             end
         end
     elseif action.type == "complete_quest" or action.type == "turn_in_quest" then
@@ -294,17 +299,84 @@ function helpers:clearChoiceHistory(dialogue)
     dialogue.all_dialogue_choices = {}
 end
 
--- Evaluate a condition function
+-- Evaluate a condition (function or declarative)
 function helpers:evaluateCondition(condition, context)
     if not condition then
         return true  -- No condition = always show
     end
 
+    -- Legacy function support (will be deprecated)
     if type(condition) == "function" then
         return condition(context)
     end
 
-    -- Could add more condition types here (e.g., tables with operators)
+    -- Declarative condition types
+    if type(condition) == "table" then
+        local cond_type = condition.type
+
+        -- Quest-related conditions
+        if cond_type == "has_available_quests" then
+            -- Check if NPC has any available quests to offer via dialogue system
+            -- NOTE: Only counts quests with dialogue field (for quest_offer node)
+            local quest_system = context.quest_system
+            local npc_id = condition.npc_id or context.npc_id
+
+            if not quest_system or not quest_system.quest_registry or not npc_id then
+                return false
+            end
+
+            -- Get all quests offered by this NPC with dialogue (check prerequisites)
+            for quest_id, quest_data in pairs(quest_system.quest_registry) do
+                if quest_data.giver_npc == npc_id and quest_data.dialogue then
+                    -- Use canAccept() to check prerequisites
+                    if quest_system:canAccept(quest_id) then
+                        return true
+                    end
+                end
+            end
+            return false
+
+        elseif cond_type == "quest_state_is" then
+            -- Check if quest is in a specific state
+            local quest_system = context.quest_system
+            if not quest_system or not condition.quest_id then
+                return false
+            end
+
+            local state = quest_system:getState(condition.quest_id)
+            return state and state.state == condition.state
+
+        -- Flag-related conditions
+        elseif cond_type == "flag_is_true" then
+            -- Check if a dialogue flag is set to true
+            local dialogue = context.dialogue_system
+            if not dialogue or not condition.flag then
+                return false
+            end
+
+            local dialogue_id = condition.dialogue_id or context.dialogue_id
+            return self:getFlag(dialogue, dialogue_id, condition.flag, false) == true
+
+        elseif cond_type == "flag_equals" then
+            -- Check if a dialogue flag equals a specific value
+            local dialogue = context.dialogue_system
+            if not dialogue or not condition.flag then
+                return false
+            end
+
+            local dialogue_id = condition.dialogue_id or context.dialogue_id
+            local flag_value = self:getFlag(dialogue, dialogue_id, condition.flag, nil)
+            return flag_value == condition.value
+
+        -- Add more condition types as needed:
+        -- elseif cond_type == "has_item" then
+        --     return inventory:hasItem(condition.item_id, condition.count or 1)
+        -- elseif cond_type == "gold_greater_than" then
+        --     return player.gold >= condition.amount
+        end
+    end
+
+    -- Unknown condition type - default to true for safety
     return true
 end
 
@@ -324,10 +396,25 @@ function helpers:filterChoicesByCondition(dialogue, choices, dialogue_id, node_i
             choice = choice,
             quest_system = dialogue.quest_system,
             dialogue_system = dialogue,  -- Pass dialogue system for flag access
+            npc_id = dialogue.current_npc_id,  -- Current NPC for quest lookups
         }
 
         -- Check if choice should be shown
         if self:evaluateCondition(choice.condition, context) then
+            -- Check if choice should be disabled (greyed out but visible)
+            local is_disabled = false
+
+            -- Manual disabled condition (for game-specific logic)
+            if choice.disabled and self:evaluateCondition(choice.disabled, context) then
+                is_disabled = true
+            end
+
+            -- NOTE: Auto-disable for quest accept removed - quest_offer node
+            -- already filters by canAccept(), so Accept button should never be disabled
+
+            -- Attach disabled flag to choice
+            choice._is_disabled = is_disabled
+
             table.insert(filtered, choice)
         end
     end

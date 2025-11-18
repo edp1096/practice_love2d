@@ -52,6 +52,9 @@ function slot_scene:enter(previous, ...)
 
     self.mouse_over = 0
 
+    -- Set scene context for input priority (menu scene)
+    input:setSceneContext("menu")
+
     -- Call child-specific initialization
     if self.onEnter then
         self:onEnter(...)

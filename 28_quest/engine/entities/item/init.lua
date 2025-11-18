@@ -1,6 +1,8 @@
 -- entities/item/init.lua
 -- Base item entity class
 
+local item_actions = require "engine.systems.item_actions"
+
 local item = {}
 item.__index = item
 
@@ -38,7 +40,7 @@ function item:new(item_type, quantity, uuid)
     instance.size = item_config.size or { width = 1, height = 1 }
 
     -- Copy equipment properties (if this is equipment)
-    instance.item_type = item_config.item_type  -- "equipment" or nil
+    instance.item_type = item_config.item_type  -- "equipment" or "consumable"
     instance.equipment_slot = item_config.equipment_slot  -- "weapon", "helmet", etc.
     instance.weapon_type = item_config.weapon_type  -- "sword", "axe", etc.
     instance.sprite = item_config.sprite  -- Sprite info for rendering
@@ -52,7 +54,16 @@ function item:use(player)
         return false
     end
 
-    if self.config.use then
+    -- Use data-driven item_actions system (new approach)
+    if self.config.use_condition and self.config.effects then
+        local success = item_actions.use(self.config, player)
+        if success then
+            self.quantity = self.quantity - 1
+            print(string.format("✓ ITEM USED: %s (qty: %d remaining)", self.name, self.quantity))
+            return true
+        end
+    -- Legacy function-based approach (for backward compatibility)
+    elseif self.config.use then
         local success = self.config.use(player)
         if success then
             self.quantity = self.quantity - 1
@@ -64,12 +75,16 @@ function item:use(player)
 end
 
 function item:canUse(player)
-    -- Check quantity if available (quantity is stored in inventory item_data, not in item object)
+    -- Check quantity
     if self.quantity and self.quantity <= 0 then
         return false
     end
 
-    if self.config.canUse then
+    -- Use data-driven item_actions system (new approach)
+    if self.config.use_condition then
+        return item_actions.canUse(self.config, player)
+    -- Legacy function-based approach (for backward compatibility)
+    elseif self.config.canUse then
         return self.config.canUse(player)
     end
 

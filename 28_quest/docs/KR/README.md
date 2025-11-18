@@ -90,11 +90,11 @@
 28_quest/
 ├── engine/           # 재사용 가능 게임 엔진 (100% 재사용 가능)
 │   ├── core/         # 핵심 시스템 (lifecycle, input, scene, quest 등)
-│   ├── systems/      # 서브시스템 (world, effects, lighting, hud)
+│   ├── systems/      # 서브시스템 (world, effects, lighting, hud, prompt, entity_factory)
 │   ├── entities/     # 모든 엔티티 (player, enemy, weapon, npc, item)
-│   ├── scenes/       # 씬 빌더 (builder, cutscene, gameplay)
-│   ├── ui/           # UI 시스템 (menu, dialogue, questlog, widgets, colors)
-│   └── utils/        # 유틸리티
+│   ├── scenes/       # 씬 빌더 (builder, cutscene, gameplay - 모듈형 7개 파일)
+│   ├── ui/           # UI 시스템 (menu, dialogue, questlog, widgets)
+│   └── utils/        # 유틸리티 (fonts, text, util, colors 등)
 ├── game/             # 게임 특화 콘텐츠
 │   ├── data/         # 설정 파일 (player, quests, scenes, sounds 등)
 │   └── scenes/       # 게임 씬 (menu, play, settings, inventory, load)
@@ -526,5 +526,5 @@ php -S localhost:8080
 ---
 
 **프레임워크:** LÖVE 11.5 + Lua 5.1
-**아키텍처:** Engine/Game 분리 + 의존성 주입 + 데이터 기반 + 대화 시스템 + 퀘스트 시스템
-**마지막 업데이트:** 2025-11-17
+**아키텍처:** 계층형 피라미드 아키텍처 (99.2% 깔끔함) + Engine/Game 분리 + 의존성 주입 + 데이터 기반
+**마지막 업데이트:** 2025-11-18

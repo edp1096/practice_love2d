@@ -85,8 +85,8 @@ function input_handler.keypressed(load_scene, key)
         input_handler.selectSlot(load_scene, load_scene.selected)
     elseif input:wasPressed("menu_back", "keyboard", key) then
         scene_control.switch("menu")
-    elseif key == "delete" then
-        -- Keep delete key hardcoded as it's specific to this screen
+    elseif input:wasPressed("delete_item", "keyboard", key) then
+        -- Delete key for save slots
         local slot = load_scene.slots[load_scene.selected]
         if slot and slot.exists and slot.slot ~= "back" then
             load_scene.confirm_delete = true

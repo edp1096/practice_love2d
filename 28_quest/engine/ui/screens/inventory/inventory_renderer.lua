@@ -5,7 +5,7 @@ local slot_renderer = {}
 local shapes = require "engine.utils.shapes"
 local text_ui = require "engine.utils.text"
 local input = require "engine.core.input"
-local colors = require "engine.ui.colors"
+local colors = require "engine.utils.colors"
 
 -- Grid constants
 local CELL_SIZE = 50

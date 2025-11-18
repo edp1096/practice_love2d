@@ -6,7 +6,7 @@ local input = require "engine.core.input"
 local sound = require "engine.core.sound"
 local fonts = require "engine.utils.fonts"
 local text_ui = require "engine.utils.text"
-local colors = require "engine.ui.colors"
+local colors = require "engine.utils.colors"
 
 local helpers = {}
 

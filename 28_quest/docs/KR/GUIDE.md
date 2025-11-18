@@ -133,7 +133,7 @@ scene_control.pop()               -- 이전 씬으로 복귀
 
 **사용 가능한 적 타입:** `game/data/entities/types.lua` 참조
 
-**팩토리 기본값:** `engine/entities/factory.lua` DEFAULTS 섹션 참조
+**팩토리 기본값:** `engine/systems/entity_factory.lua` DEFAULTS 섹션 참조
 
 ### 새 메뉴 씬 추가하기 (데이터 기반!)
 
@@ -722,7 +722,8 @@ local CONSTANT_VALUE = 100     -- UPPER_CASE
 **생성:**
 ```lua
 -- Tiled 오브젝트용 팩토리 사용
-local enemy = factory:createEnemy(obj, enemy_class, map_name)
+local entity_factory = require "engine.systems.entity_factory"
+local enemy = entity_factory:createEnemy(obj, enemy_class, map_name)
 
 -- 또는 직접 생성
 local player = player_module:new(x, y, config)
@@ -954,6 +955,6 @@ end
 
 ---
 
-**마지막 업데이트:** 2025-11-17
-**엔진 버전:** 28_quest
+**마지막 업데이트:** 2025-11-18
+**엔진 버전:** 28_quest (계층형 피라미드 아키텍처 - 99.2% 정리됨)
 **LÖVE 버전:** 11.5

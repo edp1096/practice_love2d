@@ -1,8 +1,8 @@
--- engine/ui/shapes.lua
+-- engine/utils/shapes.lua
 -- Shape drawing utilities to reduce code duplication
 
 local shapes = {}
-local colors = require "engine.ui.colors"
+local colors = require "engine.utils.colors"
 
 -- Draw a filled box with optional border and rounding
 -- color: {r, g, b, a}

@@ -53,13 +53,16 @@ function input:keypressed(key)
         return
     end
 
-    if key == "escape" or key == "q" then
+    local input = require "engine.core.input"
+
+    if input:wasPressed("close_questlog", "keyboard", key) then
         scene_control.pop()
         return
     end
 
     -- Category navigation (left/right or tab/shift+tab)
-    if key == "left" or (key == "tab" and love.keyboard.isDown("lshift", "rshift")) then
+    if input:wasPressed("prev_category", "keyboard", key) or
+       (key == "tab" and love.keyboard.isDown("lshift", "rshift")) then
         scene.selected_category_index = scene.selected_category_index - 1
         if scene.selected_category_index < 1 then
             scene.selected_category_index = #scene.categories
@@ -70,7 +73,7 @@ function input:keypressed(key)
         return
     end
 
-    if key == "right" or key == "tab" then
+    if input:wasPressed("next_category", "keyboard", key) then
         scene.selected_category_index = scene.selected_category_index + 1
         if scene.selected_category_index > #scene.categories then
             scene.selected_category_index = 1
@@ -82,7 +85,7 @@ function input:keypressed(key)
     end
 
     -- Quest navigation (up/down)
-    if key == "up" then
+    if input:wasPressed("move_up", "keyboard", key) then
         scene.selected_quest_index = scene.selected_quest_index - 1
         if scene.selected_quest_index < 1 then
             local quests = scene:getQuestsForCategory(scene.selected_category)
@@ -92,7 +95,7 @@ function input:keypressed(key)
         return
     end
 
-    if key == "down" then
+    if input:wasPressed("move_down", "keyboard", key) then
         local quests = scene:getQuestsForCategory(scene.selected_category)
         scene.selected_quest_index = scene.selected_quest_index + 1
         if scene.selected_quest_index > #quests then

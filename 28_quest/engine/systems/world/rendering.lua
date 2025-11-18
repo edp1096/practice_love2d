@@ -2,7 +2,7 @@
 -- Contains drawing and rendering functions
 
 local effects = require "engine.systems.effects"
-local prompt = require "engine.ui.prompt"
+local prompt = require "engine.systems.prompt"
 local text_ui = require "engine.utils.text"
 
 local rendering = {}

@@ -1,6 +1,8 @@
 -- systems/inventory.lua
 -- Grid-based inventory management system
 
+local item_actions = require "engine.systems.item_actions"
+
 local inventory = {}
 inventory.__index = inventory
 inventory.item_class = nil  -- Injected item class
@@ -272,16 +274,19 @@ end
 function inventory:useSelectedItem(player)
     local item = self:getSelectedItem()
     if not item then
+        print("✗ No item selected")
         return false
     end
 
-    if not item:canUse(player) then
+    -- Use item's own use() method (handles both data-driven and legacy)
+    if not item.canUse or not item:canUse(player) then
+        print(string.format("✗ Cannot use %s (HP full or wrong conditions)", item.name))
         return false
     end
 
     local success = item:use(player)
     if success then
-        -- Remove item if quantity reaches 0
+        -- Check if item should be removed (quantity handled by item:use())
         if item.quantity <= 0 then
             self:removeItem(self.selected_item_id)
         end
@@ -718,6 +723,7 @@ function inventory:useQuickslot(slot_index, player)
 
     local item_id = self.quickslots[slot_index]
     if not item_id then
+        print("✗ Quickslot is empty")
         return false, "Quickslot is empty"
     end
 
@@ -732,6 +738,7 @@ function inventory:useQuickslot(slot_index, player)
 
     -- Check if item can be used
     if not item.canUse or not item:canUse(player) then
+        print(string.format("✗ Cannot use %s (HP full or wrong conditions)", item.name))
         return false, "Cannot use item"
     end
 

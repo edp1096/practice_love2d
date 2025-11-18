@@ -1,12 +1,11 @@
--- entities/item/types/orange.lua
--- Orange (medium healing fruit)
+-- game/data/items/consumables/orange.lua
+-- Orange (medium healing fruit) - pure data, no logic
 
 local orange = {
     name = "Orange",
     description = "Restores 20 HP",
     size = { width = 1, height = 1 },  -- Grid size: 1x1
     max_stack = 99,
-    heal_amount = 20,
 
     -- Sprite information for world item (animation)
     sprite = {
@@ -22,27 +21,21 @@ local orange = {
         w = 32, -- Frame width
         h = 32, -- Frame height
         scale = 1  -- 1:1 scale
+    },
+
+    -- Item type (explicit declaration)
+    item_type = "consumable",
+
+    -- Use condition (explicit declaration)
+    use_condition = {
+        type = "health_not_full"
+    },
+
+    -- Effects when used (explicit declaration)
+    effects = {
+        { type = "heal", amount = 20 },
+        { type = "play_sound", category = "item", name = "eat" }
     }
 }
-
-function orange.use(player)
-    if player.health >= player.max_health then
-        return false
-    end
-
-    player.health = math.min(player.max_health, player.health + orange.heal_amount)
-
-    -- Play heal sound effect if available
-    local sound = require("engine.core.sound")
-    if sound.playSFX then
-        sound:playSFX("item", "eat")
-    end
-
-    return true
-end
-
-function orange.canUse(player)
-    return player.health < player.max_health
-end
 
 return orange

@@ -1,13 +1,15 @@
--- entities/item/types/iron_axe.lua
--- Iron axe equipment configuration
+-- game/data/items/weapons/iron_axe.lua
+-- Iron axe equipment configuration (pure data - no logic)
 
 local iron_axe = {
     name = "Iron Axe",
     description = "A heavy iron axe",
     size = { width = 1, height = 1 },  -- Grid size: 1x1 (16x16 sprite)
+    max_stack = 1,  -- Equipment cannot be stacked
+
+    -- Item type (explicit declaration)
     item_type = "equipment",
     equipment_slot = "weapon",  -- Can only be equipped to weapon slot
-    max_stack = 1,  -- Equipment cannot be stacked
 
     -- Weapon type for player weapon system
     weapon_type = "axe",  -- Must match game/data/entities/types.lua weapons table
@@ -26,17 +28,12 @@ local iron_axe = {
     stats = {
         damage = 20,  -- Higher damage than sword
         attack_speed = 0.8  -- Slower than sword
+    },
+
+    -- Use condition (explicit declaration - equipment cannot be used)
+    use_condition = {
+        type = "never"
     }
 }
-
-function iron_axe.use(player)
-    -- Equipment items don't have "use" - they are equipped via drag & drop
-    return false
-end
-
-function iron_axe.canUse(player)
-    -- Equipment cannot be "used" directly
-    return false
-end
 
 return iron_axe

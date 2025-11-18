@@ -90,11 +90,11 @@ The `game/` folder contains **only** game-specific content:
 28_quest/
 ├── engine/           # Reusable game engine (100% reusable)
 │   ├── core/         # Core systems (lifecycle, input, scene, quest, etc.)
-│   ├── systems/      # Subsystems (world, effects, lighting, hud)
+│   ├── systems/      # Subsystems (world, effects, lighting, hud, prompt, entity_factory)
 │   ├── entities/     # All entities (player, enemy, weapon, npc, item)
-│   ├── scenes/       # Scene builders (builder, cutscene, gameplay)
-│   ├── ui/           # UI systems (menu, dialogue, questlog, widgets, colors)
-│   └── utils/        # Utilities
+│   ├── scenes/       # Scene builders (builder, cutscene, gameplay - modular 7 files)
+│   ├── ui/           # UI systems (menu, dialogue, questlog, widgets)
+│   └── utils/        # Utilities (fonts, text, util, colors, etc.)
 ├── game/             # Game-specific content
 │   ├── data/         # Configuration files (player, quests, scenes, sounds, etc.)
 │   └── scenes/       # Game scenes (menu, play, settings, inventory, load)
@@ -526,5 +526,5 @@ php -S localhost:8080
 ---
 
 **Framework:** LÖVE 11.5 + Lua 5.1
-**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven + Dialogue System + Quest System
-**Last Updated:** 2025-11-17
+**Architecture:** Layered Pyramid Architecture (99.2% clean) + Engine/Game Separation + Dependency Injection + Data-Driven
+**Last Updated:** 2025-11-18

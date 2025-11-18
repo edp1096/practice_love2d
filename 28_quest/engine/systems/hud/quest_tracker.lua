@@ -3,7 +3,7 @@
 
 local text_ui = require "engine.utils.text"
 local shapes = require "engine.utils.shapes"
-local colors = require "engine.ui.colors"
+local colors = require "engine.utils.colors"
 
 local quest_tracker = {}
 

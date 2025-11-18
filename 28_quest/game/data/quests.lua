@@ -71,7 +71,14 @@ quests.collect_test = {
         gold = 50,
         exp = 25
     },
-    prerequisites = { "tutorial_talk" }
+    prerequisites = { "tutorial_talk", "slime_menace" },
+
+    -- Dialogue information (for quest offer system)
+    dialogue = {
+        offer_text = "Actually, I need some slime cores for research. Could you collect 3 of them?",
+        accept_text = "Great! Bring me 3 slime cores when you have them.",
+        decline_response = "main_menu"  -- Node to go to on decline
+    }
 }
 
 quests.explore_test = {
@@ -91,7 +98,14 @@ quests.explore_test = {
         gold = 30,
         exp = 20
     },
-    prerequisites = { "tutorial_talk" }
+    prerequisites = { "tutorial_talk", "slime_menace" },
+
+    -- Dialogue information (for quest offer system)
+    dialogue = {
+        offer_text = "Have you explored the eastern area yet? I'd like to know if it's safe.",
+        accept_text = "Thank you! Let me know what you find there.",
+        decline_response = "main_menu"
+    }
 }
 
 quests.deliver_test = {
@@ -113,7 +127,14 @@ quests.deliver_test = {
         gold = 40,
         exp = 15
     },
-    prerequisites = { "tutorial_talk" }
+    prerequisites = { "tutorial_talk", "slime_menace" },
+
+    -- Dialogue information (for quest offer system)
+    dialogue = {
+        offer_text = "I need a small health potion delivered to someone. Can you help?",
+        accept_text = "Perfect! Take this potion to the merchant when you're ready.",
+        decline_response = "main_menu"
+    }
 }
 
 -- ============================================================================
@@ -123,7 +144,7 @@ quests.deliver_test = {
 quests.slime_menace = {
     id = "slime_menace",
     title = "Slime Menace",
-    description = "The village is being bothered by slimes. Help by defeating 5 of them.",
+    description = "The village is being bothered by slimes. Help by defeating 3 of them.",
     objectives = {
         {
             type = "kill",
@@ -227,6 +248,13 @@ quests.explore_forest = {
     rewards = {
         gold = 50,
         exp = 40
+    },
+
+    -- Dialogue information (for quest offer system)
+    dialogue = {
+        offer_text = "The eastern forest is vast and mysterious. Would you explore it and report back what you find?",
+        accept_text = "Excellent! The forest lies to the east. Be careful out there!",
+        decline_response = "main_menu"
     }
 }
 
@@ -353,6 +381,13 @@ quests.mysterious_stranger = {
     rewards = {
         gold = 50,
         exp = 30
+    },
+
+    -- Dialogue information (for quest offer system)
+    dialogue = {
+        offer_text = "Have you noticed that mysterious stranger near the village entrance? I'm curious what they want. Could you talk to them?",
+        accept_text = "Thank you! The stranger should be near the village entrance. Let me know what they say!",
+        decline_response = "main_menu"
     }
 }
 

@@ -4,6 +4,7 @@
 local effects = require "engine.systems.effects"
 local constants = require "engine.core.constants"
 local collision = require "engine.systems.collision"
+local loot_system = require "engine.systems.loot"
 
 local entities = {}
 
@@ -88,7 +89,7 @@ function entities.updateEnemies(self, dt, player_x, player_y)
 
                 -- Try to drop item (requires loot_tables and world_item_class)
                 if self.loot_tables and self.world_item_class then
-                    local item_type, quantity = self.loot_tables.getLoot(enemy.type)
+                    local item_type, quantity = loot_system.getLoot(enemy.type, self.loot_tables)
                     if item_type then
                         -- Drop at accurate enemy collider position
                         self:addWorldItem(item_type, drop_x, drop_y, quantity)

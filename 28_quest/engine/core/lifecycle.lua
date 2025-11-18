@@ -98,7 +98,8 @@ function lifecycle:draw()
             local current_scene = self.scene_control.current
             local player = current_scene and current_scene.player
             local save_slot = current_scene and current_scene.current_save_slot
-            debug:drawInfo(self.display, player, save_slot, self.effects)
+            local quest_sys = current_scene and current_scene.quest_system
+            debug:drawInfo(self.display, player, save_slot, self.effects, quest_sys)
             self.display:Detach()
         end
     end

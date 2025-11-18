@@ -371,7 +371,7 @@ function debug:IsHandMarkingActive()
 end
 
 -- === Debug Info Panel ===
-function debug:drawInfo(display, player, current_save_slot, effects_sys)
+function debug:drawInfo(display, player, current_save_slot, effects_sys, quest_sys)
     if not self.enabled then return end
 
     local sw, sh = display:GetScreenDimensions()
@@ -396,13 +396,21 @@ function debug:drawInfo(display, player, current_save_slot, effects_sys)
         end
     end)
 
+    -- Get quest info (if quest debug enabled)
+    local quest_info = nil
+    local quest_extra = 0
+    if self.show_quest_debug and quest_sys then
+        quest_info = self:getQuestDebugInfo(quest_sys)
+        quest_extra = #quest_info * 20 + 20  -- Each line + header
+    end
+
     -- Calculate panel height based on content
     local base_height = 185
     local mobile_extra = display.is_mobile and 60 or 0
     local player_extra = player and 120 or 0
     local effects_extra = has_effects and 20 or 0
     local gamepad_extra = gamepad_info and 40 or 0
-    local panel_height = base_height + mobile_extra + player_extra + effects_extra + gamepad_extra
+    local panel_height = base_height + mobile_extra + player_extra + effects_extra + gamepad_extra + quest_extra
 
     -- Offset to avoid overlapping HP bar and inventory (height ~60)
     local y_start = 70
@@ -479,9 +487,85 @@ function debug:drawInfo(display, player, current_save_slot, effects_sys)
     -- Gamepad info (if connected)
     if gamepad_info then
         text_ui:draw(gamepad_info, 10, y_offset, white)
+        y_offset = y_offset + 40
+    end
+
+    -- Quest debug info (if enabled)
+    if quest_info then
+        y_offset = y_offset + 10
+        text_ui:draw("=== QUESTS ===", 10, y_offset, {1, 1, 0, 1})
+        y_offset = y_offset + 20
+        for _, line in ipairs(quest_info) do
+            text_ui:draw(line, 10, y_offset, white)
+            y_offset = y_offset + 20
+        end
     end
 
     love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Get quest debug information
+function debug:getQuestDebugInfo(quest_sys)
+    local info = {}
+
+    if not quest_sys or not quest_sys.quest_states then
+        table.insert(info, "No quest system")
+        return info
+    end
+
+    -- Count quests by state
+    local counts = {
+        available = 0,
+        active = 0,
+        completed = 0,
+        turned_in = 0
+    }
+
+    for quest_id, state in pairs(quest_sys.quest_states) do
+        if state and state.state then
+            counts[state.state] = (counts[state.state] or 0) + 1
+        end
+    end
+
+    table.insert(info, string.format("AVA:%d ACT:%d CMP:%d TIN:%d",
+        counts.available, counts.active, counts.completed, counts.turned_in))
+
+    -- Show specific quest states (limited to 5 most relevant)
+    local shown = 0
+    local max_show = 5
+
+    -- Priority 1: Active quests
+    for quest_id, state in pairs(quest_sys.quest_states) do
+        if shown >= max_show then break end
+        if state.state == quest_sys.STATE.ACTIVE then
+            local def = quest_sys.quest_registry[quest_id]
+            local title = def and def.title or quest_id
+            table.insert(info, string.format("ACT: %s", title:sub(1, 20)))
+            shown = shown + 1
+        end
+    end
+
+    -- Priority 2: Completed quests
+    for quest_id, state in pairs(quest_sys.quest_states) do
+        if shown >= max_show then break end
+        if state.state == quest_sys.STATE.COMPLETED then
+            local def = quest_sys.quest_registry[quest_id]
+            local title = def and def.title or quest_id
+            table.insert(info, string.format("CMP: %s", title:sub(1, 20)))
+            shown = shown + 1
+        end
+    end
+
+    -- Priority 3: Show tutorial_talk specifically
+    if shown < max_show then
+        local tutorial_state = quest_sys.quest_states["tutorial_talk"]
+        if tutorial_state then
+            table.insert(info, string.format("tutorial: %s", tutorial_state.state))
+            shown = shown + 1
+        end
+    end
+
+    return info
 end
 
 -- === Help Display ===
@@ -494,7 +578,7 @@ function debug:drawHelp(x, y)
     love.graphics.setFont(self.help_font)
 
     love.graphics.setColor(0, 0, 0, 0.7)
-    love.graphics.rectangle("fill", x - 5, y - 5, 240, 135)
+    love.graphics.rectangle("fill", x - 5, y - 5, 240, 153)
 
     text_ui:draw("DEBUG CONTROLS:", x, y, {1, 1, 0, 1})
     local white = {1, 1, 1, 1}
@@ -504,7 +588,8 @@ function debug:drawHelp(x, y)
     text_ui:draw("F4: Virtual Gamepad", x, y + 63, white)
     text_ui:draw("F5: Effects Debug", x, y + 78, white)
     text_ui:draw("F6: Test Effects", x, y + 93, white)
-    text_ui:draw("H: Hand Marking", x, y + 108, white)
+    text_ui:draw("F7: Quest Debug", x, y + 108, white)
+    text_ui:draw("H: Hand Marking", x, y + 123, white)
 end
 
 return debug

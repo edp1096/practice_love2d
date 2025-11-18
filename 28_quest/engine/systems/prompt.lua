@@ -1,9 +1,9 @@
--- engine/ui/prompt.lua
--- Helper for drawing interaction prompts with appropriate button icons
+-- engine/systems/prompt.lua
+-- Interaction prompt system (systems layer - depends on core, utils)
 
 local input = require "engine.core.input"
 local text_ui = require "engine.utils.text"
-local colors = require "engine.ui.colors"
+local colors = require "engine.utils.colors"
 
 local prompt = {}
 

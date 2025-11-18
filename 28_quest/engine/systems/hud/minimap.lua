@@ -3,7 +3,7 @@
 
 -- Module dependencies (loaded once at module load time)
 local lighting = require "engine.systems.lighting"
-local colors = require "engine.ui.colors"
+local colors = require "engine.utils.colors"
 
 local minimap = {}
 minimap.__index = minimap

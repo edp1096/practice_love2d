@@ -23,7 +23,7 @@ local dialogues = {}
 
 -- Example: Simple greeting with choices
 dialogues.villager_greeting = {
-    npc_id = "villager_main",  -- NPC ID for quest lookups
+    -- NOTE: npc_id is injected at runtime from actual NPC (see input.lua)
     start_node = "start",
     nodes = {
         start = {
@@ -41,26 +41,11 @@ dialogues.villager_greeting = {
                 {
                     text = "Other quest?",
                     next = "quest_list",
-                    -- Show only if there are more quests to offer
-                    condition = function(ctx)
-                        -- Check if any quest in quest_list is still available
-                        local quest_order = {
-                            "collect_test", "explore_test", "deliver_test",
-                            "mysterious_stranger", "explore_forest"
-                        }
-
-                        for _, quest_id in ipairs(quest_order) do
-                            local quest_state = ctx.quest_system:getState(quest_id)
-                            if quest_state and quest_state.state == ctx.quest_system.STATE.AVAILABLE then
-                                local can_accept = ctx.quest_system:canAccept(quest_id)
-                                if can_accept then
-                                    return true  -- At least one quest available
-                                end
-                            end
-                        end
-
-                        return false  -- No quests available
-                    end
+                    -- Show only if this NPC has available quests
+                    condition = {
+                        type = "has_available_quests"
+                        -- npc_id automatically uses current NPC from context
+                    }
                 },
                 { text = "Goodbye", next = "end" }
             }
@@ -120,216 +105,15 @@ dialogues.villager_greeting = {
             }
         },
 
-        -- Quest list router - dynamically determines next quest to offer
+        -- Quest offer node (NEW: Dynamic quest dialogue generation from quest data)
         quest_list = {
-            text = "",  -- Will be set dynamically
+            type = "quest_offer",  -- Special node type
+            -- npc_id automatically uses current NPC from dialogue.current_npc_id
             speaker = "Villager",
-            choices = {},  -- Will be set dynamically
-            -- This is a special node that uses dynamic routing
-            on_enter = function(ctx)
-                -- Priority order of quests to offer
-                local quest_order = {
-                    { id = "collect_test", flag = "offered_collect_test", node = "offer_collect" },
-                    { id = "explore_test", flag = "offered_explore_test", node = "offer_explore" },
-                    { id = "deliver_test", flag = "offered_deliver_test", node = "offer_deliver" },
-                    { id = "mysterious_stranger", flag = "offered_mysterious_stranger", node = "offer_stranger" },
-                    { id = "explore_forest", flag = "offered_explore_forest", node = "offer_explore_forest" },
-                }
-
-                -- Find next quest to offer
-                for _, quest_info in ipairs(quest_order) do
-                    local offered = ctx.dialogue_system:getFlag(ctx.dialogue_id, quest_info.flag, false)
-                    -- Check if quest is still available (not already accepted/completed)
-                    local quest_state = ctx.quest_system:getState(quest_info.id)
-                    local is_available = quest_state and quest_state.state == ctx.quest_system.STATE.AVAILABLE
-
-                    if not offered and is_available then
-                        -- Offer this quest (only if not offered before AND still available)
-                        return quest_info.node
-                    end
-                end
-
-                -- All quests offered
-                return "no_more_quests"
-            end
+            no_quest_fallback = "no_more_quests"  -- Where to go if no quests available
         },
 
-        -- Collect quest offer
-        offer_collect = {
-            text = "Actually, I need some slime cores for research. Could you collect 3 of them?",
-            speaker = "Villager",
-            choices = {
-                {
-                    text = "Accept Quest",
-                    next = "collect_accepted",
-                    action = {
-                        type = "accept_quest",
-                        quest_id = "collect_test",
-                        set_flag = { flag = "offered_collect_test", value = true }
-                    }
-                },
-                {
-                    text = "Decline",
-                    next = "main_menu",
-                    action = {
-                        type = "set_flag",
-                        flag = "offered_collect_test",
-                        value = true
-                    }
-                }
-            }
-        },
-
-        collect_accepted = {
-            text = "Great! Bring me 3 slime cores when you have them.",
-            speaker = "Villager",
-            choices = {
-                { text = "I'll get them", next = "end" },
-                { text = "Tell me more", next = "main_menu" }
-            }
-        },
-
-        -- Explore quest offer
-        offer_explore = {
-            text = "Have you explored the eastern area yet? I'd like to know if it's safe.",
-            speaker = "Villager",
-            choices = {
-                {
-                    text = "Accept Quest",
-                    next = "explore_accepted",
-                    action = {
-                        type = "accept_quest",
-                        quest_id = "explore_test",
-                        set_flag = { flag = "offered_explore_test", value = true }
-                    }
-                },
-                {
-                    text = "Decline",
-                    next = "main_menu",
-                    action = {
-                        type = "set_flag",
-                        flag = "offered_explore_test",
-                        value = true
-                    }
-                }
-            }
-        },
-
-        explore_accepted = {
-            text = "Thank you! Let me know what you find there.",
-            speaker = "Villager",
-            choices = {
-                { text = "I'll check it out", next = "end" },
-                { text = "Anything else?", next = "main_menu" }
-            }
-        },
-
-        -- Deliver quest offer
-        offer_deliver = {
-            text = "I need a small health potion delivered to someone. Can you help?",
-            speaker = "Villager",
-            choices = {
-                {
-                    text = "Accept Quest",
-                    next = "deliver_accepted",
-                    action = {
-                        type = "accept_quest",
-                        quest_id = "deliver_test",
-                        set_flag = { flag = "offered_deliver_test", value = true }
-                    }
-                },
-                {
-                    text = "Decline",
-                    next = "main_menu",
-                    action = {
-                        type = "set_flag",
-                        flag = "offered_deliver_test",
-                        value = true
-                    }
-                }
-            }
-        },
-
-        deliver_accepted = {
-            text = "Perfect! Take this potion to the merchant when you're ready.",
-            speaker = "Villager",
-            choices = {
-                { text = "I'll deliver it", next = "end" },
-                { text = "Anything else?", next = "main_menu" }
-            }
-        },
-
-        -- Mysterious Stranger quest offer
-        offer_stranger = {
-            text = "Have you noticed that mysterious stranger near the village entrance? I'm curious what they want. Could you talk to them?",
-            speaker = "Villager",
-            choices = {
-                {
-                    text = "Accept Quest",
-                    next = "stranger_accepted",
-                    action = {
-                        type = "accept_quest",
-                        quest_id = "mysterious_stranger",
-                        set_flag = { flag = "offered_mysterious_stranger", value = true }
-                    }
-                },
-                {
-                    text = "Decline",
-                    next = "main_menu",
-                    action = {
-                        type = "set_flag",
-                        flag = "offered_mysterious_stranger",
-                        value = true
-                    }
-                }
-            }
-        },
-
-        stranger_accepted = {
-            text = "Thank you! The stranger should be near the village entrance. Let me know what they say!",
-            speaker = "Villager",
-            choices = {
-                { text = "I'll talk to them", next = "end" },
-                { text = "Anything else?", next = "main_menu" }
-            }
-        },
-
-        -- Explore Forest quest offer
-        offer_explore_forest = {
-            text = "The eastern forest is vast and mysterious. Would you explore it and report back what you find?",
-            speaker = "Villager",
-            choices = {
-                {
-                    text = "Accept Quest",
-                    next = "explore_forest_accepted",
-                    action = {
-                        type = "accept_quest",
-                        quest_id = "explore_forest",
-                        set_flag = { flag = "offered_explore_forest", value = true }
-                    }
-                },
-                {
-                    text = "Decline",
-                    next = "main_menu",
-                    action = {
-                        type = "set_flag",
-                        flag = "offered_explore_forest",
-                        value = true
-                    }
-                }
-            }
-        },
-
-        explore_forest_accepted = {
-            text = "Excellent! The forest lies to the east. Be careful out there!",
-            speaker = "Villager",
-            choices = {
-                { text = "I'll explore it", next = "end" },
-                { text = "Anything else?", next = "main_menu" }
-            }
-        },
-
-        -- No more quests
+        -- No more quests fallback
         no_more_quests = {
             text = "I don't have any more tasks at the moment. Thank you for all your help!",
             speaker = "Villager",

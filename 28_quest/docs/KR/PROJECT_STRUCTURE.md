@@ -67,6 +67,8 @@ systems/
 │                           - topdown용 이중 충돌체
 │                           - 게임 모드 인식 NPC 충돌체
 ├── inventory.lua         - 인벤토리 시스템
+├── entity_factory.lua    - Tiled 속성으로부터 엔티티 생성
+├── prompt.lua            - 상호작용 프롬프트 (동적 버튼 아이콘)
 │
 ├── world/                - 물리 & 맵 시스템
 │   ├── init.lua          - World 코디네이터 (Windfield + STI)
@@ -87,20 +89,26 @@ systems/
 │   ├── layer.lua         - 개별 레이어 (부드러운 스크롤)
 │   └── tiled_loader.lua  - Tiled 맵에서 로드
 │
+├── weather/              - 동적 날씨 시스템
+│   ├── init.lua          - 날씨 관리자 (풀, 전환)
+│   ├── rain.lua          - 비 효과 (1000 파티클/s)
+│   ├── snow.lua          - 눈 효과 (300 파티클/s, 8초 지속)
+│   ├── fog.lua           - 안개/미스트 효과 (8개 이동 레이어)
+│   └── storm.lua         - 폭풍 효과 (비 + 바람)
+│
 └── hud/                  - 인게임 HUD
     ├── status.lua        - 체력바, 쿨다운, 패리 UI
     ├── minimap.lua       - 미니맵 렌더링 (75% 불투명도)
-    └── quickslots.lua    - 퀵슬롯 벨트 UI (하단 중앙)
+    ├── quickslots.lua    - 퀵슬롯 벨트 UI (하단 중앙)
+    └── quest_tracker.lua - 퀘스트 트래커 HUD (활성 퀘스트 3개)
 ```
 
-### 엔티티 (`engine/entities/`) 
+### 엔티티 (`engine/entities/`)
 
 **모든 엔티티가 100% 재사용 가능! 게임 특화 코드 없음.**
 
 ```
 entities/
-├── factory.lua           - Tiled 속성으로부터 엔티티 생성
-│
 ├── player/               - 플레이어 시스템 (config 주입)
 │   ├── init.lua          - 메인 코디네이터
 │   ├── animation.lua     - 애니메이션 상태 머신
@@ -149,21 +157,20 @@ entities/
 scenes/
 ├── builder.lua           - 데이터 기반 씬 팩토리
 ├── cutscene.lua          - 컷씬/인트로 씬
-└── gameplay/             - 메인 게임플레이 씬
-    ├── init.lua          - 씬 조정자 (퀘스트 시스템, 지속성)
-    ├── update.lua        - 게임 루프
-    ├── render.lua        - 그리기
-    └── input.lua         - 입력 처리
+└── gameplay/             - 메인 게임플레이 씬 (모듈화, ~2,100줄)
+    ├── init.lua          - 씬 코디네이터 (~195줄)
+    ├── scene_setup.lua   - 초기화 & 생명주기 (~505줄)
+    ├── save_manager.lua  - 저장/로드 시스템 (~45줄)
+    ├── quest_interactions.lua - 퀘스트 NPC 상호작용 (~195줄)
+    ├── update.lua        - 게임 루프 (~460줄)
+    ├── render.lua        - 그리기 (~170줄)
+    └── input.lua         - 입력 처리 (~555줄)
 ```
 
 ### UI 시스템 (`engine/ui/`)
 
 ```
 ui/
-├── colors.lua            -  중앙집중식 색상 시스템
-│                           - 기본 팔레트 + 시맨틱 매핑
-│                           - 헬퍼 함수 (apply, withAlpha 등)
-│
 ├── menu/                 - 메뉴 UI 시스템
 │   ├── base.lua          - MenuSceneBase (기본 클래스)
 │   └── helpers.lua       - 메뉴 헬퍼 (레이아웃, 네비게이션)
@@ -189,18 +196,12 @@ ui/
 │                           - 네비게이션: 키보드, 마우스, 게임패드, 터치
 │                           - 동적 선택지 색상 (방문 추적)
 │
-├── prompt.lua            - 상호작용 프롬프트 (동적 버튼 아이콘)
-├── shapes.lua            - 도형 렌더링 (버튼, 다이얼로그)
+├── constants.lua         - UI 상수 (공유 크기)
 └── widgets/              - 재사용 가능 위젯
-    ├── skip_button.lua   - 스킵 버튼 (0.5초 홀드 충전)
-    └── next_button.lua   - 다음 버튼 (대화 진행용)
+    └── button/
+        ├── skip.lua      - 스킵 버튼 (0.5초 홀드 충전)
+        └── next.lua      - 다음 버튼 (대화 진행용)
 ```
-
-**색상 시스템 (`colors.lua`):**
-- **5가지 헬퍼 함수:** `apply()`, `withAlpha()`, `unpackRGB()`, `unpackRGBA()`, `toVertex()`
-- **기본 팔레트:** 순수 색상 (WHITE, DARK_CHARCOAL, SKY_BLUE 등)
-- **시맨틱 매핑:** 목적 기반 이름 (for_text_normal, for_menu_selected 등)
-- **적용 범위:** 모든 HUD & UI 화면이 중앙집중식 색상 사용 (Phase 2 완료)
 
 ### 유틸리티 (`engine/utils/`)
 
@@ -209,10 +210,20 @@ utils/
 ├── util.lua              - 일반 유틸리티
 ├── text.lua              - 텍스트 렌더링 래퍼
 ├── fonts.lua             - 폰트 관리
+├── shapes.lua            - 도형 렌더링 (버튼, 다이얼로그)
+├── colors.lua            - 중앙집중식 색상 시스템
+│                           - 기본 팔레트 + 시맨틱 매핑
+│                           - 헬퍼 함수 (apply, withAlpha 등)
 ├── restart.lua           - 게임 재시작 로직
 ├── convert.lua           - 데이터 변환
 └── ini.lua               - INI 파일 파서
 ```
+
+**색상 시스템 (`utils/colors.lua`):**
+- **6가지 헬퍼 함수:** `apply()`, `withAlpha()`, `unpackRGB()`, `unpackRGBA()`, `toVertex()`, `reset()`
+- **기본 팔레트:** 순수 색상 (WHITE, DARK_CHARCOAL, SKY_BLUE 등)
+- **시맨틱 매핑:** 목적 기반 이름 (for_text_normal, for_menu_selected 등)
+- **적용 범위:** 모든 HUD & UI 화면이 중앙집중식 색상 사용
 
 ---
 
@@ -243,7 +254,9 @@ game/
     ├── sounds.lua        - 사운드 정의
     ├── input_config.lua  - 입력 매핑
     ├── intro_configs.lua - 컷씬 설정
+    ├── quests.lua        - 퀘스트 정의 (5가지 타입: kill, collect, talk, explore, deliver)
     └── dialogues.lua     - NPC 대화 트리 (선택 기반 대화)
+                            - 퀘스트 조회용 npc_id 필드 포함
 ```
 
 **데이터 기반 메뉴 예시:**
@@ -435,18 +448,20 @@ save_data = {
 - `main.lua` - 의존성 주입, LÖVE 콜백
 - `conf.lua` - LÖVE 설정
 - `startup.lua` - 초기화 (에러 핸들러, 플랫폼 감지)
+- `game/setup.lua` - 게임별 설정 주입
 
 **Engine 핵심:**
 - `engine/core/lifecycle.lua` - 메인 게임 루프 오케스트레이터
 - `engine/core/scene_control.lua` - 씬 관리
 - `engine/core/quest.lua` - 퀘스트 시스템 (5가지 타입, 상태 관리)
+- `engine/core/level.lua` - 레벨/경험치 시스템
 - `engine/core/coords.lua` - 통합 좌표 변환
 - `engine/systems/world/init.lua` - 물리 & 맵 시스템
 - `engine/systems/collision.lua` - 충돌 시스템 (이중 충돌체)
-- `engine/scenes/gameplay/init.lua` - 메인 게임플레이 씬
+- `engine/scenes/gameplay/` - 메인 게임플레이 씬 (모듈화)
 
-**엔티티 시스템:**
-- `engine/entities/factory.lua` - Tiled로부터 엔티티 생성
+**엔티티 & 생성 시스템:**
+- `engine/systems/entity_factory.lua` - Tiled로부터 엔티티 생성
 - `engine/entities/player/` - 플레이어 시스템 (전투, 애니메이션, 렌더링)
 - `engine/entities/enemy/` - 적 AI (팩토리 기반, 리스폰 제어)
 - `engine/entities/weapon/` - 무기 전투 시스템
@@ -454,18 +469,20 @@ save_data = {
 - `engine/entities/world_item/` - 드롭된 아이템 (리스폰 제어)
 
 **UI 시스템:**
-- `engine/ui/colors.lua` - 중앙집중식 색상 시스템
+- `engine/utils/colors.lua` - 중앙집중식 색상 시스템
 - `engine/ui/dialogue/` - 대화 시스템 (모듈화)
 - `engine/ui/screens/questlog/` - 퀘스트 로그 UI
 - `engine/ui/screens/inventory/` - 인벤토리 UI
 - `engine/systems/hud/status.lua` - 체력 바, 패리 UI
 - `engine/systems/hud/quest_tracker.lua` - 퀘스트 HUD 트래커
 - `engine/systems/hud/quickslots.lua` - 퀵슬롯 벨트
+- `engine/systems/prompt.lua` - 상호작용 프롬프트
 
 **Game 설정:**
 - `game/data/player.lua` - 플레이어 스탯 (주입됨)
 - `game/data/entities/types.lua` - 적 타입 (주입됨)
 - `game/data/scenes.lua` - 메뉴 설정 (데이터 기반)
+- `game/data/quests.lua` - 퀘스트 정의
 
 **맵 파일:**
 - `assets/maps/level1/area1.tmx` - Tiled 소스  여기서 respawn 설정!
@@ -473,6 +490,6 @@ save_data = {
 
 ---
 
-**마지막 업데이트:** 2025-11-17
+**마지막 업데이트:** 2025-11-18
 **프레임워크:** LÖVE 11.5 + Lua 5.1
-**아키텍처:** Engine/Game 분리 + 의존성 주입 + 데이터 기반
+**아키텍처:** Engine/Game 분리 + 의존성 주입 + 데이터 기반 + 레이어드 피라미드 (99.2% clean)

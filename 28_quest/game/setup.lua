@@ -24,14 +24,14 @@ function setup.configure()
     local weapon_class = require "engine.entities.weapon"
     local item_class = require "engine.entities.item"
     local constants = require "engine.core.constants"
-    local factory = require "engine.entities.factory"
+    local factory = require "engine.systems.entity_factory"
     local player_sound = require "engine.entities.player.sound"
     local enemy_sound = require "engine.entities.enemy.sound"
     local gameplay_scene = require "engine.scenes.gameplay"
     local cutscene_scene = require "engine.scenes.cutscene"
     local builder = require "engine.scenes.builder"
     local dialogue = require "engine.ui.dialogue"
-    local prompt = require "engine.ui.prompt"
+    local prompt = require "engine.systems.prompt"
     local quest_system = require "engine.core.quest"
 
     -- Inject entity type registries
@@ -76,6 +76,9 @@ function setup.configure()
 
     -- Initialize quest system with quest definitions
     quest_system:registerQuests(quests)
+
+    -- Auto-accept tutorial quest (so it can be completed by talking to NPC)
+    quest_system:accept("tutorial_talk")
 end
 
 -- Return scene loader function for engine's scene_control

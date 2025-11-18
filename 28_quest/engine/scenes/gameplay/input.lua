@@ -41,12 +41,12 @@ function input_handler.keypressed(self, key)
 
         sound:playSFX("ui", "pause")
         sound:pauseBGM()
-    elseif input:wasPressed("open_inventory", "keyboard", key) then
-        -- Open container UI with inventory tab (I key or R2 on gamepad)
+    elseif input:wasPressed("toggle_inventory", "keyboard", key) then
+        -- Toggle container UI with inventory tab (I key or Back button on gamepad)
         local quest_system = require "engine.core.quest"
         scene_control.push("container", self.inventory, self.player, quest_system, "inventory")
-    elseif input:wasPressed("open_questlog", "keyboard", key) then
-        -- Open container UI with questlog tab (J key or Back button on gamepad)
+    elseif input:wasPressed("toggle_questlog", "keyboard", key) then
+        -- Toggle container UI with questlog tab (J key)
         local quest_system = require "engine.core.quest"
         scene_control.push("container", self.inventory, self.player, quest_system, "questlog")
     elseif input:wasPressed("dodge", "keyboard", key) then
@@ -98,10 +98,8 @@ function input_handler.keypressed(self, key)
 
             -- Priority 2: Check for delivery quests (automatic item delivery)
             local delivery_quest_id, item_type = quest_system:getActiveDeliveryQuest(npc.id)
-            print("[DELIVERY] NPC:", npc.id, "Quest:", delivery_quest_id, "Item:", item_type)
             if delivery_quest_id and item_type then
                 local has_item = self.inventory:hasItem(item_type)
-                print("[DELIVERY] Has item?", has_item)
                 -- Check if player has the item in inventory
                 if has_item then
                     -- Remove item from inventory
@@ -122,7 +120,7 @@ function input_handler.keypressed(self, key)
             local interaction_data = npc:interact()
             if interaction_data.type == "tree" then
                 -- New: dialogue tree system
-                dialogue:showTreeById(interaction_data.dialogue_id)
+                dialogue:showTreeById(interaction_data.dialogue_id, npc.id)
             else
                 -- Simple dialogue: message array (non-interactive)
                 dialogue:showMultiple(npc.name, interaction_data.messages)
@@ -220,19 +218,6 @@ function input_handler.gamepadpressed(self, joystick, button)
         return
     end
 
-    -- D-pad Right: Cycle quickslot right (1 -> 2 -> 3 -> 4 -> 5 -> 1)
-    if button == "dpright" then
-        self.selected_quickslot = self.selected_quickslot % 5 + 1
-        sound:playSFX("ui", "move")
-        return
-    end
-
-    -- D-pad Up: Use selected quickslot (unchanged)
-    if button == "dpup" then
-        self.inventory:useQuickslot(self.selected_quickslot, self.player)
-        return
-    end
-
     -- Let input coordinator handle button mapping and context
     local action, ctx = input:handleGamepadPressed(joystick, button)
 
@@ -293,8 +278,15 @@ function input_handler.gamepadpressed(self, joystick, button)
         self.player:startParry()
 
     elseif action == "interact" then
-        -- Direct interact (Y button) - NPC, Save Point, or Pick up Item
+        -- Y button logic:
+        -- Priority 1: NPC/SavePoint/Item (if near)
+        -- Priority 2: Quickslot selection/use
+        --   - First press on slot: Select
+        --   - Second press on same slot: Use
+
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
+
+        -- Priority 1: NPC interaction
         if npc then
             local quest_system = require "engine.core.quest"
 
@@ -312,10 +304,8 @@ function input_handler.gamepadpressed(self, joystick, button)
 
             -- Priority 2: Check for delivery quests (automatic item delivery)
             local delivery_quest_id, item_type = quest_system:getActiveDeliveryQuest(npc.id)
-            print("[DELIVERY] NPC:", npc.id, "Quest:", delivery_quest_id, "Item:", item_type)
             if delivery_quest_id and item_type then
                 local has_item = self.inventory:hasItem(item_type)
-                print("[DELIVERY] Has item?", has_item)
                 -- Check if player has the item in inventory
                 if has_item then
                     -- Remove item from inventory
@@ -336,7 +326,7 @@ function input_handler.gamepadpressed(self, joystick, button)
             local interaction_data = npc:interact()
             if interaction_data.type == "tree" then
                 -- New: dialogue tree system
-                dialogue:showTreeById(interaction_data.dialogue_id)
+                dialogue:showTreeById(interaction_data.dialogue_id, npc.id)
             else
                 -- Simple dialogue: message array (non-interactive)
                 dialogue:showMultiple(npc.name, interaction_data.messages)
@@ -376,15 +366,24 @@ function input_handler.gamepadpressed(self, joystick, button)
                     self.picked_items[world_item.map_id] = true
                 end
 
-                -- Track non-respawning items (one-time pickup)
-                if not world_item.respawn and world_item.map_id then
-                    self.picked_items[world_item.map_id] = true
-                end
-
                 -- Remove from world
                 self.world:removeWorldItem(world_item.id)
                 sound:playSFX("item", "pickup")
             end
+            return
+        end
+
+        -- Priority 2: Quickslot selection/use (no NPC/SavePoint/Item nearby)
+        -- First press: Select quickslot
+        -- Second press on same slot: Use quickslot
+        if not self.last_selected_quickslot or self.last_selected_quickslot ~= self.selected_quickslot then
+            -- First press or different slot - just select
+            self.last_selected_quickslot = self.selected_quickslot
+            sound:playSFX("ui", "select")
+        else
+            -- Second press on same slot - use it
+            self.inventory:useQuickslot(self.selected_quickslot, self.player)
+            self.last_selected_quickslot = nil  -- Reset after use
         end
 
     elseif action == "use_item" then
@@ -405,14 +404,30 @@ function input_handler.gamepadpressed(self, joystick, button)
         -- L1: Use quickslot 1 (potion slot)
         self.inventory:useQuickslot(1, self.player)
 
-    elseif action == "open_inventory" then
+    elseif action == "use_selected_quickslot" then
+        -- D-pad Up or R key: Use currently selected quickslot
+        self.inventory:useQuickslot(self.selected_quickslot, self.player)
+
+    elseif action == "next_quickslot" then
+        -- L2 or D-pad Right: Cycle quickslot right (1->2->3->4->5->1)
+        self.selected_quickslot = self.selected_quickslot % 5 + 1
+        sound:playSFX("ui", "move")
+
+    elseif action == "prev_quickslot" then
+        -- D-pad Left: Cycle quickslot left (5<-4<-3<-2<-1<-5)
+        self.selected_quickslot = self.selected_quickslot - 1
+        if self.selected_quickslot < 1 then
+            self.selected_quickslot = 5
+        end
+        sound:playSFX("ui", "move")
+
+    elseif action == "toggle_inventory" then
         local quest_system = require "engine.core.quest"
         scene_control.push("container", self.inventory, self.player, quest_system, "inventory")
 
-    elseif action == "open_questlog" then
-        -- D-pad Left: Open inventory instead of quest log
+    elseif action == "toggle_questlog" then
         local quest_system = require "engine.core.quest"
-        scene_control.push("container", self.inventory, self.player, quest_system, "inventory")
+        scene_control.push("container", self.inventory, self.player, quest_system, "questlog")
     end
 end
 
@@ -447,11 +462,11 @@ function input_handler.gamepadaxis(self, joystick, axis, value)
     elseif action == "evade" then
         self.player:startEvade()
 
-    elseif action == "open_inventory" then
+    elseif action == "toggle_inventory" then
         local quest_system = require "engine.core.quest"
         scene_control.push("container", self.inventory, self.player, quest_system, "inventory")
 
-    elseif action == "open_questlog" then
+    elseif action == "toggle_questlog" then
         local quest_system = require "engine.core.quest"
         scene_control.push("container", self.inventory, self.player, quest_system, "questlog")
     end

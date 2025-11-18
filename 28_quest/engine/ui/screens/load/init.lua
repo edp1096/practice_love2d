@@ -21,6 +21,9 @@ function load:enter(previous, ...)
         input.virtual_gamepad:hide()
     end
 
+    -- Set scene context for input priority
+    input:setSceneContext("menu")
+
     local vw, vh = display:GetVirtualDimensions()
     self.virtual_width = vw
     self.virtual_height = vh

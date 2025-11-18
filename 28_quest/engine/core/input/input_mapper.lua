@@ -21,6 +21,9 @@ function input_mapper:init(joystick, virtual_gamepad, settings, input_config)
     -- Game context (set by play scene)
     self.game_context = nil
 
+    -- Scene context for input priority (set by current scene)
+    self.scene_context = "gameplay" -- default: gameplay, can be "inventory", "questlog", "menu", etc.
+
     -- Trigger axis tracking (for Xbox controllers)
     self.trigger_state = {
         left = { pressed = false, last_value = 0 },
@@ -47,6 +50,11 @@ end
 -- Set game context for context-based actions
 function input_mapper:setGameContext(context)
     self.game_context = context
+end
+
+-- Set scene context for input priority
+function input_mapper:setSceneContext(scene_type)
+    self.scene_context = scene_type or "gameplay"
 end
 
 -- Register all input sources in priority order
@@ -267,11 +275,28 @@ function input_mapper:setVirtualPad(vpad)
     end
 end
 
+-- Define category priority based on scene context
+-- Returns ordered list of categories to check (highest priority first)
+local function getCategoryPriority(scene_context)
+    if scene_context == "inventory" then
+        return { "inventory", "system", "menu", "combat", "quest", "movement", "aim", "context" }
+    elseif scene_context == "questlog" then
+        return { "quest", "system", "menu", "inventory", "combat", "movement", "aim", "context" }
+    elseif scene_context == "menu" then
+        return { "menu", "system", "inventory", "quest", "combat", "movement", "aim", "context" }
+    else
+        -- gameplay (default)
+        return { "combat", "movement", "aim", "context", "system", "inventory", "quest", "menu" }
+    end
+end
+
 -- Handle gamepad button pressed event
 -- Returns action name(s) to be handled by scene, or nil if handled internally
 function input_mapper:handleGamepadPressed(joystick, button)
-    -- Check context action first (A button)
-    if button == "a" and self.game_context then
+    print(string.format("DEBUG: scene_context=%s, button=%s", self.scene_context or "nil", button))
+
+    -- Check context action first (A button in gameplay)
+    if button == "a" and self.scene_context == "gameplay" and self.game_context then
         -- Check if we can interact with something
         local can_interact = false
 
@@ -298,33 +323,26 @@ function input_mapper:handleGamepadPressed(joystick, button)
         end
     end
 
-    -- Map other buttons to actions using input_config
-    if button == "start" then
-        return "pause"
-    elseif button == "b" then
-        return "jump"
-    elseif button == "x" then
-        return "parry"
-    elseif button == "y" then
-        return "interact" -- Direct interact (not context-based)
-    elseif button == "rightshoulder" then
-        return "dodge"
-    end
+    -- Get category priority for current scene
+    local category_order = getCategoryPriority(self.scene_context)
 
-    -- Check input_config for remaining buttons (support arrays)
-    for category, actions in pairs(self.input_config) do
-        if type(actions) == "table" and category ~= "gamepad_settings" and category ~= "button_prompts" and category ~= "mode_overrides" then
+    -- Check categories in priority order
+    for _, category in ipairs(category_order) do
+        local actions = self.input_config[category]
+        if type(actions) == "table" then
             for action_name, mapping in pairs(actions) do
                 if mapping.gamepad then
                     if type(mapping.gamepad) == "table" then
                         -- Array of buttons
                         for _, btn in ipairs(mapping.gamepad) do
                             if btn == button then
+                                print(string.format("DEBUG: button=%s -> action=%s (category=%s)", button, action_name, category))
                                 return action_name
                             end
                         end
                     elseif mapping.gamepad == button then
                         -- Single button
+                        print(string.format("DEBUG: button=%s -> action=%s (category=%s)", button, action_name, category))
                         return action_name
                     end
                 end
@@ -332,6 +350,7 @@ function input_mapper:handleGamepadPressed(joystick, button)
         end
     end
 
+    print(string.format("DEBUG: button=%s -> no action found", button))
     return nil
 end
 
@@ -357,9 +376,13 @@ function input_mapper:handleGamepadAxis(joystick, axis, value)
         -- Trigger was just pressed - check input_config for mapping
         local trigger_button = (axis == "triggerleft") and "lefttrigger" or "righttrigger"
 
-        -- Check input_config for trigger mapping (support arrays)
-        for category, actions in pairs(self.input_config) do
-            if type(actions) == "table" and category ~= "gamepad_settings" and category ~= "button_prompts" and category ~= "mode_overrides" then
+        -- Get category priority for current scene
+        local category_order = getCategoryPriority(self.scene_context)
+
+        -- Check categories in priority order
+        for _, category in ipairs(category_order) do
+            local actions = self.input_config[category]
+            if type(actions) == "table" then
                 for action_name, mapping in pairs(actions) do
                     if mapping.gamepad then
                         if type(mapping.gamepad) == "table" then

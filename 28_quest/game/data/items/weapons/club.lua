@@ -1,13 +1,15 @@
--- entities/item/types/club.lua
--- Club equipment configuration
+-- game/data/items/weapons/club.lua
+-- Club equipment configuration (pure data - no logic)
 
 local club = {
     name = "Club",
     description = "A simple wooden club",
     size = { width = 1, height = 1 },  -- Grid size: 1x1 (16x16 sprite)
+    max_stack = 1,  -- Equipment cannot be stacked
+
+    -- Item type (explicit declaration)
     item_type = "equipment",
     equipment_slot = "weapon",  -- Can only be equipped to weapon slot
-    max_stack = 1,  -- Equipment cannot be stacked
 
     -- Weapon type for player weapon system
     weapon_type = "club",  -- Must match game/data/entities/types.lua weapons table
@@ -26,17 +28,12 @@ local club = {
     stats = {
         damage = 12,  -- Lower damage than sword
         attack_speed = 1.2  -- Faster than sword
+    },
+
+    -- Use condition (explicit declaration - equipment cannot be used)
+    use_condition = {
+        type = "never"
     }
 }
-
-function club.use(player)
-    -- Equipment items don't have "use" - they are equipped via drag & drop
-    return false
-end
-
-function club.canUse(player)
-    -- Equipment cannot be "used" directly
-    return false
-end
 
 return club
