@@ -28,11 +28,9 @@ function factory:createEnemy(obj, enemy_class, map_name)
   map_name = map_name or "unknown"
   local map_id = string.format("%s_obj_%d", map_name, obj.id)
 
-  -- Get respawn property (default: true)
-  local respawn = obj.properties.respawn
-  if respawn == nil then
-    respawn = true  -- Default: enemies respawn
-  end
+  -- Get respawn property (default: false)
+  -- Only enemies with explicit respawn=true will respawn
+  local respawn = (obj.properties.respawn == true)
 
   -- Simple mode: if no custom properties, just use type (loads from types/*.lua)
   local has_custom_props = obj.properties.hp or obj.properties.dmg or obj.properties.spr

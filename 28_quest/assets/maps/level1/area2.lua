@@ -13,7 +13,8 @@ return {
   nextobjectid = 44,
   properties = {
     ["ambient"] = "night",
-    ["game_mode"] = "topdown"
+    ["game_mode"] = "topdown",
+    ["name"] = "level1_area2"
   },
   tilesets = {
     {
@@ -471,7 +472,7 @@ return {
       id = 7,
       name = "Enemies",
       class = "",
-      visible = false,
+      visible = true,
       opacity = 1,
       offsetx = 0,
       offsety = 0,

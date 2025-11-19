@@ -5,6 +5,7 @@
  </editorsettings>
  <properties>
   <property name="game_mode" value="platformer"/>
+  <property name="name" value="level1_area3"/>
  </properties>
  <tileset firstgid="1" name="tileset_area2" tilewidth="32" tileheight="32" tilecount="48" columns="8">
   <image source="tileset_area2.png" trans="ff00ff" width="256" height="192"/>
@@ -98,10 +99,11 @@
   <object id="9" x="2528" y="0" width="32" height="224"/>
   <object id="10" x="0" y="0" width="2560" height="32"/>
  </objectgroup>
- <objectgroup id="7" name="Enemies" visible="0">
+ <objectgroup id="7" name="Enemies">
   <object id="40" x="256" y="366" width="32" height="32">
    <properties>
     <property name="patrol_points" value="0,0;64,0"/>
+    <property name="respawn" type="bool" value="true"/>
     <property name="type" value="green_slime"/>
    </properties>
   </object>
@@ -145,7 +147,7 @@
    </properties>
   </object>
  </objectgroup>
- <objectgroup id="6" name="NPCs" visible="0">
+ <objectgroup id="6" name="NPCs">
   <object id="46" type="deceiver" x="1664" y="368" width="32" height="32">
    <properties>
     <property name="id" value="deceiver"/>

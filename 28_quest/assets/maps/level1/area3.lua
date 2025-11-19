@@ -315,7 +315,7 @@ return {
       id = 7,
       name = "Enemies",
       class = "",
-      visible = false,
+      visible = true,
       opacity = 1,
       offsetx = 0,
       offsety = 0,
@@ -336,6 +336,7 @@ return {
           visible = true,
           properties = {
             ["patrol_points"] = "0,0;64,0",
+            ["respawn"] = true,
             ["type"] = "green_slime"
           }
         },
@@ -453,7 +454,7 @@ return {
       id = 6,
       name = "NPCs",
       class = "",
-      visible = false,
+      visible = true,
       opacity = 1,
       offsetx = 0,
       offsety = 0,

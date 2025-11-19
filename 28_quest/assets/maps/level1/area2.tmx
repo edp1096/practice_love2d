@@ -6,6 +6,7 @@
  <properties>
   <property name="ambient" value="night"/>
   <property name="game_mode" value="topdown"/>
+  <property name="name" value="level1_area2"/>
  </properties>
  <tileset firstgid="1" name="tileset_area2" tilewidth="32" tileheight="32" tilecount="48" columns="8">
   <grid orientation="orthogonal" width="1" height="1"/>
@@ -163,7 +164,7 @@
    <polygon points="0,0 0,96 32,128 128,128 160,96 352,96 384,128 416,128 416,96 480,96 480,0"/>
   </object>
  </objectgroup>
- <objectgroup id="7" name="Enemies" visible="0">
+ <objectgroup id="7" name="Enemies">
   <object id="38" x="160" y="864" width="32" height="32">
    <properties>
     <property name="patrol_points" value="50.0,10.0;75.0,12.5"/>

@@ -175,7 +175,6 @@ function helpers.gamepadPickupFromEquipment(self)
     -- Unequip item (moves to grid)
     local success, err = self.inventory:unequipItem(slot_name, self.player)
     if not success then
-        print("Unequip failed:", err)
         helpers.play_sound("ui", "error")
         return false
     end
@@ -237,7 +236,6 @@ function helpers.gamepadEquipToSlot(self)
         helpers.play_sound("ui", "select")
     else
         -- Equip failed, but item is already back in grid
-        print("Equip failed:", err)
         helpers.play_sound("ui", "error")
     end
 
@@ -341,7 +339,6 @@ function helpers.gamepadAssignToQuickslot(self)
     local is_equipment = item_obj.equipment_slot or item_obj.item_type == "equipment"
 
     if is_equipment then
-        print("[Quickslot] Equipment cannot be assigned to quickslots")
         helpers.play_sound("ui", "error")
 
         -- Restore to original position
@@ -371,11 +368,9 @@ function helpers.gamepadAssignToQuickslot(self)
         if success then
             helpers.play_sound("ui", "select")
         else
-            print("[Quickslot] " .. (message or "Cannot assign"))
             helpers.play_sound("ui", "error")
         end
     else
-        print("[Quickslot] Only consumable items can be assigned to quickslots")
         helpers.play_sound("ui", "error")
 
         -- Restore to original position

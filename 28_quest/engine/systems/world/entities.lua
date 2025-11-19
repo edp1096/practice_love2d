@@ -170,7 +170,8 @@ function entities.updateEnemies(self, dt, player_x, player_y)
             enemy.death_timer = (enemy.death_timer or 0) + dt
             if enemy.death_timer > 2 then
                 -- Track killed enemies (for persistence)
-                -- Only non-respawning enemies stay dead permanently
+                -- Only enemies with respawn=true will respawn on map reload
+                -- All others (respawn=false or nil) stay dead permanently
                 if enemy.map_id and not enemy.respawn then
                     self.killed_enemies[enemy.map_id] = true
                 end
@@ -388,6 +389,7 @@ function entities.transformNPCToEnemy(self, npc_or_id, enemy_type)
         enemy.facing = facing
         enemy.map_id = map_id  -- Use same map_id for tracking (e.g., "level1_area3_obj_46")
         enemy.was_npc = true  -- Flag to indicate this was transformed from NPC
+        enemy.respawn = false  -- Transformed enemies don't respawn when killed
         enemy.world = self  -- CRITICAL: Set world reference for AI
 
         -- Make enemy immediately aggressive

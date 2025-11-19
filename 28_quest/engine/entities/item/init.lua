@@ -59,7 +59,6 @@ function item:use(player)
         local success = item_actions.use(self.config, player)
         if success then
             self.quantity = self.quantity - 1
-            print(string.format("✓ ITEM USED: %s (qty: %d remaining)", self.name, self.quantity))
             return true
         end
     -- Legacy function-based approach (for backward compatibility)

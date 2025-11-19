@@ -367,26 +367,26 @@ function input:getPrompt(action)
     local mapping = getActionMapping(action)
     if not mapping then return "?" end
 
-    -- Virtual gamepad prompts (use text for mobile)
+    -- Virtual gamepad prompts (use Y instead of Triangle)
     if self.virtual_gamepad and self.virtual_gamepad.enabled then
         if action == "attack" then
-            return "Cross"
+            return "A"
         elseif action == "dodge" then
-            return "Circle"
+            return "B"
         elseif action == "parry" then
-            return "Square"
+            return "X"
         elseif action == "interact" then
-            return "Triangle"
+            return "Y"
         elseif action == "pause" then
             return "Options"
         elseif action == "use_item" then
             return "L1"
         elseif action == "menu_select" then
-            return "Cross"
+            return "A"
         elseif action == "open_inventory" then
             return "L2"
         elseif action == "menu_back" then
-            return "Circle"
+            return "B"
         end
     end
 

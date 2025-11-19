@@ -64,22 +64,17 @@ local function shouldLoadTransformedNPC(npc_data, current_map_name)
     return is_same_map and has_npc_type and not_enemy
 end
 
--- Check if NPC is transformed to enemy
-local function isNPCTransformedToEnemy(transformed_npcs, map_id)
-    if not transformed_npcs then return false end
-    local transform_data = transformed_npcs[map_id]
-    return transform_data and transform_data.enemy_type ~= nil
-end
-
--- Check if NPC was killed
-local function isNPCKilled(killed_enemies, map_id)
-    return killed_enemies and killed_enemies[map_id]
-end
-
--- Check if original NPC should spawn
+-- Check if original NPC should spawn (not transformed, not killed)
 local function shouldSpawnOriginalNPC(map_id, killed_enemies, transformed_npcs)
-    return not isNPCTransformedToEnemy(transformed_npcs, map_id)
-       and not isNPCKilled(killed_enemies, map_id)
+    -- Skip if NPC was transformed to enemy
+    if transformed_npcs and transformed_npcs[map_id] and transformed_npcs[map_id].enemy_type then
+        return false
+    end
+    -- Skip if NPC was killed
+    if killed_enemies and killed_enemies[map_id] then
+        return false
+    end
+    return true
 end
 
 function loaders.loadTreeTiles(self)
@@ -263,23 +258,19 @@ function loaders.loadEnemies(self, killed_enemies)
         for _, obj in ipairs(self.map.layers["Enemies"].objects) do
             local map_id = string.format("%s_obj_%d", map_name, obj.id)
 
-            if not shouldSpawnEnemy(map_id, killed_enemies, self.transformed_npcs) then
-                goto continue
+            if shouldSpawnEnemy(map_id, killed_enemies, self.transformed_npcs) then
+                -- Create enemy from Tiled properties
+                local new_enemy = factory:createEnemy(obj, self.enemy_class, map_name)
+                new_enemy.world = self
+
+                -- Setup patrol points (custom or default)
+                local patrol_points = parsePatrolPoints(obj) or getDefaultPatrolPoints(obj.x, obj.y)
+                new_enemy:setPatrolPoints(patrol_points)
+
+                -- Create collider and add to world
+                collision.createEnemyCollider(new_enemy, self.physicsWorld, self.game_mode)
+                table.insert(self.enemies, new_enemy)
             end
-
-            -- Create enemy from Tiled properties
-            local new_enemy = factory:createEnemy(obj, self.enemy_class, map_name)
-            new_enemy.world = self
-
-            -- Setup patrol points (custom or default)
-            local patrol_points = parsePatrolPoints(obj) or getDefaultPatrolPoints(obj.x, obj.y)
-            new_enemy:setPatrolPoints(patrol_points)
-
-            -- Create collider and add to world
-            collision.createEnemyCollider(new_enemy, self.physicsWorld, self.game_mode)
-            table.insert(self.enemies, new_enemy)
-
-            ::continue::
         end
     end
 
@@ -287,26 +278,23 @@ function loaders.loadEnemies(self, killed_enemies)
     if self.transformed_npcs then
         local current_map_name = self.map.properties.name or "unknown"
         for map_id, transform_data in pairs(self.transformed_npcs) do
-            if not shouldLoadTransformedEnemy(transform_data, current_map_name, map_id, killed_enemies) then
-                goto continue
+            if shouldLoadTransformedEnemy(transform_data, current_map_name, map_id, killed_enemies) then
+                -- Create transformed enemy
+                local new_enemy = self.enemy_class:new(transform_data.x, transform_data.y, transform_data.enemy_type)
+                new_enemy.facing = transform_data.facing
+                new_enemy.map_id = map_id
+                new_enemy.was_npc = true
+                new_enemy.respawn = false  -- Transformed enemies don't respawn when killed
+                new_enemy.world = self
+
+                -- Setup default patrol points
+                local patrol_points = getDefaultPatrolPoints(transform_data.x, transform_data.y)
+                new_enemy:setPatrolPoints(patrol_points)
+
+                -- Create collider and add to world
+                collision.createEnemyCollider(new_enemy, self.physicsWorld, self.game_mode)
+                table.insert(self.enemies, new_enemy)
             end
-
-            -- Create transformed enemy
-            local new_enemy = self.enemy_class:new(transform_data.x, transform_data.y, transform_data.enemy_type)
-            new_enemy.facing = transform_data.facing
-            new_enemy.map_id = map_id
-            new_enemy.was_npc = true
-            new_enemy.world = self
-
-            -- Setup default patrol points
-            local patrol_points = getDefaultPatrolPoints(transform_data.x, transform_data.y)
-            new_enemy:setPatrolPoints(patrol_points)
-
-            -- Create collider and add to world
-            collision.createEnemyCollider(new_enemy, self.physicsWorld, self.game_mode)
-            table.insert(self.enemies, new_enemy)
-
-            ::continue::
         end
     end
 end
@@ -323,20 +311,16 @@ function loaders.loadNPCs(self)
         for _, obj in ipairs(self.map.layers["NPCs"].objects) do
             local map_id = string.format("%s_obj_%d", map_name, obj.id)
 
-            if not shouldSpawnOriginalNPC(map_id, self.killed_enemies, self.transformed_npcs) then
-                goto continue
+            if shouldSpawnOriginalNPC(map_id, self.killed_enemies, self.transformed_npcs) then
+                -- Create NPC from Tiled properties
+                local new_npc = factory:createNPC(obj, self.npc_class)
+                new_npc.map_id = map_id
+                new_npc.world = self
+
+                -- Create collider and add to world
+                collision.createNPCCollider(new_npc, self.physicsWorld, self.game_mode)
+                table.insert(self.npcs, new_npc)
             end
-
-            -- Create NPC from Tiled properties
-            local new_npc = factory:createNPC(obj, self.npc_class)
-            new_npc.map_id = map_id
-            new_npc.world = self
-
-            -- Create collider and add to world
-            collision.createNPCCollider(new_npc, self.physicsWorld, self.game_mode)
-            table.insert(self.npcs, new_npc)
-
-            ::continue::
         end
     end
 
@@ -344,21 +328,17 @@ function loaders.loadNPCs(self)
     if self.transformed_npcs then
         local current_map_name = self.map.properties.name or "unknown"
         for map_id, npc_data in pairs(self.transformed_npcs) do
-            if not shouldLoadTransformedNPC(npc_data, current_map_name) then
-                goto continue
+            if shouldLoadTransformedNPC(npc_data, current_map_name) then
+                -- Create transformed NPC
+                local new_npc = self.npc_class:new(npc_data.x, npc_data.y, npc_data.npc_type)
+                new_npc.facing = npc_data.facing
+                new_npc.map_id = map_id
+                new_npc.world = self
+
+                -- Create collider and add to world
+                collision.createNPCCollider(new_npc, self.physicsWorld, self.game_mode)
+                table.insert(self.npcs, new_npc)
             end
-
-            -- Create transformed NPC
-            local new_npc = self.npc_class:new(npc_data.x, npc_data.y, npc_data.npc_type)
-            new_npc.facing = npc_data.facing
-            new_npc.map_id = map_id
-            new_npc.world = self
-
-            -- Create collider and add to world
-            collision.createNPCCollider(new_npc, self.physicsWorld, self.game_mode)
-            table.insert(self.npcs, new_npc)
-
-            ::continue::
         end
     end
 end
@@ -424,10 +404,8 @@ function loaders.loadWorldItems(self, picked_items)
         for _, obj in ipairs(self.map.layers["WorldItems"].objects) do
             local item_type = obj.properties.item_type
             local quantity = obj.properties.quantity or 1
-            local respawn = obj.properties.respawn
-            if respawn == nil then
-                respawn = true  -- Default: items respawn
-            end
+            -- Only items with explicit respawn=true will respawn
+            local respawn = (obj.properties.respawn == true)
 
             if item_type then
                 -- Create unique map_id: "{map_name}_obj_{id}" (e.g., "level1_area1_obj_123")
@@ -435,7 +413,8 @@ function loaders.loadWorldItems(self, picked_items)
                 local map_id = string.format("%s_obj_%d", map_name, obj.id)
 
                 -- Skip non-respawning items that were already picked up
-                if not (not respawn and picked_items[map_id]) then
+                -- Items with respawn=true always spawn, items with respawn=false/nil only spawn if not picked
+                if respawn or not picked_items[map_id] then
                     local center_x = obj.x + obj.width / 2
                     local center_y = obj.y + obj.height / 2
 

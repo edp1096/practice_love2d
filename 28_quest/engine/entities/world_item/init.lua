@@ -27,7 +27,7 @@ function world_item:new(x, y, item_type, quantity, map_id, respawn)
 
     -- Persistence data
     instance.map_id = map_id  -- Unique identifier: "{map_name}_obj_{id}" (e.g., "level1_area1_obj_123")
-    instance.respawn = (respawn == nil) and true or respawn  -- Default: true (respawns)
+    instance.respawn = (respawn == nil) and false or respawn  -- Default: false (don't respawn)
 
     -- Load item configuration from registry
     local item_config = item_class.type_registry[item_type]

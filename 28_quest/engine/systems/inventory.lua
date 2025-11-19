@@ -7,14 +7,18 @@ local inventory = {}
 inventory.__index = inventory
 inventory.item_class = nil  -- Injected item class
 
+-- Grid constants
+local DEFAULT_GRID_WIDTH = 10
+local DEFAULT_GRID_HEIGHT = 5
+
 function inventory:new(item_class)
     local instance = setmetatable({}, inventory)
 
     instance.item_class = item_class or self.item_class
 
     -- Grid configuration
-    instance.grid_width = 10
-    instance.grid_height = 5  -- 10x5 grid (50 cells total, reduced from 6 for better UI fit)
+    instance.grid_width = DEFAULT_GRID_WIDTH
+    instance.grid_height = DEFAULT_GRID_HEIGHT  -- 10x5 grid (50 cells total, reduced from 6 for better UI fit)
 
     -- Grid storage: 2D array [y][x] = item_uuid or nil
     instance.grid = {}
@@ -63,6 +67,27 @@ end
 -- Grid Management Functions
 -- ============================================================================
 
+-- Helper: Iterate through grid cells occupied by an item
+local function iterateGridCells(x, y, width, height, callback)
+    for dy = 0, height - 1 do
+        for dx = 0, width - 1 do
+            callback(x + dx, y + dy, dx, dy)
+        end
+    end
+end
+
+-- Helper: Sort items by grid position (top-left to bottom-right)
+local function sortItemsByGridPosition(item_ids, items)
+    table.sort(item_ids, function(a, b)
+        local item_a = items[a]
+        local item_b = items[b]
+        if item_a.y == item_b.y then
+            return item_a.x < item_b.x
+        end
+        return item_a.y < item_b.y
+    end)
+end
+
 -- Check if item can be placed at position (x, y) with given size
 function inventory:canPlaceItem(x, y, width, height, ignore_uuid)
     -- Boundary check
@@ -71,26 +96,23 @@ function inventory:canPlaceItem(x, y, width, height, ignore_uuid)
     end
 
     -- Collision check (all cells must be empty or belong to ignored item)
-    for dy = 0, height - 1 do
-        for dx = 0, width - 1 do
-            local cell_value = self.grid[y + dy][x + dx]
-            if cell_value ~= nil and cell_value ~= ignore_uuid then
-                return false  -- Cell is occupied
-            end
+    local can_place = true
+    iterateGridCells(x, y, width, height, function(gx, gy)
+        local cell_value = self.grid[gy][gx]
+        if cell_value ~= nil and cell_value ~= ignore_uuid then
+            can_place = false
         end
-    end
+    end)
 
-    return true
+    return can_place
 end
 
 -- Place item on grid at position (x, y)
 function inventory:placeItem(item_id, item_obj, x, y, width, height, rotated)
     -- Mark all cells with item_id
-    for dy = 0, height - 1 do
-        for dx = 0, width - 1 do
-            self.grid[y + dy][x + dx] = item_id
-        end
-    end
+    iterateGridCells(x, y, width, height, function(gx, gy)
+        self.grid[gy][gx] = item_id
+    end)
 
     -- Store item instance data
     self.items[item_id] = {
@@ -113,13 +135,11 @@ function inventory:removeItem(item_id)
     end
 
     -- Clear all grid cells
-    for dy = 0, item_data.height - 1 do
-        for dx = 0, item_data.width - 1 do
-            if self.grid[item_data.y + dy] and self.grid[item_data.y + dy][item_data.x + dx] == item_id then
-                self.grid[item_data.y + dy][item_data.x + dx] = nil
-            end
+    iterateGridCells(item_data.x, item_data.y, item_data.width, item_data.height, function(gx, gy)
+        if self.grid[gy] and self.grid[gy][gx] == item_id then
+            self.grid[gy][gx] = nil
         end
-    end
+    end)
 
     -- Remove item instance
     self.items[item_id] = nil
@@ -321,14 +341,7 @@ function inventory:selectNext()
     end
 
     -- Sort by grid position (top-left to bottom-right)
-    table.sort(item_ids, function(a, b)
-        local item_a = self.items[a]
-        local item_b = self.items[b]
-        if item_a.y == item_b.y then
-            return item_a.x < item_b.x
-        end
-        return item_a.y < item_b.y
-    end)
+    sortItemsByGridPosition(item_ids, self.items)
 
     -- Find current selection index
     local current_index = nil
@@ -394,14 +407,7 @@ function inventory:selectSlot(slot_index)
     end
 
     -- Sort by grid position
-    table.sort(item_ids, function(a, b)
-        local item_a = self.items[a]
-        local item_b = self.items[b]
-        if item_a.y == item_b.y then
-            return item_a.x < item_b.x
-        end
-        return item_a.y < item_b.y
-    end)
+    sortItemsByGridPosition(item_ids, self.items)
 
     if slot_index >= 1 and slot_index <= #item_ids then
         self.selected_item_id = item_ids[slot_index]

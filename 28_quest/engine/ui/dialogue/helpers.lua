@@ -224,16 +224,8 @@ function helpers:executeAction(dialogue, action)
 
     -- Quest actions
     if action.type == "accept_quest" then
-        print(string.format("[ACTION] accept_quest, quest_id=%s, has_quest_system=%s",
-            tostring(action.quest_id), tostring(dialogue.quest_system ~= nil)))
         if dialogue.quest_system and action.quest_id then
-            local success = dialogue.quest_system:accept(action.quest_id)
-            print(string.format("[ACTION] quest:accept() returned %s", tostring(success)))
-            if success then
-                print("[ACTION] Quest accepted successfully!")
-            else
-                print("[ACTION] Quest accept FAILED!")
-            end
+            dialogue.quest_system:accept(action.quest_id)
         end
     elseif action.type == "complete_quest" or action.type == "turn_in_quest" then
         if dialogue.quest_system and action.quest_id then
@@ -249,26 +241,12 @@ function helpers:executeAction(dialogue, action)
         end
     elseif action.type == "transform_to_enemy" then
         -- NPC → Enemy transformation
-        print(string.format("[ACTION] transform_to_enemy check: world=%s, current_npc=%s, enemy_type=%s",
-            tostring(dialogue.world ~= nil),
-            tostring(dialogue.current_npc ~= nil),
-            tostring(action.enemy_type)))
-
         if dialogue.world and dialogue.current_npc and action.enemy_type then
-            print(string.format("[ACTION] transform_to_enemy, npc.id=%s, enemy_type=%s",
-                tostring(dialogue.current_npc.id), tostring(action.enemy_type)))
-
             local success = dialogue.world:transformNPCToEnemy(dialogue.current_npc, action.enemy_type)
-
             if success then
-                print("[ACTION] NPC → Enemy transformation successful!")
                 -- Close dialogue immediately after transformation
                 dialogue.active = false
-            else
-                print("[ACTION] NPC → Enemy transformation FAILED!")
             end
-        else
-            print("[ACTION] transform_to_enemy SKIPPED: missing required fields")
         end
     -- Add more action types as needed:
     -- elseif action.type == "give_item" then

@@ -82,7 +82,6 @@ function input_handler.keypressed(self, key)
         -- F key: Interact with NPC, Save Point, or Pick up Item (A button on gamepad uses context logic)
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
-            print(string.format("[INPUT-KB] Found NPC: type=%s, id=%s, name=%s", type(npc), tostring(npc.id), tostring(npc.name)))
             local quest_system = require "engine.core.quest"
 
             -- Process delivery quests first (might complete objectives)
@@ -118,11 +117,9 @@ function input_handler.keypressed(self, key)
             end
 
             -- Priority 3: Regular NPC dialogue
-            print(string.format("[INPUT-KB] Starting dialogue with NPC: %s", tostring(npc.id)))
             local interaction_data = npc:interact()
             if interaction_data.type == "tree" then
                 -- New: dialogue tree system (pass NPC object for transformations)
-                print(string.format("[INPUT-KB] Calling showTreeById with npc: id=%s", tostring(npc.id)))
                 dialogue:showTreeById(interaction_data.dialogue_id, npc.id, npc)
             else
                 -- Simple dialogue: message array (non-interactive)

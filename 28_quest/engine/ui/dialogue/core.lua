@@ -238,19 +238,10 @@ function core:showNode(dialogue, node_id)
         local npc_id = node.npc_id or dialogue.current_npc_id
         local quest_system = dialogue.quest_system
 
-        print(string.format("[QUEST_OFFER] npc_id=%s, has_quest_system=%s, has_registry=%s",
-            tostring(npc_id),
-            tostring(quest_system ~= nil),
-            tostring(quest_system and quest_system.quest_registry ~= nil)))
-
         if quest_system and quest_system.quest_registry and npc_id then
             -- Find first available quest for this NPC
             local available_quest = nil
             for quest_id, quest_data in pairs(quest_system.quest_registry) do
-                print(string.format("[QUEST_SCAN] quest_id=%s, giver=%s, has_dlg=%s, npc_match=%s",
-                    quest_id, tostring(quest_data.giver_npc), tostring(quest_data.dialogue ~= nil),
-                    tostring(quest_data.giver_npc == npc_id)))
-
                 if quest_data.giver_npc == npc_id and quest_data.dialogue then
                     -- Check quest state first
                     local quest_state = quest_system.quest_states[quest_id]
@@ -258,8 +249,6 @@ function core:showNode(dialogue, node_id)
 
                     -- Use canAccept() to check prerequisites
                     local can_accept = quest_system:canAccept(quest_id)
-                    print(string.format("[QUEST_CHECK] quest_id=%s, state=%s, canAccept=%s",
-                        quest_id, state_str, tostring(can_accept)))
 
                     if can_accept then
                         available_quest = { id = quest_id, data = quest_data }
@@ -273,9 +262,6 @@ function core:showNode(dialogue, node_id)
                 local quest_id = available_quest.id
                 local quest_data = available_quest.data
                 local dlg = quest_data.dialogue
-
-                print(string.format("[QUEST_FOUND] quest_id=%s, offer_text=%s",
-                    quest_id, tostring(dlg and dlg.offer_text)))
 
                 -- Create virtual node with quest offer text
                 local virtual_node = {
@@ -297,9 +283,6 @@ function core:showNode(dialogue, node_id)
                     }
                 }
 
-                print(string.format("[VIRTUAL_NODE] text=%s, has_choices=%s",
-                    tostring(virtual_node.text), tostring(virtual_node.choices ~= nil)))
-
                 -- Create acceptance response virtual node (persistent)
                 dialogue.current_tree.nodes["quest_accepted_" .. quest_id] = {
                     text = dlg.accept_text,
@@ -313,7 +296,6 @@ function core:showNode(dialogue, node_id)
                 -- quest_offer nodes are dynamic - they regenerate on each visit
                 -- Just replace current node for immediate display
                 node = virtual_node
-                print(string.format("[QUEST_OFFER] Using dynamic virtual_node for %s", quest_id))
             else
                 -- No available quests - redirect to fallback or end
                 local fallback = node.no_quest_fallback or "end"

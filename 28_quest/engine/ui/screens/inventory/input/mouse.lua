@@ -61,7 +61,6 @@ function mouse_input.mousepressed(self, x, y, button, helpers)
                                     helpers.play_sound("ui", "select")
                                     return
                                 else
-                                    print("Unequip failed:", err)
                                     helpers.play_sound("ui", "error")
                                     return
                                 end
@@ -257,7 +256,6 @@ function mouse_input.mousereleased(self, x, y, button, helpers)
 
                     if is_equipment then
                         -- Equipment cannot be assigned to quickslots
-                        print("[Quickslot] Equipment cannot be assigned to quickslots")
                         helpers.play_sound("ui", "error")
                         -- Don't mark as placed, will return to original position
                     elseif item_obj.use and item_obj.canUse then
@@ -284,13 +282,11 @@ function mouse_input.mousereleased(self, x, y, button, helpers)
                             helpers.play_sound("ui", "select")
                             placed = true
                         else
-                            print("[Quickslot] " .. (message or "Cannot assign"))
                             helpers.play_sound("ui", "error")
                             placed = true  -- Item is already back in grid
                         end
                     else
                         -- Non-usable items
-                        print("[Quickslot] Only consumable items can be assigned to quickslots")
                         helpers.play_sound("ui", "error")
                         -- Don't mark as placed, will return to original position
                     end

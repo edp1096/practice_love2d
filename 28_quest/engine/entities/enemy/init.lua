@@ -144,7 +144,7 @@ function enemy:new(x, y, enemy_type, config, map_id, respawn)
 
     -- Persistence data
     instance.map_id = map_id  -- Unique identifier: "{map_name}_obj_{id}" (e.g., "level1_area1_obj_12")
-    instance.respawn = (respawn == nil) and true or respawn  -- Default: true (respawns)
+    instance.respawn = (respawn == nil) and false or respawn  -- Default: false (don't respawn)
 
     -- Stats from config
     instance.speed = config.speed
@@ -250,12 +250,8 @@ function enemy:update(dt, player_x, player_y)
             self.is_stunned = false
             -- If enemy has a target OR was transformed from NPC, resume chase
             if self.target or self.was_npc then
-                print(string.format("[enemy:update] Stun ended: target=%s, was_npc=%s -> chase",
-                    tostring(self.target ~= nil), tostring(self.was_npc)))
                 ai.setState(self, "chase")
             else
-                print(string.format("[enemy:update] Stun ended: target=%s, was_npc=%s -> idle",
-                    tostring(self.target ~= nil), tostring(self.was_npc)))
                 ai.setState(self, "idle")
             end
         end

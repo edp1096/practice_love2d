@@ -9,8 +9,8 @@ return {
   height = 30,
   tilewidth = 64,
   tileheight = 64,
-  nextlayerid = 10,
-  nextobjectid = 45,
+  nextlayerid = 12,
+  nextobjectid = 49,
   properties = {
     ["ambient"] = "day",
     ["game_mode"] = "topdown",
@@ -110,7 +110,7 @@ return {
       id = 1,
       name = "Ground",
       class = "",
-      visible = false,
+      visible = true,
       opacity = 1,
       offsetx = 0,
       offsety = 0,
@@ -419,13 +419,30 @@ return {
           visible = true,
           properties = {
             ["patrol_points"] = "100,20;150,25",
-            ["respawn"] = false,
             ["type"] = "green_slime",
             ["types"] = "basic_ragned_boss"
           }
         },
         {
           id = 41,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 384,
+          y = 1024,
+          width = 64,
+          height = 64,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["patrol_points"] = "100,20;150,25",
+            ["respawn"] = true,
+            ["type"] = "red_slime",
+            ["types"] = "basic_ragned_boss"
+          }
+        },
+        {
+          id = 47,
           name = "",
           type = "",
           shape = "rectangle",
@@ -437,6 +454,25 @@ return {
           visible = true,
           properties = {
             ["patrol_points"] = "100,20;150,25",
+            ["respawn"] = true,
+            ["type"] = "red_slime",
+            ["types"] = "basic_ragned_boss"
+          }
+        },
+        {
+          id = 48,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 640,
+          y = 1024,
+          width = 64,
+          height = 64,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["patrol_points"] = "100,20;150,25",
+            ["respawn"] = true,
             ["type"] = "red_slime",
             ["types"] = "basic_ragned_boss"
           }

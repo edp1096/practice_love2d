@@ -143,20 +143,9 @@ function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_sl
     end
 
     -- Initialize persistence lists (for non-respawning items/enemies)
-    scene.picked_items = {}
-    if save_data and save_data.picked_items then
-        scene.picked_items = save_data.picked_items
-    end
-
-    scene.killed_enemies = {}
-    if save_data and save_data.killed_enemies then
-        scene.killed_enemies = save_data.killed_enemies
-    end
-
-    scene.transformed_npcs = {}
-    if save_data and save_data.transformed_npcs then
-        scene.transformed_npcs = save_data.transformed_npcs
-    end
+    scene.picked_items = (save_data and save_data.picked_items) or {}
+    scene.killed_enemies = (save_data and save_data.killed_enemies) or {}
+    scene.transformed_npcs = (save_data and save_data.transformed_npcs) or {}
 
     -- Load or reset dialogue choice history
     if save_data and save_data.dialogue_choices then

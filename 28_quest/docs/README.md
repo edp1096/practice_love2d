@@ -527,11 +527,13 @@ php -S localhost:8080
 
 ## Recent Changes
 
-**2025-11-19: Controller Input Polish**
-- **PlayStation Button Icons**: DualSense controllers now show colored button shapes (✕○□△) instead of Xbox names (A/B/X/Y)
-- **Gamepad Auto-Detection**: Automatically detects controller type (Xbox vs PlayStation) and displays appropriate button prompts
-- **Dynamic Button Prompts**: All UI elements (Skip/Next buttons, interaction prompts, inventory instructions) dynamically adapt to active controller
-- **UI Layout Improvements**: Inventory/Quest tabs left-aligned, close button right-aligned to panel, tab width reduced for cleaner design
+**2025-11-19: Code Quality & Refactoring**
+- **Inventory Refactoring**: Removed duplicate grid iteration and sorting logic (5 locations → 2 helper functions, -19 lines)
+- **Debug Cleanup**: Removed 29 debug print statements from dialogue, inventory, enemy, and input systems
+- **Code Structure**: Removed all `goto` statements (4 instances), replaced with cleaner if-else patterns
+- **Constants**: Extracted magic numbers to named constants (DEFAULT_GRID_WIDTH, DEFAULT_GRID_HEIGHT)
+- **Controller Input**: PlayStation controllers show colored button shapes (✕○□△), Xbox shows letters (ABXY)
+- **Respawn System**: Fixed respawn logic - only entities with explicit `respawn=true` property respawn on map reload
 
 ---
 
