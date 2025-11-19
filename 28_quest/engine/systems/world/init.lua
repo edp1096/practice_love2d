@@ -169,6 +169,7 @@ world.getInteractableWorldItem = entities.getInteractableWorldItem
 world.removeWorldItem = entities.removeWorldItem
 world.transformNPCToEnemy = entities.transformNPCToEnemy
 world.transformEnemyToNPC = entities.transformEnemyToNPC
+world.countTransformedNPCs = entities.countTransformedNPCs
 
 -- Delegate rendering functions
 world.draw = rendering.draw

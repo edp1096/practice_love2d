@@ -2,6 +2,7 @@
 -- Main gameplay scene coordinator
 
 local gameplay = {}
+local helpers = require "engine.utils.helpers"
 
 -- Game config (injected from game)
 gameplay.player_config = {}
@@ -168,6 +169,21 @@ function gameplay:shouldShowMinimap()
 
     -- 3. Default: show minimap
     return true
+end
+
+-- Helper: Count transformed NPCs
+function gameplay:countTransformedNPCs()
+    return helpers.countTable(self.transformed_npcs)
+end
+
+-- Helper: Count killed enemies
+function gameplay:countKilledEnemies()
+    return helpers.countTable(self.killed_enemies)
+end
+
+-- Helper: Count picked items
+function gameplay:countPickedItems()
+    return helpers.countTable(self.picked_items)
 end
 
 -- Delegate quest interaction helpers to quest_interactions module

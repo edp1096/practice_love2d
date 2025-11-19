@@ -12,7 +12,8 @@ return {
   nextlayerid = 10,
   nextobjectid = 59,
   properties = {
-    ["game_mode"] = "platformer"
+    ["game_mode"] = "platformer",
+    ["name"] = "level1_area3"
   },
   tilesets = {
     {

@@ -480,7 +480,15 @@ save_data = {
 
 **Game 설정:**
 - `game/data/player.lua` - 플레이어 스탯 (주입됨)
-- `game/data/entities/types.lua` - 적 타입 (주입됨)
+- `game/data/entities/` - 엔티티 타입 정의 (주입됨)
+  - `types.lua` - 통합 export (하위 호환성 유지)
+  - `defaults.lua` - Tiled 커스텀 프로퍼티 기본값
+  - `humans/` - 인간 엔티티 타입
+    - `bandits.lua` - 적대적 인간 (bandit, rogue, warrior, guard)
+    - `common.lua` - 우호적 NPC (merchant, villager, elder, guard)
+    - `erratic.lua` - 불규칙한 행동 (deceiver, surrendered_bandit)
+  - `monsters/` - 몬스터 엔티티 타입
+    - `slimes.lua` - 슬라임 변종 (red, green, blue, purple)
 - `game/data/scenes.lua` - 메뉴 설정 (데이터 기반)
 - `game/data/quests.lua` - 퀘스트 정의
 
@@ -490,6 +498,6 @@ save_data = {
 
 ---
 
-**마지막 업데이트:** 2025-11-18
+**마지막 업데이트:** 2025-11-19
 **프레임워크:** LÖVE 11.5 + Lua 5.1
 **아키텍처:** Engine/Game 분리 + 의존성 주입 + 데이터 기반 + 레이어드 피라미드 (99.2% clean)

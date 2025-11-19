@@ -26,9 +26,89 @@ local weather = require "engine.systems.weather"
 local quest_system = require "engine.core.quest"
 local level_system = require "engine.core.level"
 local effects = require "engine.systems.effects"
+local helpers = require "engine.utils.helpers"
 
 -- Check if on mobile OS
 local is_mobile = (love.system.getOS() == "Android" or love.system.getOS() == "iOS")
+
+-- Light configuration constants
+local LIGHT_CONFIGS = {
+    player = {
+        radius = 250,
+        color = {1, 0.9, 0.7},
+        intensity = 1.0
+    },
+    enemy = {
+        radius = 100,
+        color = {1, 0.4, 0.4},
+        intensity = 0.6
+    },
+    npc = {
+        radius = 120,
+        color = {0.8, 0.9, 1.0},
+        intensity = 0.7
+    },
+    savepoint = {
+        radius = 150,
+        color = {0.3, 1.0, 0.5},
+        intensity = 0.8,
+        flicker = true,
+        flicker_speed = 3.0,
+        flicker_amount = 0.2
+    }
+}
+
+-- Helper functions for lighting setup
+
+-- Get entity center position
+local function getEntityCenter(entity)
+    return entity.x + entity.collider_offset_x,
+           entity.y + entity.collider_offset_y
+end
+
+-- Add light to entity with given config
+local function addEntityLight(entity, config, x, y)
+    return lighting:addLight({
+        type = "point",
+        x = x or entity.x,
+        y = y or entity.y,
+        radius = config.radius,
+        color = config.color,
+        intensity = config.intensity,
+        flicker = config.flicker,
+        flicker_speed = config.flicker_speed,
+        flicker_amount = config.flicker_amount
+    })
+end
+
+-- Setup player light
+local function setupPlayerLight(player)
+    player.light = addEntityLight(player, LIGHT_CONFIGS.player)
+end
+
+-- Setup lights for all enemies
+local function setupEnemyLights(enemies)
+    for _, enemy in ipairs(enemies) do
+        local x, y = getEntityCenter(enemy)
+        enemy.light = addEntityLight(enemy, LIGHT_CONFIGS.enemy, x, y)
+    end
+end
+
+-- Setup lights for all NPCs
+local function setupNPCLights(npcs)
+    for _, npc in ipairs(npcs) do
+        local x, y = getEntityCenter(npc)
+        npc.light = addEntityLight(npc, LIGHT_CONFIGS.npc, x, y)
+    end
+end
+
+-- Setup lights for all save points
+local function setupSavepointLights(savepoints)
+    for _, savepoint in ipairs(savepoints) do
+        savepoint.light = addEntityLight(savepoint, LIGHT_CONFIGS.savepoint,
+                                        savepoint.center_x, savepoint.center_y)
+    end
+end
 
 -- Initialize gameplay scene (called from gameplay:enter)
 function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
@@ -339,76 +419,26 @@ function scene_setup.setupLighting(scene)
     scene.world.lighting_sys = lighting
 
     -- Add lights only for dark environments (not day mode)
-    if ambient ~= "day" then
-        -- Add player light
-        scene.player.light = lighting:addLight({
-            type = "point",
-            x = scene.player.x,
-            y = scene.player.y,
-            radius = 250,
-            color = {1, 0.9, 0.7},
-            intensity = 1.0
-        })
-
-        -- Add lights to enemies
-        for _, enemy in ipairs(scene.world.enemies) do
-            local enemy_center_x = enemy.x + enemy.collider_offset_x
-            local enemy_center_y = enemy.y + enemy.collider_offset_y
-            enemy.light = lighting:addLight({
-                type = "point",
-                x = enemy_center_x,
-                y = enemy_center_y,
-                radius = 100,
-                color = {1, 0.4, 0.4},
-                intensity = 0.6
-            })
-        end
-
-        -- Add lights to NPCs
-        for _, npc in ipairs(scene.world.npcs) do
-            local npc_center_x = npc.x + npc.collider_offset_x
-            local npc_center_y = npc.y + npc.collider_offset_y
-            npc.light = lighting:addLight({
-                type = "point",
-                x = npc_center_x,
-                y = npc_center_y,
-                radius = 120,
-                color = {0.8, 0.9, 1.0},
-                intensity = 0.7
-            })
-        end
-
-        -- Add lights to save points
-        for _, savepoint in ipairs(scene.world.savepoints) do
-            savepoint.light = lighting:addLight({
-                type = "point",
-                x = savepoint.center_x,
-                y = savepoint.center_y,
-                radius = 150,
-                color = {0.3, 1.0, 0.5},
-                intensity = 0.8,
-                flicker = true,
-                flicker_speed = 3.0,
-                flicker_amount = 0.2
-            })
-        end
-    else
-        -- Day mode: no lights needed
+    if ambient == "day" then
         scene.player.light = nil
+        return  -- Early return for day mode
     end
+
+    -- Setup lights for all entities
+    setupPlayerLight(scene.player)
+    setupEnemyLights(scene.world.enemies)
+    setupNPCLights(scene.world.npcs)
+    setupSavepointLights(scene.world.savepoints)
 end
 
 -- Switch to a new map
 function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
+    -- CRITICAL: Sync persistence data from world BEFORE destroying it
+    -- (world may have killed enemies, picked items, transformed NPCs that scene doesn't have)
+    helpers.syncPersistenceData(scene)
+
     -- Clean up old colliders BEFORE destroying world
-    if scene.player.collider then
-        scene.player.collider:destroy()
-        scene.player.collider = nil
-    end
-    if scene.player.foot_collider then
-        scene.player.foot_collider:destroy()
-        scene.player.foot_collider = nil
-    end
+    helpers.destroyColliders(scene.player)
 
     -- Now destroy world
     if scene.world then scene.world:destroy() end

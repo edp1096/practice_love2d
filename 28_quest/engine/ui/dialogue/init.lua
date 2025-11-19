@@ -40,12 +40,12 @@ end
 -- DIALOGUE TREE SYSTEM
 -- ============================================================================
 
-function dialogue:showTreeById(dialogue_id, npc_id)
-    core:showTreeById(self, dialogue_id, npc_id)
+function dialogue:showTreeById(dialogue_id, npc_id, npc_obj)
+    core.showTreeById(self, dialogue_id, npc_id, npc_obj)
 end
 
 function dialogue:showTree(dialogue_tree)
-    core:showTree(self, dialogue_tree)
+    core.showTree(self, dialogue_tree)
 end
 
 function dialogue:advanceTree()

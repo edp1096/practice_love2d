@@ -5,10 +5,105 @@ local effects = require "engine.systems.effects"
 local constants = require "engine.core.constants"
 local collision = require "engine.systems.collision"
 local loot_system = require "engine.systems.loot"
+local helpers = require "engine.utils.helpers"
 
 local entities = {}
 
+-- Helper functions for enemy update logic
+
+-- Get accurate drop position from enemy colliders
+local function getEnemyDropPosition(enemy, game_mode)
+    local drop_x, drop_y = enemy.x, enemy.y
+
+    if game_mode == "topdown" and enemy.foot_collider then
+        drop_x = enemy.foot_collider:getX()
+        drop_y = enemy.foot_collider:getY()
+    elseif enemy.collider then
+        drop_x = enemy.collider:getX()
+        drop_y = enemy.collider:getY()
+    end
+
+    return drop_x, drop_y
+end
+
+-- Stop all enemy movement
+local function stopEnemyMovement(enemy)
+    if enemy.collider then
+        enemy.collider:setLinearVelocity(0, 0)
+    end
+    if enemy.foot_collider then
+        enemy.foot_collider:setLinearVelocity(0, 0)
+    end
+end
+
+-- Try to drop loot from dead enemy
+local function tryDropLoot(self, enemy, drop_x, drop_y)
+    if not (self.loot_tables and self.world_item_class) then
+        return
+    end
+
+    local item_type, quantity = loot_system.getLoot(enemy.type, self.loot_tables)
+    if item_type then
+        self:addWorldItem(item_type, drop_x, drop_y, quantity)
+    end
+end
+
+-- Calculate Y offset based on enemy type
+local function getYOffset(enemy)
+    if enemy.is_humanoid then
+        return enemy.collider_height * 0.4375  -- Same as player
+    else
+        return enemy.collider_height * 0.2  -- Slime offset
+    end
+end
+
+-- Update enemy position in topdown mode
+local function updateTopdownEnemyPosition(enemy, vx, vy)
+    if not enemy.foot_collider then
+        -- Fallback: use main collider
+        if enemy.collider then
+            enemy.collider:setLinearVelocity(vx, vy)
+            enemy.x = enemy.collider:getX() - enemy.collider_offset_x
+            enemy.y = enemy.collider:getY() - enemy.collider_offset_y
+        end
+        return
+    end
+
+    enemy.foot_collider:setLinearVelocity(vx, vy)
+
+    local y_offset = getYOffset(enemy)
+    enemy.x = enemy.foot_collider:getX() - enemy.collider_offset_x
+    enemy.y = enemy.foot_collider:getY() - enemy.collider_offset_y - y_offset
+
+    -- Sync main collider position
+    if enemy.collider then
+        enemy.collider:setPosition(
+            enemy.x + enemy.collider_offset_x,
+            enemy.y + enemy.collider_offset_y
+        )
+        enemy.collider:setLinearVelocity(0, 0)
+    end
+end
+
+-- Update enemy position in platformer mode
+local function updatePlatformerEnemyPosition(enemy, vx)
+    if not enemy.collider then return end
+
+    local _, vy = enemy.collider:getLinearVelocity()
+    enemy.collider:setLinearVelocity(vx, vy)
+    enemy.x = enemy.collider:getX() - enemy.collider_offset_x
+    enemy.y = enemy.collider:getY() - enemy.collider_offset_y
+end
+
+-- Helper: Count transformed NPCs
+function entities.countTransformedNPCs(self)
+    return helpers.countTable(self.transformed_npcs)
+end
+
 function entities.addEntity(self, entity)
+    -- Store player reference in world (needed for NPC→Enemy transformation)
+    self.player = entity
+
     -- Create player colliders using collision module
     collision.createPlayerColliders(entity, self.physicsWorld)
 end
@@ -67,51 +162,24 @@ function entities.updateEnemies(self, dt, player_x, player_y)
             if not enemy.loot_dropped then
                 enemy.loot_dropped = true
 
-                -- Get accurate drop position from collider BEFORE stopping movement
-                local drop_x, drop_y = enemy.x, enemy.y
-                if self.game_mode == "topdown" and enemy.foot_collider then
-                    -- Topdown: use foot_collider position (center of entity)
-                    drop_x = enemy.foot_collider:getX()
-                    drop_y = enemy.foot_collider:getY()
-                elseif enemy.collider then
-                    -- Platformer: use main collider position
-                    drop_x = enemy.collider:getX()
-                    drop_y = enemy.collider:getY()
-                end
-
-                -- Stop all movement
-                if enemy.collider then
-                    enemy.collider:setLinearVelocity(0, 0)
-                end
-                if enemy.foot_collider then
-                    enemy.foot_collider:setLinearVelocity(0, 0)
-                end
-
-                -- Try to drop item (requires loot_tables and world_item_class)
-                if self.loot_tables and self.world_item_class then
-                    local item_type, quantity = loot_system.getLoot(enemy.type, self.loot_tables)
-                    if item_type then
-                        -- Drop at accurate enemy collider position
-                        self:addWorldItem(item_type, drop_x, drop_y, quantity)
-                    end
-                end
+                local drop_x, drop_y = getEnemyDropPosition(enemy, self.game_mode)
+                stopEnemyMovement(enemy)
+                tryDropLoot(self, enemy, drop_x, drop_y)
             end
 
             enemy.death_timer = (enemy.death_timer or 0) + dt
             if enemy.death_timer > 2 then
-                -- Track non-respawning enemies (one-time kill)
-                if not enemy.respawn and enemy.map_id then
+                -- Track killed enemies (for persistence)
+                -- Only non-respawning enemies stay dead permanently
+                if enemy.map_id and not enemy.respawn then
                     self.killed_enemies[enemy.map_id] = true
                 end
 
-                if enemy.collider then
-                    enemy.collider:destroy()
-                    enemy.collider = nil
-                end
-                if enemy.foot_collider then
-                    enemy.foot_collider:destroy()
-                    enemy.foot_collider = nil
-                end
+                -- Note: Do NOT remove from transformed_npcs!
+                -- We keep the transformation record so loadNPCs can skip the original NPC
+                -- The killed_enemies entry prevents loading in both loadEnemies and loadNPCs
+
+                helpers.destroyColliders(enemy)
                 table.remove(self.enemies, i)
             end
         else
@@ -119,57 +187,18 @@ function entities.updateEnemies(self, dt, player_x, player_y)
             if enemy.should_transform_to_npc and enemy.surrender_npc then
                 self:transformEnemyToNPC(enemy, enemy.surrender_npc)
                 table.remove(self.enemies, i)
-                goto continue
-            end
-
-            local vx, vy = enemy:update(dt, player_x, player_y)
-
-            if self.game_mode == "topdown" then
-                -- Topdown mode: use foot_collider for wall collision
-                if enemy.foot_collider then
-                    enemy.foot_collider:setLinearVelocity(vx, vy)
-
-                    -- Sync enemy position from foot_collider
-                    -- Calculate offset based on enemy type
-                    local y_offset
-                    if enemy.is_humanoid then
-                        y_offset = enemy.collider_height * 0.4375  -- Same as player
-                    else
-                        y_offset = enemy.collider_height * 0.2  -- Slime offset
-                    end
-
-                    enemy.x = enemy.foot_collider:getX() - enemy.collider_offset_x
-                    enemy.y = enemy.foot_collider:getY() - enemy.collider_offset_y - y_offset
-
-                    -- Sync main collider position with foot_collider
-                    if enemy.collider then
-                        enemy.collider:setPosition(
-                            enemy.x + enemy.collider_offset_x,
-                            enemy.y + enemy.collider_offset_y
-                        )
-                        -- Set velocity to 0 so main collider doesn't drift
-                        enemy.collider:setLinearVelocity(0, 0)
-                    end
-                else
-                    -- Fallback: use main collider
-                    enemy.collider:setLinearVelocity(vx, vy)
-                    enemy.x = enemy.collider:getX() - enemy.collider_offset_x
-                    enemy.y = enemy.collider:getY() - enemy.collider_offset_y
-                end
             else
-                -- Platformer mode: preserve vertical velocity (gravity)
-                -- Only set horizontal velocity from AI
-                if enemy.collider then
-                    _, vy = enemy.collider:getLinearVelocity()
-                    enemy.collider:setLinearVelocity(vx, vy)
+                -- Update enemy movement
+                local vx, vy = enemy:update(dt, player_x, player_y)
 
-                    enemy.x = enemy.collider:getX() - enemy.collider_offset_x
-                    enemy.y = enemy.collider:getY() - enemy.collider_offset_y
+                -- Update position based on game mode
+                if self.game_mode == "topdown" then
+                    updateTopdownEnemyPosition(enemy, vx, vy)
+                else
+                    updatePlatformerEnemyPosition(enemy, vx)
                 end
             end
         end
-
-        ::continue::
     end
 end
 
@@ -302,7 +331,9 @@ end
 -- @param npc_or_id: NPC object or NPC ID (string)
 -- @param enemy_type: Enemy type to create
 function entities.transformNPCToEnemy(self, npc_or_id, enemy_type)
-    if not npc_or_id or not enemy_type then return nil end
+    if not npc_or_id or not enemy_type then
+        return nil
+    end
 
     -- Find NPC object if ID was provided
     local npc = npc_or_id
@@ -323,13 +354,27 @@ function entities.transformNPCToEnemy(self, npc_or_id, enemy_type)
     -- Save NPC position and state
     local x, y = npc.x, npc.y
     local facing = npc.facing or "down"
-    local npc_id = npc.id
+    local map_id = npc.map_id  -- Use map_id (e.g., "level1_area3_obj_46") for persistence
+    local original_npc_type = npc.type  -- Save original NPC type for restoration
+
+    -- Save transformation info (for persistence and restoration)
+    -- NOTE: Do NOT mark in killed_enemies - that's for actually dead enemies only
+    if map_id then
+        if not self.transformed_npcs then
+            self.transformed_npcs = {}
+        end
+        self.transformed_npcs[map_id] = {
+            enemy_type = enemy_type,  -- Current form (enemy)
+            original_npc_type = original_npc_type,  -- Original NPC type
+            x = x,
+            y = y,
+            facing = facing,
+            map_name = self.map.properties.name or "unknown"
+        }
+    end
 
     -- Remove NPC (cleanup collider)
-    if npc.collider then
-        npc.collider:destroy()
-        npc.collider = nil
-    end
+    helpers.destroyColliders(npc)
     for i = #self.npcs, 1, -1 do
         if self.npcs[i] == npc then
             table.remove(self.npcs, i)
@@ -341,10 +386,18 @@ function entities.transformNPCToEnemy(self, npc_or_id, enemy_type)
     local enemy = self.enemy_class:new(x, y, enemy_type)
     if enemy then
         enemy.facing = facing
-        enemy.map_id = npc_id  -- Use original NPC ID for tracking
+        enemy.map_id = map_id  -- Use same map_id for tracking (e.g., "level1_area3_obj_46")
+        enemy.was_npc = true  -- Flag to indicate this was transformed from NPC
+        enemy.world = self  -- CRITICAL: Set world reference for AI
+
         -- Make enemy immediately aggressive
         enemy.state = "chase"
         enemy.target = self.player
+        -- Set target position to player (so AI starts moving immediately)
+        if self.player then
+            enemy.target_x = self.player.x
+            enemy.target_y = self.player.y
+        end
         -- Add to world
         self:addEnemy(enemy)
     end
@@ -392,14 +445,7 @@ function entities.transformEnemyToNPC(self, enemy, npc_type)
     end
 
     -- Destroy enemy colliders
-    if enemy.collider then
-        enemy.collider:destroy()
-        enemy.collider = nil
-    end
-    if enemy.foot_collider then
-        enemy.foot_collider:destroy()
-        enemy.foot_collider = nil
-    end
+    helpers.destroyColliders(enemy)
 
     -- Create NPC at same position
     local npc = self.npc_class:new(x, y, npc_type)

@@ -249,11 +249,16 @@ function helpers:executeAction(dialogue, action)
         end
     elseif action.type == "transform_to_enemy" then
         -- NPC → Enemy transformation
-        if dialogue.world and dialogue.current_npc_id and action.enemy_type then
-            print(string.format("[ACTION] transform_to_enemy, npc_id=%s, enemy_type=%s",
-                tostring(dialogue.current_npc_id), tostring(action.enemy_type)))
+        print(string.format("[ACTION] transform_to_enemy check: world=%s, current_npc=%s, enemy_type=%s",
+            tostring(dialogue.world ~= nil),
+            tostring(dialogue.current_npc ~= nil),
+            tostring(action.enemy_type)))
 
-            local success = dialogue.world:transformNPCToEnemy(dialogue.current_npc_id, action.enemy_type)
+        if dialogue.world and dialogue.current_npc and action.enemy_type then
+            print(string.format("[ACTION] transform_to_enemy, npc.id=%s, enemy_type=%s",
+                tostring(dialogue.current_npc.id), tostring(action.enemy_type)))
+
+            local success = dialogue.world:transformNPCToEnemy(dialogue.current_npc, action.enemy_type)
 
             if success then
                 print("[ACTION] NPC → Enemy transformation successful!")
@@ -262,6 +267,8 @@ function helpers:executeAction(dialogue, action)
             else
                 print("[ACTION] NPC → Enemy transformation FAILED!")
             end
+        else
+            print("[ACTION] transform_to_enemy SKIPPED: missing required fields")
         end
     -- Add more action types as needed:
     -- elseif action.type == "give_item" then

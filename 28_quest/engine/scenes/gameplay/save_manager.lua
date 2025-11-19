@@ -8,10 +8,14 @@ local sound = require "engine.core.sound"
 local dialogue = require "engine.ui.dialogue"
 local quest_system = require "engine.core.quest"
 local level_system = require "engine.core.level"
+local helpers = require "engine.utils.helpers"
 
 -- Save current game state to slot
 function save_manager.saveGame(scene, slot)
     slot = slot or scene.current_save_slot or 1
+
+    -- Sync persistence data from world (world may have updates that scene doesn't have)
+    helpers.syncPersistenceData(scene)
 
     local save_data = {
         hp = scene.player.health,

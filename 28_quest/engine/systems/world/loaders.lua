@@ -7,6 +7,81 @@ local collision = require "engine.systems.collision"
 
 local loaders = {}
 
+-- Constants
+local DEFAULT_PATROL_OFFSET = 50
+
+-- Helper functions for enemy/NPC loading
+
+-- Check if enemy should be spawned (not killed, not transformed)
+local function shouldSpawnEnemy(map_id, killed_enemies, transformed_npcs)
+    local is_killed = killed_enemies[map_id]
+    local is_transformed = transformed_npcs and transformed_npcs[map_id]
+    return not is_killed and not is_transformed
+end
+
+-- Parse patrol points from Tiled object properties
+local function parsePatrolPoints(obj)
+    if not obj.properties.patrol_points then
+        return nil
+    end
+
+    local points = {}
+    for point_str in string.gmatch(obj.properties.patrol_points, "([^;]+)") do
+        local x, y = point_str:match("([^,]+),([^,]+)")
+        table.insert(points, {
+            x = obj.x + tonumber(x),
+            y = obj.y + tonumber(y)
+        })
+    end
+    return points
+end
+
+-- Get default patrol points around object position
+local function getDefaultPatrolPoints(x, y)
+    return {
+        { x = x - DEFAULT_PATROL_OFFSET, y = y - DEFAULT_PATROL_OFFSET },
+        { x = x + DEFAULT_PATROL_OFFSET, y = y - DEFAULT_PATROL_OFFSET },
+        { x = x + DEFAULT_PATROL_OFFSET, y = y + DEFAULT_PATROL_OFFSET },
+        { x = x - DEFAULT_PATROL_OFFSET, y = y + DEFAULT_PATROL_OFFSET }
+    }
+end
+
+-- Check if transformed enemy should be loaded
+local function shouldLoadTransformedEnemy(transform_data, current_map_name, map_id, killed_enemies)
+    local is_same_map = transform_data.map_name == current_map_name
+    local is_enemy_transform = transform_data.enemy_type ~= nil
+    local is_alive = not killed_enemies[map_id]
+
+    return is_same_map and is_enemy_transform and is_alive
+end
+
+-- Check if transformed NPC should be loaded
+local function shouldLoadTransformedNPC(npc_data, current_map_name)
+    local is_same_map = npc_data.map_name == current_map_name
+    local has_npc_type = npc_data.npc_type ~= nil
+    local not_enemy = not npc_data.enemy_type  -- Skip NPC→Enemy transforms
+
+    return is_same_map and has_npc_type and not_enemy
+end
+
+-- Check if NPC is transformed to enemy
+local function isNPCTransformedToEnemy(transformed_npcs, map_id)
+    if not transformed_npcs then return false end
+    local transform_data = transformed_npcs[map_id]
+    return transform_data and transform_data.enemy_type ~= nil
+end
+
+-- Check if NPC was killed
+local function isNPCKilled(killed_enemies, map_id)
+    return killed_enemies and killed_enemies[map_id]
+end
+
+-- Check if original NPC should spawn
+local function shouldSpawnOriginalNPC(map_id, killed_enemies, transformed_npcs)
+    return not isNPCTransformedToEnemy(transformed_npcs, map_id)
+       and not isNPCKilled(killed_enemies, map_id)
+end
+
 function loaders.loadTreeTiles(self)
     if not self.map.layers["Trees"] then return end
 
@@ -177,72 +252,91 @@ end
 
 function loaders.loadEnemies(self, killed_enemies)
     if not self.enemy_class then
-        print("Warning: No enemy_class injected, skipping enemy loading")
         return
     end
 
     killed_enemies = killed_enemies or {}
     local map_name = self.map.properties.name or "unknown"
 
+    -- Load original enemies from Tiled map
     if self.map.layers["Enemies"] then
         for _, obj in ipairs(self.map.layers["Enemies"].objects) do
-            -- Create unique map_id for checking if killed
             local map_id = string.format("%s_obj_%d", map_name, obj.id)
 
-            -- Get respawn property (default: true)
-            local respawn = obj.properties.respawn
-            if respawn == nil then
-                respawn = true
+            if not shouldSpawnEnemy(map_id, killed_enemies, self.transformed_npcs) then
+                goto continue
             end
 
-            -- Skip if enemy was killed/transformed (respawning enemies still skip if killed)
-            if not killed_enemies[map_id] then
-                -- Use factory to create from Tiled properties
-                local new_enemy = factory:createEnemy(obj, self.enemy_class, map_name)
+            -- Create enemy from Tiled properties
+            local new_enemy = factory:createEnemy(obj, self.enemy_class, map_name)
+            new_enemy.world = self
 
-                new_enemy.world = self
+            -- Setup patrol points (custom or default)
+            local patrol_points = parsePatrolPoints(obj) or getDefaultPatrolPoints(obj.x, obj.y)
+            new_enemy:setPatrolPoints(patrol_points)
 
-                if obj.properties.patrol_points then
-                    local points = {}
-                    for point_str in string.gmatch(obj.properties.patrol_points, "([^;]+)") do
-                        local x, y = point_str:match("([^,]+),([^,]+)")
-                        table.insert(points, { x = obj.x + tonumber(x), y = obj.y + tonumber(y) })
-                    end
-                    new_enemy:setPatrolPoints(points)
-                else
-                    new_enemy:setPatrolPoints({
-                        { x = obj.x - 50, y = obj.y - 50 },
-                        { x = obj.x + 50, y = obj.y - 50 },
-                        { x = obj.x + 50, y = obj.y + 50 },
-                        { x = obj.x - 50, y = obj.y + 50 }
-                    })
-                end
+            -- Create collider and add to world
+            collision.createEnemyCollider(new_enemy, self.physicsWorld, self.game_mode)
+            table.insert(self.enemies, new_enemy)
 
-                -- Create enemy collider using collision module
-                collision.createEnemyCollider(new_enemy, self.physicsWorld, self.game_mode)
+            ::continue::
+        end
+    end
 
-                table.insert(self.enemies, new_enemy)
+    -- Load transformed enemies (NPCs that became enemies)
+    if self.transformed_npcs then
+        local current_map_name = self.map.properties.name or "unknown"
+        for map_id, transform_data in pairs(self.transformed_npcs) do
+            if not shouldLoadTransformedEnemy(transform_data, current_map_name, map_id, killed_enemies) then
+                goto continue
             end
+
+            -- Create transformed enemy
+            local new_enemy = self.enemy_class:new(transform_data.x, transform_data.y, transform_data.enemy_type)
+            new_enemy.facing = transform_data.facing
+            new_enemy.map_id = map_id
+            new_enemy.was_npc = true
+            new_enemy.world = self
+
+            -- Setup default patrol points
+            local patrol_points = getDefaultPatrolPoints(transform_data.x, transform_data.y)
+            new_enemy:setPatrolPoints(patrol_points)
+
+            -- Create collider and add to world
+            collision.createEnemyCollider(new_enemy, self.physicsWorld, self.game_mode)
+            table.insert(self.enemies, new_enemy)
+
+            ::continue::
         end
     end
 end
 
 function loaders.loadNPCs(self)
     if not self.npc_class then
-        print("Warning: No npc_class injected, skipping NPC loading")
         return
     end
 
+    local map_name = self.map.properties.name or "unknown"
+
+    -- Load original NPCs from Tiled map
     if self.map.layers["NPCs"] then
         for _, obj in ipairs(self.map.layers["NPCs"].objects) do
-            -- Use factory to create from Tiled properties
+            local map_id = string.format("%s_obj_%d", map_name, obj.id)
+
+            if not shouldSpawnOriginalNPC(map_id, self.killed_enemies, self.transformed_npcs) then
+                goto continue
+            end
+
+            -- Create NPC from Tiled properties
             local new_npc = factory:createNPC(obj, self.npc_class)
+            new_npc.map_id = map_id
             new_npc.world = self
 
-            -- Create NPC collider using collision module
+            -- Create collider and add to world
             collision.createNPCCollider(new_npc, self.physicsWorld, self.game_mode)
-
             table.insert(self.npcs, new_npc)
+
+            ::continue::
         end
     end
 
@@ -250,23 +344,27 @@ function loaders.loadNPCs(self)
     if self.transformed_npcs then
         local current_map_name = self.map.properties.name or "unknown"
         for map_id, npc_data in pairs(self.transformed_npcs) do
-            -- Only load NPCs that belong to this map (explicit map_name check)
-            if npc_data.map_name == current_map_name then
-                local new_npc = self.npc_class:new(npc_data.x, npc_data.y, npc_data.npc_type)
-                new_npc.facing = npc_data.facing
-                new_npc.map_id = map_id
-                new_npc.world = self
-
-                collision.createNPCCollider(new_npc, self.physicsWorld, self.game_mode)
-                table.insert(self.npcs, new_npc)
+            if not shouldLoadTransformedNPC(npc_data, current_map_name) then
+                goto continue
             end
+
+            -- Create transformed NPC
+            local new_npc = self.npc_class:new(npc_data.x, npc_data.y, npc_data.npc_type)
+            new_npc.facing = npc_data.facing
+            new_npc.map_id = map_id
+            new_npc.world = self
+
+            -- Create collider and add to world
+            collision.createNPCCollider(new_npc, self.physicsWorld, self.game_mode)
+            table.insert(self.npcs, new_npc)
+
+            ::continue::
         end
     end
 end
 
 function loaders.loadHealingPoints(self)
     if not self.healing_point_class then
-        print("Warning: No healing_point_class injected, skipping healing point loading")
         return
     end
 
@@ -317,7 +415,6 @@ end
 
 function loaders.loadWorldItems(self, picked_items)
     if not self.world_item_class then
-        print("Warning: No world_item_class injected, skipping world item loading")
         return
     end
 

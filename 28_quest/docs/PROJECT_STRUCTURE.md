@@ -480,7 +480,15 @@ Examples:
 
 **Game Config:**
 - `game/data/player.lua` - Player stats (injected)
-- `game/data/entities/types.lua` - Enemy types (injected)
+- `game/data/entities/` - Entity type definitions (injected)
+  - `types.lua` - Unified export (backward compatible)
+  - `defaults.lua` - Tiled custom property defaults
+  - `humans/` - Human entity types
+    - `bandits.lua` - Hostile humans (bandit, rogue, warrior, guard)
+    - `common.lua` - Friendly NPCs (merchant, villager, elder, guard)
+    - `erratic.lua` - Unpredictable behavior (deceiver, surrendered_bandit)
+  - `monsters/` - Monster entity types
+    - `slimes.lua` - Slime variants (red, green, blue, purple)
 - `game/data/scenes.lua` - Menu configs (data-driven)
 - `game/data/quests.lua` - Quest definitions
 
@@ -490,6 +498,6 @@ Examples:
 
 ---
 
-**Last Updated:** 2025-11-18
+**Last Updated:** 2025-11-19
 **Framework:** LÖVE 11.5 + Lua 5.1
 **Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven + Layered Pyramid (99.2% clean)

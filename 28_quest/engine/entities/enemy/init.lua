@@ -248,7 +248,16 @@ function enemy:update(dt, player_x, player_y)
         self.stun_timer = self.stun_timer - dt
         if self.stun_timer <= 0 then
             self.is_stunned = false
-            ai.setState(self, "idle")
+            -- If enemy has a target OR was transformed from NPC, resume chase
+            if self.target or self.was_npc then
+                print(string.format("[enemy:update] Stun ended: target=%s, was_npc=%s -> chase",
+                    tostring(self.target ~= nil), tostring(self.was_npc)))
+                ai.setState(self, "chase")
+            else
+                print(string.format("[enemy:update] Stun ended: target=%s, was_npc=%s -> idle",
+                    tostring(self.target ~= nil), tostring(self.was_npc)))
+                ai.setState(self, "idle")
+            end
         end
     end
 
@@ -317,7 +326,7 @@ function enemy:takeDamage(damage)
         quest_system:onEnemyKilled(self.type)
     else
         -- Check for surrender threshold (e.g., HP below 40%)
-        if self.surrender_threshold and not self.surrendered then
+        if self.surrender_threshold and self.surrender_npc and not self.surrendered then
             local hp_percent = self.health / self.max_health
             if hp_percent <= self.surrender_threshold then
                 self.surrendered = true
