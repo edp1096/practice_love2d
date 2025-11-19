@@ -29,14 +29,15 @@ function quest_tracker:draw(quest_system, screen_w, screen_h, max_quests)
 
     if #all_quests == 0 then return end
 
-    -- Position: top-right corner, below minimap
-    local minimap_size = 126
-    local minimap_padding = 10
-    local panel_spacing = 10
+    -- Position: left side, below HP bar
+    local margin = 10
+    local hp_bar_height = 20  -- Height of HP bar
+    local font_height = self.title_font:getHeight()
+    local vertical_spacing = font_height * 3.5  -- 3.5 font height below HP bar (to avoid INVINCIBLE text)
 
     local panel_width = 280  -- Wide enough for quest text
-    local panel_x = screen_w - panel_width - minimap_padding  -- Right edge aligned with minimap
-    local panel_y = minimap_padding + minimap_size + panel_spacing  -- Below minimap
+    local panel_x = margin  -- Left edge
+    local panel_y = margin + hp_bar_height + vertical_spacing  -- Below HP bar with spacing
     local line_height = 18
     local padding = 10
 
