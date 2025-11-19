@@ -146,10 +146,9 @@
   </object>
  </objectgroup>
  <objectgroup id="6" name="NPCs" visible="0">
-  <object id="46" x="1664" y="368" width="32" height="32">
+  <object id="46" type="deceiver" x="1664" y="368" width="32" height="32">
    <properties>
-    <property name="id" value="platformer_guide"/>
-    <property name="type" value="villager"/>
+    <property name="id" value="deceiver"/>
    </properties>
   </object>
  </objectgroup>

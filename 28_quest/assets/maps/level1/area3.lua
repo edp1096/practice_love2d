@@ -463,7 +463,7 @@ return {
         {
           id = 46,
           name = "",
-          type = "",
+          type = "deceiver",
           shape = "rectangle",
           x = 1664,
           y = 368,
@@ -472,8 +472,7 @@ return {
           rotation = 0,
           visible = true,
           properties = {
-            ["id"] = "platformer_guide",
-            ["type"] = "villager"
+            ["id"] = "deceiver"
           }
         }
       }

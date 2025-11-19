@@ -666,6 +666,84 @@ keyboard = {
 
 ---
 
+## Advanced Features
+
+### Entity Transformation System
+
+**Runtime NPC ↔ Enemy conversion** with full persistence:
+
+#### NPC → Enemy (Hostile Transformation)
+
+Trigger via dialogue action:
+
+```lua
+-- game/data/dialogues.lua
+dialogues.deceiver_greeting = {
+    start_node = "start",
+    nodes = {
+        hostile = {
+            text = "I can't let you leave now!",
+            speaker = "Deceiver",
+            action = {
+                type = "transform_to_enemy",
+                enemy_type = "deceiver_01"
+            }
+        }
+    }
+}
+```
+
+**How it works:**
+1. Dialogue node action executes (`engine/ui/dialogue/core.lua:396`)
+2. `dialogue.world:transformNPCToEnemy(npc_id, enemy_type)` called
+3. NPC removed, enemy created at same position
+4. Enemy immediately aggressive (state = "chase")
+5. Dialogue closes automatically
+
+#### Enemy → NPC (Surrender)
+
+Configured in enemy type:
+
+```lua
+-- game/data/entities/types.lua
+enemies = {
+    bandit = {
+        health = 120,
+        surrender_threshold = 0.3,  -- Surrender at 30% HP
+        surrender_npc = "surrendered_bandit"
+    }
+}
+```
+
+**How it works:**
+1. Enemy HP drops below threshold
+2. `world:transformEnemyToNPC()` called automatically
+3. Enemy removed, NPC created with dialogue
+4. Original enemy marked "killed" (no respawn)
+5. Transformation saved to disk
+
+#### Persistence
+
+Transformations survive:
+- Map transitions
+- Save/load
+- Game restart
+
+Stored in save file:
+```lua
+transformed_npcs = {
+    ["enemy_123"] = {
+        npc_type = "surrendered_bandit",
+        x = 1664,
+        y = 368,
+        facing = "down",
+        map_name = "area3"
+    }
+}
+```
+
+---
+
 ## Best Practices
 
 ### File Organization

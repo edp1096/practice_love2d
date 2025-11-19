@@ -247,6 +247,22 @@ function helpers:executeAction(dialogue, action)
         if action.flag then
             self:setFlag(dialogue, dialogue.current_dialogue_id, action.flag, action.value)
         end
+    elseif action.type == "transform_to_enemy" then
+        -- NPC → Enemy transformation
+        if dialogue.world and dialogue.current_npc_id and action.enemy_type then
+            print(string.format("[ACTION] transform_to_enemy, npc_id=%s, enemy_type=%s",
+                tostring(dialogue.current_npc_id), tostring(action.enemy_type)))
+
+            local success = dialogue.world:transformNPCToEnemy(dialogue.current_npc_id, action.enemy_type)
+
+            if success then
+                print("[ACTION] NPC → Enemy transformation successful!")
+                -- Close dialogue immediately after transformation
+                dialogue.active = false
+            else
+                print("[ACTION] NPC → Enemy transformation FAILED!")
+            end
+        end
     -- Add more action types as needed:
     -- elseif action.type == "give_item" then
     --     -- inventory:addItem(action.item_id, action.count)

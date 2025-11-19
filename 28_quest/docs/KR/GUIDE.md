@@ -508,6 +508,84 @@ bgm = {
 
 ---
 
+## 고급 기능
+
+### 엔티티 변환 시스템
+
+**런타임 NPC ↔ 적 변환**으로 완전한 지속성 제공:
+
+#### NPC → 적 (적대적 변환)
+
+대화 액션으로 트리거:
+
+```lua
+-- game/data/dialogues.lua
+dialogues.deceiver_greeting = {
+    start_node = "start",
+    nodes = {
+        hostile = {
+            text = "이제 넌 살아서 돌아갈 수 없어!",
+            speaker = "사기꾼",
+            action = {
+                type = "transform_to_enemy",
+                enemy_type = "deceiver_01"
+            }
+        }
+    }
+}
+```
+
+**작동 방식:**
+1. 대화 노드 액션 실행 (`engine/ui/dialogue/core.lua:396`)
+2. `dialogue.world:transformNPCToEnemy(npc_id, enemy_type)` 호출
+3. NPC 제거, 같은 위치에 적 생성
+4. 적 즉시 공격 모드 (state = "chase")
+5. 대화 자동 종료
+
+#### 적 → NPC (항복)
+
+적 타입 설정:
+
+```lua
+-- game/data/entities/types.lua
+enemies = {
+    bandit = {
+        health = 120,
+        surrender_threshold = 0.3,  -- HP 30%에서 항복
+        surrender_npc = "surrendered_bandit"
+    }
+}
+```
+
+**작동 방식:**
+1. 적 HP가 임계값 이하로 떨어짐
+2. `world:transformEnemyToNPC()` 자동 호출
+3. 적 제거, 대화 가능한 NPC 생성
+4. 원본 적은 "처치됨"으로 표시 (리스폰 안 됨)
+5. 변환 정보 디스크에 저장
+
+#### 지속성
+
+변환은 다음 상황에서도 유지:
+- 맵 전환
+- 저장/로드
+- 게임 재시작
+
+저장 파일 형식:
+```lua
+transformed_npcs = {
+    ["enemy_123"] = {
+        npc_type = "surrendered_bandit",
+        x = 1664,
+        y = 368,
+        facing = "down",
+        map_name = "area3"
+    }
+}
+```
+
+---
+
 ## 지속성 시스템
 
 **NEW!** 일회성 획득과 적 처치가 맵과 저장/로드 간에 지속됩니다.

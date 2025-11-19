@@ -66,6 +66,34 @@ function button_icons:drawXbox(x, y, button, font)
     love.graphics.print(text, x - tw / 2, y - th / 2)
 end
 
+-- Draw hamburger menu icon (3 horizontal lines)
+-- x, y: center position
+-- size: icon size (default 16)
+-- color: optional color (default white)
+function button_icons:drawHamburger(x, y, size, color)
+    size = size or 16
+    color = color or {1, 1, 1}
+
+    love.graphics.push()
+    love.graphics.translate(x, y)
+    love.graphics.setColor(color)
+    love.graphics.setLineWidth(2)
+
+    local width = size * 0.8
+    local spacing = size * 0.3
+
+    -- Top line
+    love.graphics.line(-width / 2, -spacing, width / 2, -spacing)
+    -- Middle line
+    love.graphics.line(-width / 2, 0, width / 2, 0)
+    -- Bottom line
+    love.graphics.line(-width / 2, spacing, width / 2, spacing)
+
+    love.graphics.pop()
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setLineWidth(1)
+end
+
 -- Generic draw function (auto-detects type)
 function button_icons:draw(x, y, button, gamepad_type, size, font)
     if gamepad_type == "playstation" then

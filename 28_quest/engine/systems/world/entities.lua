@@ -299,12 +299,31 @@ function entities.removeWorldItem(self, item_id)
 end
 
 -- Transform NPC to Enemy (for hostile NPCs)
-function entities.transformNPCToEnemy(self, npc, enemy_type)
-    if not npc or not enemy_type then return nil end
+-- @param npc_or_id: NPC object or NPC ID (string)
+-- @param enemy_type: Enemy type to create
+function entities.transformNPCToEnemy(self, npc_or_id, enemy_type)
+    if not npc_or_id or not enemy_type then return nil end
+
+    -- Find NPC object if ID was provided
+    local npc = npc_or_id
+    if type(npc_or_id) == "string" then
+        -- Search for NPC by ID
+        npc = nil
+        for _, n in ipairs(self.npcs) do
+            if n.id == npc_or_id then
+                npc = n
+                break
+            end
+        end
+        if not npc then
+            return nil
+        end
+    end
 
     -- Save NPC position and state
     local x, y = npc.x, npc.y
     local facing = npc.facing or "down"
+    local npc_id = npc.id
 
     -- Remove NPC (cleanup collider)
     if npc.collider then
@@ -322,6 +341,7 @@ function entities.transformNPCToEnemy(self, npc, enemy_type)
     local enemy = self.enemy_class:new(x, y, enemy_type)
     if enemy then
         enemy.facing = facing
+        enemy.map_id = npc_id  -- Use original NPC ID for tracking
         -- Make enemy immediately aggressive
         enemy.state = "chase"
         enemy.target = self.player

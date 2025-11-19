@@ -390,6 +390,12 @@ function core:showNode(dialogue, node_id)
     -- Store current node for rendering (especially for dynamic virtual nodes)
     dialogue.current_node = node
 
+    -- Execute node action (if any) - for node-level actions like NPC transformations
+    if node.action then
+        local helpers = require "engine.ui.dialogue.helpers"
+        helpers:executeAction(dialogue, node.action)
+    end
+
     -- Update button visibility (hide if choices shown)
     local render = require "engine.ui.dialogue.render"
     render:updateButtonVisibility(dialogue)

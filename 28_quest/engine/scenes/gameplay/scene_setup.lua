@@ -230,6 +230,9 @@ end
 function scene_setup.initUI(scene)
     dialogue:initialize(display)
 
+    -- Inject world reference into dialogue (for NPC → Enemy transformations)
+    dialogue.world = scene.world
+
     -- Initialize lighting
     scene_setup.setupLighting(scene)
 
@@ -444,6 +447,9 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
     if scene.minimap then
         scene.minimap:setMap(scene.world)
     end
+
+    -- Update dialogue world reference (for NPC transformations)
+    dialogue.world = scene.world
 
     -- Update lighting for new map
     scene_setup.setupLighting(scene)

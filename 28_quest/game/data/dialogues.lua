@@ -235,4 +235,53 @@ dialogues.surrendered_bandit = {
     }
 }
 
+-- Deceiver (NPC → Enemy transformation demo)
+dialogues.deceiver_greeting = {
+    start_node = "start",
+    nodes = {
+        start = {
+            text = "Well, well... what do we have here?",
+            speaker = "???",
+            next = "main_menu"
+        },
+
+        main_menu = {
+            text = "Looking for something... valuable?",
+            speaker = "???",
+            choices = {
+                { text = "Who are you?", next = "identity" },
+                { text = "I'm just passing through.", next = "passing" },
+                { text = "You seem suspicious.", next = "suspicious" },
+            }
+        },
+
+        identity = {
+            text = "Just a humble traveler... like yourself.",
+            speaker = "???",
+            next = "main_menu"
+        },
+
+        passing = {
+            text = "Of course, of course... Safe travels, then.",
+            speaker = "???",
+        },
+
+        suspicious = {
+            text = "Suspicious? Me? How... perceptive of you.",
+            speaker = "Deceiver",
+            next = "hostile"
+        },
+
+        hostile = {
+            text = "Perhaps TOO perceptive. I can't let you leave now!",
+            speaker = "Deceiver",
+            -- This choice will trigger NPC → Enemy transformation
+            action = {
+                type = "transform_to_enemy",
+                enemy_type = "deceiver"
+            }
+        }
+    }
+}
+
 return dialogues

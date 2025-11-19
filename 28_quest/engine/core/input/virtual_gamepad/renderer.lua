@@ -2,6 +2,7 @@
 -- Rendering functions for virtual gamepad
 
 local text_ui = require "engine.utils.text"
+local button_icons = require "engine.utils.button_icons"
 
 local renderer = {}
 
@@ -215,11 +216,10 @@ function renderer.drawMenuButton(vgp)
     love.graphics.setLineWidth(3 * scale)
     love.graphics.circle("line", px, py, radius)
 
-    -- Button label
-    local font = love.graphics.getFont()
-    local text_w = font:getWidth(button.label)
-    local text_h = font:getHeight()
-    text_ui:draw(button.label, px - text_w / 2, py - text_h / 2, {1, 1, 1, vgp.alpha * 2})
+    -- Hamburger menu icon (3 horizontal lines)
+    local icon_size = radius * 1.2  -- Icon size relative to button radius
+    local icon_color = {1, 1, 1, vgp.alpha * 2}
+    button_icons:drawHamburger(px, py, icon_size, icon_color)
 
     love.graphics.setLineWidth(1)
     love.graphics.setColor(1, 1, 1, 1)

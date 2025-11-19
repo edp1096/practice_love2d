@@ -29,10 +29,14 @@ function quest_tracker:draw(quest_system, screen_w, screen_h, max_quests)
 
     if #all_quests == 0 then return end
 
-    -- Position: top-right corner, left of minimap
-    local panel_x = screen_w - 450  -- Moved left to avoid minimap overlap
-    local panel_y = 10              -- Aligned with minimap top (padding = 10)
-    local panel_width = 300
+    -- Position: top-right corner, below minimap
+    local minimap_size = 126
+    local minimap_padding = 10
+    local panel_spacing = 10
+
+    local panel_width = 280  -- Wide enough for quest text
+    local panel_x = screen_w - panel_width - minimap_padding  -- Right edge aligned with minimap
+    local panel_y = minimap_padding + minimap_size + panel_spacing  -- Below minimap
     local line_height = 18
     local padding = 10
 
