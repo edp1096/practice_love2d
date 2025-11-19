@@ -1,0 +1,50 @@
+-- engine/scenes/gameplay/save_manager.lua
+-- Save/load game state management
+
+local save_manager = {}
+
+local save_sys = require "engine.core.save"
+local sound = require "engine.core.sound"
+local dialogue = require "engine.ui.dialogue"
+local quest_system = require "engine.core.quest"
+local level_system = require "engine.core.level"
+local helpers = require "engine.utils.helpers"
+
+-- Save current game state to slot
+function save_manager.saveGame(scene, slot)
+    slot = slot or scene.current_save_slot or 1
+
+    -- Sync persistence data from world (world may have updates that scene doesn't have)
+    helpers.syncPersistenceData(scene)
+
+    local save_data = {
+        hp = scene.player.health,
+        max_hp = scene.player.max_health,
+        map = scene.current_map_path,
+        x = scene.player.x,
+        y = scene.player.y,
+        inventory = scene.inventory and scene.inventory:save() or nil,
+        picked_items = scene.picked_items or {},
+        killed_enemies = scene.killed_enemies or {},
+        transformed_npcs = scene.transformed_npcs or {},
+        dialogue_choices = dialogue:exportChoiceHistory(),
+        quest_states = quest_system:exportStates(),
+        level_data = level_system:serialize(),
+    }
+
+    local success = save_sys:saveGame(slot, save_data)
+    if success then
+        scene.current_save_slot = slot
+        save_manager.showSaveNotification(scene)
+
+        sound:playSFX("ui", "save")
+    end
+end
+
+-- Show save notification
+function save_manager.showSaveNotification(scene)
+    scene.save_notification.active = true
+    scene.save_notification.timer = scene.save_notification.duration
+end
+
+return save_manager
