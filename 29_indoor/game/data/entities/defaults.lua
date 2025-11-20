@@ -12,7 +12,7 @@ defaults.enemy = {
   atk_rng = 50,
 
   -- Sprite
-  spr = "assets/images/enemy-sheet-slime-red.png",
+  spr = "assets/images/sprites/enemies/enemy-sheet-slime-red.png",
   spr_w = 16,
   spr_h = 32,
   spr_scl = 4,
@@ -33,7 +33,7 @@ defaults.npc = {
   int_rng = 80,
 
   -- Sprite
-  spr = "assets/images/player-sheet.png",
+  spr = "assets/images/player/player-sheet.png",
   spr_w = 48,
   spr_h = 48,
   spr_scl = 3,

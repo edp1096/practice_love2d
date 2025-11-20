@@ -14,9 +14,9 @@ local club = {
     -- Weapon type for player weapon system
     weapon_type = "club",  -- Must match game/data/entities/types.lua weapons table
 
-    -- Sprite information for rendering (from steel-weapons.png)
+    -- Sprite information for rendering (from weapon-steel.png)
     sprite = {
-        file = "assets/images/steel-weapons.png",
+        file = "assets/images/sprites/weapons/weapon-steel.png",
         x = 48,     -- 4x11: Row 4 (index 3 * 16 = 48)
         y = 160,    -- 4x11: Column 11 (index 10 * 16 = 160)
         w = 16,     -- Width in pixels

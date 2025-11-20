@@ -16,7 +16,7 @@ return {
     -- Enemy definitions (can transform to NPC)
     enemies = {
         deceiver = {
-            sprite_sheet = "assets/images/deceiver-sheet.png",
+            sprite_sheet = "assets/images/sprites/enemies/deceiver-sheet.png",
             health = 100,
             damage = 12,
             speed = 110,
@@ -55,7 +55,7 @@ return {
     npcs = {
         surrendered_bandit = {
             name = "Surrendered Bandit",
-            sprite_sheet = "assets/images/enemy-sheet-human.png",
+            sprite_sheet = "assets/images/sprites/enemies/enemy-sheet-human.png",
             dialogue_id = "surrendered_bandit",  -- References game/data/dialogues.lua
             interaction_range = 80,
 
@@ -83,7 +83,7 @@ return {
 
         deceiver = {
             name = "???",
-            sprite_sheet = "assets/images/deceiver-sheet.png",
+            sprite_sheet = "assets/images/sprites/enemies/deceiver-sheet.png",
             dialogue_id = "deceiver_greeting",  -- References game/data/dialogues.lua
             interaction_range = 80,
 

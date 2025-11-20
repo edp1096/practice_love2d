@@ -13,7 +13,7 @@ local player_sheet_anims = {
 
 return {
     bandit = {
-        sprite_sheet = "assets/images/enemy-sheet-human.png",
+        sprite_sheet = "assets/images/sprites/enemies/enemy-sheet-human.png",
         health = 120,
         damage = 15,
         speed = 120,
@@ -52,7 +52,7 @@ return {
     },
 
     rogue = {
-        sprite_sheet = "assets/images/player-sheet.png",
+        sprite_sheet = "assets/images/player/player-sheet.png",
         health = 100,
         damage = 12,
         speed = 150,
@@ -87,7 +87,7 @@ return {
     },
 
     warrior = {
-        sprite_sheet = "assets/images/player-sheet.png",
+        sprite_sheet = "assets/images/player/player-sheet.png",
         health = 150,
         damage = 20,
         speed = 100,
@@ -123,7 +123,7 @@ return {
 
     -- Guard (enemy variant - when provoked)
     guard = {
-        sprite_sheet = "assets/images/passerby_01-sheet.png",
+        sprite_sheet = "assets/images/sprites/npcs/npc-passerby_01-sheet.png",
         health = 140,
         damage = 18,
         speed = 110,

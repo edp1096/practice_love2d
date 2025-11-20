@@ -12,7 +12,7 @@ local small_potion = {
 
     -- Sprite information (single image, not sprite sheet)
     sprite = {
-        file = "assets/images/energy-red.png",
+        file = "assets/images/sprites/items/energy-red.png",
         x = 0,
         y = 0,
         w = 32,

@@ -12,7 +12,7 @@ local large_potion = {
 
     -- Sprite information (single image, not sprite sheet)
     sprite = {
-        file = "assets/images/drink1.png",
+        file = "assets/images/sprites/items/drink1.png",
         x = 0,
         y = 0,
         w = 32,

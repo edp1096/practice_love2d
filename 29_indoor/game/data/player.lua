@@ -36,7 +36,7 @@ player_config.combat = {
 
 -- Sprite configuration
 player_config.sprite = {
-  sheet = "assets/images/player-sheet.png",
+  sheet = "assets/images/player/player-sheet.png",
   width = 48,
   height = 48,
   scale = 3,

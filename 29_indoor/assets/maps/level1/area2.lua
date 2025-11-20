@@ -643,7 +643,7 @@ return {
           visible = true,
           properties = {
             ["Type"] = "parallax",
-            ["image"] = "assets/backgrounds/layer1_sky.png",
+            ["image"] = "assets/images/parallax/layer1_sky.png",
             ["offset_y"] = 50,
             ["parallax_factor"] = 0.1,
             ["repeat_x"] = true,
@@ -663,7 +663,7 @@ return {
           visible = true,
           properties = {
             ["Type"] = "parallax",
-            ["image"] = "assets/backgrounds/layer2_mountains.png",
+            ["image"] = "assets/images/parallax/layer2_mountains.png",
             ["offset_y"] = -50,
             ["parallax_factor"] = 0.3,
             ["repeat_x"] = true,
@@ -684,7 +684,7 @@ return {
           properties = {
             ["Type"] = "parallax",
             ["auto_scroll_x"] = 10,
-            ["image"] = "assets/backgrounds/layer3_clouds.png",
+            ["image"] = "assets/images/parallax/layer3_clouds.png",
             ["offset_y"] = 120,
             ["parallax_factor"] = 0.5,
             ["repeat_x"] = true,
@@ -704,7 +704,7 @@ return {
           visible = true,
           properties = {
             ["Type"] = "parallax",
-            ["image"] = "assets/backgrounds/layer4_trees.png",
+            ["image"] = "assets/images/parallax/layer4_trees.png",
             ["offset_y"] = 300,
             ["parallax_factor"] = 0.7,
             ["repeat_x"] = true,

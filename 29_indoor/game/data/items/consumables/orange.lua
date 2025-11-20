@@ -9,7 +9,7 @@ local orange = {
 
     -- Sprite information for world item (animation)
     sprite = {
-        file = "assets/images/orange.png",
+        file = "assets/images/sprites/items/orange.png",
         width = 32,
         height = 32,
         frames = 17,  -- Total animation frames

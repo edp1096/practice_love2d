@@ -4,7 +4,7 @@
 return {
     merchant = {
         name = "Merchant",
-        sprite_sheet = "assets/images/player-sheet.png",
+        sprite_sheet = "assets/images/player/player-sheet.png",
         dialogue = {
             "Hello player!",
         },
@@ -34,7 +34,7 @@ return {
 
     guard = {
         name = "Guard",
-        sprite_sheet = "assets/images/player-sheet.png",
+        sprite_sheet = "assets/images/player/player-sheet.png",
         dialogue = {
             "Hello player!",
         },
@@ -64,7 +64,7 @@ return {
 
     villager = {
         name = "Villager",
-        sprite_sheet = "assets/images/passerby_01-sheet.png",
+        sprite_sheet = "assets/images/sprites/npcs/npc-passerby_01-sheet.png",
         -- Use dialogue tree instead of simple dialogue array
         dialogue_id = "villager_greeting",  -- References game/data/dialogues.lua
         interaction_range = 80,
@@ -93,7 +93,7 @@ return {
 
     elder = {
         name = "Village Elder",
-        sprite_sheet = "assets/images/player-sheet.png",
+        sprite_sheet = "assets/images/player/player-sheet.png",
         dialogue = {
             "Hello player!",
         },

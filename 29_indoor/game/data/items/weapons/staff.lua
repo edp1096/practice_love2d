@@ -14,9 +14,9 @@ local staff = {
     -- Weapon type for player weapon system
     weapon_type = "staff",  -- Must match game/data/entities/types.lua weapons table
 
-    -- Sprite information for rendering (from steel-weapons.png)
+    -- Sprite information for rendering (from weapon-steel.png)
     sprite = {
-        file = "assets/images/steel-weapons.png",
+        file = "assets/images/sprites/weapons/weapon-steel.png",
         x = 288,    -- Column 19 (index 18 * 16 = 288)
         y = 0,      -- Row 1 (index 0 * 16 = 0)
         w = 16,     -- Width in pixels

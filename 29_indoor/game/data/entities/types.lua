@@ -67,7 +67,7 @@ entity_types.npcs = {
 -- Weapon type definitions
 entity_types.weapons = {
     sword = {
-        sprite_file = "assets/images/steel-weapons.png",
+        sprite_file = "assets/images/sprites/weapons/weapon-steel.png",
         sprite_x = 0,
         sprite_y = 0,
         sprite_w = 16,
@@ -86,7 +86,7 @@ entity_types.weapons = {
     },
 
     axe = {
-        sprite_file = "assets/images/steel-weapons.png",
+        sprite_file = "assets/images/sprites/weapons/weapon-steel.png",
         sprite_x = 0,    -- 1x11: Row 1 (y coordinate)
         sprite_y = 160,  -- 1x11: Column 11 (x coordinate)
         sprite_w = 16,
@@ -105,7 +105,7 @@ entity_types.weapons = {
     },
 
     club = {
-        sprite_file = "assets/images/steel-weapons.png",
+        sprite_file = "assets/images/sprites/weapons/weapon-steel.png",
         sprite_x = 48,   -- 4x11: Row 4 (y coordinate)
         sprite_y = 160,  -- 4x11: Column 11 (x coordinate)
         sprite_w = 16,
@@ -124,7 +124,7 @@ entity_types.weapons = {
     },
 
     staff = {
-        sprite_file = "assets/images/steel-weapons.png",
+        sprite_file = "assets/images/sprites/weapons/weapon-steel.png",
         sprite_x = 288,  -- 19x1: Column 19 (x coordinate)
         sprite_y = 0,    -- 19x1: Row 1 (y coordinate)
         sprite_w = 16,
@@ -145,7 +145,7 @@ entity_types.weapons = {
 
 -- Weapon effects (shared across all weapon types)
 entity_types.weapon_effects = {
-    slash_sprite = "assets/images/effect-slash.png"
+    slash_sprite = "assets/images/sprites/effects/effect-slash.png"
 }
 
 return entity_types

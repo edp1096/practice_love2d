@@ -14,9 +14,9 @@ local iron_sword = {
     -- Weapon type for player weapon system
     weapon_type = "sword",  -- Must match game/data/entities/types.lua weapons table
 
-    -- Sprite information for rendering (from steel-weapons.png)
+    -- Sprite information for rendering (from weapon-steel.png)
     sprite = {
-        file = "assets/images/steel-weapons.png",
+        file = "assets/images/sprites/weapons/weapon-steel.png",
         x = 0,      -- Top-left X in sprite sheet
         y = 0,      -- Top-left Y in sprite sheet
         w = 16,     -- Width in pixels

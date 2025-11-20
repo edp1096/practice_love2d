@@ -216,7 +216,7 @@
   <object id="40" name="sky" x="0" y="0" width="128" height="128">
    <properties>
     <property name="Type" value="parallax"/>
-    <property name="image" value="assets/backgrounds/layer1_sky.png"/>
+    <property name="image" value="assets/images/parallax/layer1_sky.png"/>
     <property name="offset_y" type="float" value="50"/>
     <property name="parallax_factor" type="float" value="0.1"/>
     <property name="repeat_x" type="bool" value="true"/>
@@ -226,7 +226,7 @@
   <object id="41" name="mountains" x="160" y="0" width="128" height="128">
    <properties>
     <property name="Type" value="parallax"/>
-    <property name="image" value="assets/backgrounds/layer2_mountains.png"/>
+    <property name="image" value="assets/images/parallax/layer2_mountains.png"/>
     <property name="offset_y" type="float" value="-50"/>
     <property name="parallax_factor" type="float" value="0.3"/>
     <property name="repeat_x" type="bool" value="true"/>
@@ -237,7 +237,7 @@
    <properties>
     <property name="Type" value="parallax"/>
     <property name="auto_scroll_x" type="float" value="10"/>
-    <property name="image" value="assets/backgrounds/layer3_clouds.png"/>
+    <property name="image" value="assets/images/parallax/layer3_clouds.png"/>
     <property name="offset_y" type="float" value="120"/>
     <property name="parallax_factor" type="float" value="0.5"/>
     <property name="repeat_x" type="bool" value="true"/>
@@ -247,7 +247,7 @@
   <object id="43" name="trees" x="480" y="0" width="128" height="128">
    <properties>
     <property name="Type" value="parallax"/>
-    <property name="image" value="assets/backgrounds/layer4_trees.png"/>
+    <property name="image" value="assets/images/parallax/layer4_trees.png"/>
     <property name="offset_y" type="float" value="300"/>
     <property name="parallax_factor" type="float" value="0.7"/>
     <property name="repeat_x" type="bool" value="true"/>

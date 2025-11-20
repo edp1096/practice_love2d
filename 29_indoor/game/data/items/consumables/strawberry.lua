@@ -9,7 +9,7 @@ local strawberry = {
 
     -- Sprite information for world item (animation)
     sprite = {
-        file = "assets/images/strawberry.png",
+        file = "assets/images/sprites/items/strawberry.png",
         width = 32,
         height = 32,
         frames = 17,  -- Total animation frames

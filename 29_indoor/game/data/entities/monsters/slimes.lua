@@ -3,7 +3,7 @@
 
 return {
     red_slime = {
-        sprite_sheet = "assets/images/enemy-sheet-slime-red.png",
+        sprite_sheet = "assets/images/sprites/enemies/enemy-sheet-slime-red.png",
         health = 100,
         damage = 10,
         speed = 100,
@@ -31,7 +31,7 @@ return {
     },
 
     green_slime = {
-        sprite_sheet = "assets/images/enemy-sheet-slime-red.png",
+        sprite_sheet = "assets/images/sprites/enemies/enemy-sheet-slime-red.png",
         health = 80,
         damage = 8,
         speed = 120,
@@ -59,7 +59,7 @@ return {
     },
 
     blue_slime = {
-        sprite_sheet = "assets/images/enemy-sheet-slime-red.png",
+        sprite_sheet = "assets/images/sprites/enemies/enemy-sheet-slime-red.png",
         health = 120,
         damage = 12,
         speed = 80,
@@ -87,7 +87,7 @@ return {
     },
 
     purple_slime = {
-        sprite_sheet = "assets/images/enemy-sheet-slime-red.png",
+        sprite_sheet = "assets/images/sprites/enemies/enemy-sheet-slime-red.png",
         health = 150,
         damage = 15,
         speed = 90,

@@ -9,7 +9,7 @@ local apple = {
 
     -- Sprite information for world item (animation)
     sprite = {
-        file = "assets/images/apple.png",
+        file = "assets/images/sprites/items/apple.png",
         width = 32,
         height = 32,
         frames = 17,  -- Total animation frames
