@@ -297,6 +297,30 @@ function save:openSaveFolder()
     end
 end
 
+-- Mark an intro as viewed (adds to current session's viewed_intros)
+function save:markIntroAsViewed(intro_id)
+    if not intro_id then return end
+
+    -- Ensure viewed_intros table exists in current save
+    if not self.current_save then
+        self.current_save = {}
+    end
+    if not self.current_save.viewed_intros then
+        self.current_save.viewed_intros = {}
+    end
+
+    self.current_save.viewed_intros[intro_id] = true
+end
+
+-- Check if an intro has been viewed
+function save:hasViewedIntro(intro_id)
+    if not intro_id then return false end
+    if not self.current_save then return false end
+    if not self.current_save.viewed_intros then return false end
+
+    return self.current_save.viewed_intros[intro_id] == true
+end
+
 function save:printStatus()
     dprint("=== Save System Status ===")
     dprint("Directory: " .. love.filesystem.getSaveDirectory())

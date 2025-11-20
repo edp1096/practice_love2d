@@ -36,6 +36,10 @@ function cutscene:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot, 
     end
     self.is_new_game = is_new_game
 
+    -- Mark this intro as viewed (so it won't show again)
+    local save = require "engine.core.save"
+    save:markIntroAsViewed(intro_id)
+
     -- Load configuration for this cutscene
     self.config = cutscene.configs[intro_id]
 

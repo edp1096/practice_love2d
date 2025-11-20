@@ -219,9 +219,18 @@ function update.checkTransitions(self, scaled_dt)
         if transition.transition_type == "gameclear" then
             scene_control.switch("ending")
         elseif transition.transition_type == "intro" then
-            local cutscene = require "engine.scenes.cutscene"
             local intro_id = transition.intro_id or constants.GAME_START.DEFAULT_INTRO_ID
-            scene_control.switch(cutscene, intro_id, transition.target_map, transition.spawn_x, transition.spawn_y)
+            local save = require "engine.core.save"
+
+            -- Check if this intro has already been viewed
+            if save:hasViewedIntro(intro_id) then
+                -- Skip intro, treat as normal portal
+                self:switchMap(transition.target_map, transition.spawn_x, transition.spawn_y)
+            else
+                -- Show intro for the first time
+                local cutscene = require "engine.scenes.cutscene"
+                scene_control.switch(cutscene, intro_id, transition.target_map, transition.spawn_x, transition.spawn_y)
+            end
         elseif transition.transition_type == "ending" then
             local cutscene = require "engine.scenes.cutscene"
             local intro_id = transition.intro_id or "ending"

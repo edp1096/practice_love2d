@@ -364,7 +364,7 @@ return {
       id = 4,
       name = "Portals",
       class = "",
-      visible = false,
+      visible = true,
       opacity = 1,
       offsetx = 0,
       offsety = 0,
@@ -383,15 +383,15 @@ return {
           type = "",
           shape = "rectangle",
           x = 2528,
-          y = 224,
+          y = 0,
           width = 32,
-          height = 206,
+          height = 430,
           rotation = 0,
           visible = true,
           properties = {
             ["intro_id"] = "level2",
-            ["spawn_x"] = 960,
-            ["spawn_y"] = 300,
+            ["spawn_x"] = 100,
+            ["spawn_y"] = 448,
             ["target_map"] = "assets/maps/level2/area1.lua",
             ["type"] = "intro"
           }
@@ -402,14 +402,14 @@ return {
           type = "",
           shape = "rectangle",
           x = 0,
-          y = 224,
+          y = 0,
           width = 32,
-          height = 206,
+          height = 430,
           rotation = 0,
           visible = true,
           properties = {
-            ["spawn_x"] = 200,
-            ["spawn_y"] = 350,
+            ["spawn_x"] = 834,
+            ["spawn_y"] = 894,
             ["target_map"] = "assets/maps/level1/area2.lua",
             ["type"] = "portal"
           }

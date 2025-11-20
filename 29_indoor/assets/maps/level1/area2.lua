@@ -504,7 +504,7 @@ return {
       id = 4,
       name = "Portals",
       class = "",
-      visible = false,
+      visible = true,
       opacity = 1,
       offsetx = 0,
       offsety = 0,
@@ -518,14 +518,14 @@ return {
           type = "",
           shape = "rectangle",
           x = 0,
-          y = 416,
+          y = 352,
           width = 32,
-          height = 256,
+          height = 352,
           rotation = 0,
           visible = true,
           properties = {
-            ["spawn_x"] = 100,
-            ["spawn_y"] = 100,
+            ["spawn_x"] = 1770,
+            ["spawn_y"] = 1080,
             ["target_map"] = "assets/maps/level1/area1.lua",
             ["type"] = "portal"
           }

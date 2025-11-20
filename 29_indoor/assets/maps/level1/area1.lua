@@ -10,7 +10,7 @@ return {
   tilewidth = 64,
   tileheight = 64,
   nextlayerid = 12,
-  nextobjectid = 49,
+  nextobjectid = 50,
   properties = {
     ["ambient"] = "day",
     ["game_mode"] = "topdown",
@@ -160,7 +160,7 @@ return {
       id = 2,
       name = "Trees",
       class = "",
-      visible = false,
+      visible = true,
       opacity = 1,
       offsetx = 0,
       offsety = 0,
@@ -169,7 +169,7 @@ return {
       properties = {},
       encoding = "lua",
       data = {
-        43, 43, 44, 0, 0, 0, 13, 14, 14, 14, 15, 51, 52, 52, 53, 42, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43,
+        43, 43, 44, 51, 53, 0, 13, 14, 14, 14, 15, 51, 52, 52, 53, 42, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43,
         43, 43, 44, 0, 0, 0, 22, 23, 23, 23, 24, 0, 0, 0, 0, 51, 52, 52, 52, 52, 52, 52, 52, 52, 52, 52, 52, 52, 52, 52,
         43, 43, 44, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         43, 43, 44, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -389,6 +389,25 @@ return {
           rotation = 0,
           visible = true,
           properties = {}
+        },
+        {
+          id = 49,
+          name = "",
+          type = "",
+          shape = "polygon",
+          x = 128,
+          y = 0,
+          width = 289.091,
+          height = 64,
+          rotation = 0,
+          visible = true,
+          polygon = {
+            { x = 0, y = 0 },
+            { x = 289.091, y = 0 },
+            { x = 289.091, y = 64 },
+            { x = 0, y = 64 }
+          },
+          properties = {}
         }
       }
     },
@@ -537,26 +556,8 @@ return {
           rotation = 0,
           visible = true,
           properties = {
-            ["spawn_x"] = 400,
-            ["spawn_y"] = 400,
-            ["target_map"] = "assets/maps/level1/area2.lua",
-            ["type"] = "portal"
-          }
-        },
-        {
-          id = 36,
-          name = "",
-          type = "",
-          shape = "rectangle",
-          x = 192,
-          y = 0,
-          width = 128,
-          height = 64,
-          rotation = 0,
-          visible = true,
-          properties = {
-            ["spawn_x"] = 400,
-            ["spawn_y"] = 400,
+            ["spawn_x"] = 50,
+            ["spawn_y"] = 540,
             ["target_map"] = "assets/maps/level1/area2.lua",
             ["type"] = "portal"
           }
@@ -567,14 +568,14 @@ return {
           type = "",
           shape = "rectangle",
           x = 1920,
-          y = 1024,
-          width = 128,
+          y = 896,
+          width = 384,
           height = 64,
           rotation = 90,
           visible = true,
           properties = {
-            ["spawn_x"] = 400,
-            ["spawn_y"] = 400,
+            ["spawn_x"] = 50,
+            ["spawn_y"] = 540,
             ["target_map"] = "assets/maps/level1/area2.lua",
             ["type"] = "portal"
           }
@@ -585,14 +586,14 @@ return {
           type = "",
           shape = "rectangle",
           x = 1856,
-          y = 192,
+          y = 64,
           width = 64,
-          height = 192,
+          height = 512,
           rotation = 0,
           visible = true,
           properties = {
-            ["spawn_x"] = 400,
-            ["spawn_y"] = 400,
+            ["spawn_x"] = 50,
+            ["spawn_y"] = 540,
             ["target_map"] = "assets/maps/level1/area2.lua",
             ["type"] = "portal"
           }

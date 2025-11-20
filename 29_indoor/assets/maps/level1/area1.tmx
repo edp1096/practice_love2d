@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="2025.09.25" orientation="orthogonal" renderorder="right-down" width="30" height="30" tilewidth="64" tileheight="64" infinite="0" nextlayerid="12" nextobjectid="49">
+<map version="1.10" tiledversion="2025.09.25" orientation="orthogonal" renderorder="right-down" width="30" height="30" tilewidth="64" tileheight="64" infinite="0" nextlayerid="12" nextobjectid="50">
  <editorsettings>
   <export target="area1.lua" format="lua"/>
  </editorsettings>
@@ -81,9 +81,9 @@
 11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,14,14,11,11,11,11
 </data>
  </layer>
- <layer id="2" name="Trees" width="30" height="30" visible="0" locked="1">
+ <layer id="2" name="Trees" width="30" height="30">
   <data encoding="csv">
-43,43,44,0,0,0,13,14,14,14,15,51,52,52,53,42,43,43,43,43,43,43,43,43,43,43,43,43,43,43,
+43,43,44,51,53,0,13,14,14,14,15,51,52,52,53,42,43,43,43,43,43,43,43,43,43,43,43,43,43,43,
 43,43,44,0,0,0,22,23,23,23,24,0,0,0,0,51,52,52,52,52,52,52,52,52,52,52,52,52,52,52,
 43,43,44,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 43,43,44,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -131,6 +131,9 @@
    <polygon points="0,0 289.091,0 289.091,64 0,64"/>
   </object>
   <object id="21" x="1883.33" y="1216" width="36.6667" height="576"/>
+  <object id="49" x="128" y="0" width="289.091" height="64">
+   <polygon points="0,0 289.091,0 289.091,64 0,64"/>
+  </object>
  </objectgroup>
  <objectgroup id="5" name="Enemies">
   <object id="40" x="1344" y="256" width="64" height="64">
@@ -173,35 +176,27 @@
    </properties>
   </object>
  </objectgroup>
- <objectgroup id="4" name="Portals" locked="1">
+ <objectgroup id="4" name="Portals">
   <object id="35" x="1408" y="1856" width="384" height="64">
    <properties>
-    <property name="spawn_x" type="float" value="400"/>
-    <property name="spawn_y" type="float" value="400"/>
+    <property name="spawn_x" type="float" value="50"/>
+    <property name="spawn_y" type="float" value="540"/>
     <property name="target_map" value="assets/maps/level1/area2.lua"/>
     <property name="type" value="portal"/>
    </properties>
   </object>
-  <object id="36" x="192" y="0" width="128" height="64">
+  <object id="38" x="1920" y="896" width="384" height="64" rotation="90">
    <properties>
-    <property name="spawn_x" type="float" value="400"/>
-    <property name="spawn_y" type="float" value="400"/>
+    <property name="spawn_x" type="float" value="50"/>
+    <property name="spawn_y" type="float" value="540"/>
     <property name="target_map" value="assets/maps/level1/area2.lua"/>
     <property name="type" value="portal"/>
    </properties>
   </object>
-  <object id="38" x="1920" y="1024" width="128" height="64" rotation="90">
+  <object id="39" x="1856" y="64" width="64" height="512">
    <properties>
-    <property name="spawn_x" type="float" value="400"/>
-    <property name="spawn_y" type="float" value="400"/>
-    <property name="target_map" value="assets/maps/level1/area2.lua"/>
-    <property name="type" value="portal"/>
-   </properties>
-  </object>
-  <object id="39" x="1856" y="192" width="64" height="192">
-   <properties>
-    <property name="spawn_x" type="float" value="400"/>
-    <property name="spawn_y" type="float" value="400"/>
+    <property name="spawn_x" type="float" value="50"/>
+    <property name="spawn_y" type="float" value="540"/>
     <property name="target_map" value="assets/maps/level1/area2.lua"/>
     <property name="type" value="portal"/>
    </properties>

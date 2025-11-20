@@ -114,26 +114,26 @@
    </properties>
   </object>
  </objectgroup>
- <objectgroup id="4" name="Portals" visible="0">
+ <objectgroup id="4" name="Portals">
   <properties>
    <property name="spawn_x" type="float" value="400"/>
    <property name="spawn_y" type="float" value="400"/>
    <property name="target_map" value="assets/maps/level1/area2.lua"/>
    <property name="type" value="portal"/>
   </properties>
-  <object id="48" x="2528" y="224" width="32" height="206">
+  <object id="48" x="2528" y="0" width="32" height="430">
    <properties>
     <property name="intro_id" value="level2"/>
-    <property name="spawn_x" type="float" value="960"/>
-    <property name="spawn_y" type="float" value="300"/>
+    <property name="spawn_x" type="float" value="100"/>
+    <property name="spawn_y" type="float" value="448"/>
     <property name="target_map" value="assets/maps/level2/area1.lua"/>
     <property name="type" value="intro"/>
    </properties>
   </object>
-  <object id="50" x="0" y="224" width="32" height="206">
+  <object id="50" x="0" y="0" width="32" height="430">
    <properties>
-    <property name="spawn_x" type="float" value="200"/>
-    <property name="spawn_y" type="float" value="350"/>
+    <property name="spawn_x" type="float" value="834"/>
+    <property name="spawn_y" type="float" value="894"/>
     <property name="target_map" value="assets/maps/level1/area2.lua"/>
     <property name="type" value="portal"/>
    </properties>
