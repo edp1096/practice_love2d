@@ -1032,6 +1032,6 @@ For code examples, see:
 
 ---
 
-**Last Updated:** 2025-11-18
-**Engine Version:** 28_quest (Layered Pyramid Architecture - 99.2% clean)
+**Last Updated:** 2025-11-21
+**Engine Version:** 29_indoor (Parallax System Implementation)
 **LÖVE Version:** 11.5
