@@ -167,6 +167,9 @@ function entities.updateEnemies(self, dt, player_x, player_y)
                 local drop_x, drop_y = getEnemyDropPosition(enemy, self.game_mode)
                 stopEnemyMovement(enemy)
                 tryDropLoot(self, enemy, drop_x, drop_y)
+
+                -- Destroy colliders immediately when entering dead state
+                helpers.destroyColliders(enemy)
             end
 
             enemy.death_timer = (enemy.death_timer or 0) + dt
@@ -182,7 +185,6 @@ function entities.updateEnemies(self, dt, player_x, player_y)
                 -- We keep the transformation record so loadNPCs can skip the original NPC
                 -- The killed_enemies entry prevents loading in both loadEnemies and loadNPCs
 
-                helpers.destroyColliders(enemy)
                 table.remove(self.enemies, i)
             end
         else
