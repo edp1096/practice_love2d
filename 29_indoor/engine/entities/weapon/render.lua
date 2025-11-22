@@ -48,14 +48,14 @@ function render.draw(weapon, debug_mode, swing_configs)
     -- Save current color (set by enemy render for dead/stunned effects)
     local r, g, b, a = love.graphics.getColor()
 
-    -- Draw slash effect (behind weapon) - use current color
-    if weapon.slash_active and weapon.slash_anim then
+    -- Draw slash effect (behind weapon) - use current color (only if sprite available)
+    if weapon.slash_active and weapon.slash_anim and weapon.slash_sprite then
         weapon.slash_anim:draw(
             weapon.slash_sprite,
             weapon.slash_x,
             weapon.slash_y,
             weapon.slash_rotation,
-            weapon.slash_scale,
+            weapon.slash_scale * weapon.slash_flip_x,
             weapon.slash_scale * weapon.slash_flip_y,
             11.5,
             19.5

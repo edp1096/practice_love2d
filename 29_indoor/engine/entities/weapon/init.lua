@@ -42,11 +42,23 @@ function weapon:new(weapon_type)
         instance.sprite_sheet:getHeight()
     )
 
-    -- Load slash effect sprite
-    assert(self.effects_config.slash_sprite, "Slash sprite path must be provided in effects_config")
-    instance.slash_sprite = love.graphics.newImage(self.effects_config.slash_sprite)
-    instance.slash_grid = anim8.newGrid(23, 39, 46, 39)
-    instance.slash_scale = 3
+    -- Load slash effect sprite (optional)
+    if self.effects_config and self.effects_config.slash_sprite then
+        instance.slash_sprite = love.graphics.newImage(self.effects_config.slash_sprite)
+        instance.slash_grid = anim8.newGrid(23, 39, 46, 39)
+        instance.slash_scale = 3
+    else
+        instance.slash_sprite = nil
+        instance.slash_grid = nil
+        instance.slash_scale = nil
+    end
+
+    -- Load slash transforms (optional)
+    if self.effects_config and self.effects_config.slash_transforms then
+        instance.slash_transforms = self.effects_config.slash_transforms
+    else
+        instance.slash_transforms = nil
+    end
 
     -- Slash effect state
     instance.slash_active = false
@@ -54,6 +66,7 @@ function weapon:new(weapon_type)
     instance.slash_x = 0
     instance.slash_y = 0
     instance.slash_rotation = 0
+    instance.slash_flip_x = 1
     instance.slash_flip_y = 1
 
     -- Position and rotation

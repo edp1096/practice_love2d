@@ -15,28 +15,41 @@ function combat.startAttack(weapon)
     weapon.has_hit = false
     weapon.hit_enemies = {}
 
-    -- Create slash effect animation
-    local anim8 = require "vendor.anim8"
-    weapon.slash_active = true
-    weapon.slash_anim = anim8.newAnimation(
-        weapon.slash_grid('1-2', 1),
-        0.06,
-        function() weapon.slash_active = false end
-    )
-
-    -- Position slash effect
+    -- Calculate attack direction (used for both slash effect and trail)
     local dir_x = math.cos(weapon.angle)
     local dir_y = math.sin(weapon.angle)
 
-    weapon.slash_x = weapon.owner_x + dir_x * 33
-    weapon.slash_y = weapon.owner_y + dir_y * 33 + 3
-    weapon.slash_rotation = math.atan2(dir_y, dir_x)
+    -- Create slash effect animation (only if sprite is available)
+    if weapon.slash_sprite then
+        local anim8 = require "vendor.anim8"
+        weapon.slash_active = true
+        weapon.slash_anim = anim8.newAnimation(
+            weapon.slash_grid('1-2', 1),
+            0.06,
+            function() weapon.slash_active = false end
+        )
 
-    -- Flip Y based on direction
-    if weapon.current_direction == "left" or weapon.current_direction == "up" then
-        weapon.slash_flip_y = -1
-    else
-        weapon.slash_flip_y = 1
+        -- Position slash effect
+        weapon.slash_x = weapon.owner_x + dir_x * 33
+        weapon.slash_y = weapon.owner_y + dir_y * 33 + 3
+
+        -- Set rotation and flip based on direction
+        weapon.slash_rotation = math.atan2(dir_y, dir_x)
+
+        -- Get transform settings from config (optional)
+        local transform = nil
+        if weapon.slash_transforms then
+            transform = weapon.slash_transforms[weapon.current_direction]
+        end
+
+        -- Apply transform or use defaults
+        if transform then
+            weapon.slash_flip_x = transform.flip_x or 1
+            weapon.slash_flip_y = transform.flip_y or 1
+        else
+            weapon.slash_flip_x = 1
+            weapon.slash_flip_y = 1
+        end
     end
 
     -- Spawn weapon trail effect

@@ -87,8 +87,8 @@ entity_types.weapons = {
 
     axe = {
         sprite_file = "assets/images/sprites/weapons/weapon-steel.png",
-        sprite_x = 0,    -- 1x11: Row 1 (y coordinate)
-        sprite_y = 160,  -- 1x11: Column 11 (x coordinate)
+        sprite_x = 0,   -- 1x11: Row 1 (y coordinate)
+        sprite_y = 160, -- 1x11: Column 11 (x coordinate)
         sprite_w = 16,
         sprite_h = 16,
         scale = 3,
@@ -106,16 +106,16 @@ entity_types.weapons = {
 
     club = {
         sprite_file = "assets/images/sprites/weapons/weapon-steel.png",
-        sprite_x = 48,   -- 4x11: Row 4 (y coordinate)
-        sprite_y = 160,  -- 4x11: Column 11 (x coordinate)
+        sprite_x = 48,  -- 4x11: Row 4 (y coordinate)
+        sprite_y = 160, -- 4x11: Column 11 (x coordinate)
         sprite_w = 16,
         sprite_h = 16,
         scale = 3,
 
-        attack_duration = 0.25,  -- Fast attack
+        attack_duration = 0.25, -- Fast attack
         swing_radius = 30,
 
-        damage = 20,  -- Lower damage
+        damage = 20, -- Lower damage
         range = 75,
         knockback = 80,
 
@@ -125,18 +125,18 @@ entity_types.weapons = {
 
     staff = {
         sprite_file = "assets/images/sprites/weapons/weapon-steel.png",
-        sprite_x = 288,  -- 19x1: Column 19 (x coordinate)
-        sprite_y = 0,    -- 19x1: Row 1 (y coordinate)
+        sprite_x = 288, -- 19x1: Column 19 (x coordinate)
+        sprite_y = 0,   -- 19x1: Row 1 (y coordinate)
         sprite_w = 16,
         sprite_h = 16,
         scale = 3,
 
-        attack_duration = 0.2,  -- Very fast attack
-        swing_radius = 25,      -- Short swing radius
+        attack_duration = 0.2, -- Very fast attack
+        swing_radius = 25,     -- Short swing radius
 
-        damage = 15,      -- Low damage
-        range = 100,      -- Long reach
-        knockback = 60,   -- Weak knockback
+        damage = 15,           -- Low damage
+        range = 100,           -- Long reach
+        knockback = 60,        -- Weak knockback
 
         hit_start = 0.2,
         hit_end = 0.6
@@ -144,8 +144,17 @@ entity_types.weapons = {
 }
 
 -- Weapon effects (shared across all weapon types)
+local slash_size = 1.4
 entity_types.weapon_effects = {
-    slash_sprite = "assets/images/sprites/effects/effect-slash.png"
+    slash_sprite = "assets/images/sprites/effects/effect-slash.png",
+    -- Optional: Direction-specific transforms for slash effect
+    -- If not specified, defaults to flip_x=1, flip_y=1
+    slash_transforms = {
+        down = { flip_x = slash_size, flip_y = -1 * slash_size },
+        up = { flip_x = slash_size, flip_y = -1 * slash_size },
+        left = { flip_x = slash_size, flip_y = -1 * slash_size },
+        right = { flip_x = slash_size, flip_y = slash_size }
+    }
 }
 
 return entity_types
