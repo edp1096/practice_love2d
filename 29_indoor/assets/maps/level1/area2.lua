@@ -1,7 +1,7 @@
 return {
   version = "1.10",
   luaversion = "5.1",
-  tiledversion = "2025.09.25",
+  tiledversion = "2025.11.21",
   class = "",
   orientation = "orthogonal",
   renderorder = "right-down",
@@ -50,6 +50,103 @@ return {
   },
   layers = {
     {
+      type = "objectgroup",
+      draworder = "topdown",
+      id = 9,
+      name = "Parallax",
+      class = "",
+      visible = true,
+      opacity = 1,
+      offsetx = 0,
+      offsety = 0,
+      parallaxx = 1,
+      parallaxy = 1,
+      properties = {},
+      objects = {
+        {
+          id = 40,
+          name = "sky",
+          type = "",
+          shape = "rectangle",
+          x = 0,
+          y = 0,
+          width = 128,
+          height = 128,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["Type"] = "parallax",
+            ["image"] = "assets/images/parallax/layer1_sky.png",
+            ["offset_y"] = 50,
+            ["parallax_factor"] = 0.1,
+            ["repeat_x"] = true,
+            ["z_index"] = 1
+          }
+        },
+        {
+          id = 41,
+          name = "mountains",
+          type = "",
+          shape = "rectangle",
+          x = 160,
+          y = 0,
+          width = 128,
+          height = 128,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["Type"] = "parallax",
+            ["image"] = "assets/images/parallax/layer2_mountains.png",
+            ["offset_y"] = -50,
+            ["parallax_factor"] = 0.3,
+            ["repeat_x"] = true,
+            ["z_index"] = 2
+          }
+        },
+        {
+          id = 42,
+          name = "clouds",
+          type = "",
+          shape = "rectangle",
+          x = 320,
+          y = 0,
+          width = 128,
+          height = 128,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["Type"] = "parallax",
+            ["auto_scroll_x"] = 10,
+            ["image"] = "assets/images/parallax/layer3_clouds.png",
+            ["offset_y"] = 120,
+            ["parallax_factor"] = 0.5,
+            ["repeat_x"] = true,
+            ["z_index"] = 3
+          }
+        },
+        {
+          id = 43,
+          name = "trees",
+          type = "",
+          shape = "rectangle",
+          x = 480,
+          y = 0,
+          width = 128,
+          height = 128,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["Type"] = "parallax",
+            ["image"] = "assets/images/parallax/layer4_trees.png",
+            ["offset_y"] = 250,
+            ["parallax_factor"] = 0.7,
+            ["repeat_x"] = true,
+            ["z_index"] = 4
+          }
+        }
+      }
+    },
+    {
       type = "tilelayer",
       x = 0,
       y = 0,
@@ -58,7 +155,7 @@ return {
       id = 1,
       name = "Ground",
       class = "",
-      visible = false,
+      visible = true,
       opacity = 1,
       offsetx = 0,
       offsety = 0,
@@ -118,7 +215,7 @@ return {
       id = 8,
       name = "GroundDeco",
       class = "",
-      visible = false,
+      visible = true,
       opacity = 1,
       offsetx = 0,
       offsety = 0,
@@ -612,103 +709,6 @@ return {
           properties = {
             ["id"] = "save2-2",
             ["type"] = "savepoint"
-          }
-        }
-      }
-    },
-    {
-      type = "objectgroup",
-      draworder = "topdown",
-      id = 9,
-      name = "Parallax",
-      class = "",
-      visible = true,
-      opacity = 1,
-      offsetx = 0,
-      offsety = 0,
-      parallaxx = 1,
-      parallaxy = 1,
-      properties = {},
-      objects = {
-        {
-          id = 40,
-          name = "sky",
-          type = "",
-          shape = "rectangle",
-          x = 0,
-          y = 0,
-          width = 128,
-          height = 128,
-          rotation = 0,
-          visible = true,
-          properties = {
-            ["Type"] = "parallax",
-            ["image"] = "assets/images/parallax/layer1_sky.png",
-            ["offset_y"] = 50,
-            ["parallax_factor"] = 0.1,
-            ["repeat_x"] = true,
-            ["z_index"] = 1
-          }
-        },
-        {
-          id = 41,
-          name = "mountains",
-          type = "",
-          shape = "rectangle",
-          x = 160,
-          y = 0,
-          width = 128,
-          height = 128,
-          rotation = 0,
-          visible = true,
-          properties = {
-            ["Type"] = "parallax",
-            ["image"] = "assets/images/parallax/layer2_mountains.png",
-            ["offset_y"] = -50,
-            ["parallax_factor"] = 0.3,
-            ["repeat_x"] = true,
-            ["z_index"] = 2
-          }
-        },
-        {
-          id = 42,
-          name = "clouds",
-          type = "",
-          shape = "rectangle",
-          x = 320,
-          y = 0,
-          width = 128,
-          height = 128,
-          rotation = 0,
-          visible = true,
-          properties = {
-            ["Type"] = "parallax",
-            ["auto_scroll_x"] = 10,
-            ["image"] = "assets/images/parallax/layer3_clouds.png",
-            ["offset_y"] = 120,
-            ["parallax_factor"] = 0.5,
-            ["repeat_x"] = true,
-            ["z_index"] = 3
-          }
-        },
-        {
-          id = 43,
-          name = "trees",
-          type = "",
-          shape = "rectangle",
-          x = 480,
-          y = 0,
-          width = 128,
-          height = 128,
-          rotation = 0,
-          visible = true,
-          properties = {
-            ["Type"] = "parallax",
-            ["image"] = "assets/images/parallax/layer4_trees.png",
-            ["offset_y"] = 300,
-            ["parallax_factor"] = 0.7,
-            ["repeat_x"] = true,
-            ["z_index"] = 4
           }
         }
       }

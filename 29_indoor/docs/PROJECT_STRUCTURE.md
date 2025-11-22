@@ -7,7 +7,7 @@ Complete reference for the LÖVE2D game engine project structure.
 ## Root Directory
 
 ```
-28_quest/
+29_indoor/
 ├── main.lua              - Entry point (dependency injection)
 ├── conf.lua              - LÖVE configuration
 ├── startup.lua           - Initialization utilities
@@ -47,8 +47,10 @@ core/
 ├── sound.lua             - Audio system (BGM, SFX)
 ├── save.lua              - Save/load system (slot-based)
 ├── quest.lua             - Quest system (kill, collect, talk, explore, deliver)
+├── level.lua             - Level/EXP system (player progression)
 ├── debug.lua             - Debug overlay (F1-F6)
 ├── constants.lua         - Engine constants
+├── restart.lua           - Game restart utilities
 │
 ├── display/
 │   └── init.lua          - Virtual screen (scaling, letterboxing)
@@ -67,8 +69,11 @@ systems/
 │                           - Dual collider for topdown mode
 │                           - Game mode-aware NPC colliders
 ├── inventory.lua         - Inventory system
+├── item_actions.lua      - Item usage logic (health potions, etc.)
 ├── entity_factory.lua    - Creates entities from Tiled properties
+├── game_mode.lua         - Topdown/Platformer mode switching
 ├── prompt.lua            - Interaction prompts (dynamic button icons)
+├── loot.lua              - Random loot drops from enemies
 │
 ├── world/                - Physics & map system
 │   ├── init.lua          - World coordinator (Windfield + STI)
@@ -98,7 +103,7 @@ systems/
 │
 └── hud/                  - In-game HUD
     ├── status.lua        - Health bars, cooldowns, parry UI
-    ├── minimap.lua       - Minimap rendering (75% opacity)
+    ├── minimap.lua       - Minimap rendering (parallax backgrounds!)
     ├── quickslots.lua    - Quickslot belt UI (bottom center)
     └── quest_tracker.lua - Quest tracker HUD (3 active quests)
 ```
@@ -135,8 +140,7 @@ entities/
 │   └── types/            - NPC type definitions
 │
 ├── item/                 - Item system
-│   ├── init.lua          - Item base class
-│   └── types/            - Item type definitions
+│   └── init.lua          - Item base class
 │
 ├── world_item/           - Dropped item system  Persistence!
 │   └── init.lua          - World item with respawn control
@@ -216,7 +220,9 @@ utils/
 │                           - Helper functions (apply, withAlpha, etc.)
 ├── restart.lua           - Game restart logic
 ├── convert.lua           - Data conversion
-└── ini.lua               - INI file parser
+├── ini.lua               - INI file parser
+├── helpers.lua           - Reusable helper functions (sync, destroy, count)
+└── button_icons.lua      - PlayStation/Xbox button icons (DualSense ✕○□△)
 ```
 
 **Color System (`utils/colors.lua`):**
@@ -303,7 +309,7 @@ assets/
 │   ├── items/
 │   └── tilesets/
 │
-├── backgrounds/          - Parallax background layers
+├── images/parallax/      - Parallax background layers
 │   ├── layer1_sky.png
 │   ├── layer2_mountains.png
 │   ├── layer3_clouds.png
@@ -339,7 +345,7 @@ Enemies Object Properties:
 Parallax Layer (in "Parallax" objectgroup):
   Object Properties:
     Type = "parallax"              ← Custom property (string)
-    image = "assets/backgrounds/layer1_sky.png"
+    image = "assets/images/parallax/layer1_sky.png"
     parallax_factor = 0.1          (0.0 = fixed, 1.0 = normal speed)
     z_index = 1                    (rendering order: lower = behind)
     repeat_x = true                (horizontal tiling)
@@ -498,6 +504,6 @@ Examples:
 
 ---
 
-**Last Updated:** 2025-11-19
+**Last Updated:** 2025-11-22
 **Framework:** LÖVE 11.5 + Lua 5.1
-**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven + Layered Pyramid (99.2% clean)
+**Architecture:** Engine/Game Separation + Dependency Injection + Data-Driven + Minimap Parallax Integration

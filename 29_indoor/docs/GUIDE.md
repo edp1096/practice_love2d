@@ -33,7 +33,7 @@ luac -p **/*.lua
 ### Project Structure
 
 ```
-28_quest/
+29_indoor/
 ├── engine/           # Reusable game engine (100% reusable)
 ├── game/             # Game-specific content
 │   ├── data/         # Configuration files (player, quests, dialogues, etc.)
@@ -1032,6 +1032,6 @@ For code examples, see:
 
 ---
 
-**Last Updated:** 2025-11-21
-**Engine Version:** 29_indoor (Parallax System Implementation)
+**Last Updated:** 2025-11-22
+**Engine Version:** 29_indoor (Minimap Parallax Integration)
 **LÖVE Version:** 11.5

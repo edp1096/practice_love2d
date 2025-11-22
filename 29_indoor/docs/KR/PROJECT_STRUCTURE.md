@@ -7,7 +7,7 @@ LÖVE2D 게임 엔진 프로젝트 구조 완전 참조 문서입니다.
 ## 루트 디렉토리
 
 ```
-28_quest/
+29_indoor/
 ├── main.lua              - 진입점 (의존성 주입)
 ├── conf.lua              - LÖVE 설정
 ├── startup.lua           - 초기화 유틸리티

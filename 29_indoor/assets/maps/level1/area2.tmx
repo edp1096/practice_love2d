@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="2025.09.25" orientation="orthogonal" renderorder="right-down" width="30" height="40" tilewidth="32" tileheight="32" infinite="0" nextlayerid="10" nextobjectid="44">
+<map version="1.10" tiledversion="2025.11.21" orientation="orthogonal" renderorder="right-down" width="30" height="40" tilewidth="32" tileheight="32" infinite="0" nextlayerid="10" nextobjectid="44">
  <editorsettings>
   <export target="area2.lua" format="lua"/>
  </editorsettings>
@@ -12,7 +12,50 @@
   <grid orientation="orthogonal" width="1" height="1"/>
   <image source="tileset_area2.png" trans="ff00ff" width="256" height="192"/>
  </tileset>
- <layer id="1" name="Ground" width="30" height="40" visible="0" locked="1">
+ <objectgroup id="9" name="Parallax">
+  <object id="40" name="sky" x="0" y="0" width="128" height="128">
+   <properties>
+    <property name="Type" value="parallax"/>
+    <property name="image" value="assets/images/parallax/layer1_sky.png"/>
+    <property name="offset_y" type="float" value="50"/>
+    <property name="parallax_factor" type="float" value="0.1"/>
+    <property name="repeat_x" type="bool" value="true"/>
+    <property name="z_index" type="int" value="1"/>
+   </properties>
+  </object>
+  <object id="41" name="mountains" x="160" y="0" width="128" height="128">
+   <properties>
+    <property name="Type" value="parallax"/>
+    <property name="image" value="assets/images/parallax/layer2_mountains.png"/>
+    <property name="offset_y" type="float" value="-50"/>
+    <property name="parallax_factor" type="float" value="0.3"/>
+    <property name="repeat_x" type="bool" value="true"/>
+    <property name="z_index" type="int" value="2"/>
+   </properties>
+  </object>
+  <object id="42" name="clouds" x="320" y="0" width="128" height="128">
+   <properties>
+    <property name="Type" value="parallax"/>
+    <property name="auto_scroll_x" type="float" value="10"/>
+    <property name="image" value="assets/images/parallax/layer3_clouds.png"/>
+    <property name="offset_y" type="float" value="120"/>
+    <property name="parallax_factor" type="float" value="0.5"/>
+    <property name="repeat_x" type="bool" value="true"/>
+    <property name="z_index" type="int" value="3"/>
+   </properties>
+  </object>
+  <object id="43" name="trees" x="480" y="0" width="128" height="128">
+   <properties>
+    <property name="Type" value="parallax"/>
+    <property name="image" value="assets/images/parallax/layer4_trees.png"/>
+    <property name="offset_y" type="float" value="250"/>
+    <property name="parallax_factor" type="float" value="0.7"/>
+    <property name="repeat_x" type="bool" value="true"/>
+    <property name="z_index" type="int" value="4"/>
+   </properties>
+  </object>
+ </objectgroup>
+ <layer id="1" name="Ground" width="30" height="40" locked="1">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -56,7 +99,7 @@
 30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30
 </data>
  </layer>
- <layer id="8" name="GroundDeco" width="30" height="40" visible="0">
+ <layer id="8" name="GroundDeco" width="30" height="40">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -209,49 +252,6 @@
    <properties>
     <property name="id" value="save2-2"/>
     <property name="type" value="savepoint"/>
-   </properties>
-  </object>
- </objectgroup>
- <objectgroup id="9" name="Parallax">
-  <object id="40" name="sky" x="0" y="0" width="128" height="128">
-   <properties>
-    <property name="Type" value="parallax"/>
-    <property name="image" value="assets/images/parallax/layer1_sky.png"/>
-    <property name="offset_y" type="float" value="50"/>
-    <property name="parallax_factor" type="float" value="0.1"/>
-    <property name="repeat_x" type="bool" value="true"/>
-    <property name="z_index" type="int" value="1"/>
-   </properties>
-  </object>
-  <object id="41" name="mountains" x="160" y="0" width="128" height="128">
-   <properties>
-    <property name="Type" value="parallax"/>
-    <property name="image" value="assets/images/parallax/layer2_mountains.png"/>
-    <property name="offset_y" type="float" value="-50"/>
-    <property name="parallax_factor" type="float" value="0.3"/>
-    <property name="repeat_x" type="bool" value="true"/>
-    <property name="z_index" type="int" value="2"/>
-   </properties>
-  </object>
-  <object id="42" name="clouds" x="320" y="0" width="128" height="128">
-   <properties>
-    <property name="Type" value="parallax"/>
-    <property name="auto_scroll_x" type="float" value="10"/>
-    <property name="image" value="assets/images/parallax/layer3_clouds.png"/>
-    <property name="offset_y" type="float" value="120"/>
-    <property name="parallax_factor" type="float" value="0.5"/>
-    <property name="repeat_x" type="bool" value="true"/>
-    <property name="z_index" type="int" value="3"/>
-   </properties>
-  </object>
-  <object id="43" name="trees" x="480" y="0" width="128" height="128">
-   <properties>
-    <property name="Type" value="parallax"/>
-    <property name="image" value="assets/images/parallax/layer4_trees.png"/>
-    <property name="offset_y" type="float" value="300"/>
-    <property name="parallax_factor" type="float" value="0.7"/>
-    <property name="repeat_x" type="bool" value="true"/>
-    <property name="z_index" type="int" value="4"/>
    </properties>
   </object>
  </objectgroup>

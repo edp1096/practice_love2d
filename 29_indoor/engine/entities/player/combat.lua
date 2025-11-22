@@ -12,7 +12,6 @@ local combat = {}
 function combat.initialize(player, cfg)
     cfg = cfg or {}
 
-    -- No weapon equipped by default (will be equipped from inventory)
     player.weapon = nil
     player.state = "idle"
     player.attack_cooldown = 0
@@ -52,7 +51,6 @@ function combat.initialize(player, cfg)
     player.dodge_invincible_duration = cfg.dodge_invincible_duration or 0.25
     player.dodge_invincible_timer = 0
 
-    -- Evade (stationary invincibility with movement allowed)
     player.evade_active = false
     player.evade_duration = cfg.evade_duration or 0.5
     player.evade_timer = 0
@@ -97,7 +95,6 @@ function combat.updateTimers(player, dt)
         if player.evade_timer <= 0 then
             player.evade_active = false
             player.state = "idle"
-            -- Restore collision class (evade doesn't change collision class)
         end
     end
 
@@ -107,7 +104,6 @@ function combat.updateTimers(player, dt)
             player.dodge_active = false
             player.state = "idle"
             player.dodge_speed = 0
-            -- Change back to Player collision class
             if player.collider then
                 player.collider:setCollisionClass(constants.COLLISION_CLASSES.PLAYER)
             end
@@ -156,7 +152,6 @@ function combat.updateTimers(player, dt)
         if player.last_action_time >= player.weapon_sheath_delay then
             player.weapon_drawn = false
             player.weapon:emitSheathParticles()
-            -- Reset aim source when weapon is sheathed
             input:resetAimSource()
 
             -- Play weapon sheath sound
@@ -245,7 +240,6 @@ function combat.startDodge(player)
         return false
     end
 
-    -- Get dodge direction from input system (supports gamepad)
     local dir_x, dir_y = input:getMovement()
 
     -- Platformer mode: only horizontal dodge
@@ -254,7 +248,6 @@ function combat.startDodge(player)
     end
 
     if dir_x == 0 and dir_y == 0 then
-        -- Use current facing direction if no input
         if player.direction == "right" then
             dir_x = 1
         elseif player.direction == "left" then
@@ -272,7 +265,6 @@ function combat.startDodge(player)
         dir_y = dir_y / length
     end
 
-    -- Platformer mode: always horizontal direction
     if player.game_mode == "platformer" then
         player.direction = dir_x >= 0 and "right" or "left"
     else
@@ -292,7 +284,6 @@ function combat.startDodge(player)
     player.dodge_invincible_timer = player.dodge_invincible_duration
     player.state = "dodging"
 
-    -- Change collision class to PlayerDodging (ignores Enemy, collides with Wall)
     if player.collider then
         player.collider:setCollisionClass(constants.COLLISION_CLASSES.PLAYER_DODGING)
     end
@@ -309,19 +300,14 @@ function combat.startDodge(player)
 end
 
 function combat.startEvade(player)
-    -- Cannot evade during other actions (uses shared cooldown)
     if player.dodge_evade_cooldown > 0 or player.state == "attacking" or player.parry_active or player.dodge_active or player.evade_active then
         return false
     end
 
-    -- Evade is stationary - no direction needed
     player.evade_active = true
     player.evade_timer = player.evade_duration
     player.dodge_evade_cooldown = player.dodge_evade_cooldown_duration
     player.state = "evading"
-
-    -- Evade doesn't change collision class (stays as Player)
-    -- Player can still move during evade
 
     player.last_action_time = 0
 
@@ -392,7 +378,7 @@ function combat.takeDamage(player, damage, shake_callback)
 
     player.hit_flash_timer = 0.2
     player.invincible_timer = player.invincible_duration
-    player.parry_cooldown = 0 -- reset parry cooldown when taking damage
+    player.parry_cooldown = 0
 
     -- Haptic feedback for hit
     local v = constants.VIBRATION.HIT; input:vibrate(v.duration, v.left, v.right)
@@ -431,9 +417,7 @@ function combat.isEvading(player)
     return player.evade_active
 end
 
--- ============================================================================
--- Equipment System Functions
--- ============================================================================
+-- Equipment System
 
 -- Equip a weapon (called when equipping from inventory)
 function combat.equipWeapon(player, weapon_type)

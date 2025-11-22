@@ -6,19 +6,19 @@ local quest = {}
 
 -- Quest states
 quest.STATE = {
-    AVAILABLE = "available",  -- Can be accepted from NPC
-    ACTIVE = "active",        -- Currently in progress
-    COMPLETED = "completed",  -- Objectives done, ready to turn in
-    TURNED_IN = "turned_in"   -- Turned in to NPC, rewards claimed
+    AVAILABLE = "available",
+    ACTIVE = "active",
+    COMPLETED = "completed",
+    TURNED_IN = "turned_in"
 }
 
 -- Objective types
 quest.TYPE = {
-    KILL = "kill",           -- Kill N enemies of type X
-    COLLECT = "collect",     -- Collect N items of type X
-    TALK = "talk",           -- Talk to NPC X
-    EXPLORE = "explore",     -- Visit location X
-    DELIVER = "deliver"      -- Deliver item X to NPC Y
+    KILL = "kill",
+    COLLECT = "collect",
+    TALK = "talk",
+    EXPLORE = "explore",
+    DELIVER = "deliver"
 }
 
 function quest:init()
@@ -29,12 +29,12 @@ function quest:init()
     -- Format: { quest_id = { state, objectives, ... } }
     self.quest_states = {}
 
-    -- Quest callbacks (for progress tracking)
+    -- Quest callbacks
     self.callbacks = {
-        on_quest_accepted = nil,    -- function(quest_id)
-        on_quest_completed = nil,   -- function(quest_id)
-        on_quest_turned_in = nil,   -- function(quest_id, rewards)
-        on_objective_updated = nil  -- function(quest_id, objective_index, current, target)
+        on_quest_accepted = nil,
+        on_quest_completed = nil,
+        on_quest_turned_in = nil,
+        on_objective_updated = nil
     }
 
     -- Inventory reference (injected from game)
@@ -63,10 +63,10 @@ function quest:_cloneQuestData(data)
         description = data.description,
         objectives = {},
         giver_npc = data.giver_npc,
-        receiver_npc = data.receiver_npc or data.giver_npc,  -- Default to giver
+        receiver_npc = data.receiver_npc or data.giver_npc,
         rewards = {},
         prerequisites = {},
-        dialogue = nil  -- Will be cloned below if present
+        dialogue = nil
     }
 
     -- Clone rewards
@@ -95,7 +95,7 @@ function quest:_cloneQuestData(data)
             target = obj.target,
             count = obj.count or 1,
             description = obj.description,
-            npc = obj.npc  -- For deliver quests
+            npc = obj.npc
         }
     end
 
@@ -240,7 +240,7 @@ function quest:updateProgress(quest_id, objective_index, amount)
     return true
 end
 
--- Helper: Track kill progress
+-- Track kill progress
 function quest:onEnemyKilled(enemy_type)
     for quest_id, def in pairs(self.quest_registry) do
         local state = self.quest_states[quest_id]
@@ -254,7 +254,7 @@ function quest:onEnemyKilled(enemy_type)
     end
 end
 
--- Helper: Track item collection
+-- Track item collection
 function quest:onItemCollected(item_type, count)
     count = count or 1
     for quest_id, def in pairs(self.quest_registry) do
@@ -269,7 +269,7 @@ function quest:onItemCollected(item_type, count)
     end
 end
 
--- Helper: Track NPC talk
+-- Track NPC talk
 function quest:onNPCTalked(npc_id)
     for quest_id, def in pairs(self.quest_registry) do
         local state = self.quest_states[quest_id]
@@ -288,7 +288,7 @@ function quest:onNPCTalked(npc_id)
     end
 end
 
--- Helper: Track location exploration
+-- Track location exploration
 function quest:onLocationVisited(location_id)
     for quest_id, def in pairs(self.quest_registry) do
         local state = self.quest_states[quest_id]
@@ -302,7 +302,7 @@ function quest:onLocationVisited(location_id)
     end
 end
 
--- Helper: Track item delivery
+-- Track item delivery
 function quest:onItemDelivered(item_type, npc_id)
     for quest_id, def in pairs(self.quest_registry) do
         local state = self.quest_states[quest_id]
@@ -318,7 +318,7 @@ function quest:onItemDelivered(item_type, npc_id)
     end
 end
 
--- Helper: Get active delivery quest for NPC (returns quest_id, item_type, or nil)
+-- Get active delivery quest for NPC (returns quest_id, item_type, or nil)
 function quest:getActiveDeliveryQuest(npc_id)
     for quest_id, def in pairs(self.quest_registry) do
         local state = self.quest_states[quest_id]

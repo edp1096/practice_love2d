@@ -5,9 +5,7 @@ local constants = require "engine.core.constants"
 
 local collision = {}
 
---- Setup collision classes and ignore rules for physics world
--- @param physicsWorld The Windfield physics world
--- @param game_mode The game mode ("topdown" or "platformer")
+-- Setup collision classes and ignore rules for physics world
 function collision.setupCollisionClasses(physicsWorld, game_mode)
     physicsWorld:addCollisionClass("Player")
     physicsWorld:addCollisionClass("PlayerDodging")
@@ -47,9 +45,7 @@ function collision.setupCollisionClasses(physicsWorld, game_mode)
     physicsWorld:collisionClassesSet()
 end
 
---- Create colliders for player entity
--- @param player The player entity
--- @param physicsWorld The Windfield physics world
+-- Create colliders for player entity
 function collision.createPlayerColliders(player, physicsWorld)
     if player.collider then
         return  -- Already has colliders
@@ -109,11 +105,7 @@ function collision.createPlayerColliders(player, physicsWorld)
     end)
 end
 
---- Create colliders for wall object
--- @param obj The Tiled wall object
--- @param physicsWorld The Windfield physics world
--- @param game_mode The game mode ("topdown" or "platformer")
--- @return table Main wall collider and optional bottom collider
+-- Create colliders for wall object (returns main wall collider and optional bottom collider)
 function collision.createWallColliders(obj, physicsWorld, game_mode)
     local colliders = {}
 
@@ -201,10 +193,7 @@ function collision.createWallColliders(obj, physicsWorld, game_mode)
     return colliders
 end
 
---- Create collider for enemy entity
--- @param enemy The enemy entity
--- @param physicsWorld The Windfield physics world
--- @param game_mode The game mode ("topdown" or "platformer")
+-- Create collider for enemy entity
 function collision.createEnemyCollider(enemy, physicsWorld, game_mode)
     if enemy.collider then
         return  -- Already has colliders
@@ -274,9 +263,7 @@ function collision.createEnemyCollider(enemy, physicsWorld, game_mode)
     end
 end
 
---- Create collider for NPC entity
--- @param npc The NPC entity
--- @param physicsWorld The Windfield physics world
+-- Create collider for NPC entity
 function collision.createNPCCollider(npc, physicsWorld, game_mode)
     local bounds = npc:getColliderBounds()
     npc.collider = physicsWorld:newBSGRectangleCollider(
@@ -300,10 +287,7 @@ function collision.createNPCCollider(npc, physicsWorld, game_mode)
     npc.y = npc.collider:getY() - npc.collider_offset_y
 end
 
---- Create collider for death zone
--- @param obj The Tiled death zone object
--- @param physicsWorld The Windfield physics world
--- @return Collider or nil
+-- Create collider for death zone (returns collider or nil)
 function collision.createDeathZoneCollider(obj, physicsWorld)
     local zone
 
@@ -343,10 +327,7 @@ function collision.createDeathZoneCollider(obj, physicsWorld)
     return zone
 end
 
---- Create collider for damage zone
--- @param obj The Tiled damage zone object
--- @param physicsWorld The Windfield physics world
--- @return table Zone data with collider and properties, or nil
+-- Create collider for damage zone (returns zone data with collider and properties, or nil)
 function collision.createDamageZoneCollider(obj, physicsWorld)
     local zone
 

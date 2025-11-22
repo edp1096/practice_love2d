@@ -18,7 +18,7 @@ function inventory:new(item_class)
 
     -- Grid configuration
     instance.grid_width = DEFAULT_GRID_WIDTH
-    instance.grid_height = DEFAULT_GRID_HEIGHT  -- 10x5 grid (50 cells total, reduced from 6 for better UI fit)
+    instance.grid_height = DEFAULT_GRID_HEIGHT
 
     -- Grid storage: 2D array [y][x] = item_uuid or nil
     instance.grid = {}
@@ -35,39 +35,37 @@ function inventory:new(item_class)
     -- Selected item (uuid instead of slot index)
     instance.selected_item_id = nil
 
-    -- Equipment slots: specialized slots for wearable items
+    -- Equipment slots
     instance.equipment_slots = {
-        helmet = nil,   -- Head armor
-        chest = nil,    -- Body armor
-        weapon = nil,   -- Main weapon
-        shield = nil,   -- Off-hand shield
-        bracelet = nil, -- Bracelet
-        ring = nil,     -- Ring
-        boots = nil,    -- Footwear
-        gloves = nil    -- Hand armor
+        helmet = nil,
+        chest = nil,
+        weapon = nil,
+        shield = nil,
+        bracelet = nil,
+        ring = nil,
+        boots = nil,
+        gloves = nil
     }
 
-    -- Quickslots: hotbar for quick item usage (1-5 keys)
+    -- Quickslots
     instance.quickslots = {
-        nil,  -- Slot 1
-        nil,  -- Slot 2
-        nil,  -- Slot 3
-        nil,  -- Slot 4
-        nil   -- Slot 5
+        nil,
+        nil,
+        nil,
+        nil,
+        nil
     }
 
     -- Legacy compatibility
-    instance.max_slots = 60  -- 10x6 grid
-    instance.selected_slot = 1  -- For backward compatibility
+    instance.max_slots = 60
+    instance.selected_slot = 1
 
     return instance
 end
 
--- ============================================================================
--- Grid Management Functions
--- ============================================================================
+-- Grid Management
 
--- Helper: Iterate through grid cells occupied by an item
+-- Iterate through grid cells occupied by an item
 local function iterateGridCells(x, y, width, height, callback)
     for dy = 0, height - 1 do
         for dx = 0, width - 1 do
@@ -76,7 +74,7 @@ local function iterateGridCells(x, y, width, height, callback)
     end
 end
 
--- Helper: Sort items by grid position (top-left to bottom-right)
+-- Sort items by grid position (top-left to bottom-right)
 local function sortItemsByGridPosition(item_ids, items)
     table.sort(item_ids, function(a, b)
         local item_a = items[a]
@@ -226,9 +224,7 @@ function inventory:getItemAt(x, y)
     return nil, nil
 end
 
--- ============================================================================
--- Public API Functions (High-level)
--- ============================================================================
+-- Public API
 
 -- Add item to inventory (auto-placement)
 function inventory:addItem(item_type, quantity)
@@ -415,9 +411,7 @@ function inventory:selectSlot(slot_index)
     end
 end
 
--- ============================================================================
--- Save/Load Functions
--- ============================================================================
+-- Save/Load
 
 function inventory:save()
     local grid_items = {}
@@ -524,9 +518,7 @@ function inventory:load(save_data)
     end
 end
 
--- ============================================================================
--- Utility Functions
--- ============================================================================
+-- Utility
 
 function inventory:getItemCount()
     local count = 0
@@ -536,9 +528,7 @@ function inventory:getItemCount()
     return count
 end
 
--- ============================================================================
--- Equipment Slot Functions
--- ============================================================================
+-- Equipment Slots
 
 -- Equip item to specific slot
 function inventory:equipItem(item_id, slot_name, player)
@@ -678,9 +668,7 @@ function inventory:getEquippedItem(slot_name)
     return nil
 end
 
--- ============================================================================
--- Quickslot Management Functions
--- ============================================================================
+-- Quickslot Management
 
 -- Assign item to quickslot
 function inventory:assignQuickslot(slot_index, item_id)

@@ -87,7 +87,7 @@
 ## 프로젝트 구조
 
 ```
-28_quest/
+29_indoor/
 ├── engine/           # 재사용 가능 게임 엔진 (100% 재사용 가능)
 │   ├── core/         # 핵심 시스템 (lifecycle, input, scene, quest 등)
 │   ├── systems/      # 서브시스템 (world, effects, lighting, hud, prompt, entity_factory)

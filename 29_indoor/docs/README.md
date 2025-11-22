@@ -87,7 +87,7 @@ The `game/` folder contains **only** game-specific content:
 ## Project Structure
 
 ```
-28_quest/
+29_indoor/
 ├── engine/           # Reusable game engine (100% reusable)
 │   ├── core/         # Core systems (lifecycle, input, scene, quest, etc.)
 │   ├── systems/      # Subsystems (world, effects, lighting, hud, prompt, entity_factory)

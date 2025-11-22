@@ -1,7 +1,7 @@
 return {
   version = "1.10",
   luaversion = "5.1",
-  tiledversion = "2025.09.25",
+  tiledversion = "2025.11.21",
   class = "",
   orientation = "orthogonal",
   renderorder = "right-down",
@@ -48,6 +48,103 @@ return {
     }
   },
   layers = {
+    {
+      type = "objectgroup",
+      draworder = "topdown",
+      id = 9,
+      name = "Parallax",
+      class = "",
+      visible = true,
+      opacity = 1,
+      offsetx = 0,
+      offsety = 0,
+      parallaxx = 1,
+      parallaxy = 1,
+      properties = {},
+      objects = {
+        {
+          id = 52,
+          name = "sky",
+          type = "",
+          shape = "rectangle",
+          x = 32,
+          y = 34,
+          width = 128,
+          height = 128,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["Type"] = "parallax",
+            ["image"] = "assets/images/parallax/layer1_sky.png",
+            ["offset_y"] = 0,
+            ["parallax_factor"] = 0.1,
+            ["repeat_x"] = true,
+            ["z_index"] = 1
+          }
+        },
+        {
+          id = 55,
+          name = "clouds",
+          type = "",
+          shape = "rectangle",
+          x = 352,
+          y = 34,
+          width = 128,
+          height = 128,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["Type"] = "parallax",
+            ["auto_scroll_x"] = 13,
+            ["image"] = "assets/images/parallax/layer3_clouds.png",
+            ["offset_y"] = 150,
+            ["parallax_factor"] = 0.5,
+            ["repeat_x"] = true,
+            ["z_index"] = 3
+          }
+        },
+        {
+          id = 56,
+          name = "mountains",
+          type = "",
+          shape = "rectangle",
+          x = 183,
+          y = 32,
+          width = 137,
+          height = 130,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["Type"] = "parallax",
+            ["image"] = "assets/images/parallax/layer2_mountains.png",
+            ["offset_y"] = 30,
+            ["parallax_factor"] = 0.3,
+            ["repeat_x"] = true,
+            ["z_index"] = 2
+          }
+        },
+        {
+          id = 57,
+          name = "trees",
+          type = "",
+          shape = "rectangle",
+          x = 512,
+          y = 34,
+          width = 128,
+          height = 128,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["Type"] = "parallax",
+            ["image"] = "assets/images/parallax/layer4_trees.png",
+            ["offset_y"] = 250,
+            ["parallax_factor"] = 0.7,
+            ["repeat_x"] = true,
+            ["z_index"] = 4
+          }
+        }
+      }
+    },
     {
       type = "tilelayer",
       x = 0,
@@ -116,103 +213,6 @@ return {
         0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 3, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 17, 18, 18, 18, 18, 19, 0, 0, 0, 0, 0, 0, 0, 17, 18, 18, 18, 19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 0, 0, 46, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-      }
-    },
-    {
-      type = "objectgroup",
-      draworder = "topdown",
-      id = 9,
-      name = "Parallax",
-      class = "",
-      visible = false,
-      opacity = 1,
-      offsetx = 0,
-      offsety = 0,
-      parallaxx = 1,
-      parallaxy = 1,
-      properties = {},
-      objects = {
-        {
-          id = 52,
-          name = "sky",
-          type = "",
-          shape = "rectangle",
-          x = 32,
-          y = 34,
-          width = 128,
-          height = 128,
-          rotation = 0,
-          visible = true,
-          properties = {
-            ["Type"] = "parallax",
-            ["image"] = "assets/images/parallax/layer1_sky.png",
-            ["offset_y"] = 0,
-            ["parallax_factor"] = 0.1,
-            ["repeat_x"] = true,
-            ["z_index"] = 1
-          }
-        },
-        {
-          id = 55,
-          name = "clouds",
-          type = "",
-          shape = "rectangle",
-          x = 352,
-          y = 34,
-          width = 128,
-          height = 128,
-          rotation = 0,
-          visible = true,
-          properties = {
-            ["Type"] = "parallax",
-            ["auto_scroll_x"] = 13,
-            ["image"] = "assets/images/parallax/layer3_clouds.png",
-            ["offset_y"] = 270,
-            ["parallax_factor"] = 0.5,
-            ["repeat_x"] = true,
-            ["z_index"] = 3
-          }
-        },
-        {
-          id = 56,
-          name = "mountains",
-          type = "",
-          shape = "rectangle",
-          x = 183,
-          y = 32,
-          width = 137,
-          height = 130,
-          rotation = 0,
-          visible = true,
-          properties = {
-            ["Type"] = "parallax",
-            ["image"] = "assets/images/parallax/layer2_mountains.png",
-            ["offset_y"] = 30,
-            ["parallax_factor"] = 0.3,
-            ["repeat_x"] = true,
-            ["z_index"] = 2
-          }
-        },
-        {
-          id = 57,
-          name = "trees",
-          type = "",
-          shape = "rectangle",
-          x = 512,
-          y = 34,
-          width = 128,
-          height = 128,
-          rotation = 0,
-          visible = true,
-          properties = {
-            ["Type"] = "parallax",
-            ["image"] = "assets/images/parallax/layer4_trees.png",
-            ["offset_y"] = 500,
-            ["parallax_factor"] = 0.7,
-            ["repeat_x"] = true,
-            ["z_index"] = 4
-          }
-        }
       }
     },
     {
@@ -383,9 +383,9 @@ return {
           type = "",
           shape = "rectangle",
           x = 2528,
-          y = 0,
+          y = 128,
           width = 32,
-          height = 430,
+          height = 302,
           rotation = 0,
           visible = true,
           properties = {

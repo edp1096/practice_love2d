@@ -7,7 +7,7 @@ local input = require "engine.core.input"
 
 local animation = {}
 
--- Helper: Get weapon position with jump offset applied
+-- Get weapon position with jump offset applied
 local function getWeaponPosition(player)
     local weapon_x = player.x
     local weapon_y = player.y
@@ -20,7 +20,7 @@ local function getWeaponPosition(player)
     return weapon_x, weapon_y
 end
 
--- Helper: Handle dialogue state (returns early with 0,0 velocity)
+-- Handle dialogue state (returns early with 0,0 velocity)
 local function handleDialogueState(player, dt, dialogue_open)
     if not dialogue_open then
         return false, 0, 0
@@ -43,7 +43,7 @@ local function handleDialogueState(player, dt, dialogue_open)
     return true, 0, 0
 end
 
--- Helper: Determine facing direction from input/weapon state
+-- Determine facing direction from input/weapon state
 local function handleDirectionFromInput(player, cam)
     if debug:IsHandMarkingActive() then
         if love.keyboard.isDown('w') then
@@ -91,7 +91,7 @@ local function handleDirectionFromInput(player, cam)
     end
 end
 
--- Helper: Process movement input and update animation
+-- Process movement input and update animation
 local function handleMovementInput(player, dt)
     local vx, vy = 0, 0
     local is_moving = false
@@ -181,7 +181,7 @@ local function handleMovementInput(player, dt)
     return vx, vy, movement_input
 end
 
--- Helper: Handle special states (dodge, attack, parry, debug)
+-- Handle special states (dodge, attack, parry, debug)
 local function handleSpecialStates(player, dt, movement_input)
     local vx, vy = 0, 0
 
@@ -220,7 +220,7 @@ local function handleSpecialStates(player, dt, movement_input)
     return vx, vy
 end
 
--- Helper: Update weapon position and animation
+-- Update weapon position and animation
 local function handleWeaponUpdate(player, dt, current_frame_index)
     if player.weapon then
         local weapon_x, weapon_y = getWeaponPosition(player)

@@ -4,13 +4,14 @@
 -- Module dependencies (loaded once at module load time)
 local lighting = require "engine.systems.lighting"
 local colors = require "engine.utils.colors"
+local parallax = require "engine.systems.parallax"
 
 local minimap = {}
 minimap.__index = minimap
 
 -- Configuration constants
-local ZOOM_FACTOR = 2                    -- Minimap zoom level (2x = more detail, smaller area)
-local MINIMAP_LIGHTING_BRIGHTNESS = 0.2  -- How much to brighten lighting for minimap visibility (0 = full dark, 1 = no lighting)
+local ZOOM_FACTOR = 2                   -- Minimap zoom level (2x = more detail, smaller area)
+local MINIMAP_LIGHTING_BRIGHTNESS = 0.2 -- How much to brighten lighting for minimap visibility (0 = full dark, 1 = no lighting)
 
 -- Color swap shader for enemy sprites (same as enemy/render.lua)
 local color_swap_shader = nil
@@ -82,8 +83,8 @@ function minimap:new()
         enabled = true,
 
         -- Minimap display settings
-        size = 126,           -- Minimap size (width and height) - 70% of original 180
-        padding = 10,         -- Padding from screen edge
+        size = 126,   -- Minimap size (width and height) - 70% of original 180
+        padding = 10, -- Padding from screen edge
         border_width = 2,
         zoom_factor = ZOOM_FACTOR,
         lighting_brightness = MINIMAP_LIGHTING_BRIGHTNESS,
@@ -91,7 +92,7 @@ function minimap:new()
         -- Colors (from colors.lua)
         bg_color = colors.for_minimap_bg,
         border_color = colors.for_minimap_border,
-        player_color = nil,  -- Unused (using gradient mesh)
+        player_color = nil, -- Unused (using gradient mesh)
         player_outline_color = colors.for_minimap_player_outline,
         portal_color = colors.for_minimap_portal,
 
@@ -121,7 +122,7 @@ function minimap:setMap(world)
 
     -- Round scale to prevent subpixel rendering artifacts
     -- This ensures tiles are rendered at integer pixel positions
-    local tile_size = world.map.tilewidth  -- assuming square tiles
+    local tile_size = world.map.tilewidth -- assuming square tiles
     self.scale = math.floor(raw_scale * tile_size + 0.5) / tile_size
 
     -- Calculate actual canvas size based on map aspect ratio
@@ -142,11 +143,11 @@ function minimap:updateMinimapCanvas()
 
     -- Save current graphics state
     local prev_canvas = love.graphics.getCanvas()
-    local prev_color = {love.graphics.getColor()}
+    local prev_color = { love.graphics.getColor() }
     local prev_blend_mode, prev_blend_alpha = love.graphics.getBlendMode()
 
     love.graphics.setCanvas(self.canvas)
-    love.graphics.clear(0, 0, 0, 1)  -- Clear to black
+    love.graphics.clear(0, 0, 0, 1) -- Clear to black
 
     -- Reset graphics state to avoid lighting effects
     love.graphics.setColor(1, 1, 1, 1)
@@ -157,6 +158,44 @@ function minimap:updateMinimapCanvas()
 
     -- Apply scale transformation
     love.graphics.scale(self.scale, self.scale)
+
+    -- Draw parallax backgrounds FIRST (same as in-game)
+    if parallax and parallax:isActive() and parallax.layers then
+        love.graphics.setColor(1, 1, 1, 0.95) -- High opacity
+
+        for _, layer in ipairs(parallax.layers) do
+            if layer and layer.image then
+                -- For minimap: use static offset only (no parallax factor calculation)
+                -- This ensures all layers are visible regardless of map size
+                local offset_x = (layer.scroll_offset_x or 0) + (layer.offset_x or 0)
+                local offset_y = (layer.scroll_offset_y or 0) + (layer.offset_y or 0)
+
+                -- Draw with tiling if enabled
+                if layer.repeat_x or layer.repeat_y then
+                    local img_w = layer.image:getWidth()
+                    local img_h = layer.image:getHeight()
+
+                    if img_w > 0 and img_h > 0 then
+                        local tiles_x = layer.repeat_x and math.ceil(self.map_width / img_w) + 2 or 1
+                        local tiles_y = layer.repeat_y and math.ceil(self.map_height / img_h) + 2 or 1
+
+                        for ty = 0, tiles_y - 1 do
+                            for tx = 0, tiles_x - 1 do
+                                local draw_x = offset_x + tx * img_w
+                                local draw_y = offset_y + ty * img_h
+                                love.graphics.draw(layer.image, draw_x, draw_y)
+                            end
+                        end
+                    end
+                else
+                    -- Single draw, no tiling
+                    love.graphics.draw(layer.image, offset_x, offset_y)
+                end
+            end
+        end
+
+        love.graphics.setColor(1, 1, 1, 1) -- Reset color
+    end
 
     -- Draw actual map layers using world's drawLayer method
     self.world:drawLayer("Background_Near")
@@ -199,8 +238,10 @@ local function drawMinimapNPCs(self, x, y, canvas_offset_x, canvas_offset_y, npc
 
     for _, npc in ipairs(npcs) do
         if npc.x and npc.y and npc.spriteSheet and npc.grid then
-            local nx = math.floor(x + canvas_offset_x + (npc.x * self.scale))
-            local ny = math.floor(y + canvas_offset_y + (npc.y * self.scale))
+            -- Use getSpritePosition (same as in-game npc/init.lua:194,206)
+            local sprite_x, sprite_y = npc:getSpritePosition()
+            local nx = math.floor(x + canvas_offset_x + (sprite_x * self.scale))
+            local ny = math.floor(y + canvas_offset_y + (sprite_y * self.scale))
 
             -- Draw first frame of sprite (1,1)
             -- grid(1,1) returns a table, so get the first element
@@ -213,36 +254,35 @@ local function drawMinimapNPCs(self, x, y, canvas_offset_x, canvas_offset_y, npc
                 love.graphics.setShader(outline_shader)
                 local w, h = npc.spriteSheet:getDimensions()
                 local r, g, b = colors:unpackRGB(colors.for_minimap_npc_outline)
-                outline_shader:send("outline_color", {r, g, b})
-                outline_shader:send("stepSize", {1/w, 1/h})
+                outline_shader:send("outline_color", { r, g, b })
+                outline_shader:send("stepSize", { 1 / w, 1 / h })
 
                 colors:apply(colors.WHITE, 0.85)
-                love.graphics.draw(
+                -- Use anim:draw with origin 0,0 (same as in-game npc/init.lua:204-213)
+                npc.anim:draw(
                     npc.spriteSheet,
-                    quad,
                     nx,
                     ny,
                     0,
                     sprite_scale,
                     sprite_scale,
-                    npc.sprite_width / 2,
-                    npc.sprite_height / 2
+                    0,
+                    0
                 )
                 love.graphics.setShader()
             end
 
-            -- Draw main sprite
+            -- Draw main sprite using anim:draw (same as in-game)
             colors:apply(colors.WHITE, 0.85)
-            love.graphics.draw(
+            npc.anim:draw(
                 npc.spriteSheet,
-                quad,
                 nx,
                 ny,
                 0,
                 sprite_scale,
                 sprite_scale,
-                npc.sprite_width / 2,
-                npc.sprite_height / 2
+                0,
+                0
             )
         end
     end
@@ -257,13 +297,11 @@ local function drawMinimapEnemies(self, x, y, canvas_offset_x, canvas_offset_y, 
 
     for _, enemy in ipairs(enemies) do
         if enemy.x and enemy.y and enemy.health > 0 and enemy.spriteSheet and enemy.grid then
-            local ex = math.floor(x + canvas_offset_x + (enemy.x * self.scale))
-            local ey = math.floor(y + canvas_offset_y + (enemy.y * self.scale))
+            -- Use getSpritePosition (same as in-game enemy/render.lua:58,118)
+            local sprite_x, sprite_y = enemy:getSpritePosition()
+            local ex = math.floor(x + canvas_offset_x + (sprite_x * self.scale))
+            local ey = math.floor(y + canvas_offset_y + (sprite_y * self.scale))
 
-            -- Draw first frame of sprite (1,1)
-            -- grid(1,1) returns a table, so get the first element
-            local frames = enemy.grid(1, 1)
-            local quad = frames[1]
             local sprite_scale = self.scale * enemy.sprite_scale
 
             -- Draw red outline using shader
@@ -271,25 +309,25 @@ local function drawMinimapEnemies(self, x, y, canvas_offset_x, canvas_offset_y, 
                 love.graphics.setShader(outline_shader)
                 local w, h = enemy.spriteSheet:getDimensions()
                 local r, g, b = colors:unpackRGB(colors.for_minimap_enemy_outline)
-                outline_shader:send("outline_color", {r, g, b})
-                outline_shader:send("stepSize", {1/w, 1/h})
+                outline_shader:send("outline_color", { r, g, b })
+                outline_shader:send("stepSize", { 1 / w, 1 / h })
 
                 colors:apply(colors.WHITE, 0.85)
-                love.graphics.draw(
+                -- Use anim:draw with origin 0,0 (same as in-game enemy/render.lua:118-127)
+                enemy.anim:draw(
                     enemy.spriteSheet,
-                    quad,
                     ex,
                     ey,
-                    0,
+                    nil,
                     sprite_scale,
                     sprite_scale,
-                    enemy.sprite_width / 2,
-                    enemy.sprite_height / 2
+                    enemy.sprite_origin_x,
+                    enemy.sprite_origin_y
                 )
                 love.graphics.setShader()
             end
 
-            -- Draw main sprite
+            -- Draw main sprite using anim:draw (same as in-game)
             -- Apply color swap shader if enemy has target_color (e.g., green slime)
             if enemy.target_color and color_swap_shader then
                 love.graphics.setShader(color_swap_shader)
@@ -297,16 +335,15 @@ local function drawMinimapEnemies(self, x, y, canvas_offset_x, canvas_offset_y, 
             end
 
             colors:apply(colors.WHITE, 0.85)
-            love.graphics.draw(
+            enemy.anim:draw(
                 enemy.spriteSheet,
-                quad,
                 ex,
                 ey,
-                0,
+                nil,
                 sprite_scale,
                 sprite_scale,
-                enemy.sprite_width / 2,
-                enemy.sprite_height / 2
+                enemy.sprite_origin_x,
+                enemy.sprite_origin_y
             )
 
             -- Reset shader
@@ -323,16 +360,16 @@ local function drawMinimapPlayer(self, x, y, center_x, center_y, player)
     local py = y + center_y
 
     -- Arrow shape (shorter length, wider width)
-    local arrow_length = 5 * 1.3 * 0.8  -- 4/5 of original length (80%)
-    local arrow_width = 5 * 1.3 * 0.6 * 1.3  -- 1.3x wider
+    local arrow_length = 5 * 1.3 * 0.8      -- 4/5 of original length (80%)
+    local arrow_width = 5 * 1.3 * 0.6 * 1.3 -- 1.3x wider
     local angle = player.facing_angle or 0
 
     -- Arrow vertices (pointing right by default)
     local points = {
-        arrow_length, 0,      -- tip
-        -arrow_length, -arrow_width,   -- top back
-        -arrow_length * 0.5, 0,  -- middle back
-        -arrow_length, arrow_width    -- bottom back
+        arrow_length, 0,             -- tip
+        -arrow_length, -arrow_width, -- top back
+        -arrow_length * 0.5, 0,      -- middle back
+        -arrow_length, arrow_width   -- bottom back
     }
 
     -- Transform and draw arrow with metallic gradient
@@ -347,10 +384,10 @@ local function drawMinimapPlayer(self, x, y, center_x, center_y, player)
     local r4, g4, b4, a4 = colors:toVertex(colors.for_minimap_player_shadow, 0.85)
 
     local mesh = love.graphics.newMesh({
-        {arrow_length, 0, 0, 0, r1, g1, b1, a1},  -- tip (mid-tone)
-        {-arrow_length, -arrow_width, 0, 0, r2, g2, b2, a2},  -- top back (bright highlight)
-        {-arrow_length * 0.5, 0, 0, 0, r3, g3, b3, a3},  -- middle (mid-tone)
-        {-arrow_length, arrow_width, 0, 0, r4, g4, b4, a4},  -- bottom back (dark shadow)
+        { arrow_length,        0,            0, 0, r1, g1, b1, a1 }, -- tip (mid-tone)
+        { -arrow_length,       -arrow_width, 0, 0, r2, g2, b2, a2 }, -- top back (bright highlight)
+        { -arrow_length * 0.5, 0,            0, 0, r3, g3, b3, a3 }, -- middle (mid-tone)
+        { -arrow_length,       arrow_width,  0, 0, r4, g4, b4, a4 }, -- bottom back (dark shadow)
     }, "fan", "static")
     love.graphics.draw(mesh, 0, 0)
 
@@ -400,7 +437,7 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
     love.graphics.draw(self.canvas, math.floor(x + canvas_offset_x), math.floor(y + canvas_offset_y))
 
     -- Apply lighting effect with multiply blend (brightened for minimap visibility)
-    local ambient = lighting.ambient_color or {1, 1, 1}
+    local ambient = lighting.ambient_color or { 1, 1, 1 }
 
     -- Brighten ambient color for minimap (lerp towards white)
     local brightness = self.lighting_brightness
