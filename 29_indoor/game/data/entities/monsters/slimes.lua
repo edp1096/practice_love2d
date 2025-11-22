@@ -10,6 +10,7 @@ return {
         attack_cooldown = 1.0,
         detection_range = 240,
         attack_range = 50,
+        loot_category = "slime",  -- For loot system
 
         sprite_width = 16,
         sprite_height = 32,
@@ -38,6 +39,7 @@ return {
         attack_cooldown = 0.8,
         detection_range = 220,
         attack_range = 50,
+        loot_category = "slime",
 
         sprite_width = 16,
         sprite_height = 32,
@@ -66,6 +68,7 @@ return {
         attack_cooldown = 1.2,
         detection_range = 260,
         attack_range = 50,
+        loot_category = "slime",
 
         sprite_width = 16,
         sprite_height = 32,
@@ -94,6 +97,7 @@ return {
         attack_cooldown = 1.5,
         detection_range = 290,
         attack_range = 60,
+        loot_category = "slime",
 
         sprite_width = 16,
         sprite_height = 32,

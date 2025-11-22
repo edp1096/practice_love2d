@@ -20,6 +20,7 @@ return {
         attack_cooldown = 1.2,
         detection_range = 290,
         attack_range = 35,
+        loot_category = "humanoid",  -- For loot system
 
         sprite_width = 48,
         sprite_height = 48,
@@ -59,6 +60,7 @@ return {
         attack_cooldown = 0.9,
         detection_range = 320,
         attack_range = 35,
+        loot_category = "humanoid",
 
         sprite_width = 48,
         sprite_height = 48,
@@ -94,6 +96,7 @@ return {
         attack_cooldown = 1.5,
         detection_range = 270,
         attack_range = 35,
+        loot_category = "humanoid",
 
         sprite_width = 48,
         sprite_height = 48,
@@ -130,6 +133,7 @@ return {
         attack_cooldown = 1.3,
         detection_range = 280,
         attack_range = 35,
+        loot_category = "humanoid",
 
         sprite_width = 48,
         sprite_height = 48,

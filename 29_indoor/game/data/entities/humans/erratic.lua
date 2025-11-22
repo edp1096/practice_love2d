@@ -23,6 +23,7 @@ return {
             attack_cooldown = 1.0,
             detection_range = 280,
             attack_range = 35,
+            loot_category = "humanoid",
 
             sprite_width = 48,
             sprite_height = 48,

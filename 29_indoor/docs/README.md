@@ -527,6 +527,11 @@ php -S localhost:8080
 
 ## Recent Changes
 
+**2025-11-22: Minimap & Loot System Improvements**
+- **Minimap Parallax**: Added parallax backgrounds to minimap (static offset only)
+- **Minimap Rendering**: Fixed entity positions by using `anim:draw()` instead of `love.graphics.draw(quad)`
+- **Loot System**: Added `loot_category` field to enemy configs, removed hard-coded table name matching
+
 **2025-11-19: Code Quality & Refactoring**
 - **Inventory Refactoring**: Removed duplicate grid iteration and sorting logic (5 locations → 2 helper functions, -19 lines)
 - **Debug Cleanup**: Removed 29 debug print statements from dialogue, inventory, enemy, and input systems
@@ -539,4 +544,4 @@ php -S localhost:8080
 
 **Framework:** LÖVE 11.5 + Lua 5.1
 **Architecture:** Layered Pyramid Architecture (99.2% clean) + Engine/Game Separation + Dependency Injection + Data-Driven + Controller Support
-**Last Updated:** 2025-11-19
+**Last Updated:** 2025-11-22

@@ -42,7 +42,9 @@ local function tryDropLoot(self, enemy, drop_x, drop_y)
         return
     end
 
-    local item_type, quantity = loot_system.getLoot(enemy.type, self.loot_tables)
+    -- Get enemy config for loot_category
+    local enemy_config = self.enemy_class and self.enemy_class.type_registry and self.enemy_class.type_registry[enemy.type]
+    local item_type, quantity = loot_system.getLoot(enemy.type, enemy_config, self.loot_tables)
     if item_type then
         self:addWorldItem(item_type, drop_x, drop_y, quantity)
     end
