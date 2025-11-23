@@ -13,6 +13,14 @@ minimap.__index = minimap
 local ZOOM_FACTOR = 2                   -- Minimap zoom level (2x = more detail, smaller area)
 local MINIMAP_LIGHTING_BRIGHTNESS = 0.2 -- How much to brighten lighting for minimap visibility (0 = full dark, 1 = no lighting)
 
+-- Helper: Find start position for tiling (extends left/up to cover entire area)
+local function getTileStart(offset, size)
+    while offset > -size do
+        offset = offset - size
+    end
+    return offset
+end
+
 -- Color swap shader for enemy sprites (same as enemy/render.lua)
 local color_swap_shader = nil
 local outline_shader = nil
@@ -159,36 +167,44 @@ function minimap:updateMinimapCanvas()
     -- Apply scale transformation
     love.graphics.scale(self.scale, self.scale)
 
-    -- Draw parallax backgrounds FIRST (same as in-game)
+    -- Draw parallax backgrounds FIRST
     if parallax and parallax:isActive() and parallax.layers then
         love.graphics.setColor(1, 1, 1, 0.95) -- High opacity
 
         for _, layer in ipairs(parallax.layers) do
             if layer and layer.image then
-                -- For minimap: use static offset only (no parallax factor calculation)
-                -- This ensures all layers are visible regardless of map size
-                local offset_x = (layer.scroll_offset_x or 0) + (layer.offset_x or 0)
-                local offset_y = (layer.scroll_offset_y or 0) + (layer.offset_y or 0)
+                -- For minimap: scale offset by parallax_factor to show depth
+                -- Higher parallax_factor (closer layers) → offset reduced toward center
+                -- Lower parallax_factor (distant layers) → offset preserved
+                local base_offset_x = (layer.scroll_offset_x or 0) + (layer.offset_x or 0)
+                local base_offset_y = (layer.scroll_offset_y or 0) + (layer.offset_y or 0)
+
+                local factor = layer.parallax_factor or 0
+                local offset_x = base_offset_x * (1 - factor)
+                local offset_y = base_offset_y * (1 - factor)
 
                 -- Draw with tiling if enabled
                 if layer.repeat_x or layer.repeat_y then
-                    local img_w = layer.image:getWidth()
-                    local img_h = layer.image:getHeight()
-
+                    local img_w, img_h = layer.image:getWidth(), layer.image:getHeight()
                     if img_w > 0 and img_h > 0 then
-                        local tiles_x = layer.repeat_x and math.ceil(self.map_width / img_w) + 2 or 1
-                        local tiles_y = layer.repeat_y and math.ceil(self.map_height / img_h) + 2 or 1
+                        local start_x = layer.repeat_x and getTileStart(offset_x, img_w) or offset_x
+                        local start_y = layer.repeat_y and getTileStart(offset_y, img_h) or offset_y
+                        local end_x = layer.repeat_x and self.map_width or (start_x + img_w)
+                        local end_y = layer.repeat_y and self.map_height or (start_y + img_h)
 
-                        for ty = 0, tiles_y - 1 do
-                            for tx = 0, tiles_x - 1 do
-                                local draw_x = offset_x + tx * img_w
-                                local draw_y = offset_y + ty * img_h
-                                love.graphics.draw(layer.image, draw_x, draw_y)
+                        local y = start_y
+                        while y < end_y do
+                            local x = start_x
+                            while x < end_x do
+                                love.graphics.draw(layer.image, x, y)
+                                x = x + img_w
+                                if not layer.repeat_x then break end
                             end
+                            y = y + img_h
+                            if not layer.repeat_y then break end
                         end
                     end
                 else
-                    -- Single draw, no tiling
                     love.graphics.draw(layer.image, offset_x, offset_y)
                 end
             end
