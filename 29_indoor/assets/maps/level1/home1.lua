@@ -215,8 +215,8 @@ return {
           rotation = 180,
           visible = true,
           properties = {
-            ["spawn_x"] = 1230,
-            ["spawn_y"] = 1515,
+            ["spawn_x"] = 625,
+            ["spawn_y"] = 780,
             ["target_map"] = "assets/maps/level1/area1.lua",
             ["type"] = "portal"
           }

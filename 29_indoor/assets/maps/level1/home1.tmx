@@ -45,11 +45,11 @@
   <object id="5" x="448" y="0" width="32" height="320"/>
   <object id="6" x="0" y="0" width="480" height="32"/>
  </objectgroup>
- <objectgroup id="3" name="Portals" locked="1">
+ <objectgroup id="3" name="Portals">
   <object id="1" x="288" y="320" width="96" height="32" rotation="180">
    <properties>
-    <property name="spawn_x" type="float" value="1230"/>
-    <property name="spawn_y" type="float" value="1515"/>
+    <property name="spawn_x" type="float" value="625"/>
+    <property name="spawn_y" type="float" value="780"/>
     <property name="target_map" value="assets/maps/level1/area1.lua"/>
     <property name="type" value="portal"/>
    </properties>

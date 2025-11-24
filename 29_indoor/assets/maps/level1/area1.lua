@@ -641,7 +641,7 @@ return {
           visible = true,
           properties = {
             ["spawn_x"] = 240,
-            ["spawn_y"] = 350,
+            ["spawn_y"] = 220,
             ["target_map"] = "assets/maps/level1/home1.lua",
             ["type"] = "portal"
           }
