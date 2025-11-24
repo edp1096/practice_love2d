@@ -16,7 +16,8 @@ function render.draw(player)
     end
 
     -- Shadow (stays on ground in platformer mode with dynamic scaling)
-    local shadow_y = player.y + 50  -- Topdown: shadow below player (stays at ground level)
+    -- Shadow at character feet (center + half collider height)
+    local shadow_y = player.y + (player.collider_height / 2)
     local shadow_scale = 1.0
     local shadow_alpha = 0.4
 
@@ -34,7 +35,7 @@ function render.draw(player)
         shadow_y = player.ground_y
 
         -- Calculate height difference (distance from player's feet to ground)
-        -- Player's feet are at: player.y + (player.collider_height / 2)
+        -- Player's feet are at: center + half collider height
         local player_feet_y = player.y + (player.collider_height / 2)
         local height_diff = player.ground_y - player_feet_y
 
@@ -54,10 +55,11 @@ function render.draw(player)
     if player.parry_active then
         local shield_alpha = 0.3 + 0.2 * math.sin(love.timer.getTime() * 10)
         love.graphics.setColor(0.3, 0.6, 1, shield_alpha)
-        love.graphics.circle("fill", draw_x, draw_y, 40)
+        local shield_radius = player.collider_width * 0.8
+        love.graphics.circle("fill", draw_x, draw_y, shield_radius)
         love.graphics.setColor(0.5, 0.8, 1, 0.6)
         love.graphics.setLineWidth(3)
-        love.graphics.circle("line", draw_x, draw_y, 40)
+        love.graphics.circle("line", draw_x, draw_y, shield_radius)
         love.graphics.setLineWidth(1)
     end
 
@@ -86,7 +88,7 @@ function render.draw(player)
                 love.graphics.setColor(1, 1, 1, alpha)
                 local afterimage_x = draw_x - (player.dodge_direction_x * i * 15)
                 local afterimage_y = draw_y - (player.dodge_direction_y * i * 15)
-                player.anim:draw(player.spriteSheet, afterimage_x, afterimage_y, nil, 3, nil, 24, 24)
+                player.anim:draw(player.spriteSheet, afterimage_x, afterimage_y, nil, player.sprite_scale, player.sprite_scale, player.sprite_origin_x, player.sprite_origin_y)
             end
         end
         -- Reset color after afterimages
@@ -98,7 +100,7 @@ function render.draw(player)
         if evade_alpha then
             love.graphics.setBlendMode("add")
             love.graphics.setColor(0.3, 1, 0.6, 0.3)
-            player.anim:draw(player.spriteSheet, draw_x, draw_y, nil, 3, nil, 24, 24)
+            player.anim:draw(player.spriteSheet, draw_x, draw_y, nil, player.sprite_scale, player.sprite_scale, player.sprite_origin_x, player.sprite_origin_y)
             love.graphics.setBlendMode("alpha")
         end
 
@@ -106,7 +108,7 @@ function render.draw(player)
         if player.parry_active then
             love.graphics.setBlendMode("add")
             love.graphics.setColor(0.3, 0.6, 1, 0.4)
-            player.anim:draw(player.spriteSheet, draw_x, draw_y, nil, 3, nil, 24, 24)
+            player.anim:draw(player.spriteSheet, draw_x, draw_y, nil, player.sprite_scale, player.sprite_scale, player.sprite_origin_x, player.sprite_origin_y)
             love.graphics.setBlendMode("alpha")
         end
 
@@ -116,14 +118,14 @@ function render.draw(player)
         else
             love.graphics.setColor(1, 1, 1, 1)
         end
-        player.anim:draw(player.spriteSheet, draw_x, draw_y, nil, 3, nil, 24, 24)
+        player.anim:draw(player.spriteSheet, draw_x, draw_y, nil, player.sprite_scale, player.sprite_scale, player.sprite_origin_x, player.sprite_origin_y)
 
         -- Hit flash
         if player.hit_flash_timer > 0 then
             local flash_intensity = player.hit_flash_timer / 0.2
             love.graphics.setBlendMode("add")
             love.graphics.setColor(1, 1, 1, flash_intensity * 0.7)
-            player.anim:draw(player.spriteSheet, draw_x, draw_y, nil, 3, nil, 24, 24)
+            player.anim:draw(player.spriteSheet, draw_x, draw_y, nil, player.sprite_scale, player.sprite_scale, player.sprite_origin_x, player.sprite_origin_y)
             love.graphics.setBlendMode("alpha")
             love.graphics.setColor(1, 1, 1, 1)
         end
@@ -137,7 +139,7 @@ function render.draw(player)
             else
                 love.graphics.setColor(0.5, 0.8, 1, flash_intensity * 0.7)
             end
-            player.anim:draw(player.spriteSheet, draw_x, draw_y, nil, 3, nil, 24, 24)
+            player.anim:draw(player.spriteSheet, draw_x, draw_y, nil, player.sprite_scale, player.sprite_scale, player.sprite_origin_x, player.sprite_origin_y)
             love.graphics.setBlendMode("alpha")
             love.graphics.setColor(1, 1, 1, 1)
         end

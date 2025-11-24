@@ -230,9 +230,9 @@ local function handleWeaponUpdate(player, dt, current_frame_index)
     end
 end
 
-function animation.initialize(player, sprite_sheet)
+function animation.initialize(player, sprite_sheet, sprite_width, sprite_height)
     player.spriteSheet = love.graphics.newImage(sprite_sheet)
-    player.grid = anim8.newGrid(48, 48, player.spriteSheet:getWidth(), player.spriteSheet:getHeight())
+    player.grid = anim8.newGrid(sprite_width, sprite_height, player.spriteSheet:getWidth(), player.spriteSheet:getHeight())
 
     player.animations = {}
     player.animations.walk_up = anim8.newAnimation(player.grid("1-4", 4), 0.1)

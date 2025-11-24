@@ -33,8 +33,8 @@ constants.VIBRATION = {
 -- Player Stats
 constants.PLAYER = {
     DEFAULT_SPEED = 300,
-    DEFAULT_WIDTH = 50,
-    DEFAULT_HEIGHT = 100,
+    DEFAULT_WIDTH = 40,
+    DEFAULT_HEIGHT = 80,
     DEFAULT_X = 400,
     DEFAULT_Y = 200,
     JUMP_POWER = -600,

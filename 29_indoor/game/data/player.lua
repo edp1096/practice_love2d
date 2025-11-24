@@ -39,19 +39,13 @@ player_config.sprite = {
   sheet = "assets/images/player/player-sheet.png",
   width = 48,
   height = 48,
-  scale = 3,
-
-  -- Draw offsets
-  draw_offset_x = -72,
-  draw_offset_y = -128,
+  scale = 2.5,  -- Reduced from 3 to make player smaller
 }
 
--- Collider
+-- Collider (box around player body for physics/combat)
 player_config.collider = {
-  width = 32,
-  height = 32,
-  offset_x = 32,
-  offset_y = 32,
+  width = 40,   -- Collider width
+  height = 80,  -- Collider height (covers full body)
 }
 
 -- Starting position (overridden by map spawn)

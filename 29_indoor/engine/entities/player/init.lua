@@ -17,6 +17,7 @@ function player:new(x, y, config)
     local stats = config.stats or {}
     local spawn = config.spawn or {}
     local sprite = config.sprite or {}
+    local collider_cfg = config.collider or {}
 
     instance.x = x or spawn.x or constants.PLAYER.DEFAULT_X
     instance.y = y or spawn.y or constants.PLAYER.DEFAULT_Y
@@ -40,14 +41,22 @@ function player:new(x, y, config)
     instance.topdown_max_jump_height = stats.topdown_max_jump_height or 50
     instance.topdown_jump_strength = stats.topdown_jump_strength or 400
 
+    -- Sprite configuration
+    instance.sprite_width = sprite.width or 48
+    instance.sprite_height = sprite.height or 48
+    instance.sprite_scale = sprite.scale or 3
+    instance.sprite_origin_x = instance.sprite_width / 2
+    instance.sprite_origin_y = instance.sprite_height / 2
+
     assert(sprite.sheet, "Player sprite sheet must be provided in config")
-    animation.initialize(instance, sprite.sheet)
+    animation.initialize(instance, sprite.sheet, sprite.width or 48, sprite.height or 48)
 
     combat.initialize(instance, config.combat)
 
+    -- Collider configuration
     instance.collider = nil
-    instance.collider_width = constants.PLAYER.DEFAULT_WIDTH
-    instance.collider_height = constants.PLAYER.DEFAULT_HEIGHT
+    instance.collider_width = collider_cfg.width or constants.PLAYER.DEFAULT_WIDTH
+    instance.collider_height = collider_cfg.height or constants.PLAYER.DEFAULT_HEIGHT
 
     return instance
 end
