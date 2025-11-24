@@ -235,10 +235,13 @@ function update.checkTransitions(self, scaled_dt)
         return
     end
 
-    local player_w, player_h = 32, 32
+    -- Use bottom half of player hitbox for more natural portal entrance
+    -- (prevents triggering portal when only player's head touches it)
+    local player_w = 32
+    local player_h = 16  -- Half height
     local transition = self.world:checkTransition(
         self.player.x - player_w / 2,
-        self.player.y - player_h / 2,
+        self.player.y,  -- Start from center (bottom half of player)
         player_w, player_h
     )
 
