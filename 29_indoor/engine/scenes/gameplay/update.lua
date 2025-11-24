@@ -178,13 +178,40 @@ end
 -- Update camera position and bounds
 function update.updateCamera(self)
     local shake_x, shake_y = camera_sys:get_shake_offset()
-    self.cam:lookAt(self.player.x + shake_x, self.player.y + shake_y)
 
     local mapWidth = self.world.map.width * self.world.map.tilewidth
     local mapHeight = self.world.map.height * self.world.map.tileheight
-
     local w, h = util:Get16by9Size(love.graphics.getWidth(), love.graphics.getHeight())
 
+    -- Calculate camera scale (from scene_setup.lua)
+    local display = require "engine.core.display"
+    local vw, vh = display:GetVirtualDimensions()
+    local sw, sh = display:GetScreenDimensions()
+    local scale_x = sw / vw
+    local scale_y = sh / vh
+    local cam_scale = math.min(scale_x, scale_y) * 1.4
+
+    -- Calculate visible area in world coordinates
+    local visible_width = w / cam_scale
+    local visible_height = h / cam_scale
+
+    -- Determine camera target position (axis-independent)
+    local target_x = self.player.x + shake_x
+    local target_y = self.player.y + shake_y
+
+    -- X-axis: Fix camera if map narrower than screen
+    if mapWidth <= visible_width then
+        target_x = mapWidth / 2
+    end
+
+    -- Y-axis: Fix camera if map shorter than screen
+    if mapHeight <= visible_height then
+        target_y = mapHeight / 2
+    end
+
+    self.cam:lookAt(target_x, target_y)
+
+    -- Apply bounds (prevents camera from showing outside map)
     self.cam:lockBounds(mapWidth, mapHeight, w, h)
 end
 
