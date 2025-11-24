@@ -62,8 +62,8 @@ function factory:createEnemy(obj, enemy_class, map_name)
 
     sprite_draw_offset_x = prop(obj, "draw_ox", d.draw_ox),
     sprite_draw_offset_y = prop(obj, "draw_oy", d.draw_oy),
-    sprite_origin_x = 0,
-    sprite_origin_y = 0,
+    sprite_origin_x = prop(obj, "ori_x", d.sprite_origin_x or 0),
+    sprite_origin_y = prop(obj, "ori_y", d.sprite_origin_y or 0),
 
     -- Color swap (optional)
     source_color = prop(obj, "src_col", nil),

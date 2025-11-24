@@ -72,7 +72,7 @@ entity_types.weapons = {
         sprite_y = 0,
         sprite_w = 16,
         sprite_h = 16,
-        scale = 3,
+        scale = 2,
 
         attack_duration = 0.3,
         swing_radius = 35,
@@ -91,7 +91,7 @@ entity_types.weapons = {
         sprite_y = 160, -- 1x11: Column 11 (x coordinate)
         sprite_w = 16,
         sprite_h = 16,
-        scale = 3,
+        scale = 2,
 
         attack_duration = 0.4,
         swing_radius = 40,
@@ -110,7 +110,7 @@ entity_types.weapons = {
         sprite_y = 160, -- 4x11: Column 11 (x coordinate)
         sprite_w = 16,
         sprite_h = 16,
-        scale = 3,
+        scale = 2,
 
         attack_duration = 0.25, -- Fast attack
         swing_radius = 30,
@@ -129,7 +129,7 @@ entity_types.weapons = {
         sprite_y = 0,   -- 19x1: Row 1 (y coordinate)
         sprite_w = 16,
         sprite_h = 16,
-        scale = 3,
+        scale = 2,
 
         attack_duration = 0.2, -- Very fast attack
         swing_radius = 25,     -- Short swing radius
@@ -153,7 +153,7 @@ entity_types.weapon_effects = {
     slash_frame_height = 39,
     slash_sprite_width = 46,   -- Total sprite sheet width
     slash_sprite_height = 39,  -- Total sprite sheet height
-    slash_scale = 3,           -- Render scale (matches weapon scale)
+    slash_scale = 2,           -- Render scale (matches weapon scale)
 
     -- Slash origin (pivot point for rotation)
     slash_origin_x = 11.5,     -- Center X of 23px frame

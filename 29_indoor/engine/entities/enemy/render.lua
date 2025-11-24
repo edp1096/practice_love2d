@@ -55,9 +55,18 @@ function render.draw(enemy)
         love.graphics.circle("line", collider_center_x, collider_center_y, enemy.attack_range)
     end
 
-    local sprite_draw_x, sprite_draw_y = enemy:getSpritePosition()
-    sprite_draw_x = sprite_draw_x + enemy.hit_shake_x
-    sprite_draw_y = sprite_draw_y + enemy.hit_shake_y
+    -- Sprite position: humanoids use collider center (like player/NPC), slimes use offset
+    local sprite_draw_x, sprite_draw_y
+    if enemy.is_humanoid then
+        -- Humanoid: use collider center (origin-based positioning)
+        sprite_draw_x = collider_center_x + enemy.hit_shake_x
+        sprite_draw_y = collider_center_y + enemy.hit_shake_y
+    else
+        -- Slime: use sprite_draw_offset (offset-based positioning)
+        sprite_draw_x, sprite_draw_y = enemy:getSpritePosition()
+        sprite_draw_x = sprite_draw_x + enemy.hit_shake_x
+        sprite_draw_y = sprite_draw_y + enemy.hit_shake_y
+    end
 
     -- Shadow (positioned at bottom of foot_collider in topdown, or collider in platformer)
     -- Don't draw shadow if enemy is dead

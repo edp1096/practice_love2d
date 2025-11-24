@@ -15,7 +15,7 @@ weapon.__index = weapon
 weapon.type_registry = {}
 weapon.effects_config = {}
 
-function weapon:new(weapon_type)
+function weapon:new(weapon_type, owner_scale)
     local instance = setmetatable({}, weapon)
 
     if not weapon_type then
@@ -29,7 +29,17 @@ function weapon:new(weapon_type)
     end
 
     instance.type = weapon_type
-    instance.config = config
+
+    -- Override config scale with owner_scale if provided
+    if owner_scale then
+        instance.config = {}
+        for k, v in pairs(config) do
+            instance.config[k] = v
+        end
+        instance.config.scale = owner_scale
+    else
+        instance.config = config
+    end
 
     -- Load weapon sprite
     instance.sprite_sheet = love.graphics.newImage(config.sprite_file)
@@ -51,7 +61,8 @@ function weapon:new(weapon_type)
             self.effects_config.slash_sprite_width or 46,
             self.effects_config.slash_sprite_height or 39
         )
-        instance.slash_scale = self.effects_config.slash_scale or 3
+        -- Use owner_scale if provided, otherwise use effects_config scale
+        instance.slash_scale = owner_scale or self.effects_config.slash_scale or 3
         instance.slash_origin_x = self.effects_config.slash_origin_x or (self.effects_config.slash_frame_width or 23) / 2
         instance.slash_origin_y = self.effects_config.slash_origin_y or (self.effects_config.slash_frame_height or 39) / 2
     else
@@ -109,14 +120,18 @@ function weapon:getHandPosition(owner_x, owner_y, anim_name, frame_index)
     local anchors = hand_anchors.HAND_ANCHORS[anim_name]
 
     if not anchors then
-        return owner_x + 10, owner_y + 18, nil
+        -- Fallback positions scaled by weapon scale
+        local scale = self.config.scale or 3
+        return owner_x + (10 * scale / 3), owner_y + (18 * scale / 3), nil
     end
 
     frame_index = math.max(1, math.min(frame_index, #anchors))
     local anchor = anchors[frame_index]
 
-    local hand_x = owner_x + (anchor.x * 3)
-    local hand_y = owner_y + (anchor.y * 3)
+    -- Scale hand positions by weapon scale (anchors are defined for scale 3)
+    local scale = self.config.scale or 3
+    local hand_x = owner_x + (anchor.x * scale)
+    local hand_y = owner_y + (anchor.y * scale)
     local angle = anchor.angle
 
     return hand_x, hand_y, angle

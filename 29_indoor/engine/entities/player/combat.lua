@@ -426,8 +426,8 @@ function combat.equipWeapon(player, weapon_type)
         return false
     end
 
-    -- Create new weapon of specified type
-    player.weapon = weapon_class:new(weapon_type)
+    -- Create new weapon of specified type (pass player's sprite scale)
+    player.weapon = weapon_class:new(weapon_type, player.sprite_scale)
 
     -- Reset weapon state
     player.weapon_drawn = false

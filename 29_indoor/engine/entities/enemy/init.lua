@@ -107,7 +107,7 @@ end
 -- Helper: Initialize weapon for humanoid enemies
 local function initializeWeapon(instance)
     if instance.is_humanoid then
-        instance.weapon = weapon_class:new("axe")
+        instance.weapon = weapon_class:new("axe", instance.sprite_scale)
         instance.weapon_drawn = true -- humanoids always have weapon drawn
     end
 end
@@ -299,9 +299,10 @@ function enemy:update(dt, player_x, player_y)
         local anim_name = anim_base .. "_" .. self.direction
         local frame_index = math.floor(self.anim.position) + 1
 
-        local sprite_x, sprite_y = self:getSpritePosition()
+        -- Use collider center for weapon position (humanoids use origin-based positioning)
+        local weapon_x, weapon_y = self:getColliderCenter()
 
-        self.weapon:update(dt, sprite_x, sprite_y, 0, self.direction, anim_name, frame_index, false)
+        self.weapon:update(dt, weapon_x, weapon_y, 0, self.direction, anim_name, frame_index, false)
     end
 
     -- Delegate to AI module

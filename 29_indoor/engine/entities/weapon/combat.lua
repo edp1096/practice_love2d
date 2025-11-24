@@ -29,9 +29,10 @@ function combat.startAttack(weapon)
             function() weapon.slash_active = false end
         )
 
-        -- Position slash effect
-        weapon.slash_x = weapon.owner_x + dir_x * 33
-        weapon.slash_y = weapon.owner_y + dir_y * 33 + 3
+        -- Position slash effect (scaled based on weapon scale, base values for scale 3)
+        local scale = weapon.config.scale or 3
+        weapon.slash_x = weapon.owner_x + dir_x * (33 * scale / 3)
+        weapon.slash_y = weapon.owner_y + dir_y * (33 * scale / 3) + (3 * scale / 3)
 
         -- Set rotation and flip based on direction
         weapon.slash_rotation = math.atan2(dir_y, dir_x)

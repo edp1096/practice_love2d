@@ -27,17 +27,15 @@ return {
 
             sprite_width = 48,
             sprite_height = 48,
-            sprite_scale = 3,
+            sprite_scale = 2,
         character_width = 16,
         character_height = 32,
 
-            -- collider_width auto-calculated: 16 * 3 = 48
-            -- collider_height auto-calculated: 32 * 3 = 96
+            -- collider_width auto-calculated: 16 * 2 = 32
+            -- collider_height auto-calculated: 32 * 2 = 64
             collider_offset_x = 0,
             collider_offset_y = 0,
 
-            sprite_draw_offset_x = 0,
-            sprite_draw_offset_y = -10,
 
             sprite_origin_x = 24,
             sprite_origin_y = 24,
@@ -64,17 +62,17 @@ return {
 
             sprite_width = 48,
             sprite_height = 48,
-            sprite_scale = 3,
+            sprite_scale = 2,
         character_width = 16,
         character_height = 32,
 
-            collider_width = 32,
-            collider_height = 32,
-            collider_offset_x = 32,
-            collider_offset_y = 32,
+            -- collider auto-calculated
 
-            sprite_draw_offset_x = -72,
-            sprite_draw_offset_y = -104,
+            collider_offset_x = 0,
+            collider_offset_y = 0,
+
+            sprite_origin_x = 24,
+            sprite_origin_y = 24,
 
             idle_down = "1-4",
             idle_left = "1-4",
@@ -94,17 +92,17 @@ return {
 
             sprite_width = 48,
             sprite_height = 48,
-            sprite_scale = 3,
+            sprite_scale = 2,
         character_width = 16,
         character_height = 32,
 
-            collider_width = 32,
-            collider_height = 32,
-            collider_offset_x = 32,
-            collider_offset_y = 32,
+            -- collider auto-calculated
 
-            sprite_draw_offset_x = -72,
-            sprite_draw_offset_y = -104,
+            collider_offset_x = 0,
+            collider_offset_y = 0,
+
+            sprite_origin_x = 24,
+            sprite_origin_y = 24,
 
             idle_down = "1-4",
             idle_left = "1-4",

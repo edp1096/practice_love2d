@@ -48,7 +48,9 @@ function render.draw(player)
     end
 
     love.graphics.setColor(0, 0, 0, shadow_alpha)
-    love.graphics.ellipse("fill", draw_x, shadow_y, 28 * shadow_scale, 8 * shadow_scale)
+    local shadow_width = player.collider_width * 0.875 * shadow_scale  -- 28/32 = 0.875
+    local shadow_height = player.collider_width * 0.25 * shadow_scale  -- 8/32 = 0.25
+    love.graphics.ellipse("fill", draw_x, shadow_y, shadow_width, shadow_height)
     love.graphics.setColor(1, 1, 1, 1)
 
     -- Parry shield

@@ -12,17 +12,16 @@ return {
 
         sprite_width = 48,
         sprite_height = 48,
-        sprite_scale = 3,
+        sprite_scale = 2,
         character_width = 16,
         character_height = 32,
 
-        collider_width = 32,
-        collider_height = 32,
-        collider_offset_x = 32,
-        collider_offset_y = 32,
+        -- Auto-calculated: collider 32x64, offsets based on character/sprite size
+        collider_offset_x = 0,
+        collider_offset_y = 0,
 
-        sprite_draw_offset_x = -72,
-        sprite_draw_offset_y = -128,
+        sprite_origin_x = 24,
+        sprite_origin_y = 24,
 
         idle_down = "1-4",
         idle_left = "1-4",
@@ -44,17 +43,15 @@ return {
 
         sprite_width = 48,
         sprite_height = 48,
-        sprite_scale = 3,
+        sprite_scale = 2,
         character_width = 16,
         character_height = 32,
 
-        collider_width = 32,
-        collider_height = 32,
-        collider_offset_x = 32,
-        collider_offset_y = 32,
+        collider_offset_x = 0,
+        collider_offset_y = 0,
 
-        sprite_draw_offset_x = -72,
-        sprite_draw_offset_y = -104,
+        sprite_origin_x = 24,
+        sprite_origin_y = 24,
 
         idle_down = "1-4",
         idle_left = "1-4",
@@ -75,17 +72,15 @@ return {
 
         sprite_width = 48,
         sprite_height = 48,
-        sprite_scale = 3,
+        sprite_scale = 2,
         character_width = 16,
         character_height = 32,
 
-        collider_width = 32,
-        collider_height = 32,
-        collider_offset_x = 32,
-        collider_offset_y = 32,
+        collider_offset_x = 0,
+        collider_offset_y = 0,
 
-        sprite_draw_offset_x = -72,
-        sprite_draw_offset_y = -104,
+        sprite_origin_x = 24,
+        sprite_origin_y = 24,
 
         idle_down = "1-4",
         idle_left = "1-4",
@@ -107,17 +102,15 @@ return {
 
         sprite_width = 48,
         sprite_height = 48,
-        sprite_scale = 3,
+        sprite_scale = 2,
         character_width = 16,
         character_height = 32,
 
-        collider_width = 32,
-        collider_height = 32,
-        collider_offset_x = 32,
-        collider_offset_y = 32,
+        collider_offset_x = 0,
+        collider_offset_y = 0,
 
-        sprite_draw_offset_x = -72,
-        sprite_draw_offset_y = -104,
+        sprite_origin_x = 24,
+        sprite_origin_y = 24,
 
         idle_down = "1-4",
         idle_left = "1-4",

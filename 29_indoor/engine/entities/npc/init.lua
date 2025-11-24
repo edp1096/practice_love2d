@@ -189,27 +189,28 @@ function npc:drawQuestIndicator(center_x, sprite_y)
 end
 
 function npc:draw()
-    -- Use base class helpers for positions
+    -- Use collider center for sprite position (same as player)
     local collider_center_x, collider_center_y = self:getColliderCenter()
-    local sprite_draw_x, sprite_draw_y = self:getSpritePosition()
 
-    -- Shadow (at bottom of collider)
+    -- Shadow (at bottom of collider, scaled based on collider width)
     local shadow_y = collider_center_y + (self.collider_height / 2) - 2
+    local shadow_width = self.collider_width * 0.875  -- 28/32 = 0.875
+    local shadow_height = self.collider_width * 0.25  -- 8/32 = 0.25
     love.graphics.setColor(0, 0, 0, 0.4)
-    love.graphics.ellipse("fill", collider_center_x, shadow_y, 28, 8)
+    love.graphics.ellipse("fill", collider_center_x, shadow_y, shadow_width, shadow_height)
     love.graphics.setColor(1, 1, 1, 1)
 
-    -- NPC sprite
+    -- NPC sprite (drawn at collider center, offset by origin like player)
     love.graphics.setColor(1, 1, 1, 1)
     self.anim:draw(
         self.spriteSheet,
-        sprite_draw_x,
-        sprite_draw_y,
+        collider_center_x,
+        collider_center_y,
         0,
         self.sprite_scale,
         self.sprite_scale,
-        0,  -- origin x = 0 (top-left), offset handled by sprite_draw_offset
-        0   -- origin y = 0 (top-left), offset handled by sprite_draw_offset
+        self.sprite_origin_x,
+        self.sprite_origin_y
     )
 
     -- Draw interaction indicator (using collider center)
@@ -217,8 +218,9 @@ function npc:draw()
         prompt:draw("interact", collider_center_x, collider_center_y, -60)
     end
 
-    -- Draw quest indicators
-    self:drawQuestIndicator(collider_center_x, sprite_draw_y)
+    -- Draw quest indicators (sprite top is at collider_center_y - sprite_origin_y)
+    local sprite_top_y = collider_center_y - self.sprite_origin_y
+    self:drawQuestIndicator(collider_center_x, sprite_top_y)
 
     love.graphics.setColor(1, 1, 1, 1)
 end
