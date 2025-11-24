@@ -162,16 +162,31 @@ function render.drawDebug(weapon, swing_configs)
         text_ui:draw("SLASH", weapon.slash_x - 20, weapon.slash_y - 45, {1, 0.5, 0, 1})
     end
 
-    -- Attack hitbox
+    -- Attack hitbox (always show range, brighter when can deal damage)
+    local combat = require "engine.entities.weapon.combat"
     if weapon.is_attacking then
-        local combat = require "engine.entities.weapon.combat"
         local hitbox = combat.getHitbox(weapon)
         if hitbox and combat.canDealDamage(weapon) then
+            -- Bright red when active hitbox
             love.graphics.setColor(1, 0, 0, 0.3)
             love.graphics.circle("fill", hitbox.x, hitbox.y, hitbox.radius)
             love.graphics.setColor(1, 0, 0, 0.8)
             love.graphics.circle("line", hitbox.x, hitbox.y, hitbox.radius)
+            text_ui:draw("RANGE: " .. hitbox.radius, hitbox.x - 30, hitbox.y + hitbox.radius + 10, {1, 0, 0, 1})
+        else
+            -- Dim red when attacking but not in damage window
+            love.graphics.setColor(1, 0, 0, 0.1)
+            love.graphics.circle("fill", weapon.x, weapon.y, weapon.config.range)
+            love.graphics.setColor(1, 0, 0, 0.3)
+            love.graphics.circle("line", weapon.x, weapon.y, weapon.config.range)
         end
+    else
+        -- Very dim when idle (always show for debugging)
+        love.graphics.setColor(1, 0.5, 0.5, 0.05)
+        love.graphics.circle("fill", weapon.x, weapon.y, weapon.config.range)
+        love.graphics.setColor(1, 0.5, 0.5, 0.2)
+        love.graphics.circle("line", weapon.x, weapon.y, weapon.config.range)
+        text_ui:draw("RANGE: " .. weapon.config.range, weapon.x - 30, weapon.y + weapon.config.range + 10, {1, 0.5, 0.5, 0.5})
     end
 end
 

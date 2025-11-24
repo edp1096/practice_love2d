@@ -53,9 +53,10 @@ function combat.startAttack(weapon)
         end
     end
 
-    -- Spawn weapon trail effect
-    local trail_x = weapon.owner_x + dir_x * 40
-    local trail_y = weapon.owner_y + dir_y * 40
+    -- Spawn weapon trail effect (scaled based on weapon range)
+    local trail_distance = weapon.config.range * 0.5  -- 40 for range 80 (scale 2)
+    local trail_x = weapon.owner_x + dir_x * trail_distance
+    local trail_y = weapon.owner_y + dir_y * trail_distance
     effects:spawnWeaponTrail(trail_x, trail_y, weapon.angle)
 
     return true

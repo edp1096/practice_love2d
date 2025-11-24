@@ -84,39 +84,28 @@ function input_handler.keypressed(self, key)
         if npc then
             local quest_system = require "engine.core.quest"
 
-            -- Process delivery quests first (might complete objectives)
             self:processDeliveryQuests(npc.id)
 
-            -- Priority 1: Check for completable quests
+            -- Check for completable quests
             local completable_quest = self:getCompletableQuest(npc.id)
             if completable_quest then
-                -- Show quest completion dialogue
                 self:showQuestTurnInDialogue(completable_quest, npc.name)
                 quest_system:onNPCTalked(npc.id)
                 return
             end
 
-            -- Priority 2: Check for delivery quests (automatic item delivery)
+            -- Check for delivery quests
             local delivery_quest_id, item_type = quest_system:getActiveDeliveryQuest(npc.id)
-            if delivery_quest_id and item_type then
-                local has_item = self.inventory:hasItem(item_type)
-                -- Check if player has the item in inventory
-                if has_item then
-                    -- Remove item from inventory
-                    self.inventory:removeItemByType(item_type, 1)
-
-                    -- Update quest progress
-                    quest_system:onItemDelivered(item_type, npc.id)
-
-                    -- Show delivery message
-                    local item_name = item_type:gsub("_", " ")  -- Convert "small_potion" to "small potion"
-                    dialogue:showSimple(npc.name, "Thank you for bringing me the " .. item_name .. "!")
-                    quest_system:onNPCTalked(npc.id)
-                    return
-                end
+            if delivery_quest_id and item_type and self.inventory:hasItem(item_type) then
+                self.inventory:removeItemByType(item_type, 1)
+                quest_system:onItemDelivered(item_type, npc.id)
+                local item_name = item_type:gsub("_", " ")
+                dialogue:showSimple(npc.name, "Thank you for bringing me the " .. item_name .. "!")
+                quest_system:onNPCTalked(npc.id)
+                return
             end
 
-            -- Priority 3: Regular NPC dialogue
+            -- Regular NPC dialogue
             local interaction_data = npc:interact()
             if interaction_data.type == "tree" then
                 -- New: dialogue tree system (pass NPC object for transformations)
@@ -239,7 +228,7 @@ function input_handler.gamepadpressed(self, joystick, button)
             -- Process delivery quests first (might complete objectives)
             self:processDeliveryQuests(ctx.id)
 
-            -- Priority 1: Check for completable quests
+            -- Check for completable quests
             local completable_quest = self:getCompletableQuest(ctx.id)
             if completable_quest then
                 -- Show quest completion dialogue
@@ -248,7 +237,7 @@ function input_handler.gamepadpressed(self, joystick, button)
                 return
             end
 
-            -- Priority 2: Regular NPC dialogue
+            -- Regular NPC dialogue
             local interaction_data = ctx:interact()
             if interaction_data.type == "tree" then
                 -- New: dialogue tree system (pass NPC object for transformations)
@@ -279,50 +268,39 @@ function input_handler.gamepadpressed(self, joystick, button)
 
     elseif action == "interact" then
         -- Y button logic:
-        -- Priority 1: NPC/SavePoint/Item (if near)
-        -- Priority 2: Quickslot selection/use
+        -- NPC/SavePoint/Item (if near)
+        -- Quickslot selection/use
         --   - First press on slot: Select
         --   - Second press on same slot: Use
 
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
 
-        -- Priority 1: NPC interaction
+        -- NPC interaction
         if npc then
             local quest_system = require "engine.core.quest"
 
-            -- Process delivery quests first (might complete objectives)
             self:processDeliveryQuests(npc.id)
 
-            -- Priority 1: Check for completable quests
+            -- Check for completable quests
             local completable_quest = self:getCompletableQuest(npc.id)
             if completable_quest then
-                -- Show quest completion dialogue
                 self:showQuestTurnInDialogue(completable_quest, npc.name)
                 quest_system:onNPCTalked(npc.id)
                 return
             end
 
-            -- Priority 2: Check for delivery quests (automatic item delivery)
+            -- Check for delivery quests
             local delivery_quest_id, item_type = quest_system:getActiveDeliveryQuest(npc.id)
-            if delivery_quest_id and item_type then
-                local has_item = self.inventory:hasItem(item_type)
-                -- Check if player has the item in inventory
-                if has_item then
-                    -- Remove item from inventory
-                    self.inventory:removeItemByType(item_type, 1)
-
-                    -- Update quest progress
-                    quest_system:onItemDelivered(item_type, npc.id)
-
-                    -- Show delivery message
-                    local item_name = item_type:gsub("_", " ")  -- Convert "small_potion" to "small potion"
-                    dialogue:showSimple(npc.name, "Thank you for bringing me the " .. item_name .. "!")
-                    quest_system:onNPCTalked(npc.id)
-                    return
-                end
+            if delivery_quest_id and item_type and self.inventory:hasItem(item_type) then
+                self.inventory:removeItemByType(item_type, 1)
+                quest_system:onItemDelivered(item_type, npc.id)
+                local item_name = item_type:gsub("_", " ")
+                dialogue:showSimple(npc.name, "Thank you for bringing me the " .. item_name .. "!")
+                quest_system:onNPCTalked(npc.id)
+                return
             end
 
-            -- Priority 3: Regular NPC dialogue
+            -- Regular NPC dialogue
             local interaction_data = npc:interact()
             if interaction_data.type == "tree" then
                 -- New: dialogue tree system (pass NPC object for transformations)
@@ -373,7 +351,7 @@ function input_handler.gamepadpressed(self, joystick, button)
             return
         end
 
-        -- Priority 2: Quickslot selection/use (no NPC/SavePoint/Item nearby)
+        -- Quickslot selection/use (no NPC/SavePoint/Item nearby)
         -- First press: Select quickslot
         -- Second press on same slot: Use quickslot
         if not self.last_selected_quickslot or self.last_selected_quickslot ~= self.selected_quickslot then

@@ -193,6 +193,12 @@ love .
 2. `game/data/items/consumables/youritem.lua`에 추가
 3. `name`, `description`, `use()` 함수 정의
 
+**무기 변형 추가 (예: 강화 버전):**
+1. `game/data/items/weapons/yourweapon.lua`에 추가
+2. `weapon_type` 설정 (sword/axe/club/staff)
+3. `stats` 배율 설정 (damage: 가산, range/speed: 곱연산)
+4. `game/data/items/init.lua`에 등록
+
 ---
 
 ## 더 보기
@@ -207,6 +213,6 @@ love .
 
 ---
 
-**최종 업데이트:** 2025-11-22
+**최종 업데이트:** 2025-11-25
 **아키텍처:** 엔진/게임 분리 + 의존성 주입
 **버전:** LÖVE 11.5, Lua 5.1

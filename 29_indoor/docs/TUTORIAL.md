@@ -193,6 +193,12 @@ Controls:
 2. Add to `game/data/items/consumables/youritem.lua`
 3. Define `name`, `description`, `use()` function
 
+**Add a weapon variant (e.g., stronger version):**
+1. Add to `game/data/items/weapons/yourweapon.lua`
+2. Set `weapon_type` (sword/axe/club/staff)
+3. Set `stats` multipliers (damage: additive, range/speed: multiplicative)
+4. Register in `game/data/items/init.lua`
+
 ---
 
 ## More Info

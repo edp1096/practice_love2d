@@ -462,17 +462,31 @@ function combat.applyEquipmentStats(player, stats)
     if not player.base_stats then
         player.base_stats = {
             damage = player.weapon and player.weapon.config.damage or 0,
-            attack_speed = 1.0
+            attack_speed = 1.0,
+            range = player.weapon and player.weapon.config.range or 0,
+            swing_radius = player.weapon and player.weapon.config.swing_radius or 0
         }
     end
 
-    -- Apply stat bonuses (additive for now, could be multiplicative)
+    -- Apply stat bonuses
+    -- damage: additive (+X damage)
     if stats.damage and player.weapon then
         player.weapon.config.damage = (player.base_stats.damage or 0) + stats.damage
     end
 
+    -- attack_speed: multiplicative (1.0 = normal, 1.5 = 50% faster)
     if stats.attack_speed then
         player.attack_cooldown_max = player.attack_cooldown_max / (stats.attack_speed or 1.0)
+    end
+
+    -- range: multiplicative (1.0 = normal, 1.2 = 20% longer reach)
+    if stats.range and player.weapon then
+        player.weapon.config.range = (player.base_stats.range or 0) * (stats.range or 1.0)
+    end
+
+    -- swing_radius: multiplicative (1.0 = normal, 1.2 = 20% larger)
+    if stats.swing_radius and player.weapon then
+        player.weapon.config.swing_radius = (player.base_stats.swing_radius or 0) * (stats.swing_radius or 1.0)
     end
 end
 
@@ -489,6 +503,14 @@ function combat.removeEquipmentStats(player, stats)
 
     if stats.attack_speed then
         player.attack_cooldown_max = player.attack_cooldown_max * (stats.attack_speed or 1.0)
+    end
+
+    if stats.range and player.weapon then
+        player.weapon.config.range = player.base_stats.range or 0
+    end
+
+    if stats.swing_radius and player.weapon then
+        player.weapon.config.swing_radius = player.base_stats.swing_radius or 0
     end
 end
 

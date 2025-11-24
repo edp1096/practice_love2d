@@ -32,8 +32,7 @@ function Layer.new(config)
   -- Load image with error handling
   local success, result = pcall(love.graphics.newImage, config.image)
   if not success then
-    print("ERROR: Failed to load parallax image: " .. config.image)
-    print("  Reason: " .. tostring(result))
+    print("ERROR: Failed to load parallax image: " .. config.image .. " - " .. tostring(result))
     return nil
   end
 

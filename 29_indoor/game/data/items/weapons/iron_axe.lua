@@ -25,9 +25,13 @@ local iron_axe = {
     },
 
     -- Equipment stats (applied when equipped)
+    -- Base stats come from game/data/entities/types.lua
+    -- These are bonuses/multipliers applied on top
     stats = {
-        damage = 20,  -- Higher damage than sword
-        attack_speed = 0.8  -- Slower than sword
+        damage = 20,           -- +20 damage (additive, higher than sword)
+        attack_speed = 0.8,    -- 0.8x speed (20% slower than sword)
+        range = 1.0,           -- 1.0x range (no change)
+        swing_radius = 1.0     -- 1.0x swing radius (no change)
     },
 
     -- Use condition (explicit declaration - equipment cannot be used)

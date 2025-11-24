@@ -1,9 +1,9 @@
--- game/data/items/weapons/staff.lua
--- Staff equipment configuration (pure data - no logic)
+-- game/data/items/weapons/mystic_staff.lua
+-- Mystic staff equipment configuration - Ultimate staff variant
 
-local staff = {
-    name = "Staff",
-    description = "A long wooden staff",
+local mystic_staff = {
+    name = "Mystic Staff",
+    description = "An ancient staff pulsing with mystic power",
     size = { width = 1, height = 1 },  -- Grid size: 1x1
     max_stack = 1,  -- Equipment cannot be stacked
 
@@ -28,10 +28,10 @@ local staff = {
     -- Base stats come from game/data/entities/types.lua
     -- These are bonuses/multipliers applied on top
     stats = {
-        damage = 8,            -- +8 damage (additive, lowest damage)
-        attack_speed = 1.5,    -- 1.5x speed (50% faster, fastest weapon)
-        range = 1.2,           -- 1.2x range (20% longer reach)
-        swing_radius = 1.1     -- 1.1x swing radius (10% larger)
+        damage = 25,           -- +25 damage (highest of all staffs)
+        attack_speed = 1.8,    -- 1.8x speed (80% faster, ultimate speed)
+        range = 1.6,           -- 1.6x range (60% longer reach - ultimate)
+        swing_radius = 1.4     -- 1.4x swing radius (40% larger - ultimate)
     },
 
     -- Use condition (explicit declaration - equipment cannot be used)
@@ -40,4 +40,4 @@ local staff = {
     }
 }
 
-return staff
+return mystic_staff

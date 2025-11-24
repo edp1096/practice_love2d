@@ -75,10 +75,10 @@ entity_types.weapons = {
         scale = 2,
 
         attack_duration = 0.3,
-        swing_radius = 35,
+        swing_radius = 23,  -- 35 * (2/3) for scale 2
 
         damage = 25,
-        range = 80,
+        range = 53,  -- 80 * (2/3) for scale 2
         knockback = 100,
 
         hit_start = 0.3,
@@ -94,10 +94,10 @@ entity_types.weapons = {
         scale = 2,
 
         attack_duration = 0.4,
-        swing_radius = 40,
+        swing_radius = 27,  -- 40 * (2/3) for scale 2
 
         damage = 35,
-        range = 85,
+        range = 57,  -- 85 * (2/3) for scale 2
         knockback = 150,
 
         hit_start = 0.35,
@@ -113,10 +113,10 @@ entity_types.weapons = {
         scale = 2,
 
         attack_duration = 0.25, -- Fast attack
-        swing_radius = 30,
+        swing_radius = 20,  -- 30 * (2/3) for scale 2
 
         damage = 20, -- Lower damage
-        range = 75,
+        range = 50,  -- 75 * (2/3) for scale 2
         knockback = 80,
 
         hit_start = 0.25,
@@ -132,10 +132,10 @@ entity_types.weapons = {
         scale = 2,
 
         attack_duration = 0.2, -- Very fast attack
-        swing_radius = 25,     -- Short swing radius
+        swing_radius = 17,     -- 25 * (2/3) for scale 2
 
         damage = 15,           -- Low damage
-        range = 100,           -- Long reach
+        range = 67,            -- 100 * (2/3) for scale 2 - Long reach
         knockback = 60,        -- Weak knockback
 
         hit_start = 0.2,

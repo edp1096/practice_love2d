@@ -66,6 +66,7 @@ function debug:toggle()
         self.show_bounds = true  -- Show hitboxes/collision boxes
         dprint("=== DEBUG MODE ENABLED ===")
         dprint("F2: Toggle Grid | F3: Virtual Mouse | F4: Virtual Gamepad | F5: Effects | F6: Test Effects")
+        dprint("F7: Quest Debug | F8: Reload Weapon Config")
         dprint("H: Hand Marking | P: Mark Position | PgUp/PgDn: Frame Nav")
     else
         -- Disable all debug features
@@ -190,6 +191,10 @@ function debug:handleInput(key, context)
         self.show_quest_debug = not self.show_quest_debug
         dprint("Quest Debug:", self.show_quest_debug)
 
+    elseif key == "f8" and context.player then
+        -- F8: Hot reload weapon config (for testing range changes)
+        self:reloadWeaponConfig(context.player)
+
         -- === Hand Marking Mode ===
     elseif key == "h" and context.player then
         self:ToggleHandMarking(context.player)
@@ -202,6 +207,46 @@ function debug:handleInput(key, context)
     elseif key == "pagedown" and self.hand_marking_active and context.player then
         self:NextFrame(context.player)
     end
+end
+
+-- === Hot Reload Functions ===
+function debug:reloadWeaponConfig(player)
+    if not player or not player.weapon then
+        dprint("[F8] No weapon equipped!")
+        return
+    end
+
+    local weapon_type = player.weapon.type
+    dprint("[F8] Reloading weapon config for: " .. weapon_type)
+
+    -- Clear require cache for entity types
+    package.loaded["game.data.entities.types"] = nil
+
+    -- Reload types
+    local entity_types = require "game.data.entities.types"
+
+    -- Get weapon class
+    local weapon_class = require "engine.entities.weapon"
+
+    -- Update weapon type registry
+    weapon_class.type_registry = entity_types.weapons
+
+    -- Get new config
+    local new_config = entity_types.weapons[weapon_type]
+    if not new_config then
+        dprint("[F8] ERROR: Weapon type not found in registry!")
+        return
+    end
+
+    -- Update weapon's config (preserve scale override)
+    local old_scale = player.weapon.config.scale
+    player.weapon.config = {}
+    for k, v in pairs(new_config) do
+        player.weapon.config[k] = v
+    end
+    player.weapon.config.scale = old_scale
+
+    dprint(string.format("[F8] ✓ Reloaded! New range: %s", player.weapon.config.range))
 end
 
 -- === Hand Marking Functions ===

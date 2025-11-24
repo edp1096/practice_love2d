@@ -25,9 +25,13 @@ local iron_sword = {
     },
 
     -- Equipment stats (applied when equipped)
+    -- Base stats come from game/data/entities/types.lua
+    -- These are bonuses/multipliers applied on top
     stats = {
-        damage = 15,
-        attack_speed = 1.0
+        damage = 15,           -- +15 damage (additive)
+        attack_speed = 1.0,    -- 1.0x speed (no change)
+        range = 1.0,           -- 1.0x range (no change)
+        swing_radius = 1.0     -- 1.0x swing radius (no change)
     },
 
     -- Use condition (explicit declaration - equipment cannot be used)

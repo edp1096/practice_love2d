@@ -126,11 +126,6 @@ end
 
 -- Start a dialogue tree by ID (loads from registry)
 function core.showTreeById(dialogue, dialogue_id, npc_id, npc_obj)
-    print(string.format("[showTreeById] dialogue_id=%s, npc_id=%s, npc_obj type=%s",
-        tostring(dialogue_id),
-        tostring(npc_id),
-        type(npc_obj)))
-
     local dialogue_tree = dialogue.dialogue_registry[dialogue_id]
     if not dialogue_tree then
         return
@@ -139,8 +134,6 @@ function core.showTreeById(dialogue, dialogue_id, npc_id, npc_obj)
     dialogue.current_dialogue_id = dialogue_id
     -- Store NPC object for transformations
     dialogue.current_npc = npc_obj
-
-    print(string.format("[showTreeById] dialogue.current_npc set: %s", tostring(dialogue.current_npc ~= nil)))
 
     -- Override NPC ID if provided (for dynamic NPC association)
     if npc_id then
@@ -164,18 +157,11 @@ function core.showTree(dialogue, dialogue_tree)
         return
     end
 
-    print(string.format("[showTree] BEFORE: current_npc=%s", tostring(dialogue.current_npc ~= nil)))
-
     -- Reset forced_closed flag (allowing dialogue to open)
     dialogue.forced_closed = false
 
     -- Store NPC ID for quest lookups (if provided)
     dialogue.current_npc_id = dialogue_tree.npc_id
-    print(string.format("[SHOW_TREE] dialogue_id=%s, tree.npc_id=%s, current_npc_id=%s, current_npc=%s",
-        tostring(dialogue.current_dialogue_id),
-        tostring(dialogue_tree.npc_id),
-        tostring(dialogue.current_npc_id),
-        tostring(dialogue.current_npc ~= nil)))
 
     -- Load selected choices for this dialogue (instead of resetting)
     if dialogue.current_dialogue_id then
@@ -388,7 +374,6 @@ function core:showNode(dialogue, node_id)
 
     -- Execute node action (if any) - for node-level actions like NPC transformations
     if node.action then
-        print(string.format("[showNode] Executing node action: type=%s", tostring(node.action.type)))
         local helpers = require "engine.ui.dialogue.helpers"
         helpers:executeAction(dialogue, node.action)
     end

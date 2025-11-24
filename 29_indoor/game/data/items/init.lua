@@ -16,5 +16,7 @@ items.iron_sword = require "game.data.items.weapons.iron_sword"
 items.iron_axe = require "game.data.items.weapons.iron_axe"
 items.club = require "game.data.items.weapons.club"
 items.staff = require "game.data.items.weapons.staff"
+items.magic_staff = require "game.data.items.weapons.magic_staff"
+items.mystic_staff = require "game.data.items.weapons.mystic_staff"
 
 return items

@@ -48,7 +48,6 @@ function item_actions.use(item_data, player)
             player.health = math.min(player.max_health, player.health + effect.amount)
             if player.health > old_health then
                 success = true
-                print(string.format("✓ HP RESTORED: %d → %d (+%d)", old_health, player.health, player.health - old_health))
             end
 
         elseif effect.type == "play_sound" then

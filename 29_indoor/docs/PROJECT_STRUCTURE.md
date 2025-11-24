@@ -300,5 +300,5 @@ save_data = {
 
 ---
 
-**Last Updated:** 2025-11-24
+**Last Updated:** 2025-11-25
 **Framework:** LÖVE 11.5 + Lua 5.1

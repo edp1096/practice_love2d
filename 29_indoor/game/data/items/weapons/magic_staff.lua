@@ -1,9 +1,9 @@
--- game/data/items/weapons/staff.lua
--- Staff equipment configuration (pure data - no logic)
+-- game/data/items/weapons/magic_staff.lua
+-- Magic staff equipment configuration - Enhanced version of regular staff
 
-local staff = {
-    name = "Staff",
-    description = "A long wooden staff",
+local magic_staff = {
+    name = "Magic Staff",
+    description = "A staff imbued with magical energy",
     size = { width = 1, height = 1 },  -- Grid size: 1x1
     max_stack = 1,  -- Equipment cannot be stacked
 
@@ -28,10 +28,10 @@ local staff = {
     -- Base stats come from game/data/entities/types.lua
     -- These are bonuses/multipliers applied on top
     stats = {
-        damage = 8,            -- +8 damage (additive, lowest damage)
-        attack_speed = 1.5,    -- 1.5x speed (50% faster, fastest weapon)
-        range = 1.2,           -- 1.2x range (20% longer reach)
-        swing_radius = 1.1     -- 1.1x swing radius (10% larger)
+        damage = 18,           -- +18 damage (higher than regular staff +8)
+        attack_speed = 1.6,    -- 1.6x speed (60% faster, even faster than regular staff)
+        range = 1.4,           -- 1.4x range (40% longer reach - enhanced)
+        swing_radius = 1.2     -- 1.2x swing radius (20% larger - enhanced)
     },
 
     -- Use condition (explicit declaration - equipment cannot be used)
@@ -40,4 +40,4 @@ local staff = {
     }
 }
 
-return staff
+return magic_staff

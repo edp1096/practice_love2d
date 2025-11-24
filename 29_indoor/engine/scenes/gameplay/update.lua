@@ -25,7 +25,7 @@ local function checkPlayerDeath(self)
 end
 
 -- Calculate attack distance based on enemy type and game mode
-local function calculateAttackDistance(enemy, dx, dy, is_platformer)
+local function calculateAttackDistance(enemy, player, dx, dy, is_platformer)
     local distance
     if is_platformer then
         distance = math.abs(dx)
@@ -40,21 +40,21 @@ local function calculateAttackDistance(enemy, dx, dy, is_platformer)
 
     local attack_distance = distance
     if enemy.is_humanoid then
-        -- Calculate edge-to-edge distance for humanoid
+        -- Calculate edge-to-edge distance for humanoid (use actual collider size)
         local abs_dx = math.abs(dx)
         local abs_dy = math.abs(dy)
 
         if is_platformer then
-            attack_distance = distance - constants.COMBAT.HUMANOID_WIDTH_RADIUS
+            attack_distance = distance - (enemy.collider_width / 2) - (player.collider_width / 2)
         elseif abs_dy > abs_dx then
-            attack_distance = distance - constants.COMBAT.HUMANOID_HEIGHT_RADIUS
+            attack_distance = distance - (enemy.collider_height / 2) - (player.collider_height / 2)
         else
-            attack_distance = distance - constants.COMBAT.HUMANOID_WIDTH_RADIUS
+            attack_distance = distance - (enemy.collider_width / 2) - (player.collider_width / 2)
         end
     else
-        -- Slime uses simple distance check
+        -- Slime uses simple distance check (use actual collider size)
         if is_platformer then
-            attack_distance = distance - constants.COMBAT.SLIME_COLLIDER_WIDTH
+            attack_distance = distance - (enemy.collider_width / 2) - (player.collider_width / 2)
         end
     end
 
@@ -90,7 +90,7 @@ function update.handleEnemyAttacks(self, scaled_dt, shake_callback)
             local dx = enemy_center_x - self.player.x
             local dy = enemy_center_y - self.player.y
 
-            local attack_distance = calculateAttackDistance(enemy, dx, dy, is_platformer)
+            local attack_distance = calculateAttackDistance(enemy, self.player, dx, dy, is_platformer)
             if attack_distance then
                 -- Check if in attack range
                 local in_attack_range = (attack_distance < (enemy.attack_range or constants.COMBAT.DEFAULT_ATTACK_RANGE))

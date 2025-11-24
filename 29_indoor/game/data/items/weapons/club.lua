@@ -25,9 +25,13 @@ local club = {
     },
 
     -- Equipment stats (applied when equipped)
+    -- Base stats come from game/data/entities/types.lua
+    -- These are bonuses/multipliers applied on top
     stats = {
-        damage = 12,  -- Lower damage than sword
-        attack_speed = 1.2  -- Faster than sword
+        damage = 12,           -- +12 damage (additive, lower than sword)
+        attack_speed = 1.2,    -- 1.2x speed (20% faster than sword)
+        range = 0.9,           -- 0.9x range (10% shorter reach)
+        swing_radius = 0.9     -- 0.9x swing radius (10% smaller)
     },
 
     -- Use condition (explicit declaration - equipment cannot be used)

@@ -106,9 +106,6 @@ constants.COLLISION_CLASSES = {
 constants.COMBAT = {
     -- Attack distance calculations
     VERTICAL_ATTACK_LIMIT = 50,  -- Max vertical distance for platformer attacks
-    HUMANOID_WIDTH_RADIUS = 45,  -- Edge-to-edge distance for humanoid (horizontal/platformer)
-    HUMANOID_HEIGHT_RADIUS = 90, -- Edge-to-edge distance for humanoid (vertical)
-    SLIME_COLLIDER_WIDTH = 40,   -- Collider width for slime enemies
     DEFAULT_ATTACK_RANGE = 60,   -- Default enemy attack range
 
     -- Camera effects on parry
