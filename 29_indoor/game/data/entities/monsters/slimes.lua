@@ -8,7 +8,7 @@ return {
         damage = 10,
         speed = 100,
         attack_cooldown = 1.0,
-        detection_range = 240,
+        detection_range = 180,
         attack_range = 50,
         loot_category = "slime",  -- For loot system
 
@@ -47,7 +47,7 @@ return {
         damage = 8,
         speed = 120,
         attack_cooldown = 0.8,
-        detection_range = 220,
+        detection_range = 150,
         attack_range = 50,
         loot_category = "slime",
 

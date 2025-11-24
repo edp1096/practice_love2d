@@ -18,7 +18,7 @@ return {
         damage = 15,
         speed = 120,
         attack_cooldown = 1.2,
-        detection_range = 290,
+        detection_range = 200,
         attack_range = 35,
         loot_category = "humanoid",  -- For loot system
 
