@@ -218,8 +218,8 @@
  <objectgroup id="4" name="Portals">
   <object id="29" x="0" y="352" width="32" height="352">
    <properties>
-    <property name="spawn_x" type="float" value="1770"/>
-    <property name="spawn_y" type="float" value="1080"/>
+    <property name="spawn_x" type="float" value="900"/>
+    <property name="spawn_y" type="float" value="150"/>
     <property name="target_map" value="assets/maps/level1/area1.lua"/>
     <property name="type" value="portal"/>
    </properties>

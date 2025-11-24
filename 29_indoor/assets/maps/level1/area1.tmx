@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="2025.11.21" orientation="orthogonal" renderorder="right-down" width="30" height="30" tilewidth="64" tileheight="64" infinite="0" nextlayerid="12" nextobjectid="51">
+<map version="1.10" tiledversion="2025.11.21" orientation="orthogonal" renderorder="right-down" width="30" height="30" tilewidth="32" tileheight="32" infinite="0" nextlayerid="12" nextobjectid="51">
  <editorsettings>
   <export target="area1.lua" format="lua"/>
  </editorsettings>
@@ -10,13 +10,13 @@
   <property name="weather_change_interval" value="60,120"/>
   <property name="weather_pool" value="rain:20,snow:20,storm:10,mist:15,clear:35"/>
  </properties>
- <tileset firstgid="1" name="tileset_area1" tilewidth="64" tileheight="64" tilecount="54" columns="9">
-  <image source="tileset_area1.png" trans="ff00ff" width="576" height="384"/>
+ <tileset firstgid="1" name="tileset_area1" tilewidth="32" tileheight="32" tilecount="54" columns="9">
+  <image source="tileset_area1.png" trans="ff00ff" width="288" height="192"/>
  </tileset>
  <tileset firstgid="55" name="tileset_interior2" tilewidth="64" tileheight="64" tilecount="40" columns="8">
   <image source="tileset_interior2.png" trans="ff00ff" width="544" height="352"/>
  </tileset>
- <layer id="8" name="Background_Near" width="30" height="30" offsetx="-64" offsety="0">
+ <layer id="8" name="Background_Near" width="30" height="30" locked="1" offsetx="-64" offsety="0">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -50,7 +50,7 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <layer id="1" name="Ground" width="30" height="30" visible="0">
+ <layer id="1" name="Ground" width="30" height="30" locked="1">
   <data encoding="csv">
 11,11,11,14,14,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,
 11,11,11,14,14,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,
@@ -84,7 +84,7 @@
 11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,14,14,11,11,11,11
 </data>
  </layer>
- <layer id="2" name="Decos" width="30" height="30">
+ <layer id="2" name="Decos" width="30" height="30" locked="1">
   <data encoding="csv">
 43,43,44,51,53,0,13,14,14,14,15,51,52,52,53,42,43,43,43,43,43,43,43,43,43,43,43,43,43,43,
 43,43,44,0,0,0,22,23,23,23,24,0,0,0,0,51,52,52,52,52,52,52,52,52,52,52,52,52,52,52,
@@ -118,35 +118,35 @@
 43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,43,44,0,0,42,43,43,43
 </data>
  </layer>
- <objectgroup id="3" name="Walls" locked="1">
-  <object id="3" x="384" y="0" width="320" height="128"/>
-  <object id="4" x="386" y="448" width="318" height="192"/>
-  <object id="5" x="0" y="0" width="155" height="1920"/>
-  <object id="7" x="1699.33" y="1856" width="220.667" height="64"/>
-  <object id="8" x="995" y="512" width="925" height="446.5"/>
-  <object id="9" x="995" y="0" width="925" height="128"/>
-  <object id="10" x="448" y="832" width="64" height="64"/>
-  <object id="11" x="576" y="832" width="64" height="64"/>
-  <object id="12" x="162.667" y="1856" width="1336.66" height="64"/>
-  <object id="15" x="384" y="1280" width="318" height="191"/>
-  <object id="16" x="1088" y="1280" width="318" height="191"/>
-  <object id="20" x="704" y="0" width="289.091" height="64">
-   <polygon points="0,0 289.091,0 289.091,64 0,64"/>
+ <objectgroup id="3" name="Walls">
+  <object id="3" x="192" y="0" width="160" height="64"/>
+  <object id="4" x="192" y="224" width="160" height="96"/>
+  <object id="5" x="0" y="0" width="64" height="960"/>
+  <object id="7" x="864" y="928" width="96" height="32"/>
+  <object id="8" x="512" y="256" width="445" height="224"/>
+  <object id="9" x="480" y="0" width="480" height="64"/>
+  <object id="10" x="224" y="416" width="32" height="32"/>
+  <object id="11" x="288" y="416" width="32" height="32"/>
+  <object id="12" x="0" y="928" width="736" height="32"/>
+  <object id="15" x="192" y="640" width="160" height="96"/>
+  <object id="16" x="544" y="640" width="160" height="96"/>
+  <object id="20" x="352" y="0" width="128" height="32">
+   <polygon points="0,0 128,0 128,32 0,32"/>
   </object>
-  <object id="21" x="1883.33" y="1216" width="36.6667" height="576"/>
-  <object id="49" x="128" y="0" width="289.091" height="64">
-   <polygon points="0,0 289.091,0 289.091,64 0,64"/>
+  <object id="21" x="928" y="608" width="32" height="352"/>
+  <object id="49" x="64" y="0" width="128" height="32">
+   <polygon points="0,0 128,0 128,32 0,32"/>
   </object>
  </objectgroup>
  <objectgroup id="5" name="Enemies">
-  <object id="40" x="1344" y="256" width="64" height="64">
+  <object id="40" x="768" y="128" width="32" height="32">
    <properties>
     <property name="patrol_points" value="100,20;150,25"/>
     <property name="type" value="green_slime"/>
     <property name="types" value="basic_ragned_boss"/>
    </properties>
   </object>
-  <object id="41" x="384" y="1024" width="64" height="64">
+  <object id="41" x="128" y="480" width="32" height="32">
    <properties>
     <property name="patrol_points" value="100,20;150,25"/>
     <property name="respawn" type="bool" value="true"/>
@@ -154,7 +154,7 @@
     <property name="types" value="basic_ragned_boss"/>
    </properties>
   </object>
-  <object id="47" x="512" y="1024" width="64" height="64">
+  <object id="47" x="128" y="544" width="32" height="32">
    <properties>
     <property name="patrol_points" value="100,20;150,25"/>
     <property name="respawn" type="bool" value="true"/>
@@ -162,7 +162,7 @@
     <property name="types" value="basic_ragned_boss"/>
    </properties>
   </object>
-  <object id="48" x="640" y="1024" width="64" height="64">
+  <object id="48" x="192" y="512" width="32" height="32">
    <properties>
     <property name="patrol_points" value="100,20;150,25"/>
     <property name="respawn" type="bool" value="true"/>
@@ -171,8 +171,8 @@
    </properties>
   </object>
  </objectgroup>
- <objectgroup id="6" name="NPCs" locked="1">
-  <object id="42" x="1344" y="1600" width="64" height="64">
+ <objectgroup id="6" name="NPCs">
+  <object id="42" x="672" y="800" width="32" height="32">
    <properties>
     <property name="id" value="passerby_01"/>
     <property name="type" value="villager"/>
@@ -180,7 +180,7 @@
   </object>
  </objectgroup>
  <objectgroup id="4" name="Portals">
-  <object id="35" x="1408" y="1856" width="384" height="64">
+  <object id="35" x="704" y="928" width="192" height="32">
    <properties>
     <property name="spawn_x" type="float" value="50"/>
     <property name="spawn_y" type="float" value="540"/>
@@ -188,7 +188,7 @@
     <property name="type" value="portal"/>
    </properties>
   </object>
-  <object id="38" x="1920" y="896" width="384" height="64" rotation="90">
+  <object id="38" x="960" y="416" width="224" height="32" rotation="90">
    <properties>
     <property name="spawn_x" type="float" value="50"/>
     <property name="spawn_y" type="float" value="540"/>
@@ -196,7 +196,7 @@
     <property name="type" value="portal"/>
    </properties>
   </object>
-  <object id="39" x="1856" y="64" width="64" height="512">
+  <object id="39" x="928" y="0" width="32" height="352">
    <properties>
     <property name="spawn_x" type="float" value="50"/>
     <property name="spawn_y" type="float" value="540"/>
@@ -204,7 +204,7 @@
     <property name="type" value="portal"/>
    </properties>
   </object>
-  <object id="50" x="1344" y="1472" width="192" height="64" rotation="180">
+  <object id="50" x="672" y="736" width="96" height="32" rotation="180">
    <properties>
     <property name="spawn_x" type="float" value="240"/>
     <property name="spawn_y" type="float" value="350"/>
@@ -213,8 +213,8 @@
    </properties>
   </object>
  </objectgroup>
- <objectgroup id="7" name="SavePoints" locked="1">
-  <object id="43" x="832" y="1600" width="64" height="64">
+ <objectgroup id="7" name="SavePoints">
+  <object id="43" x="416" y="800" width="32" height="32">
    <properties>
     <property name="id" value="save1-1"/>
     <property name="type" value="savepoint"/>
@@ -222,7 +222,7 @@
   </object>
  </objectgroup>
  <objectgroup id="9" name="DamageZones">
-  <object id="44" x="192" y="1536" width="384" height="192">
+  <object id="44" x="96" y="768" width="224" height="96">
    <properties>
     <property name="cooldown" type="float" value="0.5"/>
     <property name="damage" type="int" value="5"/>
@@ -230,10 +230,10 @@
   </object>
  </objectgroup>
  <objectgroup id="10" name="DeathZones">
-  <object id="45" x="576" y="1536" width="128" height="192"/>
+  <object id="45" x="320" y="768" width="32" height="96"/>
  </objectgroup>
  <objectgroup id="11" name="WorldItems">
-  <object id="46" x="512" y="304" width="32" height="32">
+  <object id="46" x="256" y="128" width="32" height="32">
    <properties>
     <property name="item_type" value="staff"/>
     <property name="quantity" type="int" value="1"/>
