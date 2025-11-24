@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="2025.11.21" orientation="orthogonal" renderorder="right-down" width="15" height="15" tilewidth="32" tileheight="32" infinite="0" nextlayerid="4" nextobjectid="2">
+<map version="1.10" tiledversion="2025.11.21" orientation="orthogonal" renderorder="right-down" width="15" height="15" tilewidth="32" tileheight="32" infinite="0" nextlayerid="5" nextobjectid="7">
  <editorsettings>
   <export target="home1.lua" format="lua"/>
  </editorsettings>
@@ -48,6 +48,13 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
+ <objectgroup id="4" name="Walls">
+  <object id="2" x="0" y="0" width="32" height="480"/>
+  <object id="3" x="0" y="448" width="192" height="32"/>
+  <object id="4" x="288" y="448" width="192" height="32"/>
+  <object id="5" x="448" y="0" width="32" height="480"/>
+  <object id="6" x="0" y="0" width="480" height="32"/>
+ </objectgroup>
  <objectgroup id="3" name="Portals">
   <object id="1" x="288" y="480" width="96" height="32" rotation="180">
    <properties>
