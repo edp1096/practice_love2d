@@ -1,7 +1,7 @@
 return {
   version = "1.10",
   luaversion = "5.1",
-  tiledversion = "2025.09.25",
+  tiledversion = "2025.11.21",
   class = "",
   orientation = "orthogonal",
   renderorder = "right-down",
@@ -10,7 +10,7 @@ return {
   tilewidth = 64,
   tileheight = 64,
   nextlayerid = 12,
-  nextobjectid = 50,
+  nextobjectid = 51,
   properties = {
     ["ambient"] = "day",
     ["game_mode"] = "topdown",
@@ -47,6 +47,36 @@ return {
       properties = {},
       wangsets = {},
       tilecount = 54,
+      tiles = {}
+    },
+    {
+      name = "tileset_interior2",
+      firstgid = 55,
+      class = "",
+      tilewidth = 64,
+      tileheight = 64,
+      spacing = 0,
+      margin = 0,
+      columns = 8,
+      image = "tileset_interior2.png",
+      imagewidth = 544,
+      imageheight = 352,
+      transparentcolor = "#ff00ff",
+      objectalignment = "unspecified",
+      tilerendersize = "tile",
+      fillmode = "stretch",
+      tileoffset = {
+        x = 0,
+        y = 0
+      },
+      grid = {
+        orientation = "orthogonal",
+        width = 64,
+        height = 64
+      },
+      properties = {},
+      wangsets = {},
+      tilecount = 40,
       tiles = {}
     }
   },
@@ -110,7 +140,7 @@ return {
       id = 1,
       name = "Ground",
       class = "",
-      visible = true,
+      visible = false,
       opacity = 1,
       offsetx = 0,
       offsety = 0,
@@ -191,7 +221,7 @@ return {
         43, 43, 44, 0, 0, 0, 7, 8, 8, 8, 9, 0, 0, 0, 0, 0, 0, 7, 8, 8, 8, 9, 0, 0, 0, 0, 0, 0, 0, 33,
         43, 43, 44, 0, 0, 0, 25, 26, 26, 26, 27, 0, 0, 0, 0, 0, 0, 25, 26, 26, 26, 27, 0, 0, 0, 0, 0, 0, 0, 42,
         43, 43, 44, 0, 0, 0, 37, 38, 38, 38, 39, 0, 0, 0, 0, 0, 0, 37, 38, 38, 38, 39, 0, 0, 0, 0, 0, 0, 0, 42,
-        43, 43, 44, 0, 0, 0, 46, 47, 47, 47, 48, 0, 0, 0, 0, 0, 0, 46, 47, 47, 47, 48, 0, 0, 0, 0, 0, 0, 0, 42,
+        43, 43, 44, 0, 0, 0, 46, 47, 47, 47, 48, 0, 0, 0, 0, 0, 0, 46, 4, 5, 6, 48, 0, 0, 0, 0, 0, 0, 0, 42,
         43, 43, 44, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42,
         43, 43, 44, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42,
         43, 43, 44, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42,
@@ -595,6 +625,24 @@ return {
             ["spawn_x"] = 50,
             ["spawn_y"] = 540,
             ["target_map"] = "assets/maps/level1/area2.lua",
+            ["type"] = "portal"
+          }
+        },
+        {
+          id = 50,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 1344,
+          y = 1472,
+          width = 192,
+          height = 64,
+          rotation = 180,
+          visible = true,
+          properties = {
+            ["spawn_x"] = 240,
+            ["spawn_y"] = 350,
+            ["target_map"] = "assets/maps/level1/home1.lua",
             ["type"] = "portal"
           }
         }

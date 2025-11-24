@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="2025.11.21" orientation="orthogonal" renderorder="right-down" width="15" height="15" tilewidth="32" tileheight="32" infinite="0" nextlayerid="4" nextobjectid="2">
+ <editorsettings>
+  <export target="home1.lua" format="lua"/>
+ </editorsettings>
+ <properties>
+  <property name="game_mode" value="topdown"/>
+  <property name="name" value="home1"/>
+ </properties>
+ <tileset firstgid="1" name="tileset_interior1" tilewidth="32" tileheight="32" tilecount="1024" columns="16">
+  <image source="tileset_interior1.png" trans="ff00ff" width="512" height="512"/>
+ </tileset>
+ <layer id="1" name="Ground" width="15" height="15" locked="1">
+  <data encoding="csv">
+43,44,45,45,45,45,45,45,45,45,45,45,45,45,47,
+59,61,126,126,126,126,126,126,126,126,126,126,126,62,63,
+59,61,126,126,126,126,126,126,126,126,126,126,126,61,63,
+59,61,126,126,126,126,126,126,126,126,126,126,126,61,63,
+59,61,126,126,126,126,126,126,126,126,126,126,126,61,63,
+59,61,126,126,126,126,126,126,126,126,126,126,126,61,63,
+59,61,126,126,126,126,126,126,126,126,126,126,126,61,63,
+59,61,126,126,126,126,126,126,126,126,126,126,126,61,63,
+59,61,126,126,126,126,126,126,126,126,126,126,126,61,63,
+59,61,126,126,126,126,126,126,126,126,126,126,126,61,63,
+59,61,126,126,126,126,126,126,126,126,126,126,126,61,63,
+59,61,126,126,126,126,126,126,126,126,126,126,126,61,63,
+59,61,126,126,126,126,126,126,126,126,126,126,126,61,63,
+59,61,61,61,61,125,125,125,125,125,61,61,61,61,63,
+91,92,93,93,93,93,125,125,125,93,93,93,93,94,95
+</data>
+ </layer>
+ <layer id="2" name="Decos" width="15" height="15" locked="1">
+  <data encoding="csv">
+0,0,18,19,117,20,21,0,0,0,85,118,84,0,0,
+0,0,34,35,0,36,37,0,0,0,101,134,100,0,0,
+0,0,50,51,0,52,53,0,0,0,0,0,136,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,152,0,0,
+0,0,66,67,116,0,0,0,0,0,0,0,0,0,0,
+0,0,82,83,132,0,0,0,0,0,0,0,0,0,0,
+0,0,120,120,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+ <objectgroup id="3" name="Portals">
+  <object id="1" x="288" y="480" width="96" height="32" rotation="180">
+   <properties>
+    <property name="spawn_x" type="float" value="1230"/>
+    <property name="spawn_y" type="float" value="1515"/>
+    <property name="target_map" value="assets/maps/level1/area1.lua"/>
+    <property name="type" value="portal"/>
+   </properties>
+  </object>
+ </objectgroup>
+</map>
