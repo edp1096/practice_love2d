@@ -28,9 +28,11 @@ return {
             sprite_width = 48,
             sprite_height = 48,
             sprite_scale = 3,
+        character_width = 16,
+        character_height = 32,
 
-            collider_width = 40,
-            collider_height = 80,
+            -- collider_width auto-calculated: 16 * 3 = 48
+            -- collider_height auto-calculated: 32 * 3 = 96
             collider_offset_x = 0,
             collider_offset_y = 0,
 
@@ -63,6 +65,8 @@ return {
             sprite_width = 48,
             sprite_height = 48,
             sprite_scale = 3,
+        character_width = 16,
+        character_height = 32,
 
             collider_width = 32,
             collider_height = 32,
@@ -91,6 +95,8 @@ return {
             sprite_width = 48,
             sprite_height = 48,
             sprite_scale = 3,
+        character_width = 16,
+        character_height = 32,
 
             collider_width = 32,
             collider_height = 32,

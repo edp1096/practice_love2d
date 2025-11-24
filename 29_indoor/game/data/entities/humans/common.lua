@@ -13,6 +13,8 @@ return {
         sprite_width = 48,
         sprite_height = 48,
         sprite_scale = 3,
+        character_width = 16,
+        character_height = 32,
 
         collider_width = 32,
         collider_height = 32,
@@ -43,6 +45,8 @@ return {
         sprite_width = 48,
         sprite_height = 48,
         sprite_scale = 3,
+        character_width = 16,
+        character_height = 32,
 
         collider_width = 32,
         collider_height = 32,
@@ -72,6 +76,8 @@ return {
         sprite_width = 48,
         sprite_height = 48,
         sprite_scale = 3,
+        character_width = 16,
+        character_height = 32,
 
         collider_width = 32,
         collider_height = 32,
@@ -102,6 +108,8 @@ return {
         sprite_width = 48,
         sprite_height = 48,
         sprite_scale = 3,
+        character_width = 16,
+        character_height = 32,
 
         collider_width = 32,
         collider_height = 32,

@@ -45,12 +45,21 @@ function weapon:new(weapon_type)
     -- Load slash effect sprite (optional)
     if self.effects_config and self.effects_config.slash_sprite then
         instance.slash_sprite = love.graphics.newImage(self.effects_config.slash_sprite)
-        instance.slash_grid = anim8.newGrid(23, 39, 46, 39)
-        instance.slash_scale = 3
+        instance.slash_grid = anim8.newGrid(
+            self.effects_config.slash_frame_width or 23,
+            self.effects_config.slash_frame_height or 39,
+            self.effects_config.slash_sprite_width or 46,
+            self.effects_config.slash_sprite_height or 39
+        )
+        instance.slash_scale = self.effects_config.slash_scale or 3
+        instance.slash_origin_x = self.effects_config.slash_origin_x or (self.effects_config.slash_frame_width or 23) / 2
+        instance.slash_origin_y = self.effects_config.slash_origin_y or (self.effects_config.slash_frame_height or 39) / 2
     else
         instance.slash_sprite = nil
         instance.slash_grid = nil
         instance.slash_scale = nil
+        instance.slash_origin_x = nil
+        instance.slash_origin_y = nil
     end
 
     -- Load slash transforms (optional)
@@ -87,7 +96,7 @@ function weapon:new(weapon_type)
     instance.hit_enemies = {}
 
     -- Sheath particles
-    instance.sheath_particles = render.createSheathParticleSystem()
+    instance.sheath_particles = render.createSheathParticleSystem(self.effects_config)
 
     -- Debug
     instance.debug_hand_x = 0

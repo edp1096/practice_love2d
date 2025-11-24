@@ -7,8 +7,13 @@ local entity_base = {}
 
 -- Initialize collider properties
 function entity_base.initializeCollider(instance, config)
-    instance.collider_width = config.collider_width or 32
-    instance.collider_height = config.collider_height or 32
+    -- Auto-calculate collider from character size * scale
+    local character_width = config.character_width or config.sprite_width or 16
+    local character_height = config.character_height or config.sprite_height or 32
+    local scale = config.sprite_scale or 4
+
+    instance.collider_width = config.collider_width or (character_width * scale)
+    instance.collider_height = config.collider_height or (character_height * scale)
     instance.collider_offset_x = config.collider_offset_x or 0
     instance.collider_offset_y = config.collider_offset_y or 0
 end

@@ -48,15 +48,19 @@ function player:new(x, y, config)
     instance.sprite_origin_x = instance.sprite_width / 2
     instance.sprite_origin_y = instance.sprite_height / 2
 
+    -- Character size (actual character, excluding padding)
+    local character_width = sprite.character_width or 16
+    local character_height = sprite.character_height or 32
+
     assert(sprite.sheet, "Player sprite sheet must be provided in config")
     animation.initialize(instance, sprite.sheet, sprite.width or 48, sprite.height or 48)
 
     combat.initialize(instance, config.combat)
 
-    -- Collider configuration
+    -- Collider configuration (auto-calculated from character size * scale)
     instance.collider = nil
-    instance.collider_width = collider_cfg.width or constants.PLAYER.DEFAULT_WIDTH
-    instance.collider_height = collider_cfg.height or constants.PLAYER.DEFAULT_HEIGHT
+    instance.collider_width = character_width * instance.sprite_scale
+    instance.collider_height = character_height * instance.sprite_scale
 
     return instance
 end

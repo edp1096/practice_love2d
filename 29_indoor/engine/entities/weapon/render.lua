@@ -4,14 +4,21 @@
 local render = {}
 local text_ui = require "engine.utils.text"
 
-function render.createSheathParticleSystem()
-    -- Create particle image (12x12)
-    local particle_data = love.image.newImageData(12, 12)
+function render.createSheathParticleSystem(effects_config)
+    -- Get config values with fallbacks
+    local particle_size = (effects_config and effects_config.particle_size) or 12
+    local particle_sizes = (effects_config and effects_config.particle_sizes) or {3, 3.5, 4, 3, 0}
+    local speed_min = (effects_config and effects_config.particle_speed_min) or 30
+    local speed_max = (effects_config and effects_config.particle_speed_max) or 80
+
+    -- Create particle image (configurable size)
+    local particle_data = love.image.newImageData(particle_size, particle_size)
+    local half_size = particle_size / 2
     particle_data:mapPixel(function(x, y, r, g, b, a)
-        local dx = x - 6
-        local dy = y - 6
+        local dx = x - half_size
+        local dy = y - half_size
         local dist = math.sqrt(dx * dx + dy * dy)
-        local alpha = math.max(0, 1 - dist / 6)
+        local alpha = math.max(0, 1 - dist / half_size)
         return 1, 1, 1, alpha
     end)
     local particle_img = love.graphics.newImage(particle_data)
@@ -20,7 +27,7 @@ function render.createSheathParticleSystem()
     local ps = love.graphics.newParticleSystem(particle_img, 150)
     ps:setParticleLifetime(0.4, 0.8)
     ps:setEmissionRate(0)
-    ps:setSizes(3, 3.5, 4, 3, 0)
+    ps:setSizes(unpack(particle_sizes))
 
     -- Gold/yellow fading
     ps:setColors(
@@ -32,7 +39,7 @@ function render.createSheathParticleSystem()
     )
 
     ps:setLinearDamping(1, 3)
-    ps:setSpeed(30, 80)
+    ps:setSpeed(speed_min, speed_max)
     ps:setSpread(math.pi * 2)
     ps:setRotation(0, 2 * math.pi)
     ps:setRelativeRotation(false)
@@ -57,8 +64,8 @@ function render.draw(weapon, debug_mode, swing_configs)
             weapon.slash_rotation,
             weapon.slash_scale * weapon.slash_flip_x,
             weapon.slash_scale * weapon.slash_flip_y,
-            11.5,
-            19.5
+            weapon.slash_origin_x,
+            weapon.slash_origin_y
         )
     end
 

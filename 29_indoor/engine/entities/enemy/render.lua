@@ -79,8 +79,10 @@ function render.draw(enemy)
             shadow_y = collider_center_y + (enemy.collider_height / 2) - 2
         end
 
+        local shadow_width = enemy.collider_width * 0.45
+        local shadow_height = enemy.collider_width * 0.2
         love.graphics.setColor(0, 0, 0, 0.4)
-        love.graphics.ellipse("fill", shadow_x, shadow_y, 18, 8)
+        love.graphics.ellipse("fill", shadow_x, shadow_y, shadow_width, shadow_height)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
@@ -146,14 +148,14 @@ function render.draw(enemy)
 
     -- Stun stars effect
     if enemy.is_stunned then
-        local star_offset = 40
-        local star_size = 8
+        local star_offset = enemy.collider_width * 1.0
+        local star_size = enemy.collider_width * 0.2
         local time = love.timer.getTime()
 
         for i = 1, 3 do
             local angle = (time * 3 + i * (math.pi * 2 / 3))
             local star_x = collider_center_x + math.cos(angle) * star_offset
-            local star_y = collider_center_y - 50 + math.sin(angle) * 15
+            local star_y = collider_center_y - enemy.collider_height * 0.625 + math.sin(angle) * 15
 
             love.graphics.setColor(1, 1, 0, 1)
             love.graphics.circle("fill", star_x, star_y, star_size)
@@ -168,7 +170,7 @@ function render.draw(enemy)
             attack_indicator_font = love.graphics.newFont(24)
         end
 
-        local indicator_y = collider_center_y - 60
+        local indicator_y = collider_center_y - enemy.collider_height * 0.75
         local pulse = 0.5 + math.sin(love.timer.getTime() * 15) * 0.5
 
         -- Exclamation mark background

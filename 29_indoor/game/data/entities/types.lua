@@ -147,6 +147,24 @@ entity_types.weapons = {
 local slash_size = 1.4
 entity_types.weapon_effects = {
     slash_sprite = "assets/images/sprites/effects/effect-slash.png",
+
+    -- Slash sprite properties (effect-slash.png is 46x39, 2 frames = 23x39 per frame)
+    slash_frame_width = 23,
+    slash_frame_height = 39,
+    slash_sprite_width = 46,   -- Total sprite sheet width
+    slash_sprite_height = 39,  -- Total sprite sheet height
+    slash_scale = 3,           -- Render scale (matches weapon scale)
+
+    -- Slash origin (pivot point for rotation)
+    slash_origin_x = 11.5,     -- Center X of 23px frame
+    slash_origin_y = 19.5,     -- Center Y of 39px frame
+
+    -- Sheath particles configuration
+    particle_size = 12,              -- Particle image size (12x12)
+    particle_sizes = {3, 3.5, 4, 3, 0},  -- Particle size sequence
+    particle_speed_min = 30,         -- Minimum particle speed
+    particle_speed_max = 80,         -- Maximum particle speed
+
     -- Optional: Direction-specific transforms for slash effect
     -- If not specified, defaults to flip_x=1, flip_y=1
     slash_transforms = {

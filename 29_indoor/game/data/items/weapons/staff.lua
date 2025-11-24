@@ -21,7 +21,7 @@ local staff = {
         y = 0,      -- Row 1 (index 0 * 16 = 0)
         w = 16,     -- Width in pixels
         h = 16,     -- Height in pixels
-        scale = 3   -- Render scale
+        scale = 2   -- Render scale
     },
 
     -- Equipment stats (applied when equipped)

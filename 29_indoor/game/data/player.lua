@@ -37,16 +37,17 @@ player_config.combat = {
 -- Sprite configuration
 player_config.sprite = {
   sheet = "assets/images/player/player-sheet.png",
-  width = 48,
+  width = 48,           -- Frame size (with padding)
   height = 48,
-  scale = 2.5,  -- Reduced from 3 to make player smaller
+  scale = 2,
+
+  -- Actual character size (excluding 8px padding on all sides)
+  -- Frame 48x48, padding 8px → character is 16x32
+  character_width = 16,
+  character_height = 32,
 }
 
--- Collider (box around player body for physics/combat)
-player_config.collider = {
-  width = 40,   -- Collider width
-  height = 80,  -- Collider height (covers full body)
-}
+-- Collider will be auto-calculated as character_size * scale
 
 -- Starting position (overridden by map spawn)
 player_config.spawn = {
