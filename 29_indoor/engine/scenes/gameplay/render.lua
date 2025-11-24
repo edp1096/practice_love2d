@@ -43,10 +43,10 @@ function render.draw(self)
         self.player:drawDebug()
     end
 
-    -- Platformer mode: Draw Trees layer normally (no Y-sorting needed)
-    -- Topdown mode: Trees tiles are drawn via Y-sorting in drawEntitiesYSorted()
+    -- Platformer mode: Draw Decos layer normally (no Y-sorting needed)
+    -- Topdown mode: Decos tiles are drawn via Y-sorting in drawEntitiesYSorted()
     if self.player.game_mode == "platformer" then
-        self.world:drawLayer("Trees")
+        self.world:drawLayer("Decos")
     end
 
     -- Draw healing points

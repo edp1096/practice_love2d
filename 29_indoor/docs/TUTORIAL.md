@@ -125,7 +125,7 @@ assets/
 
 ### Create Maps in Tiled:
 1. Open Tiled and create a new map
-2. Add layers: `Ground`, `Trees`, `Walls`, `Portals`, `Enemies`, `NPCs`
+2. Add layers: `Ground`, `Decos`, `Walls`, `Portals`, `Enemies`, `NPCs`
 3. Set map properties:
    - `game_mode` = `"topdown"` or `"platformer"`
    - `bgm` = `"level1"` (optional)

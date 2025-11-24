@@ -124,7 +124,7 @@ return {
 ### 맵 추가
 1. Tiled에서 생성: `assets/maps/level1/newarea.tmx`
 2. 프로퍼티 설정: `name`, `game_mode`, `bgm`, `ambient`
-3. 레이어 추가: Ground, Trees, Walls, Portals, Enemies, NPCs
+3. 레이어 추가: Ground, Decos, Walls, Portals, Enemies, NPCs
 4. Lua로 내보내기
 5. 이전 맵에서 포털 생성
 

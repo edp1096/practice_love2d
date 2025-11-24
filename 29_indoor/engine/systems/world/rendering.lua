@@ -81,7 +81,7 @@ function rendering.drawEntitiesYSorted(self, player)
         end
     end
 
-    -- Include drawable tiles (Trees layer) for Y-sorting (topdown mode only)
+    -- Include drawable tiles (Decos layer) for Y-sorting (topdown mode only)
     if self.drawable_tiles then
         for _, tile in ipairs(self.drawable_tiles) do
             table.insert(drawables, tile)

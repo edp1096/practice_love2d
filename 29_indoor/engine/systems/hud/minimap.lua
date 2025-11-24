@@ -217,7 +217,7 @@ function minimap:updateMinimapCanvas()
     self.world:drawLayer("Background_Near")
     self.world:drawLayer("Ground")
     self.world:drawLayer("GroundDeco")
-    self.world:drawLayer("Trees")
+    self.world:drawLayer("Decos")
 
     -- Draw portals before pop (inside scale transformation)
     if self.world.transitions then

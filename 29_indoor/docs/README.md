@@ -124,7 +124,7 @@ return {
 ### Add Map
 1. Create in Tiled: `assets/maps/level1/newarea.tmx`
 2. Set properties: `name`, `game_mode`, `bgm`, `ambient`
-3. Add layers: Ground, Trees, Walls, Portals, Enemies, NPCs
+3. Add layers: Ground, Decos, Walls, Portals, Enemies, NPCs
 4. Export to Lua
 5. Create portal from previous map
 

@@ -187,7 +187,7 @@ return {
       width = 80,
       height = 15,
       id = 2,
-      name = "Trees",
+      name = "Decos",
       class = "",
       visible = true,
       opacity = 1,

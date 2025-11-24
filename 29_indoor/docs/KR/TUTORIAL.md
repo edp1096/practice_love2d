@@ -125,7 +125,7 @@ assets/
 
 ### Tiled에서 맵 제작:
 1. Tiled 실행 후 새 맵 생성
-2. 레이어 추가: `Ground`, `Trees`, `Walls`, `Portals`, `Enemies`, `NPCs`
+2. 레이어 추가: `Ground`, `Decos`, `Walls`, `Portals`, `Enemies`, `NPCs`
 3. 맵 속성 설정:
    - `game_mode` = `"topdown"` 또는 `"platformer"`
    - `bgm` = `"level1"` (선택사항)

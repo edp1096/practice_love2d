@@ -75,7 +75,7 @@ function world:new(map_path, entity_classes, picked_items, killed_enemies, trans
     instance.walls = {}
     loaders.loadWalls(instance)
 
-    -- Load Trees layer tiles for Y-sorting (topdown mode only)
+    -- Load Decos layer tiles for Y-sorting (topdown mode only)
     if instance.game_mode == "topdown" then
         loaders.loadTreeTiles(instance)
     end

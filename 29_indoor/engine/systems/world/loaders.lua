@@ -78,14 +78,14 @@ local function shouldSpawnOriginalNPC(map_id, killed_enemies, transformed_npcs)
 end
 
 function loaders.loadTreeTiles(self)
-    if not self.map.layers["Trees"] then return end
+    if not self.map.layers["Decos"] then return end
 
     -- Initialize drawable tiles array for Y-sorting
     if not self.drawable_tiles then
         self.drawable_tiles = {}
     end
 
-    local layer = self.map.layers["Trees"]
+    local layer = self.map.layers["Decos"]
     local tile_width = self.map.tilewidth
     local tile_height = self.map.tileheight
 
