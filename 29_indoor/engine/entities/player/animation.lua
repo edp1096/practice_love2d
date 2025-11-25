@@ -166,9 +166,10 @@ local function handleMovementInput(player, dt)
         end
 
         if is_moving then
-            player.anim = player.animations["walk_" .. player.direction]
+            local move_type = player.default_move or "walk"
+            player.anim = player.animations[move_type .. "_" .. player.direction]
             player.anim:update(dt)
-            player.state = "walking"
+            player.state = move_type == "run" and "running" or "walking"
         else
             player.anim = player.animations["idle_" .. player.direction]
             player.anim:update(dt)
@@ -188,7 +189,8 @@ local function handleSpecialStates(player, dt, movement_input)
     if player.dodge_active then
         vx = player.dodge_direction_x * player.dodge_speed
         vy = player.dodge_direction_y * player.dodge_speed
-        player.anim = player.animations["walk_" .. player.direction]
+        local move_type = player.default_move or "walk"
+        player.anim = player.animations[move_type .. "_" .. player.direction]
         player.anim:update(dt * 2)
     elseif player.state == "attacking" then
         player.anim = player.animations["attack_" .. player.direction]
@@ -201,8 +203,9 @@ local function handleSpecialStates(player, dt, movement_input)
     elseif debug:IsHandMarkingActive() then
         local current_anim_name
         if movement_input then
-            player.state = "walking"
-            current_anim_name = "walk_" .. player.direction
+            local move_type = player.default_move or "walk"
+            player.state = move_type == "run" and "running" or "walking"
+            current_anim_name = move_type .. "_" .. player.direction
         elseif player.state == "attacking" then
             current_anim_name = "attack_" .. player.direction
         else
@@ -230,25 +233,92 @@ local function handleWeaponUpdate(player, dt, current_frame_index)
     end
 end
 
+-- Helper: create animation from config frame definition
+local function createAnimation(grid, frame_def, duration)
+    if type(frame_def[1]) == "table" then
+        -- Multiple ranges: {{"5-8", 4}, {"1-2", 5}}
+        local args = {}
+        for _, range in ipairs(frame_def) do
+            table.insert(args, range[1])
+            table.insert(args, range[2])
+        end
+        return anim8.newAnimation(grid(unpack(args)), duration)
+    else
+        -- Single range: {"1-4", 3}
+        return anim8.newAnimation(grid(frame_def[1], frame_def[2]), duration)
+    end
+end
+
+-- Default animation frames (fallback)
+local DEFAULT_FRAMES = {
+    walk_up    = {"1-4", 4},
+    walk_down  = {"1-4", 3},
+    walk_left  = {{"5-8", 4}, {"1-2", 5}},
+    walk_right = {"3-8", 5},
+
+    idle_up    = {"5-8", 1},
+    idle_down  = {"1-4", 1},
+    idle_left  = {"1-4", 2},
+    idle_right = {"5-8", 2},
+
+    attack_down  = {"1-4", 11},
+    attack_up    = {"5-8", 11},
+    attack_left  = {"1-4", 12},
+    attack_right = {"5-8", 12},
+}
+
+-- Default animation durations
+local DEFAULT_DURATIONS = {
+    walk = 0.1,
+    run = 0.08,
+    idle = 0.15,
+    attack = 0.08,
+}
+
+-- Default move type
+local DEFAULT_MOVE = "walk"
+
 function animation.initialize(player, sprite_sheet, sprite_width, sprite_height)
     player.spriteSheet = love.graphics.newImage(sprite_sheet)
     player.grid = anim8.newGrid(sprite_width, sprite_height, player.spriteSheet:getWidth(), player.spriteSheet:getHeight())
 
+    -- Use config if available, otherwise use defaults
+    local anim_config = player.config and player.config.animations
+    local frames = anim_config and anim_config.frames or DEFAULT_FRAMES
+    local durations = anim_config and anim_config.durations or DEFAULT_DURATIONS
+
+    -- Determine default move type (walk or run)
+    player.default_move = anim_config and anim_config.default_move or DEFAULT_MOVE
+
     player.animations = {}
-    player.animations.walk_up = anim8.newAnimation(player.grid("1-4", 4), 0.1)
-    player.animations.walk_down = anim8.newAnimation(player.grid("1-4", 3), 0.1)
-    player.animations.walk_left = anim8.newAnimation(player.grid("5-8", 4, "1-2", 5), 0.1)
-    player.animations.walk_right = anim8.newAnimation(player.grid("3-8", 5), 0.1)
 
-    player.animations.idle_up = anim8.newAnimation(player.grid("5-8", 1), 0.15)
-    player.animations.idle_down = anim8.newAnimation(player.grid("1-4", 1), 0.15)
-    player.animations.idle_left = anim8.newAnimation(player.grid("1-4", 2), 0.15)
-    player.animations.idle_right = anim8.newAnimation(player.grid("5-8", 2), 0.15)
+    -- Walk animations
+    if frames.walk_up then
+        player.animations.walk_up = createAnimation(player.grid, frames.walk_up, durations.walk)
+        player.animations.walk_down = createAnimation(player.grid, frames.walk_down, durations.walk)
+        player.animations.walk_left = createAnimation(player.grid, frames.walk_left, durations.walk)
+        player.animations.walk_right = createAnimation(player.grid, frames.walk_right, durations.walk)
+    end
 
-    player.animations.attack_down = anim8.newAnimation(player.grid("1-4", 11), 0.08)
-    player.animations.attack_up = anim8.newAnimation(player.grid("5-8", 11), 0.08)
-    player.animations.attack_left = anim8.newAnimation(player.grid("1-4", 12), 0.08)
-    player.animations.attack_right = anim8.newAnimation(player.grid("5-8", 12), 0.08)
+    -- Run animations (optional)
+    if frames.run_up then
+        player.animations.run_up = createAnimation(player.grid, frames.run_up, durations.run)
+        player.animations.run_down = createAnimation(player.grid, frames.run_down, durations.run)
+        player.animations.run_left = createAnimation(player.grid, frames.run_left, durations.run)
+        player.animations.run_right = createAnimation(player.grid, frames.run_right, durations.run)
+    end
+
+    -- Idle animations
+    player.animations.idle_up = createAnimation(player.grid, frames.idle_up, durations.idle)
+    player.animations.idle_down = createAnimation(player.grid, frames.idle_down, durations.idle)
+    player.animations.idle_left = createAnimation(player.grid, frames.idle_left, durations.idle)
+    player.animations.idle_right = createAnimation(player.grid, frames.idle_right, durations.idle)
+
+    -- Attack animations
+    player.animations.attack_down = createAnimation(player.grid, frames.attack_down, durations.attack)
+    player.animations.attack_up = createAnimation(player.grid, frames.attack_up, durations.attack)
+    player.animations.attack_left = createAnimation(player.grid, frames.attack_left, durations.attack)
+    player.animations.attack_right = createAnimation(player.grid, frames.attack_right, durations.attack)
 
     player.anim = player.animations.idle_right
     player.direction = "right"

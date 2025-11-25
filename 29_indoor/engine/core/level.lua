@@ -180,7 +180,7 @@ end
 -- Debug: Print level info
 function level:debugPrint()
     local required = self:getRequiredExp(self.data.level)
-    print(string.format("[Level System] Level: %d | Exp: %d/%d (%.1f%%) | Gold: %d",
+    dprint(string.format("[Level System] Level: %d | Exp: %d/%d (%.1f%%) | Gold: %d",
         self.data.level,
         self.data.current_exp,
         required,

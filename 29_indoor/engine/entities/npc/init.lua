@@ -194,8 +194,8 @@ function npc:draw()
 
     -- Shadow (at bottom of collider, scaled based on collider width)
     local shadow_y = collider_center_y + (self.collider_height / 2) - 2
-    local shadow_width = self.collider_width * 0.875  -- 28/32 = 0.875
-    local shadow_height = self.collider_width * 0.25  -- 8/32 = 0.25
+    local shadow_width = self.collider_width * 0.625
+    local shadow_height = self.collider_width * 0.175
     love.graphics.setColor(0, 0, 0, 0.4)
     love.graphics.ellipse("fill", collider_center_x, shadow_y, shadow_width, shadow_height)
     love.graphics.setColor(1, 1, 1, 1)

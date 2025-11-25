@@ -48,8 +48,6 @@ function polyline.create(world, object)
         end
 
         -- For 4+ points, always triangulate to ensure proper concave handling (same as polygon)
-        print("Triangulating closed polyline (" .. point_count .. " points) at x=" .. object.x .. ", y=" .. object.y)
-
         local triangles_success, triangles = pcall(love.math.triangulate, polygon_vertices)
         if not triangles_success or not triangles then
             print("Triangulation failed - using bounding box fallback")

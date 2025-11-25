@@ -14,6 +14,7 @@ function player:new(x, y, config)
 
     -- Load config (default or provided)
     config = config or {}
+    instance.config = config  -- Store full config for subsystems (animation, etc.)
     local stats = config.stats or {}
     local spawn = config.spawn or {}
     local sprite = config.sprite or {}

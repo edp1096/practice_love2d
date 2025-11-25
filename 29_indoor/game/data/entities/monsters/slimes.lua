@@ -1,136 +1,86 @@
 -- game/data/entities/monsters/slimes.lua
 -- Slime monster variants
 
+-- Common slime config (16x32 frame, 16x16 character at bottom)
+-- sprite_draw_offset is auto-calculated based on scale
+local function slime_config(overrides)
+    local scale = overrides.sprite_scale or 2
+    local collider_offset_y = overrides.collider_offset_y or 0
+
+    local base = {
+        sprite_width = 16,
+        sprite_height = 32,
+        sprite_scale = scale,
+        character_width = 16,
+        character_height = 16,
+        collider_offset_x = 0,
+        collider_offset_y = collider_offset_y,
+        -- Auto-calculated: sprite is 16x32, character is bottom 16x16
+        -- offset_x: center sprite over collider (sprite_width / 2 * scale)
+        -- offset_y: sprite top is (sprite_height - character_height / 2) * scale above collider center
+        sprite_draw_offset_x = -8 * scale,                            -- -sprite_width/2 * scale
+        sprite_draw_offset_y = -(16 + 8) * scale + collider_offset_y, -- -24 * scale + offset
+        sprite_origin_x = 0,
+        sprite_origin_y = 0,
+        loot_category = "slime",
+    }
+
+    for k, v in pairs(overrides) do base[k] = v end
+    return base
+end
+
+local sprite_path = "assets/images/sprites/enemies/enemy-sheet-slime-red.png"
+
 return {
-    red_slime = {
-        sprite_sheet = "assets/images/sprites/enemies/enemy-sheet-slime-red.png",
+    red_slime = slime_config({
+        sprite_sheet = sprite_path,
         health = 100,
         damage = 10,
         speed = 100,
         attack_cooldown = 1.0,
         detection_range = 180,
         attack_range = 50,
-        loot_category = "slime",  -- For loot system
+        sprite_scale = 2.5,
+    }),
 
-        sprite_width = 16,           -- Frame width
-        sprite_height = 32,          -- Frame height (16x2 for jump animation)
-        sprite_scale = 2,
-
-        -- Actual character size: 16x16 (no padding, but uses 16x32 frame for jump)
-        -- Character is at bottom 16px of the 16x32 frame (top 16px for jump animation)
-        character_width = 16,
-        character_height = 16,
-
-        -- Collider will be auto-calculated as character_size * scale
-        -- collider_width auto-calculated: 16 * 2 = 32
-        -- collider_height auto-calculated: 16 * 2 = 32
-        collider_offset_x = 0,
-        collider_offset_y = 0,
-
-        -- Sprite offset: character at bottom of frame requires manual offset
-        -- Rendered sprite: 16*2 x 32*2 = 32x64
-        -- Collider: 32x32 (at bottom 32px of sprite)
-        -- Sprite top should be at collider_center_y - 48
-        sprite_draw_offset_x = -16,  -- -(16*2 - 32)/2 = -16
-        sprite_draw_offset_y = -48,  -- sprite top is 48px above collider center
-
-        sprite_origin_x = 0,
-        sprite_origin_y = 0,
-
-        source_color = nil,
-        target_color = nil
-    },
-
-    green_slime = {
-        sprite_sheet = "assets/images/sprites/enemies/enemy-sheet-slime-red.png",
+    green_slime = slime_config({
+        sprite_sheet = sprite_path,
         health = 80,
         damage = 8,
         speed = 120,
         attack_cooldown = 0.8,
         detection_range = 150,
         attack_range = 50,
-        loot_category = "slime",
-
-        sprite_width = 16,
-        sprite_height = 32,
-        sprite_scale = 2,
-        character_width = 16,
-        character_height = 16,
-
-        -- collider_width auto-calculated: 16 * 2 = 32
-        -- collider_height auto-calculated: 16 * 2 = 32
-        collider_offset_x = 0,
-        collider_offset_y = 0,
-
-        sprite_draw_offset_x = -16,
-        sprite_draw_offset_y = -48,
-
-        sprite_origin_x = 0,
-        sprite_origin_y = 0,
-
+        sprite_scale = 3,
         source_color = { 1.0, 0.0, 0.0 },
-        target_color = { 0.0, 1.0, 0.0 }
-    },
+        target_color = { 0.0, 1.0, 0.0 },
+    }),
 
-    blue_slime = {
-        sprite_sheet = "assets/images/sprites/enemies/enemy-sheet-slime-red.png",
+    blue_slime = slime_config({
+        sprite_sheet = sprite_path,
         health = 120,
         damage = 12,
         speed = 80,
         attack_cooldown = 1.2,
         detection_range = 260,
         attack_range = 50,
-        loot_category = "slime",
-
-        sprite_width = 16,
-        sprite_height = 32,
         sprite_scale = 2,
-        character_width = 16,
-        character_height = 16,
-
-        -- collider_width auto-calculated: 16 * 2 = 32
-        -- collider_height auto-calculated: 16 * 2 = 32
-        collider_offset_x = 0,
-        collider_offset_y = 5,  -- Adjusted for scale 2
-
-        sprite_draw_offset_x = -16,
-        sprite_draw_offset_y = -43,  -- -48 + 5 (collider_offset_y)
-
-        sprite_origin_x = 0,
-        sprite_origin_y = 0,
-
+        collider_offset_y = 5,
         source_color = { 1.0, 0.0, 0.0 },
-        target_color = { 0.0, 0.5, 1.0 }
-    },
+        target_color = { 0.0, 0.5, 1.0 },
+    }),
 
-    purple_slime = {
-        sprite_sheet = "assets/images/sprites/enemies/enemy-sheet-slime-red.png",
+    purple_slime = slime_config({
+        sprite_sheet = sprite_path,
         health = 150,
         damage = 15,
         speed = 90,
         attack_cooldown = 1.5,
         detection_range = 290,
         attack_range = 60,
-        loot_category = "slime",
-
-        sprite_width = 16,
-        sprite_height = 32,
         sprite_scale = 2,
-        character_width = 16,
-        character_height = 16,
-
-        -- collider_width auto-calculated: 16 * 2 = 32
-        -- collider_height auto-calculated: 16 * 2 = 32
-        collider_offset_x = 0,
-        collider_offset_y = 5,  -- Adjusted for scale 2
-
-        sprite_draw_offset_x = -16,
-        sprite_draw_offset_y = -43,  -- -48 + 5 (collider_offset_y)
-
-        sprite_origin_x = 0,
-        sprite_origin_y = 0,
-
+        collider_offset_y = 5,
         source_color = { 1.0, 0.0, 0.0 },
-        target_color = { 0.8, 0.0, 1.0 }
-    },
+        target_color = { 0.8, 0.0, 1.0 },
+    }),
 }

@@ -5,7 +5,7 @@ local player_config = {}
 
 -- Basic stats
 player_config.stats = {
-  speed = 300,
+  speed = 260,
   jump_power = 600,
 }
 
@@ -37,7 +37,7 @@ player_config.combat = {
 -- Sprite configuration
 player_config.sprite = {
   sheet = "assets/images/player/player-sheet.png",
-  width = 48,           -- Frame size (with padding)
+  width = 48, -- Frame size (with padding)
   height = 48,
   scale = 2,
 
@@ -48,6 +48,40 @@ player_config.sprite = {
 }
 
 -- Collider will be auto-calculated as character_size * scale
+
+-- Animation frames (optional - engine has defaults)
+-- Uncomment and modify to use custom sprite sheet layout
+
+player_config.animations = {
+  default_move = "run",  -- "walk" or "run"
+  frames = {
+    walk_up      = { "1-4", 4 },
+    walk_down    = { "1-4", 3 },
+    walk_left    = { { "5-8", 4 }, { "1-2", 5 } },
+    walk_right   = { "3-8", 5 },
+
+    run_up       = { { "7-8", 6 }, { "1-4", 7 } },
+    run_down     = { "1-6", 6 },
+    run_left     = { { "5-8", 7 }, { "1-2", 8 } },
+    run_right    = { "3-8", 8 },
+
+    idle_up      = { "5-8", 1 },
+    idle_down    = { "1-4", 1 },
+    idle_left    = { "1-4", 2 },
+    idle_right   = { "5-8", 2 },
+
+    attack_down  = { "1-4", 11 },
+    attack_up    = { "5-8", 11 },
+    attack_left  = { "1-4", 12 },
+    attack_right = { "5-8", 12 },
+  },
+  durations = {
+    walk = 0.1,
+    run = 0.08,
+    idle = 0.15,
+    attack = 0.08,
+  },
+}
 
 -- Starting position (overridden by map spawn)
 player_config.spawn = {
@@ -63,9 +97,9 @@ player_config.level_system = {
 
   -- Stat bonuses per level
   stat_bonuses = {
-    max_health = 10,     -- +10 HP per level
-    attack_damage = 2,   -- +2 damage per level
-    speed = 5            -- +5 speed per level
+    max_health = 10,   -- +10 HP per level
+    attack_damage = 2, -- +2 damage per level
+    speed = 5          -- +5 speed per level
   },
 
   -- Starting values

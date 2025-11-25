@@ -48,8 +48,8 @@ function render.draw(player)
     end
 
     love.graphics.setColor(0, 0, 0, shadow_alpha)
-    local shadow_width = player.collider_width * 0.875 * shadow_scale  -- 28/32 = 0.875
-    local shadow_height = player.collider_width * 0.25 * shadow_scale  -- 8/32 = 0.25
+    local shadow_width = player.collider_width * 0.625 * shadow_scale
+    local shadow_height = player.collider_width * 0.175 * shadow_scale
     love.graphics.ellipse("fill", draw_x, shadow_y, shadow_width, shadow_height)
     love.graphics.setColor(1, 1, 1, 1)
 

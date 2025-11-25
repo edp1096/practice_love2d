@@ -88,8 +88,8 @@ function render.draw(enemy)
             shadow_y = collider_center_y + (enemy.collider_height / 2) - 2
         end
 
-        local shadow_width = enemy.collider_width * 0.45
-        local shadow_height = enemy.collider_width * 0.2
+        local shadow_width = enemy.collider_width * 0.625
+        local shadow_height = enemy.collider_width * 0.175
         love.graphics.setColor(0, 0, 0, 0.4)
         love.graphics.ellipse("fill", shadow_x, shadow_y, shadow_width, shadow_height)
         love.graphics.setColor(1, 1, 1, 1)

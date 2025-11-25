@@ -290,13 +290,11 @@ end
 function inventory:useSelectedItem(player)
     local item = self:getSelectedItem()
     if not item then
-        print("✗ No item selected")
         return false
     end
 
     -- Use item's own use() method (handles both data-driven and legacy)
     if not item.canUse or not item:canUse(player) then
-        print(string.format("✗ Cannot use %s (HP full or wrong conditions)", item.name))
         return false
     end
 
@@ -717,7 +715,6 @@ function inventory:useQuickslot(slot_index, player)
 
     local item_id = self.quickslots[slot_index]
     if not item_id then
-        print("✗ Quickslot is empty")
         return false, "Quickslot is empty"
     end
 
@@ -732,7 +729,6 @@ function inventory:useQuickslot(slot_index, player)
 
     -- Check if item can be used
     if not item.canUse or not item:canUse(player) then
-        print(string.format("✗ Cannot use %s (HP full or wrong conditions)", item.name))
         return false, "Cannot use item"
     end
 

@@ -27,8 +27,6 @@ function polygon.create(world, object)
     end
 
     -- For 4+ points, always triangulate to ensure proper concave handling
-    print("Triangulating polygon (" .. point_count .. " points) at x=" .. object.x .. ", y=" .. object.y)
-
     local triangles_success, triangles = pcall(love.math.triangulate, vertices)
     if not triangles_success or not triangles then
         print("Triangulation failed - using bounding box fallback")
