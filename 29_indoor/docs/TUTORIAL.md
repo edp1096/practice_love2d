@@ -129,6 +129,7 @@ assets/
 3. Set map properties:
    - `game_mode` = `"topdown"` or `"platformer"`
    - `bgm` = `"level1"` (optional)
+   - `move_mode` = `"walk"` (optional, for indoor maps - slower walk speed)
 4. Export as Lua (not TMX)
 
 ---
@@ -213,6 +214,6 @@ That's it. You now have a working game engine.
 
 ---
 
-**Last Updated:** 2025-11-18
+**Last Updated:** 2025-11-26
 **Architecture:** Engine/Game Separation + Dependency Injection
 **Version:** LÖVE 11.5, Lua 5.1

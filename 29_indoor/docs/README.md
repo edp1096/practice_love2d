@@ -75,6 +75,9 @@ A LÖVE2D game engine with clean **Engine/Game separation** architecture.
 - **Topdown** (level1): Free 2D movement, no gravity
 - **Platformer** (level2): Horizontal + jump, gravity
 
+### Map Properties
+- **`move_mode`**: `"walk"` for indoor maps (slower speed, walk animation)
+
 ---
 
 ## Creating Content
@@ -194,4 +197,4 @@ Open: `http://localhost:8080`
 
 **Framework:** LÖVE 11.5 + Lua 5.1
 **Architecture:** Engine/Game Separation + Data-Driven
-**Last Updated:** 2025-11-25
+**Last Updated:** 2025-11-26

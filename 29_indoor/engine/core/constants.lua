@@ -102,6 +102,7 @@ constants.COLLISION_CLASSES = {
     PLAYER = "Player",
     PLAYER_DODGING = "PlayerDodging",
     PLAYER_FOOT = "PlayerFoot",  -- Topdown mode: foot collider for ground collision
+    PLAYER_FOOT_DODGING = "PlayerFootDodging",  -- Topdown mode: foot collider during dodge (passes through enemies)
     ENEMY = "Enemy",
     ENEMY_FOOT = "EnemyFoot",    -- Topdown mode: enemy foot collider for ground collision
     WALL = "Wall",

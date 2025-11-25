@@ -107,6 +107,9 @@ function combat.updateTimers(player, dt)
             if player.collider then
                 player.collider:setCollisionClass(constants.COLLISION_CLASSES.PLAYER)
             end
+            if player.foot_collider then
+                player.foot_collider:setCollisionClass(constants.COLLISION_CLASSES.PLAYER_FOOT)
+            end
         end
     end
 
@@ -286,6 +289,9 @@ function combat.startDodge(player)
 
     if player.collider then
         player.collider:setCollisionClass(constants.COLLISION_CLASSES.PLAYER_DODGING)
+    end
+    if player.foot_collider then
+        player.foot_collider:setCollisionClass(constants.COLLISION_CLASSES.PLAYER_FOOT_DODGING)
     end
 
     player.last_action_time = 0
