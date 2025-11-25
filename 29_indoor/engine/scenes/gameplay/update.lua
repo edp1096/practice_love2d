@@ -235,14 +235,17 @@ function update.checkTransitions(self, scaled_dt)
         return
     end
 
-    -- Use bottom half of player hitbox for more natural portal entrance
-    -- (prevents triggering portal when only player's head touches it)
-    local player_w = 32
-    local player_h = 16  -- Half height
+    -- Use bottom quarter of player hitbox for more natural portal entrance
+    -- (prevents triggering portal when only player's head/body touches it)
+    -- Player collider: character (16x32) * scale (2) = 32x64
+    -- Bottom quarter: similar size to foot_collider for tight control
+    local player_w = self.player.collider_width
+    local quarter_h = self.player.collider_height / 4    -- Bottom quarter (foot area)
+    local quarter_offset = self.player.collider_height / 4  -- Start from 3/4 position
     local transition = self.world:checkTransition(
         self.player.x - player_w / 2,
-        self.player.y,  -- Start from center (bottom half of player)
-        player_w, player_h
+        self.player.y + quarter_offset,      -- Start from 3/4 position
+        player_w, quarter_h    -- Check bottom quarter only
     )
 
     if transition then

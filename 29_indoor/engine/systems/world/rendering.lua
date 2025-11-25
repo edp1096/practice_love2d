@@ -20,7 +20,8 @@ local function getEntitySortY(entity, game_mode)
             foot_height = entity.is_humanoid and (entity.collider_height * 0.125) or (entity.collider_height * 0.6)
         else
             -- Player (18.75% height)
-            foot_height = entity.collider_height * 0.1875
+            -- foot_height = entity.collider_height * 0.1875
+            foot_height = entity.collider_height * 0.26
         end
         y = entity.foot_collider:getY() + foot_height / 2
     elseif entity.collider_offset_y and entity.collider_height then

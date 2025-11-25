@@ -10,7 +10,7 @@ return {
   tilewidth = 32,
   tileheight = 32,
   nextlayerid = 12,
-  nextobjectid = 51,
+  nextobjectid = 58,
   properties = {
     ["ambient"] = "day",
     ["game_mode"] = "topdown",
@@ -199,7 +199,7 @@ return {
       properties = {},
       encoding = "lua",
       data = {
-        43, 43, 44, 51, 53, 0, 13, 14, 14, 14, 15, 51, 52, 52, 53, 42, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43,
+        43, 43, 44, 52, 52, 53, 13, 14, 14, 14, 15, 51, 52, 52, 53, 42, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43,
         43, 43, 44, 0, 0, 0, 22, 23, 23, 23, 24, 0, 0, 0, 0, 51, 52, 52, 52, 52, 52, 52, 52, 52, 52, 52, 52, 52, 52, 52,
         43, 43, 44, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         43, 43, 44, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -376,19 +376,6 @@ return {
           properties = {}
         },
         {
-          id = 16,
-          name = "",
-          type = "",
-          shape = "rectangle",
-          x = 544,
-          y = 640,
-          width = 160,
-          height = 96,
-          rotation = 0,
-          visible = true,
-          properties = {}
-        },
-        {
           id = 20,
           name = "",
           type = "",
@@ -438,6 +425,29 @@ return {
             { x = 0, y = 32 }
           },
           properties = {}
+        },
+        {
+          id = 57,
+          name = "",
+          type = "",
+          shape = "polygon",
+          x = 544,
+          y = 608,
+          width = 160,
+          height = 128,
+          rotation = 0,
+          visible = true,
+          polygon = {
+            { x = 0, y = 32 },
+            { x = 160, y = 32 },
+            { x = 160, y = 128 },
+            { x = 128, y = 128 },
+            { x = 128, y = 96 },
+            { x = 32, y = 96 },
+            { x = 32, y = 128 },
+            { x = 0, y = 128 }
+          },
+          properties = {}
         }
       }
     },
@@ -477,7 +487,7 @@ return {
           name = "",
           type = "",
           shape = "rectangle",
-          x = 128,
+          x = 96,
           y = 480,
           width = 32,
           height = 32,
@@ -495,7 +505,7 @@ return {
           name = "",
           type = "",
           shape = "rectangle",
-          x = 128,
+          x = 96,
           y = 544,
           width = 32,
           height = 32,
@@ -513,7 +523,7 @@ return {
           name = "",
           type = "",
           shape = "rectangle",
-          x = 192,
+          x = 160,
           y = 512,
           width = 32,
           height = 32,
@@ -629,14 +639,14 @@ return {
           }
         },
         {
-          id = 50,
+          id = 51,
           name = "",
           type = "",
           shape = "rectangle",
           x = 672,
-          y = 736,
+          y = 726.75,
           width = 96,
-          height = 32,
+          height = 22.75,
           rotation = 180,
           visible = true,
           properties = {
