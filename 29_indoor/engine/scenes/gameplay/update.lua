@@ -199,13 +199,16 @@ function update.updateCamera(self)
     local target_x = self.player.x + shake_x
     local target_y = self.player.y + shake_y
 
-    -- X-axis: Fix camera if map narrower than screen
-    if mapWidth <= visible_width then
+    -- Small tolerance for floating point comparison
+    local tolerance = 1
+
+    -- X-axis: Fix camera if map narrower than or equal to screen
+    if mapWidth <= visible_width + tolerance then
         target_x = mapWidth / 2
     end
 
-    -- Y-axis: Fix camera if map shorter than screen
-    if mapHeight <= visible_height then
+    -- Y-axis: Fix camera if map shorter than or equal to screen
+    if mapHeight <= visible_height + tolerance then
         target_y = mapHeight / 2
     end
 

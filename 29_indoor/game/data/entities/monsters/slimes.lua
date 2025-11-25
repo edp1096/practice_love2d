@@ -51,7 +51,7 @@ return {
         attack_cooldown = 0.8,
         detection_range = 150,
         attack_range = 50,
-        sprite_scale = 3,
+        sprite_scale = 3.5,
         source_color = { 1.0, 0.0, 0.0 },
         target_color = { 0.0, 1.0, 0.0 },
     }),

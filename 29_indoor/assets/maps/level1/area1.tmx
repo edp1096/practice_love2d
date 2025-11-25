@@ -7,7 +7,7 @@
   <property name="ambient" value="day"/>
   <property name="game_mode" value="topdown"/>
   <property name="name" value="level1_area1"/>
-  <property name="weather_change_interval" value="60,120"/>
+  <property name="weather_change_interval" value="60,100"/>
   <property name="weather_pool" value="rain:20,snow:20,storm:10,mist:15,clear:35"/>
  </properties>
  <tileset firstgid="1" name="tileset_area1" tilewidth="32" tileheight="32" tilecount="54" columns="9">
@@ -209,7 +209,7 @@
   <object id="51" x="672" y="726.75" width="96" height="22.75" rotation="180">
    <properties>
     <property name="spawn_x" type="float" value="240"/>
-    <property name="spawn_y" type="float" value="220"/>
+    <property name="spawn_y" type="float" value="190"/>
     <property name="target_map" value="assets/maps/level1/home1.lua"/>
     <property name="type" value="portal"/>
    </properties>

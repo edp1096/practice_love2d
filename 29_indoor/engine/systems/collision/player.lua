@@ -23,7 +23,7 @@ function player_collision.create(player, physicsWorld)
 
     -- Topdown mode: Add foot collider (bottom only)
     if player.game_mode == "topdown" then
-        local bottom_height = player.collider_height * 0.1875  -- Bottom 18.75% (1.5x of 12.5%)
+        local bottom_height = player.collider_height * 0.2465
         local bottom_y_offset = player.collider_height * 0.40625  -- Position at 81.25% down
 
         player.foot_collider = physicsWorld:newBSGRectangleCollider(

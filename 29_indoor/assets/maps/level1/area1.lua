@@ -15,7 +15,7 @@ return {
     ["ambient"] = "day",
     ["game_mode"] = "topdown",
     ["name"] = "level1_area1",
-    ["weather_change_interval"] = "60,120",
+    ["weather_change_interval"] = "60,100",
     ["weather_pool"] = "rain:20,snow:20,storm:10,mist:15,clear:35"
   },
   tilesets = {
@@ -651,7 +651,7 @@ return {
           visible = true,
           properties = {
             ["spawn_x"] = 240,
-            ["spawn_y"] = 220,
+            ["spawn_y"] = 190,
             ["target_map"] = "assets/maps/level1/home1.lua",
             ["type"] = "portal"
           }

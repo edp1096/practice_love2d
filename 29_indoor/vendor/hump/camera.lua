@@ -214,6 +214,7 @@ end
 --[[ 251003 edp1096 ]]
 -- Lock camera position to keep the visible area within map bounds
 -- This function considers scale and rotation when calculating boundaries
+-- Axis-independent: only clamps axes where map is larger than view
 function camera:lockBounds(map_w, map_h, w, h)
 	w = w or love.graphics.getWidth()
 	h = h or love.graphics.getHeight()
@@ -244,11 +245,22 @@ function camera:lockBounds(map_w, map_h, w, h)
 		max_y = math.max(max_y, corner[2])
 	end
 
-	-- Clamp camera position to keep the entire view within map bounds
-	if min_x < 0 then self.x = self.x - min_x end
-	if max_x > map_w then self.x = self.x - (max_x - map_w) end
-	if min_y < 0 then self.y = self.y - min_y end
-	if max_y > map_h then self.y = self.y - (max_y - map_h) end
+	-- Calculate visible dimensions
+	local view_width = max_x - min_x
+	local view_height = max_y - min_y
+	local tolerance = 1  -- Small tolerance for floating point comparison
+
+	-- X-axis: only clamp if map is wider than view
+	if map_w > view_width + tolerance then
+		if min_x < 0 then self.x = self.x - min_x end
+		if max_x > map_w then self.x = self.x - (max_x - map_w) end
+	end
+
+	-- Y-axis: only clamp if map is taller than view
+	if map_h > view_height + tolerance then
+		if min_y < 0 then self.y = self.y - min_y end
+		if max_y > map_h then self.y = self.y - (max_y - map_h) end
+	end
 
 	return self
 end

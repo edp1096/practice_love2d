@@ -194,7 +194,8 @@ function debug:handleInput(key, context)
     elseif key == "f6" then
         self:toggleLayer("quest")  -- F6: Toggle quest debug
     elseif key == "f7" and context.player then
-        -- F7: Hot reload weapon config
+        -- F7: Hot reload player + weapon config
+        hotreload.reloadPlayerConfig(context.player)
         hotreload.reloadWeaponConfig(context.player)
     elseif key == "f8" and context.camera then
         -- F8: Test effects at mouse position

@@ -3,6 +3,39 @@
 
 local hotreload = {}
 
+-- Reload player configuration at runtime
+function hotreload.reloadPlayerConfig(player)
+    if not player then
+        dprint("[F7] No player!")
+        return
+    end
+
+    dprint("[F7] Reloading player config...")
+
+    -- Clear require cache
+    package.loaded["game.data.player"] = nil
+
+    -- Reload config
+    local player_config = require "game.data.player"
+
+    -- Update player's config reference
+    player.config = player_config
+
+    -- Update stats
+    if player_config.stats then
+        player.speed = player_config.stats.speed or player.speed
+        player.jump_power = player_config.stats.jump_power or player.jump_power
+    end
+
+    -- Update animations config (will apply on next animation change)
+    if player_config.animations then
+        player.default_move = player_config.animations.default_move or "walk"
+    end
+
+    dprint(string.format("[F7] ✓ Player reloaded! Speed: %d, Move: %s",
+        player.speed, player.default_move or "walk"))
+end
+
 -- Reload weapon configuration at runtime
 function hotreload.reloadWeaponConfig(player)
     if not player or not player.weapon then
