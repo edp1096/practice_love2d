@@ -5,8 +5,8 @@ local start_config = {}
 
 -- Game Start Defaults
 start_config.map = "assets/maps/level1/area1.lua"
-start_config.spawn_x = 400
-start_config.spawn_y = 250
+start_config.spawn_x = 120
+start_config.spawn_y = 130
 start_config.intro_id = "level1"
 
 -- Starting Inventory Items
