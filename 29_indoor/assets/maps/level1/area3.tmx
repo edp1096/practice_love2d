@@ -121,7 +121,7 @@
    <property name="target_map" value="assets/maps/level1/area2.lua"/>
    <property name="type" value="portal"/>
   </properties>
-  <object id="48" x="2528" y="0" width="32" height="430">
+  <object id="48" x="2528" y="0" width="32" height="480">
    <properties>
     <property name="intro_id" value="level2"/>
     <property name="spawn_x" type="float" value="80"/>
@@ -130,7 +130,7 @@
     <property name="type" value="intro"/>
    </properties>
   </object>
-  <object id="50" x="0" y="0" width="32" height="430">
+  <object id="50" x="0" y="0" width="32" height="480">
    <properties>
     <property name="spawn_x" type="float" value="900"/>
     <property name="spawn_y" type="float" value="850"/>
@@ -148,7 +148,7 @@
   </object>
  </objectgroup>
  <objectgroup id="6" name="NPCs">
-  <object id="46" type="deceiver" x="1664" y="368" width="32" height="32">
+  <object id="46" type="deceiver" x="1664" y="399" width="32" height="32">
    <properties>
     <property name="id" value="deceiver"/>
    </properties>

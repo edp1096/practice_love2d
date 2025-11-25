@@ -13,6 +13,7 @@ return {
   nextobjectid = 7,
   properties = {
     ["game_mode"] = "topdown",
+    ["move_mode"] = "walk",
     ["name"] = "home1"
   },
   tilesets = {

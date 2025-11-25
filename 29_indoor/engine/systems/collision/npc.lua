@@ -24,9 +24,9 @@ function npc_collision.create(npc, physicsWorld, game_mode)
         npc.collider:setSensor(true)
     end
 
-    -- Update NPC position to match collider
-    npc.x = npc.collider:getX() - npc.collider_offset_x
-    npc.y = npc.collider:getY() - npc.collider_offset_y
+    -- NOTE: Do NOT update npc.x/y here
+    -- The collider is created at getColliderBounds() position (which is npc.x + offset)
+    -- npc.x/y should remain unchanged as the sprite position
 end
 
 return npc_collision

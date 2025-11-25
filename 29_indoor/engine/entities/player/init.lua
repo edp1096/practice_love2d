@@ -23,6 +23,7 @@ function player:new(x, y, config)
     instance.x = x or spawn.x or constants.PLAYER.DEFAULT_X
     instance.y = y or spawn.y or constants.PLAYER.DEFAULT_Y
     instance.speed = stats.speed or constants.PLAYER.DEFAULT_SPEED
+    instance.walk_speed = stats.walk_speed  -- nil if not set (will use speed as fallback)
 
     -- Game mode (will be set by play scene)
     instance.game_mode = "topdown"

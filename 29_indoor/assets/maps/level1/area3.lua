@@ -385,7 +385,7 @@ return {
           x = 2528,
           y = 0,
           width = 32,
-          height = 430,
+          height = 480,
           rotation = 0,
           visible = true,
           properties = {
@@ -404,7 +404,7 @@ return {
           x = 0,
           y = 0,
           width = 32,
-          height = 430,
+          height = 480,
           rotation = 0,
           visible = true,
           properties = {
@@ -468,7 +468,7 @@ return {
           type = "deceiver",
           shape = "rectangle",
           x = 1664,
-          y = 368,
+          y = 399,
           width = 32,
           height = 32,
           rotation = 0,

@@ -114,7 +114,12 @@ local function handleMovementInput(player, dt)
         if player.game_mode == "platformer" then
             -- Platformer mode: horizontal movement only, jump handled separately
             if movement_input then
-                vx = move_x * player.speed
+                -- Use walk_speed if walking and walk_speed is defined
+                local current_speed = player.speed
+                if player.default_move == "walk" and player.walk_speed then
+                    current_speed = player.walk_speed
+                end
+                vx = move_x * current_speed
                 vy = 0 -- Gravity handles vertical movement
                 is_moving = math.abs(move_x) > 0.01
 
@@ -136,8 +141,13 @@ local function handleMovementInput(player, dt)
         else
             -- Topdown mode: 8-directional movement
             if movement_input then
-                vx = move_x * player.speed
-                vy = move_y * player.speed
+                -- Use walk_speed if walking and walk_speed is defined
+                local current_speed = player.speed
+                if player.default_move == "walk" and player.walk_speed then
+                    current_speed = player.walk_speed
+                end
+                vx = move_x * current_speed
+                vy = move_y * current_speed
                 is_moving = true
 
                 -- Determine direction from movement vector

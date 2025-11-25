@@ -5,7 +5,8 @@ local player_config = {}
 
 -- Basic stats
 player_config.stats = {
-  speed = 260,
+  speed = 260,        -- run speed (default movement)
+  walk_speed = 130,   -- walk speed (for indoor maps with move_mode="walk")
   jump_power = 600,
 }
 

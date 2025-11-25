@@ -281,7 +281,7 @@ function loaders.loadEnemies(self, killed_enemies)
             if shouldLoadTransformedEnemy(transform_data, current_map_name, map_id, killed_enemies) then
                 -- Create transformed enemy
                 local new_enemy = self.enemy_class:new(transform_data.x, transform_data.y, transform_data.enemy_type)
-                new_enemy.facing = transform_data.facing
+                new_enemy.direction = transform_data.direction or "down"
                 new_enemy.map_id = map_id
                 new_enemy.was_npc = true
                 new_enemy.respawn = false  -- Transformed enemies don't respawn when killed
@@ -331,7 +331,9 @@ function loaders.loadNPCs(self)
             if shouldLoadTransformedNPC(npc_data, current_map_name) then
                 -- Create transformed NPC
                 local new_npc = self.npc_class:new(npc_data.x, npc_data.y, npc_data.npc_type)
-                new_npc.facing = npc_data.facing
+                local dir = npc_data.direction or "down"
+                new_npc.direction = dir
+                new_npc.anim = new_npc.animations["idle_" .. dir]  -- Update animation
                 new_npc.map_id = map_id
                 new_npc.world = self
 

@@ -237,6 +237,17 @@ function scene_setup.createPlayer(scene, spawn_x, spawn_y, save_data)
     -- Set player game mode based on world
     scene.player.game_mode = scene.world.game_mode
 
+    -- Apply map-based move mode (walk/run) - for indoor maps etc.
+    local map_props = scene.world.map.properties
+    if map_props then
+        if map_props.move_mode then
+            scene.player.default_move = map_props.move_mode  -- "walk" or "run"
+        end
+        if map_props.walk_speed then
+            scene.player.walk_speed = tonumber(map_props.walk_speed)
+        end
+    end
+
     -- Apply loaded save data
     if save_data and save_data.hp then
         scene.player.health = save_data.hp
@@ -462,6 +473,11 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
     -- CRITICAL: Update player game mode BEFORE adding to world
     -- (createPlayerColliders needs correct game_mode to create foot_collider in topdown)
     scene.player.game_mode = scene.world.game_mode
+
+    -- Apply map-based move mode (walk/run) - reset to config default if not specified
+    local map_props = scene.world.map.properties
+    local config_default = scene.player_config.animations and scene.player_config.animations.default_move or "walk"
+    scene.player.default_move = (map_props and map_props.move_mode) or config_default
 
     scene.world:addEntity(scene.player)
 

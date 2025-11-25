@@ -358,7 +358,7 @@ function entities.transformNPCToEnemy(self, npc_or_id, enemy_type)
 
     -- Save NPC position and state
     local x, y = npc.x, npc.y
-    local facing = npc.facing or "down"
+    local direction = npc.direction or "down"  -- NPC uses 'direction' not 'facing'
     local map_id = npc.map_id  -- Use map_id (e.g., "level1_area3_obj_46") for persistence
     local original_npc_type = npc.type  -- Save original NPC type for restoration
 
@@ -373,7 +373,7 @@ function entities.transformNPCToEnemy(self, npc_or_id, enemy_type)
             original_npc_type = original_npc_type,  -- Original NPC type
             x = x,
             y = y,
-            facing = facing,
+            direction = direction,
             map_name = self.map.properties.name or "unknown"
         }
     end
@@ -390,7 +390,7 @@ function entities.transformNPCToEnemy(self, npc_or_id, enemy_type)
     -- Create enemy at same position
     local enemy = self.enemy_class:new(x, y, enemy_type)
     if enemy then
-        enemy.facing = facing
+        enemy.direction = direction  -- Apply saved direction
         enemy.map_id = map_id  -- Use same map_id for tracking (e.g., "level1_area3_obj_46")
         enemy.was_npc = true  -- Flag to indicate this was transformed from NPC
         enemy.respawn = false  -- Transformed enemies don't respawn when killed
@@ -415,17 +415,10 @@ end
 function entities.transformEnemyToNPC(self, enemy, npc_type)
     if not enemy or not npc_type then return nil end
 
-    -- Get accurate position from collider (before it's destroyed)
+    -- Use sprite position directly (not collider position)
+    -- Collider positions have offsets that would cause NPC to appear shifted
     local x, y = enemy.x, enemy.y
-    if self.game_mode == "topdown" and enemy.foot_collider then
-        x = enemy.foot_collider:getX()
-        y = enemy.foot_collider:getY()
-    elseif enemy.collider then
-        x = enemy.collider:getX()
-        y = enemy.collider:getY()
-    end
-
-    local facing = enemy.facing or "down"
+    local direction = enemy.direction or "down"  -- Enemy uses 'direction'
 
     -- Remove enemy light (if exists)
     if enemy.light and self.lighting_sys then
@@ -445,7 +438,7 @@ function entities.transformEnemyToNPC(self, enemy, npc_type)
             npc_type = npc_type,
             x = x,
             y = y,
-            facing = facing,
+            direction = direction,
             map_name = self.map.properties.name or "unknown"  -- Explicit map tracking
         }
     end
@@ -456,7 +449,8 @@ function entities.transformEnemyToNPC(self, enemy, npc_type)
     -- Create NPC at same position
     local npc = self.npc_class:new(x, y, npc_type)
     if npc then
-        npc.facing = facing
+        npc.direction = direction  -- Apply saved direction
+        npc.anim = npc.animations["idle_" .. direction]  -- Update animation to match direction
         npc.map_id = enemy.map_id  -- Store map_id for future reference
 
         -- Add to world
