@@ -20,7 +20,6 @@ function system.handleHotkey(key, is_mobile, modules)
     end
 
     -- Future system hotkeys can be added here:
-    -- F12: Screenshot
     -- Alt+F4: Quit
     -- Ctrl+Q: Quit
     -- etc.

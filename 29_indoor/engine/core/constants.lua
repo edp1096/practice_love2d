@@ -9,6 +9,16 @@ constants.RENDER_HEIGHT = 540
 constants.MIN_WINDOW_WIDTH = 640
 constants.MIN_WINDOW_HEIGHT = 360
 
+-- Camera & Minimap
+constants.CAMERA = {
+    ZOOM_FACTOR = 2.0,  -- In-game camera zoom (higher = more zoomed in)
+}
+
+constants.MINIMAP = {
+    ZOOM_FACTOR = 1.2,  -- Minimap zoom level (1x = normal scale, higher = more detail/smaller area)
+    LIGHTING_BRIGHTNESS = 0.2,  -- How much to brighten lighting for minimap visibility (0 = full dark, 1 = no lighting)
+}
+
 -- Input System
 constants.INPUT = {
     GAMEPAD_DEADZONE = 0.15,

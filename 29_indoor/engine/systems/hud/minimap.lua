@@ -5,13 +5,10 @@
 local lighting = require "engine.systems.lighting"
 local colors = require "engine.utils.colors"
 local parallax = require "engine.systems.parallax"
+local constants = require "engine.core.constants"
 
 local minimap = {}
 minimap.__index = minimap
-
--- Configuration constants
-local ZOOM_FACTOR = 2                   -- Minimap zoom level (2x = more detail, smaller area)
-local MINIMAP_LIGHTING_BRIGHTNESS = 0.2 -- How much to brighten lighting for minimap visibility (0 = full dark, 1 = no lighting)
 
 -- Helper: Find start position for tiling (extends left/up to cover entire area)
 local function getTileStart(offset, size)
@@ -94,8 +91,8 @@ function minimap:new()
         size = 126,   -- Minimap size (width and height) - 70% of original 180
         padding = 10, -- Padding from screen edge
         border_width = 2,
-        zoom_factor = ZOOM_FACTOR,
-        lighting_brightness = MINIMAP_LIGHTING_BRIGHTNESS,
+        zoom_factor = constants.MINIMAP.ZOOM_FACTOR,
+        lighting_brightness = constants.MINIMAP.LIGHTING_BRIGHTNESS,
 
         -- Colors (from colors.lua)
         bg_color = colors.for_minimap_bg,

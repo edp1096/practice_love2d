@@ -197,9 +197,9 @@ return {
             keyboard = { "escape" },  -- P key reserved for debug hand marking
             gamepad = "start"
         },
-        manual_save = {
-            keyboard = { "f9" }
-        }
+        -- manual_save = {
+        --     keyboard = { "f9" }
+        -- }
     },
 
     -- Default gamepad settings

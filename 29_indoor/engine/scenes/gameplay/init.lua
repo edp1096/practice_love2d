@@ -100,7 +100,7 @@ function gameplay:resize(w, h)
     local sw, sh = display:GetScreenDimensions()
     local scale_x = sw / vw
     local scale_y = sh / vh
-    local cam_scale = math.min(scale_x, scale_y) * 1.4  -- 1.4x zoom for closer view
+    local cam_scale = math.min(scale_x, scale_y) * constants.CAMERA.ZOOM_FACTOR
 
     self.cam:zoomTo(cam_scale)
 

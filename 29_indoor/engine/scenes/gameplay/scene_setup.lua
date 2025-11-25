@@ -167,6 +167,9 @@ function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_sl
     -- Initialize level system
     scene_setup.initLevelSystem(scene, save_data, is_new_game)
 
+    -- Store quest system reference (for debug display)
+    scene.quest_system = quest_system
+
     -- Create world and player
     scene_setup.createWorld(scene, mapPath)
     scene_setup.createPlayer(scene, spawn_x, spawn_y, save_data)
@@ -192,7 +195,7 @@ function scene_setup.initCamera(scene)
     local sw, sh = display:GetScreenDimensions()
     local scale_x = sw / vw
     local scale_y = sh / vh
-    local cam_scale = math.min(scale_x, scale_y) * 1.4  -- 1.4x zoom for closer view
+    local cam_scale = math.min(scale_x, scale_y) * constants.CAMERA.ZOOM_FACTOR
 
     scene.cam = camera(0, 0, cam_scale, 0, 0)
 end
