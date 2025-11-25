@@ -56,7 +56,10 @@ A LÖVE2D game engine with clean **Engine/Game separation** architecture.
 - **Start** - Pause
 
 **Debug (if `APP_CONFIG.is_debug = true`):**
-- **F1-F6** - Toggle debug features
+- **F1** - Toggle debug mode
+- **F2** - Colliders/Grid | **F3** - FPS/Effects | **F4** - Player Info | **F5** - Screen Info
+- **F6** - Quest Debug | **F7** - Hot Reload | **F8** - Test Effects
+- **F9** - Virtual Mouse | **F10** - Virtual Gamepad | **F11** - Fullscreen
 
 ---
 

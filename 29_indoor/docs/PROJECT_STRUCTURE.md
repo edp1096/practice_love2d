@@ -37,7 +37,12 @@ core/
 ├── save.lua              - Save/load (slot-based)
 ├── quest.lua             - Quest system (5 types)
 ├── level.lua             - Level/EXP system
-├── debug.lua             - Debug overlay
+├── debug/                - Debug system (modular)
+│   ├── init.lua          - Main module (toggles, input)
+│   ├── render.lua        - Info panel, help screen
+│   ├── hand_marking.lua  - Hand marking mode
+│   ├── hotreload.lua     - Runtime config reload
+│   └── helpers.lua       - Utility functions
 ├── display/              - Virtual screen (scaling, letterboxing)
 └── input/                - Input dispatcher + sources
 ```

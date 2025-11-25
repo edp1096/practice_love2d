@@ -37,7 +37,12 @@ core/
 ├── save.lua              - 저장/로드 (슬롯 기반)
 ├── quest.lua             - 퀘스트 시스템 (5가지 타입)
 ├── level.lua             - 레벨/경험치 시스템
-├── debug.lua             - 디버그 오버레이
+├── debug/                - 디버그 시스템 (모듈화)
+│   ├── init.lua          - 메인 모듈 (토글, 입력)
+│   ├── render.lua        - 정보 패널, 도움말 화면
+│   ├── hand_marking.lua  - 핸드 마킹 모드
+│   ├── hotreload.lua     - 런타임 설정 리로드
+│   └── helpers.lua       - 유틸리티 함수
 ├── display/              - 가상 화면 (스케일링, 레터박스)
 └── input/                - 입력 디스패처 + 소스
 ```
