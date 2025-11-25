@@ -137,7 +137,7 @@ return {
           properties = {
             ["Type"] = "parallax",
             ["image"] = "assets/images/parallax/layer4_trees.png",
-            ["offset_y"] = 250,
+            ["offset_y"] = 400,
             ["parallax_factor"] = 0.7,
             ["repeat_x"] = true,
             ["z_index"] = 4
@@ -383,15 +383,15 @@ return {
           type = "",
           shape = "rectangle",
           x = 2528,
-          y = 128,
+          y = 0,
           width = 32,
-          height = 302,
+          height = 430,
           rotation = 0,
           visible = true,
           properties = {
             ["intro_id"] = "level2",
-            ["spawn_x"] = 100,
-            ["spawn_y"] = 448,
+            ["spawn_x"] = 80,
+            ["spawn_y"] = 230,
             ["target_map"] = "assets/maps/level2/area1.lua",
             ["type"] = "intro"
           }
@@ -408,8 +408,8 @@ return {
           rotation = 0,
           visible = true,
           properties = {
-            ["spawn_x"] = 834,
-            ["spawn_y"] = 894,
+            ["spawn_x"] = 900,
+            ["spawn_y"] = 850,
             ["target_map"] = "assets/maps/level1/area2.lua",
             ["type"] = "portal"
           }

@@ -46,7 +46,7 @@
    <properties>
     <property name="Type" value="parallax"/>
     <property name="image" value="assets/images/parallax/layer4_trees.png"/>
-    <property name="offset_y" type="float" value="250"/>
+    <property name="offset_y" type="float" value="400"/>
     <property name="parallax_factor" type="float" value="0.7"/>
     <property name="repeat_x" type="bool" value="true"/>
     <property name="z_index" type="int" value="4"/>
@@ -121,19 +121,19 @@
    <property name="target_map" value="assets/maps/level1/area2.lua"/>
    <property name="type" value="portal"/>
   </properties>
-  <object id="48" x="2528" y="128" width="32" height="302">
+  <object id="48" x="2528" y="0" width="32" height="430">
    <properties>
     <property name="intro_id" value="level2"/>
-    <property name="spawn_x" type="float" value="100"/>
-    <property name="spawn_y" type="float" value="448"/>
+    <property name="spawn_x" type="float" value="80"/>
+    <property name="spawn_y" type="float" value="230"/>
     <property name="target_map" value="assets/maps/level2/area1.lua"/>
     <property name="type" value="intro"/>
    </properties>
   </object>
   <object id="50" x="0" y="0" width="32" height="430">
    <properties>
-    <property name="spawn_x" type="float" value="834"/>
-    <property name="spawn_y" type="float" value="894"/>
+    <property name="spawn_x" type="float" value="900"/>
+    <property name="spawn_y" type="float" value="850"/>
     <property name="target_map" value="assets/maps/level1/area2.lua"/>
     <property name="type" value="portal"/>
    </properties>
