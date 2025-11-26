@@ -98,7 +98,8 @@ local function handleMovementInput(player, dt)
     local movement_input = false
 
     -- Check for movement input (keyboard or gamepad)
-    local move_x, move_y = input:getMovement()
+    -- is_walk_input: true if CTRL held (keyboard) or stick magnitude < 0.5 (gamepad)
+    local move_x, move_y, is_walk_input = input:getMovement()
 
     -- In platformer mode, ignore vertical input (W/S keys used for jump/crouch)
     if player.game_mode == "platformer" then
@@ -110,13 +111,18 @@ local function handleMovementInput(player, dt)
     if player.state ~= "attacking" and not player.parry_active and not player.dodge_active and not debug:IsHandMarkingActive() then
         local move_direction = nil
 
+        -- Determine move type: walk if map forces it, CTRL held, or partial stick
+        -- default_move is "walk" for indoor maps (move_mode="walk")
+        local use_walk = (player.default_move == "walk") or is_walk_input
+        local move_type = use_walk and "walk" or "run"
+
         -- Game mode specific movement
         if player.game_mode == "platformer" then
             -- Platformer mode: horizontal movement only, jump handled separately
             if movement_input then
                 -- Use walk_speed if walking and walk_speed is defined
                 local current_speed = player.speed
-                if player.default_move == "walk" and player.walk_speed then
+                if use_walk and player.walk_speed then
                     current_speed = player.walk_speed
                 end
                 vx = move_x * current_speed
@@ -143,7 +149,7 @@ local function handleMovementInput(player, dt)
             if movement_input then
                 -- Use walk_speed if walking and walk_speed is defined
                 local current_speed = player.speed
-                if player.default_move == "walk" and player.walk_speed then
+                if use_walk and player.walk_speed then
                     current_speed = player.walk_speed
                 end
                 vx = move_x * current_speed
@@ -176,8 +182,15 @@ local function handleMovementInput(player, dt)
         end
 
         if is_moving then
-            local move_type = player.default_move or "walk"
-            player.anim = player.animations[move_type .. "_" .. player.direction]
+            -- Use walk animation if walk mode, run animation if run mode
+            -- Fallback to walk if run animation doesn't exist
+            local anim_key = move_type .. "_" .. player.direction
+            if player.animations[anim_key] then
+                player.anim = player.animations[anim_key]
+            else
+                -- Fallback to walk animation if run doesn't exist
+                player.anim = player.animations["walk_" .. player.direction]
+            end
             player.anim:update(dt)
             player.state = move_type == "run" and "running" or "walking"
         else

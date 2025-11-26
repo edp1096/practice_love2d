@@ -33,7 +33,7 @@ end
 
 function keyboard_input:getMovement()
     if not self:isAvailable() then
-        return 0, 0, false
+        return 0, 0, false, false
     end
 
     local vx, vy = 0, 0
@@ -87,12 +87,15 @@ function keyboard_input:getMovement()
         vy = vy / length
     end
 
-    -- Return true if any movement detected
+    -- Check for CTRL key to force walk mode
+    local is_walk = love.keyboard.isDown("lctrl") or love.keyboard.isDown("rctrl")
+
+    -- Return true if any movement detected, plus walk mode flag
     if vx ~= 0 or vy ~= 0 then
-        return vx, vy, true
+        return vx, vy, true, is_walk
     end
 
-    return 0, 0, false
+    return 0, 0, false, false
 end
 
 function keyboard_input:getAimDirection(player_x, player_y, cam)

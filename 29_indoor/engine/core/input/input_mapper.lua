@@ -90,11 +90,12 @@ function input_mapper:update(dt)
 end
 
 -- Get movement from highest priority available source
+-- Returns: vx, vy, is_walk (true if walk mode requested)
 function input_mapper:getMovement()
     -- Check input sources in priority order
     for _, source in ipairs(self.sources) do
         if source:isAvailable() then
-            local vx, vy, has_input = source:getMovement()
+            local vx, vy, has_input, is_walk = source:getMovement()
             if has_input then
                 -- Update last input type based on source
                 if source == self.gamepad or source == self.virtual_pad then
@@ -102,13 +103,13 @@ function input_mapper:getMovement()
                 elseif source == self.keyboard then
                     self.active_input = "keyboard_mouse"
                 end
-                return vx, vy
+                return vx, vy, is_walk or false
             end
         end
     end
 
     -- No input source provided movement, return zero
-    return 0, 0
+    return 0, 0, false
 end
 
 -- Get aim direction from highest priority available source

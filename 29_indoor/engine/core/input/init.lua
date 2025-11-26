@@ -206,6 +206,7 @@ function input:wasPressed(action, source, value)
     return self.mapper:wasActionPressed(mapping, source, value)
 end
 
+-- Returns: vx, vy, is_walk (true if walk mode requested via CTRL or partial stick)
 function input:getMovement()
     return self.mapper:getMovement()
 end

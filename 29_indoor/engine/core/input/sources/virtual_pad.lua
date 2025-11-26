@@ -20,9 +20,12 @@ function virtual_gamepad_input:isAvailable()
     return self.enabled and self.virtual_gamepad and self.virtual_gamepad.enabled
 end
 
+-- Walk threshold: below this magnitude = walk, above = run
+virtual_gamepad_input.WALK_THRESHOLD = 0.75
+
 function virtual_gamepad_input:getMovement()
     if not self:isAvailable() then
-        return 0, 0, false
+        return 0, 0, false, false
     end
 
     local stick_x, stick_y = self.virtual_gamepad:getStickAxis()
@@ -30,10 +33,13 @@ function virtual_gamepad_input:getMovement()
     -- Check if there's actual input
     if math.abs(stick_x) > constants.INPUT.STICK_THRESHOLD or
         math.abs(stick_y) > constants.INPUT.STICK_THRESHOLD then
-        return stick_x, stick_y, true
+        -- Calculate stick magnitude to determine walk/run
+        local magnitude = math.sqrt(stick_x * stick_x + stick_y * stick_y)
+        local is_walk = magnitude < self.WALK_THRESHOLD
+        return stick_x, stick_y, true, is_walk
     end
 
-    return 0, 0, false
+    return 0, 0, false, false
 end
 
 function virtual_gamepad_input:getAimDirection(player_x, player_y, cam)
