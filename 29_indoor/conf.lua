@@ -6,7 +6,7 @@ local is_mobile = startup.detectPlatform_early()
 
 APP_CONFIG = {
     version = "0.0.1", -- Hardcoded version (not saved to config.ini)
-    is_debug = true,   -- Temporarily enabled for debugging
+    is_debug = false,  -- Debug mode off by default (set IsDebug=true in config.ini to enable)
 
     width = 1280,
     height = 720,
