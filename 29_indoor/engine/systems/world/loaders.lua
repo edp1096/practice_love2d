@@ -112,11 +112,28 @@ function loaders.loadTreeTiles(self)
                             tileset = tileset,
                             world_x = world_x,
                             world_y = world_y,
+                            gid = tile_data.gid,  -- Store gid for animation lookup
+                            map = self.map,       -- Store map reference for animation
                             draw = function(self_tile)
+                                -- Get current quad (may be animated)
+                                local current_tile = self_tile.map.tiles[self_tile.gid]
+                                local quad = self_tile.tile_info.quad  -- Default quad
+
+                                -- Check if tile has animation
+                                if current_tile and current_tile.animation then
+                                    -- Get current frame's tile ID and lookup its quad
+                                    local frame_tileid = current_tile.animation[current_tile.frame].tileid
+                                    local frame_gid = frame_tileid + self_tile.map.tilesets[current_tile.tileset].firstgid
+                                    local frame_tile = self_tile.map.tiles[frame_gid]
+                                    if frame_tile then
+                                        quad = frame_tile.quad
+                                    end
+                                end
+
                                 -- Draw the tile using tileset image and quad
                                 love.graphics.draw(
                                     self_tile.tileset.image,
-                                    self_tile.tile_info.quad,
+                                    quad,
                                     self_tile.world_x,
                                     self_tile.world_y
                                 )

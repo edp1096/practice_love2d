@@ -45,8 +45,80 @@ return {
       },
       properties = {},
       wangsets = {},
-      tilecount = 1944,
+      tilecount = 486,
       tiles = {}
+    },
+    {
+      name = "poison_jar",
+      firstgid = 487,
+      class = "",
+      tilewidth = 32,
+      tileheight = 32,
+      spacing = 0,
+      margin = 0,
+      columns = 9,
+      image = "poison_jar.png",
+      imagewidth = 288,
+      imageheight = 32,
+      transparentcolor = "#ff00ff",
+      objectalignment = "unspecified",
+      tilerendersize = "tile",
+      fillmode = "stretch",
+      tileoffset = {
+        x = 0,
+        y = 0
+      },
+      grid = {
+        orientation = "orthogonal",
+        width = 32,
+        height = 32
+      },
+      properties = {},
+      wangsets = {},
+      tilecount = 9,
+      tiles = {
+        {
+          id = 0,
+          animation = {
+            {
+              tileid = 0,
+              duration = 100
+            },
+            {
+              tileid = 1,
+              duration = 100
+            },
+            {
+              tileid = 2,
+              duration = 100
+            },
+            {
+              tileid = 3,
+              duration = 100
+            },
+            {
+              tileid = 4,
+              duration = 100
+            },
+            {
+              tileid = 5,
+              duration = 100
+            },
+            {
+              tileid = 6,
+              duration = 100
+            },
+            {
+              tileid = 7,
+              duration = 100
+            },
+            {
+              tileid = 8,
+              duration = 100
+            }
+          }
+        }
+      }
     }
   },
   layers = {
@@ -124,7 +196,7 @@ return {
         319, 319, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         319, 319, 0, 0, 0, 0, 0, 0, 0, 0, 166, 0, 0, 0, 166, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         319, 319, 0, 250, 250, 250, 0, 0, 0, 0, 193, 0, 0, 0, 193, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        319, 319, 0, 250, 0, 250, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 315, 315,
+        319, 319, 0, 250, 487, 250, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 315, 315,
         319, 319, 0, 250, 250, 250, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 319, 319,
         319, 319, 0, 0, 0, 0, 0, 0, 0, 0, 166, 0, 0, 0, 166, 0, 0, 0, 0, 0, 0, 0, 0, 319, 319,
         342, 342, 0, 0, 0, 0, 0, 0, 0, 0, 193, 0, 0, 0, 193, 0, 0, 0, 0, 0, 0, 0, 0, 342, 342,
