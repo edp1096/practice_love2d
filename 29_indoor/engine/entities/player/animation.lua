@@ -147,16 +147,7 @@ local function handleMovementInput(player, dt)
         else
             -- Topdown mode: 8-directional movement
             if movement_input then
-                -- Use walk_speed if walking and walk_speed is defined
-                local current_speed = player.speed
-                if use_walk and player.walk_speed then
-                    current_speed = player.walk_speed
-                end
-                vx = move_x * current_speed
-                vy = move_y * current_speed
-                is_moving = true
-
-                -- Determine direction from movement vector
+                -- Determine direction from movement vector first
                 local abs_x = math.abs(move_x)
                 local abs_y = math.abs(move_y)
 
@@ -165,6 +156,27 @@ local function handleMovementInput(player, dt)
                 else
                     move_direction = move_y > 0 and "down" or "up"
                 end
+
+                -- Check for backpedaling (moving opposite to facing while weapon drawn)
+                local is_backpedaling = false
+                if player.weapon_drawn and move_direction then
+                    local opposite_dirs = {
+                        up = "down", down = "up",
+                        left = "right", right = "left"
+                    }
+                    if opposite_dirs[player.direction] == move_direction then
+                        is_backpedaling = true
+                    end
+                end
+
+                -- Use walk_speed if walking, backpedaling, or walk_speed is defined
+                local current_speed = player.speed
+                if (use_walk or is_backpedaling) and player.walk_speed then
+                    current_speed = player.walk_speed
+                end
+                vx = move_x * current_speed
+                vy = move_y * current_speed
+                is_moving = true
             end
         end
 
@@ -182,9 +194,25 @@ local function handleMovementInput(player, dt)
         end
 
         if is_moving then
+            -- Check for backpedaling (moving opposite to facing direction while weapon drawn)
+            local is_backpedaling = false
+            if player.weapon_drawn and move_direction then
+                -- Compare movement direction with facing direction
+                local opposite_dirs = {
+                    up = "down", down = "up",
+                    left = "right", right = "left"
+                }
+                if opposite_dirs[player.direction] == move_direction then
+                    is_backpedaling = true
+                end
+            end
+
+            -- Force walk animation when backpedaling
+            local final_move_type = is_backpedaling and "walk" or move_type
+
             -- Use walk animation if walk mode, run animation if run mode
             -- Fallback to walk if run animation doesn't exist
-            local anim_key = move_type .. "_" .. player.direction
+            local anim_key = final_move_type .. "_" .. player.direction
             if player.animations[anim_key] then
                 player.anim = player.animations[anim_key]
             else
@@ -192,7 +220,7 @@ local function handleMovementInput(player, dt)
                 player.anim = player.animations["walk_" .. player.direction]
             end
             player.anim:update(dt)
-            player.state = move_type == "run" and "running" or "walking"
+            player.state = final_move_type == "run" and "running" or "walking"
         else
             player.anim = player.animations["idle_" .. player.direction]
             player.anim:update(dt)
