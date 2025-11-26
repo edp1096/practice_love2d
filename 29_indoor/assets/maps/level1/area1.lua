@@ -585,24 +585,6 @@ return {
       properties = {},
       objects = {
         {
-          id = 35,
-          name = "",
-          type = "",
-          shape = "rectangle",
-          x = 704,
-          y = 928,
-          width = 192,
-          height = 32,
-          rotation = 0,
-          visible = true,
-          properties = {
-            ["spawn_x"] = 50,
-            ["spawn_y"] = 540,
-            ["target_map"] = "assets/maps/level1/area2.lua",
-            ["type"] = "portal"
-          }
-        },
-        {
           id = 38,
           name = "",
           type = "",
@@ -650,9 +632,27 @@ return {
           rotation = 180,
           visible = true,
           properties = {
-            ["spawn_x"] = 240,
-            ["spawn_y"] = 190,
+            ["spawn_x"] = 230,
+            ["spawn_y"] = 270,
             ["target_map"] = "assets/maps/level1/home1.lua",
+            ["type"] = "portal"
+          }
+        },
+        {
+          id = 52,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 704,
+          y = 928,
+          width = 192,
+          height = 32,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["spawn_x"] = 400,
+            ["spawn_y"] = 150,
+            ["target_map"] = "assets/maps/level1/area4.lua",
             ["type"] = "portal"
           }
         }
