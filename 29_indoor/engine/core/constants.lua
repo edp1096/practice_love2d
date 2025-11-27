@@ -108,6 +108,7 @@ constants.COLLISION_CLASSES = {
     WALL = "Wall",
     WALL_BASE = "WallBase",      -- Topdown mode: base surface for player/enemy foot to collide with
     NPC = "NPC",
+    NPC_FOOT = "NPCFoot",        -- Topdown mode: NPC foot collider for ground collision
     WEAPON = "Weapon",
     HEALING_POINT = "HealingPoint",
     ITEM = "Item",

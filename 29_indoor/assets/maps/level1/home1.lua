@@ -9,8 +9,8 @@ return {
   height = 14,
   tilewidth = 32,
   tileheight = 32,
-  nextlayerid = 5,
-  nextobjectid = 7,
+  nextlayerid = 9,
+  nextobjectid = 25,
   properties = {
     ["game_mode"] = "topdown",
     ["name"] = "home1"
@@ -194,6 +194,19 @@ return {
           rotation = 0,
           visible = true,
           properties = {}
+        },
+        {
+          id = 11,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 64,
+          y = 224,
+          width = 64,
+          height = 32,
+          rotation = 0,
+          visible = true,
+          properties = {}
         }
       }
     },
@@ -227,6 +240,194 @@ return {
             ["spawn_y"] = 720,
             ["target_map"] = "assets/maps/level1/area1.lua",
             ["type"] = "portal"
+          }
+        }
+      }
+    },
+    {
+      type = "objectgroup",
+      draworder = "topdown",
+      id = 5,
+      name = "Movable",
+      class = "",
+      visible = true,
+      opacity = 1,
+      offsetx = 0,
+      offsety = 0,
+      parallaxx = 1,
+      parallaxy = 1,
+      properties = {},
+      objects = {
+        {
+          id = 12,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 128,
+          y = 224,
+          width = 32,
+          height = 32,
+          rotation = 0,
+          visible = true,
+          properties = {}
+        },
+        {
+          id = 13,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 96,
+          y = 256,
+          width = 32,
+          height = 32,
+          rotation = 0,
+          visible = true,
+          properties = {}
+        },
+        {
+          id = 14,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 64,
+          y = 256,
+          width = 32,
+          height = 32,
+          rotation = 0,
+          visible = true,
+          properties = {}
+        },
+        {
+          id = 22,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 320,
+          y = 160,
+          width = 32,
+          height = 32,
+          rotation = 0,
+          visible = true,
+          properties = {}
+        }
+      }
+    },
+    {
+      type = "objectgroup",
+      draworder = "topdown",
+      id = 6,
+      name = "Breakable",
+      class = "",
+      visible = true,
+      opacity = 1,
+      offsetx = 0,
+      offsety = 0,
+      parallaxx = 1,
+      parallaxy = 1,
+      properties = {},
+      objects = {
+        {
+          id = 18,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 256,
+          y = 96,
+          width = 32,
+          height = 32,
+          rotation = 0,
+          visible = true,
+          properties = {}
+        },
+        {
+          id = 19,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 288,
+          y = 96,
+          width = 32,
+          height = 32,
+          rotation = 0,
+          visible = true,
+          properties = {}
+        },
+        {
+          id = 20,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 320,
+          y = 96,
+          width = 32,
+          height = 32,
+          rotation = 0,
+          visible = true,
+          properties = {}
+        },
+        {
+          id = 21,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 320,
+          y = 160,
+          width = 32,
+          height = 32,
+          rotation = 0,
+          visible = true,
+          properties = {}
+        }
+      }
+    },
+    {
+      type = "objectgroup",
+      draworder = "topdown",
+      id = 8,
+      name = "HealingPoints",
+      class = "",
+      visible = true,
+      opacity = 1,
+      offsetx = 0,
+      offsety = 0,
+      parallaxx = 1,
+      parallaxy = 1,
+      properties = {},
+      objects = {
+        {
+          id = 23,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 160,
+          y = 96,
+          width = 64,
+          height = 64,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["cooldown"] = 10,
+            ["heal_amount"] = 30,
+            ["radius"] = 50,
+            ["type"] = "healing_point"
+          }
+        },
+        {
+          id = 24,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 64,
+          y = 96,
+          width = 64,
+          height = 64,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["cooldown"] = 10,
+            ["heal_amount"] = 30,
+            ["radius"] = 50,
+            ["type"] = "healing_point"
           }
         }
       }

@@ -603,7 +603,7 @@ function entities.transformEnemyToNPC(self, enemy, npc_type)
 
         -- Add to world
         table.insert(self.npcs, npc)
-        collision.createNPCCollider(npc, self.physicsWorld)
+        collision.createNPCCollider(npc, self.physicsWorld, self.game_mode)
 
         -- Add NPC light (cyan/blue-white color, matching other NPCs)
         if self.lighting_sys then

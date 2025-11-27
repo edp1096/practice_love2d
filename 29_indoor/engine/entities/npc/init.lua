@@ -70,15 +70,6 @@ function npc:new(x, y, npc_type, npc_id, config)
     return instance
 end
 
-function npc:getColliderBounds()
-    return {
-        x = self.x + self.collider_offset_x,
-        y = self.y + self.collider_offset_y,
-        width = self.collider_width,
-        height = self.collider_height
-    }
-end
-
 function npc:update(dt, player_x, player_y)
     self.anim:update(dt)
 
@@ -232,10 +223,18 @@ function npc:drawDebug()
     love.graphics.setColor(0, 1, 1, 0.3)
     love.graphics.circle("line", collider_center_x, collider_center_y, self.interaction_range)
 
-    -- Draw collider bounds
+    -- Draw main collider bounds
     local bounds = self:getColliderBounds()
     love.graphics.setColor(0, 1, 1, 1)
-    love.graphics.rectangle("line", bounds.x - (bounds.width / 2), bounds.y - (bounds.height / 2), bounds.width, bounds.height)
+    love.graphics.rectangle("line", bounds.left, bounds.top, bounds.width, bounds.height)
+
+    -- Draw foot collider if exists (topdown mode)
+    if self.foot_collider then
+        local foot_height = bounds.height * 0.25
+        local foot_top = bounds.top + bounds.height * 0.75
+        love.graphics.setColor(0, 1, 0.5, 1)
+        love.graphics.rectangle("line", bounds.left, foot_top, bounds.width, foot_height)
+    end
 
     -- Draw name (using collider center)
     text_ui:draw(self.name, collider_center_x - 20, collider_center_y - 70, {0, 1, 1, 1})
