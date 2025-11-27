@@ -29,7 +29,12 @@ function render.drawInfo(debug_state, display, player, current_save_slot, effect
     local line_count = 0
     if debug_state.show_fps then line_count = line_count + 1 end
     if debug_state.show_effects and effects_sys then line_count = line_count + 1 end
-    if debug_state.show_player_info and player then line_count = line_count + 5 end
+    if debug_state.show_player_info and player then
+        line_count = line_count + 5
+        if player.on_stair then
+            line_count = line_count + 1
+        end
+    end
     if debug_state.show_screen_info then
         line_count = line_count + 6
         if display.is_mobile then
@@ -78,6 +83,12 @@ function render.drawInfo(debug_state, display, player, current_save_slot, effect
 
         if player.game_mode then
             text_ui:draw("Mode: " .. player.game_mode, 10, y_offset, white)
+            y_offset = y_offset + 20
+        end
+
+        -- Show stair info if on stairs
+        if player.on_stair then
+            text_ui:draw("Stair: " .. (player.on_stair.hill_direction or "?"), 10, y_offset, {1, 0.5, 0, 1})
             y_offset = y_offset + 20
         end
     end
@@ -152,6 +163,40 @@ function render.drawHelp(debug_state, x, y)
     text_ui:draw("F9: Virtual Mouse", x, y + 138, white)
     text_ui:draw("F10: Virtual Gamepad", x, y + 153, white)
     text_ui:draw("H: Hand Marking", x, y + 168, white)
+end
+
+-- Draw player collider debug visualization (F2)
+function render.drawPlayerColliders(debug_state, player)
+    if not debug_state.show_colliders or not player.collider then return end
+
+    -- Main collider (green)
+    love.graphics.setColor(0, 1, 0, 0.3)
+    love.graphics.rectangle("fill", player.x - player.collider_width / 2, player.y - player.collider_height / 2, player.collider_width, player.collider_height)
+    love.graphics.setColor(1, 1, 1, 1)
+
+    -- Portal check box (blue) - bottom quarter for natural portal entrance
+    local portal_w = player.collider_width
+    local portal_h = player.collider_height / 4
+    local quarter_offset = player.collider_height / 4
+    local portal_x = player.x - portal_w / 2
+    local portal_y = player.y + quarter_offset
+
+    love.graphics.setColor(0, 0.5, 1, 0.3)
+    love.graphics.rectangle("fill", portal_x, portal_y, portal_w, portal_h)
+    love.graphics.setColor(0, 0.8, 1, 1)
+    love.graphics.rectangle("line", portal_x, portal_y, portal_w, portal_h)
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Draw stairs debug info in HUD (F2)
+function render.drawStairsInfo(debug_state, world, player, vh)
+    if not debug_state.show_colliders or not world or not world.stairs then return end
+
+    local stairs_count = #world.stairs
+    local on_stair = player.on_stair
+    local stair_info = on_stair and on_stair.hill_direction or "none"
+    text_ui:draw(string.format("Stairs: %d, On: %s", stairs_count, stair_info),
+        12, vh - 80, {0.8, 0.4, 0, 0.8})
 end
 
 return render

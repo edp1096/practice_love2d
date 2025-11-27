@@ -57,6 +57,14 @@ function rendering.drawLayer(self, layer_name)
 end
 
 function rendering.drawEntitiesYSorted(self, player)
+    -- Draw stair tiles FIRST (always behind all entities)
+    -- This prevents stairs from occluding the player
+    if self.stair_tiles then
+        for _, tile in ipairs(self.stair_tiles) do
+            tile:draw()
+        end
+    end
+
     local drawables = {}
 
     -- Collect all entities
@@ -83,6 +91,7 @@ function rendering.drawEntitiesYSorted(self, player)
     end
 
     -- Include drawable tiles (Decos layer) for Y-sorting (topdown mode only)
+    -- Note: stair_tiles are excluded and drawn above
     if self.drawable_tiles then
         for _, tile in ipairs(self.drawable_tiles) do
             table.insert(drawables, tile)
@@ -146,9 +155,72 @@ function rendering.drawDebug(self)
         if not success then return end
     end
 
+    -- F2: Draw stairs debug (visible with physics grid for easy testing)
+    if debug.show_colliders and self.stairs and #self.stairs > 0 then
+        for _, stair in ipairs(self.stairs) do
+            love.graphics.setColor(1, 0.5, 0, 0.3)  -- Orange fill
+
+            if stair.shape == "polygon" and stair.polygon then
+                -- Draw polygon
+                local vertices = {}
+                for _, p in ipairs(stair.polygon) do
+                    table.insert(vertices, p.x)
+                    table.insert(vertices, p.y)
+                end
+                if #vertices >= 6 then  -- At least 3 points
+                    love.graphics.polygon("fill", vertices)
+                    love.graphics.setColor(1, 0.5, 0, 1)
+                    love.graphics.polygon("line", vertices)
+                end
+
+                -- Draw hill direction arrow at center of bounds
+                local b = stair.bounds
+                local cx = (b.min_x + b.max_x) / 2
+                local cy = (b.min_y + b.max_y) / 2
+                local arrow_len = 20
+                local dx, dy = 0, 0
+                if stair.hill_direction == "left" then dx = -arrow_len
+                elseif stair.hill_direction == "right" then dx = arrow_len
+                elseif stair.hill_direction == "up" then dy = -arrow_len
+                elseif stair.hill_direction == "down" then dy = arrow_len
+                end
+                love.graphics.setColor(1, 1, 0, 1)  -- Yellow arrow
+                love.graphics.setLineWidth(3)
+                love.graphics.line(cx, cy, cx + dx, cy + dy)
+                -- Arrowhead
+                love.graphics.circle("fill", cx + dx, cy + dy, 5)
+                love.graphics.setLineWidth(1)
+
+                text_ui:draw(stair.hill_direction or "auto", b.min_x + 2, b.min_y + 2, {1, 0.5, 0, 1})
+            else
+                -- Draw rectangle
+                love.graphics.rectangle("fill", stair.x, stair.y, stair.width, stair.height)
+                love.graphics.setColor(1, 0.5, 0, 1)
+                love.graphics.rectangle("line", stair.x, stair.y, stair.width, stair.height)
+
+                -- Draw hill direction arrow
+                local cx, cy = stair.x + stair.width / 2, stair.y + stair.height / 2
+                local arrow_len = 15
+                local dx, dy = 0, 0
+                if stair.hill_direction == "left" then dx = -arrow_len
+                elseif stair.hill_direction == "right" then dx = arrow_len
+                elseif stair.hill_direction == "up" then dy = -arrow_len
+                elseif stair.hill_direction == "down" then dy = arrow_len
+                end
+                love.graphics.setColor(1, 1, 0, 1)  -- Yellow arrow
+                love.graphics.setLineWidth(2)
+                love.graphics.line(cx, cy, cx + dx, cy + dy)
+                love.graphics.setLineWidth(1)
+
+                text_ui:draw(stair.hill_direction or "?", stair.x + 2, stair.y + 2, {1, 0.5, 0, 1})
+            end
+        end
+        love.graphics.setColor(1, 1, 1, 1)
+    end
+
     -- F1: Draw hitboxes/collision boxes if debug.show_bounds is enabled
     if not debug.show_bounds then
-        return  -- Skip all debug drawing if bounds not enabled
+        return  -- Skip remaining debug drawing if bounds not enabled
     end
 
     if self.transitions then

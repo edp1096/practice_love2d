@@ -164,7 +164,10 @@ function render.draw(self)
     dialogue:draw()
 
     -- Draw debug help (avoid minimap: size=126, padding=10, total=146)
-    if debug.enabled then debug:drawHelp(vw - 250 - 146, 10) end
+    if debug.enabled then
+        debug:drawHelp(vw - 250 - 146, 10)
+        debug:drawStairsInfo(self.world, self.player, vh)
+    end
 
     display:Detach()
 

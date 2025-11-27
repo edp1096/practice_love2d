@@ -15,6 +15,9 @@ function render.draw(player)
         draw_y = draw_y + player.topdown_jump_height
     end
 
+    -- NOTE: Stair movement is now handled by adjusting velocity in moveEntity()
+    -- No visual offset needed - the collider actually moves diagonally on stairs
+
     -- Shadow (stays on ground in platformer mode with dynamic scaling)
     -- Shadow at character feet (center + half collider height)
     local shadow_y = player.y + (player.collider_height / 2)
@@ -147,30 +150,8 @@ function render.draw(player)
         end
     end
 
-    -- Debug hitbox
-    if debug.show_colliders and player.collider then
-        love.graphics.setColor(0, 1, 0, 0.3)
-        love.graphics.rectangle("fill", player.x - player.collider_width / 2, player.y - player.collider_height / 2, player.collider_width, player.collider_height)
-        love.graphics.setColor(1, 1, 1, 1)
-    end
-
-    -- Debug portal check box (bottom quarter for natural portal entrance)
-    -- Player collider: 32x64 (character 16x32 * scale 2)
-    -- Portal checks bottom quarter: player.y + 16 (3/4 position) to player.y + 32 (bottom)
-    -- Similar size to foot_collider for tight control
-    if debug.show_colliders and player.collider then
-        local portal_w = player.collider_width
-        local portal_h = player.collider_height / 4  -- Bottom quarter
-        local quarter_offset = player.collider_height / 4  -- Offset to 3/4 position
-        local portal_x = player.x - portal_w / 2
-        local portal_y = player.y + quarter_offset  -- Start from 3/4 position
-
-        love.graphics.setColor(0, 0.5, 1, 0.3)  -- Blue semi-transparent
-        love.graphics.rectangle("fill", portal_x, portal_y, portal_w, portal_h)
-        love.graphics.setColor(0, 0.8, 1, 1)  -- Blue outline
-        love.graphics.rectangle("line", portal_x, portal_y, portal_w, portal_h)
-        love.graphics.setColor(1, 1, 1, 1)
-    end
+    -- Debug colliders (moved to debug/render.lua)
+    debug:drawPlayerColliders(player)
 end
 
 function render.drawWeapon(player)

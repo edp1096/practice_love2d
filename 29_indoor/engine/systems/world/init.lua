@@ -75,7 +75,12 @@ function world:new(map_path, entity_classes, picked_items, killed_enemies, trans
     instance.walls = {}
     loaders.loadWalls(instance)
 
+    -- Load stairs BEFORE Decos tiles (so tiles in stair areas can be excluded from Y-sort)
+    instance.stairs = {}
+    loaders.loadStairs(instance)
+
     -- Load Decos layer tiles for Y-sorting (topdown mode only)
+    -- Tiles in stair areas are excluded to prevent occluding the player
     if instance.game_mode == "topdown" then
         loaders.loadTreeTiles(instance)
     end
@@ -170,6 +175,9 @@ world.removeWorldItem = entities.removeWorldItem
 world.transformNPCToEnemy = entities.transformNPCToEnemy
 world.transformEnemyToNPC = entities.transformEnemyToNPC
 world.countTransformedNPCs = entities.countTransformedNPCs
+world.getStairOffset = entities.getStairOffset
+world.getStairInfo = entities.getStairInfo
+world.adjustVelocityForStairs = entities.adjustVelocityForStairs
 
 -- Delegate rendering functions
 world.draw = rendering.draw

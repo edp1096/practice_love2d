@@ -78,6 +78,24 @@ A LÖVE2D game engine with clean **Engine/Game separation** architecture.
 ### Map Properties
 - **`move_mode`**: `"walk"` for indoor maps (slower speed, walk animation)
 
+### Stairs (Topdown Only)
+**Visual elevation effect** - player visually moves up/down on stairs (no physics change).
+
+**Tiled Setup:**
+1. Create "Stairs" layer (Object Layer)
+2. Draw **polygon** shape for diagonal stair area (recommended)
+3. Direction auto-detected from polygon shape
+
+**hill_direction values:**
+- **`left`**: Moving left = uphill (45° diagonal), right = downhill
+- **`right`**: Moving right = uphill (45° diagonal), left = downhill
+- **`up`**: Moving up = 30% slower (horizontal unchanged)
+- **`down`**: Moving down = 30% slower (horizontal unchanged)
+
+**Guardrails:** Player can only exit from stair ends (top/bottom), not sides.
+
+**Debug:** F2 shows stair polygons (orange) with direction arrows, F4 shows "Stair: X.X" offset.
+
 ---
 
 ## Creating Content
@@ -197,4 +215,4 @@ Open: `http://localhost:8080`
 
 **Framework:** LÖVE 11.5 + Lua 5.1
 **Architecture:** Engine/Game Separation + Data-Driven
-**Last Updated:** 2025-11-26
+**Last Updated:** 2025-11-27

@@ -7,7 +7,7 @@ local input = require "engine.core.input"
 
 local animation = {}
 
--- Get weapon position with jump offset applied
+-- Get weapon position with jump and stair offset applied
 local function getWeaponPosition(player)
     local weapon_x = player.x
     local weapon_y = player.y
@@ -16,6 +16,9 @@ local function getWeaponPosition(player)
     if player.game_mode == "topdown" and player.topdown_is_jumping then
         weapon_y = weapon_y + player.topdown_jump_height
     end
+
+    -- NOTE: Stair movement is now handled by adjusting velocity in moveEntity()
+    -- No visual offset needed - the collider actually moves diagonally on stairs
 
     return weapon_x, weapon_y
 end

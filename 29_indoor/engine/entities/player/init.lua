@@ -43,6 +43,9 @@ function player:new(x, y, config)
     instance.topdown_max_jump_height = stats.topdown_max_jump_height or 50
     instance.topdown_jump_strength = stats.topdown_jump_strength or 400
 
+    -- Stair effect (visual only, calculated per frame)
+    instance.stair_y_offset = 0
+
     -- Sprite configuration
     instance.sprite_width = sprite.width or 48
     instance.sprite_height = sprite.height or 48

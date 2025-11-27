@@ -77,12 +77,86 @@ local function shouldSpawnOriginalNPC(map_id, killed_enemies, transformed_npcs)
     return true
 end
 
+-- Helper: Check if a point is inside any stair polygon
+local function isInStairArea(stairs, x, y)
+    if not stairs or #stairs == 0 then
+        return false
+    end
+
+    for _, stair in ipairs(stairs) do
+        if stair.shape == "polygon" and stair.polygon and stair.bounds then
+            -- Quick bounding box check
+            local b = stair.bounds
+            if x >= b.min_x and x <= b.max_x and y >= b.min_y and y <= b.max_y then
+                -- Point-in-polygon test (ray casting)
+                local inside = false
+                local j = #stair.polygon
+                for i = 1, #stair.polygon do
+                    local pi = stair.polygon[i]
+                    local pj = stair.polygon[j]
+                    if (pi.y > y) ~= (pj.y > y) and
+                       x < (pj.x - pi.x) * (y - pi.y) / (pj.y - pi.y) + pi.x then
+                        inside = not inside
+                    end
+                    j = i
+                end
+                if inside then return true end
+            end
+        elseif stair.x and stair.width then
+            -- Rectangle stair
+            if x >= stair.x and x <= stair.x + stair.width and
+               y >= stair.y and y <= stair.y + stair.height then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- Helper: Create a drawable tile object
+local function createDrawableTile(tile_info, tileset, world_x, world_y, tile_height, gid, map)
+    return {
+        x = world_x,
+        y = world_y + tile_height,  -- Bottom Y for sorting
+        tile_info = tile_info,
+        tileset = tileset,
+        world_x = world_x,
+        world_y = world_y,
+        gid = gid,
+        map = map,
+        draw = function(self_tile)
+            local current_tile = self_tile.map.tiles[self_tile.gid]
+            local quad = self_tile.tile_info.quad
+
+            if current_tile and current_tile.animation then
+                local frame_tileid = current_tile.animation[current_tile.frame].tileid
+                local frame_gid = frame_tileid + self_tile.map.tilesets[current_tile.tileset].firstgid
+                local frame_tile = self_tile.map.tiles[frame_gid]
+                if frame_tile then
+                    quad = frame_tile.quad
+                end
+            end
+
+            love.graphics.draw(
+                self_tile.tileset.image,
+                quad,
+                self_tile.world_x,
+                self_tile.world_y
+            )
+        end
+    }
+end
+
 function loaders.loadTreeTiles(self)
     if not self.map.layers["Decos"] then return end
 
-    -- Initialize drawable tiles array for Y-sorting
+    -- Initialize drawable tiles arrays
     if not self.drawable_tiles then
         self.drawable_tiles = {}
+    end
+    -- Stair tiles are drawn BEFORE Y-sorted entities (always behind player)
+    if not self.stair_tiles then
+        self.stair_tiles = {}
     end
 
     local layer = self.map.layers["Decos"]
@@ -94,51 +168,29 @@ function loaders.loadTreeTiles(self)
         for x = 1, layer.width do
             local tile_data = layer.data[y] and layer.data[y][x]
             if tile_data and tile_data.gid and tile_data.gid > 0 then
-                -- Get tile info from map's tiles table
                 local tile_info = self.map.tiles[tile_data.gid]
                 if tile_info then
-                    -- Get tileset
                     local tileset = self.map.tilesets[tile_info.tileset]
                     if tileset and tileset.image then
-                        -- Calculate world position
                         local world_x = (x - 1) * tile_width
                         local world_y = (y - 1) * tile_height
 
-                        -- Add to drawable tiles for Y-sorting
-                        table.insert(self.drawable_tiles, {
-                            x = world_x,
-                            y = world_y + tile_height,  -- Bottom Y for sorting
-                            tile_info = tile_info,
-                            tileset = tileset,
-                            world_x = world_x,
-                            world_y = world_y,
-                            gid = tile_data.gid,  -- Store gid for animation lookup
-                            map = self.map,       -- Store map reference for animation
-                            draw = function(self_tile)
-                                -- Get current quad (may be animated)
-                                local current_tile = self_tile.map.tiles[self_tile.gid]
-                                local quad = self_tile.tile_info.quad  -- Default quad
+                        -- Check if tile is in stair area
+                        local tile_center_x = world_x + tile_width / 2
+                        local tile_center_y = world_y + tile_height / 2
 
-                                -- Check if tile has animation
-                                if current_tile and current_tile.animation then
-                                    -- Get current frame's tile ID and lookup its quad
-                                    local frame_tileid = current_tile.animation[current_tile.frame].tileid
-                                    local frame_gid = frame_tileid + self_tile.map.tilesets[current_tile.tileset].firstgid
-                                    local frame_tile = self_tile.map.tiles[frame_gid]
-                                    if frame_tile then
-                                        quad = frame_tile.quad
-                                    end
-                                end
+                        local drawable = createDrawableTile(
+                            tile_info, tileset, world_x, world_y,
+                            tile_height, tile_data.gid, self.map
+                        )
 
-                                -- Draw the tile using tileset image and quad
-                                love.graphics.draw(
-                                    self_tile.tileset.image,
-                                    quad,
-                                    self_tile.world_x,
-                                    self_tile.world_y
-                                )
-                            end
-                        })
+                        if isInStairArea(self.stairs, tile_center_x, tile_center_y) then
+                            -- Stair tiles: drawn before Y-sorted entities (always behind player)
+                            table.insert(self.stair_tiles, drawable)
+                        else
+                            -- Normal tiles: Y-sorted with entities
+                            table.insert(self.drawable_tiles, drawable)
+                        end
                     end
                 end
             end
@@ -460,6 +512,98 @@ function loaders.loadParallax(self)
     else
         -- Clear parallax if no layers
         parallax:clear()
+    end
+end
+
+-- Load stairs (topdown only)
+-- Stairs create visual Y offset based on polygon shape
+-- For diagonal stairs: player Y offset changes based on X position within polygon
+function loaders.loadStairs(self)
+    if self.game_mode ~= "topdown" then
+        return
+    end
+    -- Find Stairs layer (STI stores layers by index, not name)
+    local stairs_layer = nil
+    for _, layer in ipairs(self.map.layers) do
+        if layer.name == "Stairs" then
+            stairs_layer = layer
+            break
+        end
+    end
+
+    if not stairs_layer then
+        return
+    end
+
+    self.stairs = {}
+
+    for i, obj in ipairs(stairs_layer.objects) do
+
+        local stair = {
+            x = obj.x,
+            y = obj.y,
+            width = obj.width,
+            height = obj.height,
+            shape = obj.shape or "rectangle",
+        }
+
+        -- Handle polygon shape
+        if obj.polygon then
+            stair.shape = "polygon"
+            stair.polygon = {}
+            -- NOTE: STI converts polygon vertices to world coordinates during map:init()
+            -- See vendor/sti/init.lua lines 446-450: vertex.x = vertex.x + x
+            -- So we use the vertices directly WITHOUT adding obj.x/obj.y
+            for _, point in ipairs(obj.polygon) do
+                table.insert(stair.polygon, {
+                    x = point.x,
+                    y = point.y
+                })
+            end
+
+            -- Calculate bounding box for quick rejection test
+            local min_x, min_y = math.huge, math.huge
+            local max_x, max_y = -math.huge, -math.huge
+            for _, p in ipairs(stair.polygon) do
+                min_x = math.min(min_x, p.x)
+                min_y = math.min(min_y, p.y)
+                max_x = math.max(max_x, p.x)
+                max_y = math.max(max_y, p.y)
+            end
+            stair.bounds = { min_x = min_x, min_y = min_y, max_x = max_x, max_y = max_y }
+
+            -- Auto-detect stair direction from polygon shape
+            -- Find the average Y at left edge vs right edge
+            local left_y_sum, left_count = 0, 0
+            local right_y_sum, right_count = 0, 0
+            local threshold = (max_x - min_x) * 0.3  -- 30% from each edge
+
+            for _, p in ipairs(stair.polygon) do
+                if p.x <= min_x + threshold then
+                    left_y_sum = left_y_sum + p.y
+                    left_count = left_count + 1
+                elseif p.x >= max_x - threshold then
+                    right_y_sum = right_y_sum + p.y
+                    right_count = right_count + 1
+                end
+            end
+
+            local avg_left_y = left_count > 0 and (left_y_sum / left_count) or (min_y + max_y) / 2
+            local avg_right_y = right_count > 0 and (right_y_sum / right_count) or (min_y + max_y) / 2
+
+            -- If left side is higher (lower Y), hill goes left
+            -- If right side is higher (lower Y), hill goes right
+            if avg_left_y < avg_right_y then
+                stair.hill_direction = "left"  -- Left side is higher
+            else
+                stair.hill_direction = "right"  -- Right side is higher
+            end
+        else
+            -- Rectangle shape - use properties or default
+            stair.hill_direction = obj.properties and obj.properties.hill_direction or "up"
+        end
+
+        table.insert(self.stairs, stair)
     end
 end
 

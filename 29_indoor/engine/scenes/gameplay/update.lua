@@ -466,6 +466,10 @@ function update.update(self, dt)
 
         -- Sync main collider to foot_collider
         self.player.collider:setPosition(self.player.x, self.player.y)
+
+        -- Calculate stair Y offset for visual effect
+        local stair_offset = self.world:getStairOffset(self.player.x, self.player.y + self.player.collider_height / 2)
+        self.player.stair_y_offset = stair_offset
     else
         -- Platformer mode or no foot_collider: use main collider
         self.player.x = self.player.collider:getX()
