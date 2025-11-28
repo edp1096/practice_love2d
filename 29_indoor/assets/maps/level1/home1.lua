@@ -13,7 +13,8 @@ return {
   nextobjectid = 25,
   properties = {
     ["game_mode"] = "topdown",
-    ["name"] = "home1"
+    ["name"] = "home1",
+    ["persist_state"] = true
   },
   tilesets = {
     {

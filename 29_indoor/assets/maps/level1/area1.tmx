@@ -140,7 +140,7 @@
    <polygon points="0,32 160,32 160,128 128,128 128,96 64,96 64,128 0,128"/>
   </object>
  </objectgroup>
- <objectgroup id="5" name="Enemies" locked="1">
+ <objectgroup id="5" name="Enemies">
   <object id="40" x="768" y="128" width="32" height="32">
    <properties>
     <property name="patrol_points" value="100,20;150,25"/>

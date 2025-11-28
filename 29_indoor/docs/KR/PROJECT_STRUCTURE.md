@@ -231,6 +231,7 @@ name = "level1_area1"    ← 영속성 필수!
 game_mode = "topdown"    (또는 "platformer")
 bgm = "level1"           (선택)
 ambient = "day"          (선택)
+persist_state = true     (선택 - 세션 중 처치/획득 상태 유지)
 ```
 
 **오브젝트 프로퍼티:**

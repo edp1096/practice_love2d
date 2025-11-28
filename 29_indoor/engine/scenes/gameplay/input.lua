@@ -144,9 +144,14 @@ function input_handler.keypressed(self, key)
                     end
                 end
 
-                -- Track non-respawning items (one-time pickup)
+                -- Track non-respawning items (one-time pickup, permanent)
                 if not world_item.respawn and world_item.map_id then
                     self.picked_items[world_item.map_id] = true
+                end
+
+                -- Session tracking: ALL picked items (preserved by persist_state=true maps)
+                if world_item.map_id then
+                    self.world.session_picked_items[world_item.map_id] = true
                 end
 
                 -- Remove from world
@@ -339,9 +344,14 @@ function input_handler.gamepadpressed(self, joystick, button)
                     end
                 end
 
-                -- Track non-respawning items (one-time pickup)
+                -- Track non-respawning items (one-time pickup, permanent)
                 if not world_item.respawn and world_item.map_id then
                     self.picked_items[world_item.map_id] = true
+                end
+
+                -- Session tracking: ALL picked items (preserved by persist_state=true maps)
+                if world_item.map_id then
+                    self.world.session_picked_items[world_item.map_id] = true
                 end
 
                 -- Remove from world

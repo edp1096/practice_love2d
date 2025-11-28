@@ -147,6 +147,10 @@ function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_sl
     scene.killed_enemies = (save_data and save_data.killed_enemies) or {}
     scene.transformed_npcs = (save_data and save_data.transformed_npcs) or {}
 
+    -- Session-based map states (preserved when entering persist_state=true maps like indoor)
+    -- Structure: { [map_name] = { killed_enemies = {...}, picked_items = {...} } }
+    scene.session_map_states = {}
+
     -- Load or reset dialogue choice history
     if save_data and save_data.dialogue_choices then
         dialogue:importChoiceHistory(save_data.dialogue_choices)
@@ -440,6 +444,51 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
     -- (world may have killed enemies, picked items, transformed NPCs that scene doesn't have)
     helpers.syncPersistenceData(scene)
 
+    -- Check CURRENT map's persist_state (where we're coming FROM)
+    -- If leaving persist_state=true map (indoor): preserve session states
+    -- If leaving persist_state=false map (outdoor): clear session states (enemies respawn)
+    local current_map_props = scene.world and scene.world.map and scene.world.map.properties
+    local current_map_name = current_map_props and current_map_props.name
+    local current_persist_state = current_map_props and current_map_props.persist_state
+
+    -- Check DESTINATION map's persist_state (where we're going TO)
+    local dest_map_data = love.filesystem.load(new_map_path)()
+    local dest_persist_state = dest_map_data and dest_map_data.properties and dest_map_data.properties.persist_state
+
+    if dest_persist_state then
+        -- Entering persist_state=true map (indoor): save current map's session state
+        if current_map_name then
+            local session_state = scene.session_map_states[current_map_name] or {
+                killed_enemies = {},
+                picked_items = {}
+            }
+
+            -- Merge ALL killed enemies for this map (regardless of respawn setting)
+            for map_id, _ in pairs(scene.world.session_killed_enemies or {}) do
+                if map_id:find("^" .. current_map_name .. "_") then
+                    session_state.killed_enemies[map_id] = true
+                end
+            end
+            -- Merge ALL picked items for this map (regardless of respawn setting)
+            for map_id, _ in pairs(scene.world.session_picked_items or {}) do
+                if map_id:find("^" .. current_map_name .. "_") then
+                    session_state.picked_items[map_id] = true
+                end
+            end
+
+            scene.session_map_states[current_map_name] = session_state
+        end
+        -- Don't clear - preserve session states when entering indoor
+    elseif current_persist_state then
+        -- Leaving persist_state=true map (indoor → outdoor): preserve session states
+        -- Don't clear - session states remain for when player returns
+    else
+        -- Leaving persist_state=false map to persist_state=false map (outdoor → outdoor)
+        -- Clear session states only - respawn=true enemies will respawn
+        -- NOTE: Do NOT clear scene.killed_enemies - it contains permanent deaths (respawn=false)
+        scene.session_map_states = {}
+    end
+
     -- Clean up old colliders BEFORE destroying world
     helpers.destroyColliders(scene.player)
 
@@ -455,14 +504,32 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
         quest_system:onLocationVisited(location_id)
     end
 
-    -- Create world with injected entity classes and persistence data
+    -- Prepare merged persistence data (permanent + session)
+    local merged_killed = {}
+    local merged_picked = {}
+
+    -- Copy permanent data (respawn=false enemies and picked items)
+    for k, v in pairs(scene.killed_enemies) do merged_killed[k] = v end
+    for k, v in pairs(scene.picked_items) do merged_picked[k] = v end
+
+    -- Merge session data (respawn=true enemies killed during indoor visits)
+    for map_name, state in pairs(scene.session_map_states) do
+        for map_id, _ in pairs(state.killed_enemies or {}) do
+            merged_killed[map_id] = true
+        end
+        for map_id, _ in pairs(state.picked_items or {}) do
+            merged_picked[map_id] = true
+        end
+    end
+
+    -- Create world with injected entity classes and merged persistence data
     scene.world = world:new(new_map_path, {
         enemy = enemy_class,
         npc = npc_class,
         healing_point = healing_point_class,
         world_item = world_item_class,
         loot_tables = scene.loot_tables
-    }, scene.picked_items, scene.killed_enemies, scene.transformed_npcs)
+    }, merged_picked, merged_killed, scene.transformed_npcs)
 
     -- Reinitialize weather for new map
     weather:initialize(scene.world.map)

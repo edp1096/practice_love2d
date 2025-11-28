@@ -173,9 +173,21 @@ function entities.updateEnemies(self, dt, player_x, player_y)
         local enemy = self.enemies[i]
 
         if enemy.state == "dead" then
-            -- Drop loot once when first entering dead state
+            -- Track killed enemies IMMEDIATELY when first entering dead state
+            -- (before death_timer, so map transitions preserve the kill)
             if not enemy.loot_dropped then
                 enemy.loot_dropped = true
+
+                -- Track killed enemies (for persistence) - IMMEDIATELY
+                -- Only enemies with respawn=false (or nil) stay dead permanently
+                if enemy.map_id and not enemy.respawn then
+                    self.killed_enemies[enemy.map_id] = true
+                end
+
+                -- Session tracking: ALL killed enemies (regardless of respawn setting)
+                if enemy.map_id then
+                    self.session_killed_enemies[enemy.map_id] = true
+                end
 
                 local drop_x, drop_y = getEnemyDropPosition(enemy, self.game_mode)
                 stopEnemyMovement(enemy)
@@ -187,13 +199,6 @@ function entities.updateEnemies(self, dt, player_x, player_y)
 
             enemy.death_timer = (enemy.death_timer or 0) + dt
             if enemy.death_timer > 2 then
-                -- Track killed enemies (for persistence)
-                -- Only enemies with respawn=true will respawn on map reload
-                -- All others (respawn=false or nil) stay dead permanently
-                if enemy.map_id and not enemy.respawn then
-                    self.killed_enemies[enemy.map_id] = true
-                end
-
                 -- Note: Do NOT remove from transformed_npcs!
                 -- We keep the transformation record so loadNPCs can skip the original NPC
                 -- The killed_enemies entry prevents loading in both loadEnemies and loadNPCs

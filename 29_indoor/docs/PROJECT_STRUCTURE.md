@@ -231,6 +231,7 @@ name = "level1_area1"    ← REQUIRED for persistence!
 game_mode = "topdown"    (or "platformer")
 bgm = "level1"           (optional)
 ambient = "day"          (optional)
+persist_state = true     (optional - keeps killed enemies/picked items during session)
 ```
 
 **Object Properties:**

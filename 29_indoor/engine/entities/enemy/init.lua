@@ -144,7 +144,7 @@ function enemy:new(x, y, enemy_type, config, map_id, respawn)
 
     -- Persistence data
     instance.map_id = map_id  -- Unique identifier: "{map_name}_obj_{id}" (e.g., "level1_area1_obj_12")
-    instance.respawn = (respawn == nil) and false or respawn  -- Default: false (don't respawn)
+    instance.respawn = (respawn == nil) and false or respawn  -- Default: false (stay dead)
 
     -- Stats from config
     instance.speed = config.speed

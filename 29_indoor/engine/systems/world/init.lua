@@ -34,8 +34,18 @@ function world:new(map_path, entity_classes, picked_items, killed_enemies, trans
 
     -- Store persistence lists
     instance.picked_items = picked_items or {}
-    instance.killed_enemies = killed_enemies or {}
     instance.transformed_npcs = transformed_npcs or {}
+
+    -- Separate permanent killed enemies from loading data:
+    -- - killed_enemies: NEW permanent kills in THIS world (respawn=false enemies killed here)
+    -- - killed_for_loading: merged data passed for enemy spawn check (permanent + session)
+    instance.killed_enemies = {}
+    instance.killed_for_loading = killed_enemies or {}
+
+    -- Session-only tracking: ALL killed enemies and picked items (regardless of respawn setting)
+    -- Preserved when entering persist_state=true maps (e.g., indoor), cleared otherwise
+    instance.session_killed_enemies = {}
+    instance.session_picked_items = {}
 
     local map_info = love.filesystem.getInfo(map_path)
     if not map_info then
@@ -88,7 +98,7 @@ function world:new(map_path, entity_classes, picked_items, killed_enemies, trans
     loaders.loadTransitions(instance)
 
     instance.enemies = {}
-    loaders.loadEnemies(instance, instance.killed_enemies)
+    loaders.loadEnemies(instance, instance.killed_for_loading)
 
     instance.npcs = {}
     loaders.loadNPCs(instance)

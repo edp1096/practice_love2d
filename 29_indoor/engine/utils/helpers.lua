@@ -10,8 +10,17 @@ function helpers.syncPersistenceData(scene)
         return
     end
 
-    scene.picked_items = scene.world.picked_items or scene.picked_items
-    scene.killed_enemies = scene.world.killed_enemies or scene.killed_enemies
+    -- MERGE picked_items (don't overwrite)
+    for k, v in pairs(scene.world.picked_items or {}) do
+        scene.picked_items[k] = v
+    end
+
+    -- MERGE killed_enemies (new permanent kills only, don't overwrite with merged data)
+    for k, v in pairs(scene.world.killed_enemies or {}) do
+        scene.killed_enemies[k] = v
+    end
+
+    -- Overwrite transformed_npcs (transformations are always permanent)
     scene.transformed_npcs = scene.world.transformed_npcs or scene.transformed_npcs
 end
 

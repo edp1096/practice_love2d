@@ -17,6 +17,8 @@ function save_manager.saveGame(scene, slot)
     -- Sync persistence data from world (world may have updates that scene doesn't have)
     helpers.syncPersistenceData(scene)
 
+    -- Save killed_enemies (permanent deaths - respawn=false enemies)
+    -- respawn=true enemies will respawn on load (not in killed_enemies)
     local save_data = {
         hp = scene.player.health,
         max_hp = scene.player.max_health,
@@ -25,7 +27,7 @@ function save_manager.saveGame(scene, slot)
         y = scene.player.y,
         inventory = scene.inventory and scene.inventory:save() or nil,
         picked_items = scene.picked_items or {},
-        killed_enemies = scene.killed_enemies or {},
+        killed_enemies = scene.killed_enemies or {},  -- Permanent deaths only
         transformed_npcs = scene.transformed_npcs or {},
         dialogue_choices = dialogue:exportChoiceHistory(),
         quest_states = quest_system:exportStates(),
