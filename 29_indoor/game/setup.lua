@@ -17,6 +17,8 @@ function setup.configure()
     local loot_tables = require "game.data.loot_tables"
     local dialogues = require "game.data.dialogues"  -- Dialogue trees
     local quests = require "game.data.quests"  -- Quest definitions
+    local hand_anchors = require "game.data.weapon.hand_anchors"
+    local handle_anchors = require "game.data.weapon.handle_anchors"
 
     -- Load engine modules
     local enemy_class = require "engine.entities.enemy"
@@ -39,6 +41,8 @@ function setup.configure()
     npc_class.type_registry = entity_types.npcs
     weapon_class.type_registry = entity_types.weapons
     weapon_class.effects_config = entity_types.weapon_effects
+    weapon_class.hand_anchors = hand_anchors.HAND_ANCHORS
+    weapon_class.handle_anchors = handle_anchors.WEAPON_HANDLE_ANCHORS
     item_class.type_registry = item_types
 
     -- Inject game start defaults

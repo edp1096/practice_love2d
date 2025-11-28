@@ -4,16 +4,16 @@
 local anim8 = require "vendor.anim8"
 local combat = require "engine.entities.weapon.combat"
 local render = require "engine.entities.weapon.render"
-local hand_anchors = require "engine.entities.weapon.config.hand_anchors"
 local swing_configs = require "engine.entities.weapon.config.swing_configs"
-local handle_anchors = require "engine.entities.weapon.config.handle_anchors"
 
 local weapon = {}
 weapon.__index = weapon
 
--- Class-level type registry (injected from game)
+-- Class-level registries (injected from game via main.lua)
 weapon.type_registry = {}
 weapon.effects_config = {}
+weapon.hand_anchors = {}      -- Injected: HAND_ANCHORS table
+weapon.handle_anchors = {}    -- Injected: WEAPON_HANDLE_ANCHORS table
 
 function weapon:new(weapon_type, owner_scale)
     local instance = setmetatable({}, weapon)
@@ -117,7 +117,7 @@ function weapon:new(weapon_type, owner_scale)
 end
 
 function weapon:getHandPosition(owner_x, owner_y, anim_name, frame_index)
-    local anchors = hand_anchors.HAND_ANCHORS[anim_name]
+    local anchors = weapon.hand_anchors[anim_name]
 
     if not anchors then
         -- Fallback positions scaled by weapon scale
@@ -174,7 +174,7 @@ function weapon:update(dt, owner_x, owner_y, owner_angle, direction, anim_name, 
             end
 
             -- Calculate handle offset
-            local handle_anchor = handle_anchors.WEAPON_HANDLE_ANCHORS[self.current_direction] or handle_anchors.WEAPON_HANDLE_ANCHORS.right
+            local handle_anchor = weapon.handle_anchors[self.current_direction] or weapon.handle_anchors.right
             swing_config = swing_configs.SWING_CONFIGS[self.current_direction]
 
             local handle_x = handle_anchor.x
@@ -201,7 +201,7 @@ function weapon:update(dt, owner_x, owner_y, owner_angle, direction, anim_name, 
         end
     else
         -- Idle/walking state
-        local handle_anchor = handle_anchors.WEAPON_HANDLE_ANCHORS[self.current_direction] or handle_anchors.WEAPON_HANDLE_ANCHORS.right
+        local handle_anchor = weapon.handle_anchors[self.current_direction] or weapon.handle_anchors.right
         local swing_config = swing_configs.SWING_CONFIGS[self.current_direction]
 
         local handle_x = handle_anchor.x

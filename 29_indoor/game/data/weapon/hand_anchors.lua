@@ -1,4 +1,4 @@
--- entities/weapon/config/hand_anchors.lua
+-- game/data/weapon/hand_anchors.lua
 -- Hand anchor positions for each animation frame
 
 local hand_anchors = {}
@@ -92,6 +92,42 @@ hand_anchors.HAND_ANCHORS = {
         { x = 5, y = 7,  angle = -math.pi / 2 },
         { x = 4, y = 8,  angle = -1.3708 },
         { x = 2, y = 6,  angle = -1.7708 },
+    },
+
+    -- Jump animations (standing jump, 2 frames each)
+    jump_right = {
+        { x = -1, y = 7, angle = -math.pi / 12 },
+        { x = -1, y = 7, angle = -math.pi / 12 },
+    },
+    jump_left = {
+        { x = 0, y = 7, angle = -math.pi },
+        { x = 0, y = 7, angle = -math.pi },
+    },
+    jump_down = {
+        { x = -6, y = 6, angle = math.pi / 2 },
+        { x = -6, y = 6, angle = math.pi / 2 },
+    },
+    jump_up = {
+        { x = 4, y = 7, angle = -math.pi / 2 },
+        { x = 4, y = 7, angle = -math.pi / 2 },
+    },
+
+    -- Jump move animations (moving jump, 2 frames each)
+    jump_move_right = {
+        { x = -1, y = 7, angle = -math.pi / 12 },
+        { x = -1, y = 7, angle = -math.pi / 12 },
+    },
+    jump_move_left = {
+        { x = 0, y = 7, angle = -math.pi },
+        { x = 0, y = 7, angle = -math.pi },
+    },
+    jump_move_down = {
+        { x = -6, y = 6, angle = math.pi / 2 },
+        { x = -6, y = 6, angle = math.pi / 2 },
+    },
+    jump_move_up = {
+        { x = 4, y = 7, angle = -math.pi / 2 },
+        { x = 4, y = 7, angle = -math.pi / 2 },
     },
 
     -- Attack animations (4 frames each)

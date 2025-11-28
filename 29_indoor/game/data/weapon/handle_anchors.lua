@@ -1,4 +1,4 @@
--- entities/weapon/config/handle_anchors.lua
+-- game/data/weapon/handle_anchors.lua
 -- Weapon handle anchor positions (where hand grips on weapon sprite)
 
 local handle_anchors = {}

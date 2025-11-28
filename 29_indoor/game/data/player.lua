@@ -5,8 +5,8 @@ local player_config = {}
 
 -- Basic stats
 player_config.stats = {
-  speed = 260,        -- run speed (default movement)
-  walk_speed = 130,   -- walk speed (for indoor maps with move_mode="walk")
+  speed = 260,      -- run speed (default movement)
+  walk_speed = 130, -- walk speed (for indoor maps with move_mode="walk")
   jump_power = 600,
 }
 
@@ -54,32 +54,44 @@ player_config.sprite = {
 -- Uncomment and modify to use custom sprite sheet layout
 
 player_config.animations = {
-  default_move = "run",  -- "walk" or "run"
+  default_move = "run", -- "walk" or "run"
   frames = {
-    walk_up      = { "1-4", 4 },
-    walk_down    = { "1-4", 3 },
-    walk_left    = { { "5-8", 4 }, { "1-2", 5 } },
-    walk_right   = { "3-8", 5 },
+    idle_up         = { "5-8", 1 },
+    idle_down       = { "1-4", 1 },
+    idle_left       = { "1-4", 2 },
+    idle_right      = { "5-8", 2 },
 
-    run_up       = { { "7-8", 6 }, { "1-4", 7 } },
-    run_down     = { "1-6", 6 },
-    run_left     = { { "5-8", 7 }, { "1-2", 8 } },
-    run_right    = { "3-8", 8 },
+    walk_up         = { "1-4", 4 },
+    walk_down       = { "1-4", 3 },
+    walk_left       = { { "5-8", 4 }, { "1-2", 5 } },
+    walk_right      = { "3-8", 5 },
 
-    idle_up      = { "5-8", 1 },
-    idle_down    = { "1-4", 1 },
-    idle_left    = { "1-4", 2 },
-    idle_right   = { "5-8", 2 },
+    run_up          = { { "7-8", 6 }, { "1-4", 7 } },
+    run_down        = { "1-6", 6 },
+    run_left        = { { "5-8", 7 }, { "1-2", 8 } },
+    run_right       = { "3-8", 8 },
 
-    attack_down  = { "1-4", 11 },
-    attack_up    = { "5-8", 11 },
-    attack_left  = { "1-4", 12 },
-    attack_right = { "5-8", 12 },
+    jump_up         = { { "7-8", 6 }, { "1-4", 7 } },
+    jump_down       = { "1-6", 6 },
+    jump_left       = { {"5-8", 7}, { "1-2", 8 } },
+    jump_right      = { "3-8", 8 },
+
+    jump_move_up         = { { "7-8", 6 }, { "1-4", 7 } },
+    jump_move_down       = { "1-6", 6 },
+    jump_move_left       = { {"5-8", 7}, { "1-2", 8 } },
+    jump_move_right      = { "3-8", 8 },
+
+    attack_down     = { "1-4", 11 },
+    attack_up       = { "5-8", 11 },
+    attack_left     = { "1-4", 12 },
+    attack_right    = { "5-8", 12 },
   },
   durations = {
+    idle = 0.15,
     walk = 0.1,
     run = 0.08,
-    idle = 0.15,
+    jump = 0.15,
+    jump_move = 0.12,
     attack = 0.08,
   },
 }

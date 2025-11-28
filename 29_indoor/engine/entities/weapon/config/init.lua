@@ -1,8 +1,7 @@
 -- engine/entities/weapon/config/init.lua
 -- Weapon configuration module bundle
+-- NOTE: hand_anchors and handle_anchors are now injected from game/data/weapon/
 
 return {
-    hand_anchors = require "engine.entities.weapon.config.hand_anchors",
-    handle_anchors = require "engine.entities.weapon.config.handle_anchors",
     swing_configs = require "engine.entities.weapon.config.swing_configs",
 }

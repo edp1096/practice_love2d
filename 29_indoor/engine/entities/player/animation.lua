@@ -123,9 +123,23 @@ local function handleMovementInput(player, dt)
         if player.game_mode == "platformer" then
             -- Platformer mode: horizontal movement only, jump handled separately
             if movement_input then
-                -- Use walk_speed if walking and walk_speed is defined
+                -- Only left/right direction
+                if math.abs(move_x) > 0.01 then
+                    move_direction = move_x > 0 and "right" or "left"
+                end
+
+                -- Check for backpedaling (moving opposite to facing while weapon drawn)
+                local is_backpedaling = false
+                if player.weapon_drawn and move_direction then
+                    local opposite_dirs = { left = "right", right = "left" }
+                    if opposite_dirs[player.direction] == move_direction then
+                        is_backpedaling = true
+                    end
+                end
+
+                -- Use walk_speed if walking, backpedaling, or walk_speed is defined
                 local current_speed = player.speed
-                if use_walk and player.walk_speed then
+                if (use_walk or is_backpedaling) and player.walk_speed then
                     current_speed = player.walk_speed
                 end
                 vx = move_x * current_speed
@@ -134,11 +148,6 @@ local function handleMovementInput(player, dt)
 
                 -- Store input direction for jump
                 player.last_input_x = move_x
-
-                -- Only left/right direction
-                if math.abs(move_x) > 0.01 then
-                    move_direction = move_x > 0 and "right" or "left"
-                end
             else
                 player.last_input_x = 0
             end
@@ -213,19 +222,50 @@ local function handleMovementInput(player, dt)
             -- Force walk animation when backpedaling
             local final_move_type = is_backpedaling and "walk" or move_type
 
-            -- Use walk animation if walk mode, run animation if run mode
-            -- Fallback to walk if run animation doesn't exist
-            local anim_key = final_move_type .. "_" .. player.direction
-            if player.animations[anim_key] then
-                player.anim = player.animations[anim_key]
+            -- Check if player is jumping (topdown or platformer)
+            local is_jumping = (player.game_mode == "topdown" and player.topdown_is_jumping)
+                or (player.game_mode == "platformer" and not player.is_grounded)
+
+            -- Check for jump animation (moving jump)
+            local anim_key
+            if is_jumping then
+                -- Moving jump: jump_move → jump → walk fallback
+                anim_key = "jump_move_" .. player.direction
+                if not player.animations[anim_key] then
+                    anim_key = "jump_" .. player.direction
+                end
+                if not player.animations[anim_key] then
+                    anim_key = "walk_" .. player.direction
+                end
             else
-                -- Fallback to walk animation if run doesn't exist
-                player.anim = player.animations["walk_" .. player.direction]
+                -- Use walk animation if walk mode, run animation if run mode
+                -- Fallback to walk if run animation doesn't exist
+                anim_key = final_move_type .. "_" .. player.direction
+                if not player.animations[anim_key] then
+                    -- Fallback to walk animation if run doesn't exist
+                    anim_key = "walk_" .. player.direction
+                end
             end
+            player.anim = player.animations[anim_key]
             player.anim:update(dt)
             player.state = final_move_type == "run" and "running" or "walking"
         else
-            player.anim = player.animations["idle_" .. player.direction]
+            -- Check if player is jumping (topdown or platformer)
+            local is_jumping = (player.game_mode == "topdown" and player.topdown_is_jumping)
+                or (player.game_mode == "platformer" and not player.is_grounded)
+
+            -- Check for jump animation (standing jump)
+            local anim_key
+            if is_jumping then
+                -- Standing jump: jump → idle fallback
+                anim_key = "jump_" .. player.direction
+                if not player.animations[anim_key] then
+                    anim_key = "idle_" .. player.direction
+                end
+            else
+                anim_key = "idle_" .. player.direction
+            end
+            player.anim = player.animations[anim_key]
             player.anim:update(dt)
             if player.state ~= "attacking" and not player.parry_active then
                 player.state = "idle"
@@ -327,6 +367,8 @@ local DEFAULT_DURATIONS = {
     run = 0.08,
     idle = 0.15,
     attack = 0.08,
+    jump = 0.15,
+    jump_move = 0.12,
 }
 
 -- Default move type
@@ -373,6 +415,22 @@ function animation.initialize(player, sprite_sheet, sprite_width, sprite_height)
     player.animations.attack_up = createAnimation(player.grid, frames.attack_up, durations.attack)
     player.animations.attack_left = createAnimation(player.grid, frames.attack_left, durations.attack)
     player.animations.attack_right = createAnimation(player.grid, frames.attack_right, durations.attack)
+
+    -- Jump animations (optional - standing jump)
+    if frames.jump_up then
+        player.animations.jump_up = createAnimation(player.grid, frames.jump_up, durations.jump or 0.15)
+        player.animations.jump_down = createAnimation(player.grid, frames.jump_down, durations.jump or 0.15)
+        player.animations.jump_left = createAnimation(player.grid, frames.jump_left, durations.jump or 0.15)
+        player.animations.jump_right = createAnimation(player.grid, frames.jump_right, durations.jump or 0.15)
+    end
+
+    -- Jump move animations (optional - moving jump)
+    if frames.jump_move_up then
+        player.animations.jump_move_up = createAnimation(player.grid, frames.jump_move_up, durations.jump_move or 0.12)
+        player.animations.jump_move_down = createAnimation(player.grid, frames.jump_move_down, durations.jump_move or 0.12)
+        player.animations.jump_move_left = createAnimation(player.grid, frames.jump_move_left, durations.jump_move or 0.12)
+        player.animations.jump_move_right = createAnimation(player.grid, frames.jump_move_right, durations.jump_move or 0.12)
+    end
 
     player.anim = player.animations.idle_right
     player.direction = "right"
