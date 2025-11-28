@@ -126,7 +126,6 @@
   <object id="15" x="96" y="128" width="32" height="32">
    <properties>
     <property name="patrol_points" value="30,0;-30,0"/>
-    <property name="respawn" type="bool" value="true"/>
     <property name="type" value="green_slime"/>
    </properties>
   </object>

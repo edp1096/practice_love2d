@@ -526,7 +526,6 @@ return {
           visible = true,
           properties = {
             ["patrol_points"] = "30,0;-30,0",
-            ["respawn"] = true,
             ["type"] = "green_slime"
           }
         },
