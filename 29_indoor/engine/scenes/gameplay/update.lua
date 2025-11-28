@@ -277,9 +277,25 @@ function update.checkTransitions(self, scaled_dt)
     end
 end
 
+-- Check if player is immune to hazard zones (dodge or topdown jump)
+local function isPlayerHazardImmune(player)
+    -- Dodge grants immunity
+    if player.dodge_active then return true end
+
+    -- Topdown jump grants immunity (visual jump, no collision change)
+    if player.game_mode == "topdown" and player.topdown_is_jumping then
+        return true
+    end
+
+    return false
+end
+
 -- Check for death zones (instant death)
 function update.checkDeathZones(self)
     if not self.player.collider then return false end
+
+    -- Skip if player is immune (dodge or topdown jump)
+    if isPlayerHazardImmune(self.player) then return false end
 
     local px, py = getPlayerFootPosition(self.player)
 
@@ -300,6 +316,9 @@ end
 -- Check for damage zones (continuous damage)
 function update.checkDamageZones(self, scaled_dt, shake_callback)
     if not self.player.collider then return end
+
+    -- Skip if player is immune (dodge or topdown jump)
+    if isPlayerHazardImmune(self.player) then return end
 
     -- Initialize damage zone cooldowns if not exists
     if not self.player.damage_zone_cooldowns then
