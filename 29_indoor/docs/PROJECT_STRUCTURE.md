@@ -176,9 +176,12 @@ game/
 │   └── inventory/        - Inventory overlay (modular)
 │
 └── data/                 - Configuration files
-    ├── player.lua        - Player stats (injected)
+    ├── player.lua        - Player stats, animations (injected)
     ├── entities/
     │   └── types.lua     - Enemy types (injected)
+    ├── weapon/
+    │   ├── hand_anchors.lua   - Hand positions per frame (injected)
+    │   └── handle_anchors.lua - Weapon grip positions (injected)
     ├── scenes.lua        - Menu configs
     ├── sounds.lua        - Sound definitions
     ├── input_config.lua  - Input mappings
@@ -186,11 +189,16 @@ game/
     └── dialogues.lua     - NPC dialogue trees
 ```
 
-**Dependency Injection (main.lua):**
+**Dependency Injection (game/setup.lua):**
 ```lua
-local player_module = require "engine.entities.player"
-local player_config = require "game.data.player"
-player_module.config = player_config  -- Inject game config
+-- Entity registries
+enemy_class.type_registry = entity_types.enemies
+weapon_class.type_registry = entity_types.weapons
+weapon_class.hand_anchors = hand_anchors.HAND_ANCHORS
+weapon_class.handle_anchors = handle_anchors.WEAPON_HANDLE_ANCHORS
+
+-- Player config
+gameplay_scene.player_config = player_config
 ```
 
 ---

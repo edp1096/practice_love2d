@@ -176,9 +176,12 @@ game/
 │   └── inventory/        - 인벤토리 오버레이 (모듈형)
 │
 └── data/                 - 설정 파일
-    ├── player.lua        - 플레이어 스탯 (주입됨)
+    ├── player.lua        - 플레이어 스탯, 애니메이션 (주입됨)
     ├── entities/
     │   └── types.lua     - 적 타입 (주입됨)
+    ├── weapon/
+    │   ├── hand_anchors.lua   - 프레임별 손 위치 (주입됨)
+    │   └── handle_anchors.lua - 무기 손잡이 위치 (주입됨)
     ├── scenes.lua        - 메뉴 설정
     ├── sounds.lua        - 사운드 정의
     ├── input_config.lua  - 입력 매핑
@@ -186,11 +189,16 @@ game/
     └── dialogues.lua     - NPC 대화 트리
 ```
 
-**의존성 주입 (main.lua):**
+**의존성 주입 (game/setup.lua):**
 ```lua
-local player_module = require "engine.entities.player"
-local player_config = require "game.data.player"
-player_module.config = player_config  -- 게임 config 주입
+-- 엔티티 레지스트리
+enemy_class.type_registry = entity_types.enemies
+weapon_class.type_registry = entity_types.weapons
+weapon_class.hand_anchors = hand_anchors.HAND_ANCHORS
+weapon_class.handle_anchors = handle_anchors.WEAPON_HANDLE_ANCHORS
+
+-- 플레이어 설정
+gameplay_scene.player_config = player_config
 ```
 
 ---
