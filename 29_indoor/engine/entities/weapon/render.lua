@@ -117,8 +117,7 @@ function render.drawDebug(weapon, swing_configs)
     text_ui:draw("CENTER", weapon.x - 20, weapon.y + 20, {0, 1, 0, 1})
 
     -- Weapon handle (CYAN)
-    local handle_anchors = require "engine.entities.weapon.config.handle_anchors"
-    local handle_anchor = handle_anchors.WEAPON_HANDLE_ANCHORS[weapon.current_direction] or handle_anchors.WEAPON_HANDLE_ANCHORS.right
+    local handle_anchor = weapon.handle_anchors[weapon.current_direction] or weapon.handle_anchors.right
     local swing_config = swing_configs[weapon.current_direction]
 
     local handle_x = handle_anchor.x

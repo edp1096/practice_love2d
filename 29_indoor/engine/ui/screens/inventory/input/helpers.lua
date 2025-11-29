@@ -300,6 +300,8 @@ function helpers.selectItemByNumber(self, slot_num)
     table.sort(item_ids, function(a, b)
         local item_a = self.inventory.items[a]
         local item_b = self.inventory.items[b]
+        if not item_a then return false end
+        if not item_b then return true end
         if item_a.y == item_b.y then
             return item_a.x < item_b.x
         end
