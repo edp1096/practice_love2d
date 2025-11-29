@@ -161,6 +161,37 @@ function render.drawWeapon(player)
     player.weapon:draw(debug.enabled)
 end
 
+-- Draw hand overlay using stencil (hand appears above weapon)
+local function drawHandOverlay(player)
+    local weapon = player.weapon
+    if not weapon or not weapon.debug_hand_x or not weapon.debug_hand_y then
+        return
+    end
+
+    local hand_x = weapon.debug_hand_x
+    local hand_y = weapon.debug_hand_y
+    local hand_radius = 2 * player.sprite_scale  -- 2px base, scaled
+
+    -- Set stencil: draw only in hand area
+    love.graphics.stencil(function()
+        love.graphics.circle("fill", hand_x, hand_y, hand_radius)
+    end, "replace", 1)
+
+    love.graphics.setStencilTest("greater", 0)
+
+    -- Redraw player sprite (only hand area will be visible)
+    local draw_x = player.x + player.hit_shake_x
+    local draw_y = player.y + player.hit_shake_y
+    if player.game_mode == "topdown" and player.topdown_is_jumping then
+        draw_y = draw_y + player.topdown_jump_height
+    end
+
+    love.graphics.setColor(1, 1, 1, 1)
+    player.anim:draw(player.spriteSheet, draw_x, draw_y, nil, player.sprite_scale, player.sprite_scale, player.sprite_origin_x, player.sprite_origin_y)
+
+    love.graphics.setStencilTest()
+end
+
 function render.drawAll(player)
     -- No weapon equipped
     if not player.weapon then
@@ -175,16 +206,18 @@ function render.drawAll(player)
         return
     end
 
-    -- Weapon drawn
-    if player.direction == "left" or player.direction == "up" then
+    -- Weapon drawn (assuming right-handed)
+    if player.direction == "up" or player.direction == "left" then
+        -- Up, left: weapon behind player (no hand overlay needed)
         render.drawWeapon(player)
         render.draw(player)
-        player.weapon:drawSheathParticles()
     else
+        -- Down, right: weapon in front, hand overlay on top
         render.draw(player)
         render.drawWeapon(player)
-        player.weapon:drawSheathParticles()
+        drawHandOverlay(player)
     end
+    player.weapon:drawSheathParticles()
 end
 
 function render.drawDebug(player)
