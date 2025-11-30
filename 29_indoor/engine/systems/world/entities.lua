@@ -208,6 +208,13 @@ function entities.updateEnemies(self, dt, player_x, player_y)
                 end
             end
 
+            -- Update weapon position for humanoid enemies during death knockback
+            if enemy.is_humanoid and enemy.weapon then
+                local weapon_x = enemy.x + enemy.collider_offset_x
+                local weapon_y = enemy.y + enemy.collider_offset_y
+                enemy.weapon:update(dt, weapon_x, weapon_y, 0, enemy.direction, "idle_" .. enemy.direction, 1, false)
+            end
+
             -- Destroy colliders after knockback has time to play (0.3s)
             if not enemy.colliders_destroyed and enemy.death_timer > 0.3 then
                 enemy.colliders_destroyed = true
@@ -228,12 +235,9 @@ function entities.updateEnemies(self, dt, player_x, player_y)
                 self:transformEnemyToNPC(enemy, enemy.surrender_npc)
                 table.remove(self.enemies, i)
             else
-                -- Update enemy movement
-                local vx, vy = enemy:update(dt, player_x, player_y)
-
-                -- Skip velocity update during hit state (let knockback play out)
-                if enemy.state == constants.ENEMY_STATES.HIT then
-                    -- Just sync position from collider without setting velocity
+                -- During hit/stunned state: sync position FIRST (before update, so weapon follows)
+                local is_knockback_state = enemy.state == constants.ENEMY_STATES.HIT or enemy.is_stunned
+                if is_knockback_state then
                     if self.game_mode == "topdown" and enemy.foot_collider then
                         local y_offset = getYOffset(enemy)
                         enemy.x = enemy.foot_collider:getX() - enemy.collider_offset_x
@@ -249,8 +253,13 @@ function entities.updateEnemies(self, dt, player_x, player_y)
                         enemy.x = enemy.collider:getX() - enemy.collider_offset_x
                         enemy.y = enemy.collider:getY() - enemy.collider_offset_y
                     end
-                else
-                    -- Normal movement: Update position based on game mode
+                end
+
+                -- Update enemy (includes weapon update for humanoids)
+                local vx, vy = enemy:update(dt, player_x, player_y)
+
+                -- Normal movement (skip during hit/stunned state - position already synced above)
+                if not is_knockback_state then
                     if self.game_mode == "topdown" then
                         updateTopdownEnemyPosition(enemy, vx, vy)
                     else
@@ -354,9 +363,15 @@ function entities.applyWeaponHit(self, hit_result)
             if enemy.foot_collider then
                 enemy.foot_collider:setLinearVelocity(velocity_x, velocity_y)
                 enemy.foot_collider:setLinearDamping(45)  -- Higher damping for 2/3 distance
+                -- Immediately sync enemy position from collider (so weapon follows)
+                local y_offset = getYOffset(enemy)
+                enemy.x = enemy.foot_collider:getX() - enemy.collider_offset_x
+                enemy.y = enemy.foot_collider:getY() - enemy.collider_offset_y - y_offset
             elseif enemy.collider then
                 enemy.collider:setLinearVelocity(velocity_x, velocity_y)
                 enemy.collider:setLinearDamping(45)
+                enemy.x = enemy.collider:getX() - enemy.collider_offset_x
+                enemy.y = enemy.collider:getY() - enemy.collider_offset_y
             end
         else
             -- Platformer: apply horizontal knockback only, preserve vertical velocity
@@ -364,6 +379,8 @@ function entities.applyWeaponHit(self, hit_result)
                 local _, vy = enemy.collider:getLinearVelocity()
                 enemy.collider:setLinearVelocity(velocity_x, vy)
                 enemy.collider:setLinearDamping(45)
+                enemy.x = enemy.collider:getX() - enemy.collider_offset_x
+                enemy.y = enemy.collider:getY() - enemy.collider_offset_y
             end
         end
     end

@@ -278,15 +278,10 @@ function enemy:update(dt, player_x, player_y)
         self.move_sound_timer = 0
     end
 
-    -- If stunned, skip AI
-    if self.is_stunned then
-        return 0, 0
-    end
-
     -- Store previous state for sound detection
     self.previous_state = self.state
 
-    -- Update weapon for humanoid enemies
+    -- Update weapon for humanoid enemies (even when stunned)
     if self.is_humanoid and self.weapon then
         -- Map state to actual animation name
         local anim_base = self.state
@@ -303,6 +298,11 @@ function enemy:update(dt, player_x, player_y)
         local weapon_x, weapon_y = self:getColliderCenter()
 
         self.weapon:update(dt, weapon_x, weapon_y, 0, self.direction, anim_name, frame_index, false)
+    end
+
+    -- If stunned, skip AI (but weapon was already updated above)
+    if self.is_stunned then
+        return 0, 0
     end
 
     -- Delegate to AI module
