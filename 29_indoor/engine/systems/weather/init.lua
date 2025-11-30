@@ -16,6 +16,7 @@ weather.pool = nil              -- Weather pool table {rain=30, fog=20, clear=50
 weather.change_interval = nil   -- {min, max} seconds between changes
 weather.next_change_time = 0    -- Timer for next random change
 weather.is_forced = false       -- If true, don't auto-change
+weather.camera = nil            -- Camera reference for splash positioning
 weather.transition = {          -- Transition state
   active = false,
   from = nil,
@@ -97,6 +98,9 @@ local function getCurrentEffect()
     if not rain_effect then
       rain_effect = loadEffect("rain")
     end
+    if rain_effect then
+      rain_effect.camera = weather.camera
+    end
     return rain_effect
   elseif weather.current == "fog" or weather.current == "mist" then
     if not fog_effect then
@@ -111,6 +115,9 @@ local function getCurrentEffect()
   elseif weather.current == "storm" then
     if not storm_effect then
       storm_effect = loadEffect("storm")
+    end
+    if storm_effect then
+      storm_effect.camera = weather.camera
     end
     return storm_effect
   end

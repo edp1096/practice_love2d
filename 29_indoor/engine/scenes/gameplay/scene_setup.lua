@@ -267,7 +267,8 @@ function scene_setup.initSystems(scene)
     scene.minimap = minimap_class:new()
     scene.minimap:setMap(scene.world)
 
-    -- Initialize weather system
+    -- Initialize weather system with camera reference
+    weather.camera = scene.cam
     weather:initialize(scene.world.map)
 end
 
@@ -532,6 +533,7 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
     }, merged_picked, merged_killed, scene.transformed_npcs)
 
     -- Reinitialize weather for new map
+    weather.camera = scene.cam
     weather:initialize(scene.world.map)
 
     scene.player.x = spawn_x

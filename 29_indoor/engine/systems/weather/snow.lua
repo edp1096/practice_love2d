@@ -1,124 +1,124 @@
 -- engine/systems/weather/snow.lua
--- Snow weather effect using particle system
+-- Snow weather effect for TOP-DOWN view
+-- Snow appears across entire screen, drifting gently
 
 local snow = {}
 
 -- Particle system
-local particle_system = nil
-local particle_image = nil
+local snow_system = nil
+local snow_image = nil
 
--- Configuration
-local BASE_EMIT_RATE = 300        -- Particles per second at full intensity (less than rain)
-local PARTICLE_LIFETIME = 8.0     -- How long particles live (long enough to reach bottom)
-local FALL_SPEED = 80             -- Pixels per second (much slower than rain)
-local WIND_FACTOR = 15            -- Horizontal drift (gentle sway)
+-- Virtual screen size
+local VW, VH = 960, 540
+
+-- Snow configuration
+local SNOW_EMIT_RATE = 150
+local SNOW_LIFETIME = 4.0         -- Longer lifetime for slow drift
+local SNOW_SPEED = 40             -- Slow movement
+local SNOW_DRIFT = 20             -- Horizontal sway
+
+-- Create snowflake image
+local function createSnowImage()
+    if snow_image then return end
+
+    -- Snowflake: 8x8 pixel soft circle
+    local imageData = love.image.newImageData(8, 8)
+    imageData:mapPixel(function(x, y)
+        local cx, cy = 4, 4
+        local dist = math.sqrt((x - cx)^2 + (y - cy)^2)
+
+        local alpha = 0
+        if dist < 2.5 then
+            alpha = 0.95 - (dist / 2.5) * 0.3
+        elseif dist < 3.5 then
+            alpha = 0.65 - ((dist - 2.5) / 1.0) * 0.4
+        elseif dist < 4.5 then
+            alpha = 0.25 - ((dist - 3.5) / 1.0) * 0.25
+        end
+
+        return 1.0, 1.0, 1.0, math.max(0, alpha)
+    end)
+    snow_image = love.graphics.newImage(imageData)
+    snow_image:setFilter("linear", "linear")
+end
 
 -- Initialize snow effect
 function snow:initialize(intensity)
-  intensity = intensity or 1.0
+    intensity = intensity or 1.0
 
-  -- Create snowflake image if needed
-  if not particle_image then
-    -- Create snowflake image (8x8 pixel)
-    local imageData = love.image.newImageData(8, 8)
-    imageData:mapPixel(function(x, y, r, g, b, a)
-      -- Center distance for circular shape
-      local cx, cy = 4, 4
-      local dist = math.sqrt((x - cx)^2 + (y - cy)^2)
+    createSnowImage()
 
-      -- Create soft circular snowflake
-      local alpha = 0
-      if dist < 3 then
-        alpha = 0.9 - (dist / 3) * 0.4  -- Center is brighter
-      elseif dist < 4 then
-        alpha = 0.3  -- Soft edge
-      end
+    snow_system = love.graphics.newParticleSystem(snow_image, 1000)
 
-      -- Pure white
-      return 1.0, 1.0, 1.0, alpha
-    end)
-    particle_image = love.graphics.newImage(imageData)
-    particle_image:setFilter("linear", "linear")  -- Soft filtering for snow
-  end
+    snow_system:setParticleLifetime(SNOW_LIFETIME * 0.7, SNOW_LIFETIME)
+    snow_system:setEmissionRate(SNOW_EMIT_RATE * intensity)
 
-  -- Create particle system (need enough for emission_rate × lifetime)
-  particle_system = love.graphics.newParticleSystem(particle_image, 3000)
+    -- TOP-DOWN: Emit across ENTIRE screen area
+    snow_system:setEmissionArea("uniform", VW / 2, VH / 2, 0, false)
 
-  -- Configure particles
-  particle_system:setParticleLifetime(PARTICLE_LIFETIME)
-  particle_system:setEmissionRate(BASE_EMIT_RATE * intensity)
+    -- Gentle diagonal drift (mostly down-right)
+    snow_system:setDirection(math.rad(80))
+    snow_system:setSpread(math.rad(30))
 
-  -- Area to emit from (full screen width, above screen)
-  local vw, vh = 960, 540  -- Virtual resolution
-  particle_system:setEmissionArea("uniform", vw / 2, 0)
+    snow_system:setSpeed(SNOW_SPEED * 0.6, SNOW_SPEED * 1.4)
 
-  -- Direction: downward with gentle drift
-  particle_system:setDirection(math.rad(90))
-  particle_system:setSpread(math.rad(15))  -- More spread than rain
+    -- Gentle sway
+    snow_system:setLinearAcceleration(-SNOW_DRIFT, 5, SNOW_DRIFT, 15)
 
-  -- Speed (slower than rain)
-  particle_system:setSpeed(FALL_SPEED, FALL_SPEED + 40)
+    -- Size variation for depth effect
+    snow_system:setSizes(1.4, 1.2, 1.0, 0.7)
 
-  -- Linear acceleration (gentle wind sway)
-  particle_system:setLinearAcceleration(-WIND_FACTOR, 0, WIND_FACTOR, 20)
+    -- Gentle rotation
+    snow_system:setRotation(0, math.rad(360))
+    snow_system:setSpin(math.rad(-15), math.rad(15))
 
-  -- Size variation (snowflakes of different sizes)
-  particle_system:setSizes(1.5, 1.2, 0.8, 0.5)
+    -- Pure white, gradual fade
+    snow_system:setColors(
+        1.0, 1.0, 1.0, 0.85,
+        1.0, 1.0, 1.0, 0.7,
+        1.0, 1.0, 1.0, 0.4,
+        1.0, 1.0, 1.0, 0.0
+    )
 
-  -- Gentle rotation for snowflake effect
-  particle_system:setRotation(0, math.rad(360))
-  particle_system:setSpin(math.rad(-30), math.rad(30))
+    snow_system:start()
 
-  -- Color stays white but fades out slowly
-  particle_system:setColors(
-    1.0, 1.0, 1.0, 0.9,   -- Start: bright white
-    1.0, 1.0, 1.0, 0.7,   -- Mid: still bright
-    1.0, 1.0, 1.0, 0.4,   -- Late: fading
-    1.0, 1.0, 1.0, 0.0    -- End: transparent
-  )
-
-  -- Start emitting
-  particle_system:start()
+    -- Pre-fill entire screen
+    local prefill = math.floor(SNOW_EMIT_RATE * SNOW_LIFETIME * 0.6)
+    snow_system:emit(prefill)
 end
 
 -- Update
 function snow:update(dt, intensity)
-  intensity = intensity or 1.0
+    intensity = intensity or 1.0
 
-  if particle_system then
-    -- Update emission rate based on intensity
-    particle_system:setEmissionRate(BASE_EMIT_RATE * intensity)
-
-    -- Update particles
-    particle_system:update(dt)
-  end
+    if snow_system then
+        snow_system:setEmissionRate(SNOW_EMIT_RATE * intensity)
+        snow_system:update(dt)
+    end
 end
 
 -- Draw
 function snow:draw(intensity)
-  if not particle_system then return end
+    if not snow_system then return end
 
-  -- Draw particle system (uses display coordinates)
-  local display = require "engine.core.display"
-  display:Attach()
+    local display = require "engine.core.display"
+    display:Attach()
 
-  -- Simple alpha blend
-  love.graphics.setBlendMode("alpha")
-  love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setBlendMode("alpha")
+    love.graphics.setColor(1, 1, 1, 1)
 
-  -- Position at top of virtual screen
-  local vw, vh = 960, 540
-  love.graphics.draw(particle_system, vw / 2, -50)
+    -- Draw snow at screen center (emission covers full screen)
+    love.graphics.draw(snow_system, VW / 2, VH / 2)
 
-  display:Detach()
+    display:Detach()
 end
 
 -- Cleanup
 function snow:cleanup()
-  if particle_system then
-    particle_system:stop()
-    particle_system = nil
-  end
+    if snow_system then
+        snow_system:stop()
+        snow_system = nil
+    end
 end
 
 return snow
