@@ -2,6 +2,8 @@
 -- Touch handling logic for virtual gamepad
 
 local coords = require "engine.core.coords"
+local scene_control = require "engine.core.scene_control"
+local quest_system = require "engine.core.quest"
 
 local touch = {}
 
@@ -224,7 +226,6 @@ function touch.triggerButtonPress(button_name, vgp)
     local button = vgp.buttons[button_name]
     if not button then return end
 
-    local scene_control = require "engine.core.scene_control"
     if not scene_control.current or not scene_control.current.gamepadpressed then
         return
     end
@@ -248,13 +249,11 @@ function touch.triggerButtonPress(button_name, vgp)
         scene_control.current:gamepadpressed(nil, "y")
     elseif action == "open_inventory" then
         -- L1 button: open inventory directly
-        local quest_system = require "engine.core.quest"
         if scene_control.current.inventory and scene_control.current.player then
             scene_control.push("container", scene_control.current.inventory, scene_control.current.player, quest_system, "inventory")
         end
     elseif action == "open_questlog" then
         -- L2 button: open quest log directly
-        local quest_system = require "engine.core.quest"
         if scene_control.current.inventory and scene_control.current.player then
             scene_control.push("container", scene_control.current.inventory, scene_control.current.player, quest_system, "questlog")
         end
@@ -275,7 +274,6 @@ function touch.triggerButtonRelease(button_name, vgp)
     if not button then return end
 
     -- Simulate gamepad button release
-    local scene_control = require "engine.core.scene_control"
     if not scene_control.current or not scene_control.current.gamepadreleased then
         return
     end
@@ -314,7 +312,6 @@ end
 -- Trigger menu button press
 function touch.triggerMenuPress(vgp)
     -- Trigger pause menu
-    local scene_control = require "engine.core.scene_control"
     if scene_control.current and scene_control.current.gamepadpressed then
         scene_control.current:gamepadpressed(nil, "start")
     end

@@ -13,11 +13,11 @@ local dialogue = require "engine.ui.dialogue"
 local sound = require "engine.core.sound"
 local fonts = require "engine.utils.fonts"
 local debug = require "engine.core.debug"
+local input = require "engine.core.input"
 
 function cutscene:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot, is_new_game)
 
     -- Hide virtual gamepad during intro/cutscene
-    local input = require "engine.core.input"
     if input.virtual_gamepad then
         input.virtual_gamepad:hide()
     end
@@ -198,7 +198,6 @@ function cutscene:draw()
 end
 
 function cutscene:keypressed(key)
-    local input = require "engine.core.input"
 
     -- Handle debug keys first
     debug:handleInput(key, {})
@@ -221,7 +220,6 @@ function cutscene:keypressed(key)
 end
 
 function cutscene:keyreleased(key)
-    local input = require "engine.core.input"
 
     -- Stop charging skip
     if input:wasPressed("menu_back", "keyboard", key) and dialogue.skip_button then
@@ -234,7 +232,6 @@ function cutscene:keyreleased(key)
 end
 
 function cutscene:gamepadpressed(joystick, button)
-    local input = require "engine.core.input"
 
     if input:wasPressed("menu_select", "gamepad", button) then
         dialogue:handleInput("keyboard")
@@ -247,7 +244,6 @@ function cutscene:gamepadpressed(joystick, button)
 end
 
 function cutscene:gamepadreleased(joystick, button)
-    local input = require "engine.core.input"
 
     -- Stop charging skip
     if input:wasPressed("menu_back", "gamepad", button) or input:wasPressed("pause", "gamepad", button) then

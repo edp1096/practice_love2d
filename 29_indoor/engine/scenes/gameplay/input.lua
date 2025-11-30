@@ -6,6 +6,9 @@ local dialogue = require "engine.ui.dialogue"
 local input = require "engine.core.input"
 local sound = require "engine.core.sound"
 local debug = require "engine.core.debug"
+local quest_system = require "engine.core.quest"
+local coords = require "engine.core.coords"
+local display = require "engine.core.display"
 
 local input_handler = {}
 
@@ -43,11 +46,9 @@ function input_handler.keypressed(self, key)
         sound:pauseBGM()
     elseif input:wasPressed("toggle_inventory", "keyboard", key) then
         -- Toggle container UI with inventory tab (I key or Back button on gamepad)
-        local quest_system = require "engine.core.quest"
         scene_control.push("container", self.inventory, self.player, quest_system, "inventory")
     elseif input:wasPressed("toggle_questlog", "keyboard", key) then
         -- Toggle container UI with questlog tab (J key)
-        local quest_system = require "engine.core.quest"
         scene_control.push("container", self.inventory, self.player, quest_system, "questlog")
     elseif input:wasPressed("dodge", "keyboard", key) then
         -- Dodge (lshift key or R1 on gamepad) - works in both modes
@@ -82,8 +83,6 @@ function input_handler.keypressed(self, key)
         -- F key: Interact with NPC, Save Point, or Pick up Item (A button on gamepad uses context logic)
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
-            local quest_system = require "engine.core.quest"
-
             self:processDeliveryQuests(npc.id)
 
             -- Check for completable quests
@@ -229,8 +228,7 @@ function input_handler.gamepadpressed(self, joystick, button)
     elseif action == "interact_npc" then
         -- ctx is the NPC
         if ctx then
-            local quest_system = require "engine.core.quest"
-
+            
             -- Process delivery quests first (might complete objectives)
             self:processDeliveryQuests(ctx.id)
 
@@ -283,8 +281,7 @@ function input_handler.gamepadpressed(self, joystick, button)
 
         -- NPC interaction
         if npc then
-            local quest_system = require "engine.core.quest"
-
+            
             self:processDeliveryQuests(npc.id)
 
             -- Check for completable quests
@@ -411,12 +408,10 @@ function input_handler.gamepadpressed(self, joystick, button)
         sound:playSFX("ui", "move")
 
     elseif action == "toggle_inventory" then
-        local quest_system = require "engine.core.quest"
-        scene_control.push("container", self.inventory, self.player, quest_system, "inventory")
+                scene_control.push("container", self.inventory, self.player, quest_system, "inventory")
 
     elseif action == "toggle_questlog" then
-        local quest_system = require "engine.core.quest"
-        scene_control.push("container", self.inventory, self.player, quest_system, "questlog")
+                scene_control.push("container", self.inventory, self.player, quest_system, "questlog")
     end
 end
 
@@ -452,12 +447,10 @@ function input_handler.gamepadaxis(self, joystick, axis, value)
         self.player:startEvade()
 
     elseif action == "toggle_inventory" then
-        local quest_system = require "engine.core.quest"
-        scene_control.push("container", self.inventory, self.player, quest_system, "inventory")
+                scene_control.push("container", self.inventory, self.player, quest_system, "inventory")
 
     elseif action == "toggle_questlog" then
-        local quest_system = require "engine.core.quest"
-        scene_control.push("container", self.inventory, self.player, quest_system, "questlog")
+                scene_control.push("container", self.inventory, self.player, quest_system, "questlog")
     end
 end
 
@@ -497,9 +490,6 @@ end
 
 -- Check if touch is on HUD quickslot and use it
 function input_handler.checkQuickslotTouch(self, touch_x, touch_y)
-    local coords = require "engine.core.coords"
-    local display = require "engine.core.display"
-
     -- Convert physical touch to virtual coordinates
     local vx, vy = coords:physicalToVirtual(touch_x, touch_y, display)
 

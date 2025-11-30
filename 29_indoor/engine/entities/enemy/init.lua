@@ -135,7 +135,7 @@ function enemy:new(x, y, enemy_type, config, map_id, respawn)
     end
 
     -- Determine if this is a humanoid enemy (has animation frames)
-    instance.is_humanoid = (config.idle_frames ~= nil)
+    instance.is_humanoid = config.idle_frames and true or false
 
     -- Position
     instance.x = x or 100

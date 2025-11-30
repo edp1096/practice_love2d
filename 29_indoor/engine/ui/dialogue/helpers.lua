@@ -2,6 +2,7 @@
 -- Dialogue helper functions: input, flags, history, actions
 
 local Talkies = require "vendor.talkies"
+local coords = require "engine.core.coords"
 
 local helpers = {}
 
@@ -17,7 +18,6 @@ function helpers:getChoiceAtPosition(dialogue, x, y)
     end
 
     -- Convert physical coordinates to virtual coordinates
-    local coords = require "engine.core.coords"
     local vx, vy = coords:physicalToVirtual(x, y, dialogue.display)
 
     local vw, vh = dialogue.display:GetVirtualDimensions()

@@ -5,6 +5,7 @@ local BaseButton = require "engine.ui.widgets.button.base"
 local input = require "engine.core.input"
 local text_ui = require "engine.utils.text"
 local button_icons = require "engine.utils.button_icons"
+local coords = require "engine.core.coords"
 
 local NextButton = setmetatable({}, { __index = BaseButton })
 NextButton.__index = NextButton
@@ -68,7 +69,6 @@ function NextButton:touchReleased(id, x, y)
     end
 
     -- Convert physical to virtual coordinates
-    local coords = require "engine.core.coords"
     local vx, vy = coords:physicalToVirtual(x, y, self.display)
 
     local was_pressed = self.is_pressed

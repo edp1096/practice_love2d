@@ -14,6 +14,7 @@ local button_icons = require "engine.utils.button_icons"
 local input = require "engine.core.input"
 local colors = require "engine.utils.colors"
 local ui_constants = require "engine.ui.constants"
+local coords = require "engine.core.coords"
 
 -- Safe sound wrapper
 local function play_sound(category, name)
@@ -177,7 +178,6 @@ function inventory:resetQuickslotHold()
 end
 
 function inventory:update(dt)
-    local coords = require "engine.core.coords"
     local mx, my = love.mouse.getPosition()
     local vmx, vmy = coords:physicalToVirtual(mx, my, display)
 

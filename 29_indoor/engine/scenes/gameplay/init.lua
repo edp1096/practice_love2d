@@ -54,7 +54,6 @@ end
 -- Mobile debug button handling (kept in main file for simplicity)
 function gameplay:handleDebugButtonTouch(x, y, id, is_press)
     local debug = require "engine.core.debug"
-    local constants = require "engine.core.constants"
 
     local real_w, real_h = love.graphics.getDimensions()
     local button_size = constants.DEBUG.BUTTON_SIZE

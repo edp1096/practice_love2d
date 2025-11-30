@@ -3,6 +3,7 @@
 
 local shapes = {}
 local colors = require "engine.utils.colors"
+local text_ui = require "engine.utils.text"
 
 -- Draw a filled box with optional border and rounding
 -- color: {r, g, b, a}
@@ -140,7 +141,6 @@ function shapes:drawHealthBar(x, y, w, h, hp, max_hp, show_text, font)
 
     -- Text (optional)
     if show_text and font then
-        local text_ui = require "engine.utils.text"
         text_ui:draw(string.format("HP: %d / %d", hp, max_hp), x + 5, y + 3, {1, 1, 1, 1}, font)
     end
 end
@@ -179,7 +179,6 @@ function shapes:drawDialog(x, y, w, h, title, title_font, title_color)
     -- Title area (if provided)
     if title and title_font then
         title_color = title_color or colors.WHITE
-        local text_ui = require "engine.utils.text"
 
         -- Title background
         colors:apply(colors.CHARCOAL)
@@ -227,7 +226,6 @@ function shapes:drawConfirmDialog(x, y, w, h, message, message_font, yes_hover, 
 
     -- Message
     if message and message_font then
-        local text_ui = require "engine.utils.text"
         text_ui:drawCentered(message, content_y + 20, w, {1, 1, 1, 1}, message_font)
     end
 

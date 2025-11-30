@@ -5,6 +5,7 @@ local BaseButton = require "engine.ui.widgets.button.base"
 local text_ui = require "engine.utils.text"
 local input = require "engine.core.input"
 local button_icons = require "engine.utils.button_icons"
+local coords = require "engine.core.coords"
 
 local SkipButton = setmetatable({}, { __index = BaseButton })
 SkipButton.__index = SkipButton
@@ -59,7 +60,6 @@ function SkipButton:touchReleased(id, x, y)
     end
 
     -- Convert physical to virtual coordinates
-    local coords = require "engine.core.coords"
     local vx, vy = coords:physicalToVirtual(x, y, self.display)
 
     local was_pressed = self.is_pressed

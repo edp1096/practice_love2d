@@ -6,6 +6,7 @@ local text_ui = require "engine.utils.text"
 local shapes = require "engine.utils.shapes"
 local colors = require "engine.utils.colors"
 local config = require "engine.ui.screens.questlog.config"
+local coords = require "engine.core.coords"
 
 local render = {}
 
@@ -145,7 +146,6 @@ function render:drawQuestList(list_x, list_y, list_w, list_h)
 
     -- Enable scissor to clip items outside visible area
     -- Convert virtual coordinates to physical (screen) coordinates for scissor
-    local coords = require "engine.core.coords"
     local phys_x, phys_y = coords:virtualToPhysical(list_x, list_y, display)
     local phys_x2, phys_y2 = coords:virtualToPhysical(list_x + list_w, list_y + list_h, display)
     local phys_w = phys_x2 - phys_x
