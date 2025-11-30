@@ -115,22 +115,59 @@ function update.updateGroundDetection(self)
 
     local px, py = self.player.x, self.player.y
     local half_height = self.player.collider_height / 2
+    local half_width = self.player.collider_width / 2
 
-    -- If player is grounded (from PreSolve), use contact surface for shadow
+    -- Short raycast to detect ground for grounded status (backup for PreSolve)
+    local GROUND_CHECK_DISTANCE = 3  -- pixels below feet
+    local is_near_ground = false
+    local nearest_ground_y = nil
+
+    -- Cast 3 short rays to check if player is on ground
+    local ray_points = {
+        { x = px - half_width + 5, y = py + half_height },
+        { x = px, y = py + half_height },
+        { x = px + half_width - 5, y = py + half_height }
+    }
+
+    for _, point in ipairs(ray_points) do
+        self.world.physicsWorld.box2d_world:rayCast(
+            point.x, point.y,
+            point.x, point.y + GROUND_CHECK_DISTANCE,
+            function(fixture, x, y, xn, yn, fraction)
+                local collider = fixture:getUserData()
+                if collider and collider.collision_class == constants.COLLISION_CLASSES.WALL then
+                    is_near_ground = true
+                    if not nearest_ground_y or y < nearest_ground_y then
+                        nearest_ground_y = y
+                    end
+                    return 0
+                end
+                return 1
+            end
+        )
+    end
+
+    -- Backup grounded detection using raycast (fixes PreSolve not firing when sleeping)
+    if is_near_ground then
+        local _, vy = self.player.collider:getLinearVelocity()
+        -- Only set grounded if not moving up significantly
+        if vy >= -10 then
+            self.player.is_grounded = true
+            self.player.can_jump = true
+            self.player.is_jumping = false
+            if nearest_ground_y then
+                self.player.contact_surface_y = nearest_ground_y
+            end
+        end
+    end
+
+    -- If player is grounded (from PreSolve or raycast), use contact surface for shadow
     if self.player.is_grounded and self.player.contact_surface_y then
         self.player.ground_y = self.player.contact_surface_y
     else
-        -- Player is in air - use raycast to find ground below for shadow
-        local half_width = self.player.collider_width / 2
+        -- Player is in air - use longer raycast to find ground below for shadow
         local ray_length = constants.PLAYER.RAYCAST_LENGTH
         local closest_ground_y = nil
-
-        -- Cast 3 rays: left edge, center, right edge
-        local ray_points = {
-            { x = px - half_width + 5, y = py + half_height },
-            { x = px, y = py + half_height },
-            { x = px + half_width - 5, y = py + half_height }
-        }
 
         for _, point in ipairs(ray_points) do
             self.world.physicsWorld.box2d_world:rayCast(

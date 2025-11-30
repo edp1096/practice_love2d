@@ -165,7 +165,8 @@ function input_handler.keypressed(self, key)
         debug:handleInput(key, {
             player = self.player,
             world = self.world,
-            camera = self.cam
+            camera = self.cam,
+            inventory = self.inventory
         })
     end
 end

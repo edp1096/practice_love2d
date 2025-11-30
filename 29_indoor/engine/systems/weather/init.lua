@@ -17,6 +17,7 @@ weather.change_interval = nil   -- {min, max} seconds between changes
 weather.next_change_time = 0    -- Timer for next random change
 weather.is_forced = false       -- If true, don't auto-change
 weather.camera = nil            -- Camera reference for splash positioning
+weather.no_splash_zones = {}    -- NoRainSplash areas from map
 weather.transition = {          -- Transition state
   active = false,
   from = nil,
@@ -100,6 +101,7 @@ local function getCurrentEffect()
     end
     if rain_effect then
       rain_effect.camera = weather.camera
+      rain_effect.no_splash_zones = weather.no_splash_zones
     end
     return rain_effect
   elseif weather.current == "fog" or weather.current == "mist" then
@@ -118,11 +120,37 @@ local function getCurrentEffect()
     end
     if storm_effect then
       storm_effect.camera = weather.camera
+      storm_effect.no_splash_zones = weather.no_splash_zones
     end
     return storm_effect
   end
 
   return nil  -- "clear" or unknown
+end
+
+-- Parse NoRainSplash layer from map
+local function parseNoSplashZones(map)
+  local zones = {}
+
+  -- Find NoRainSplash layer
+  for _, layer in ipairs(map.layers or {}) do
+    if layer.name == "NoRainSplash" and layer.type == "objectgroup" then
+      for _, obj in ipairs(layer.objects or {}) do
+        -- Only support rectangles for performance
+        if obj.shape == "rectangle" or not obj.shape then
+          table.insert(zones, {
+            x = obj.x,
+            y = obj.y,
+            w = obj.width,
+            h = obj.height
+          })
+        end
+      end
+      break
+    end
+  end
+
+  return zones
 end
 
 -- Initialize weather system from map properties
@@ -132,6 +160,9 @@ function weather:initialize(map)
   self.intensity = 1.0
   self.is_forced = false
   self.transition.active = false
+
+  -- Parse NoRainSplash zones
+  self.no_splash_zones = parseNoSplashZones(map)
 
   -- Parse pool
   local pool_string = map.properties and map.properties.weather_pool

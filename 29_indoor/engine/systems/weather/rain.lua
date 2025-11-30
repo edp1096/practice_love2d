@@ -15,6 +15,18 @@ local ripple_image = nil
 
 -- Camera reference (set externally)
 rain.camera = nil
+rain.no_splash_zones = {}
+
+-- Check if point is inside any no-splash zone
+local function isInNoSplashZone(x, y)
+    for _, zone in ipairs(rain.no_splash_zones or {}) do
+        if x >= zone.x and x <= zone.x + zone.w and
+           y >= zone.y and y <= zone.y + zone.h then
+            return true
+        end
+    end
+    return false
+end
 
 -- Virtual screen size
 local VW, VH = 960, 540
@@ -125,6 +137,11 @@ local function spawnSplash()
     -- Random position within visible world area
     local world_x = cam_x + (math.random() - 0.5) * visible_w
     local world_y = cam_y + (math.random() - 0.5) * visible_h
+
+    -- Skip if inside no-splash zone
+    if isInNoSplashZone(world_x, world_y) then
+        return
+    end
 
     -- Reuse expired splash or create new
     for i, splash in ipairs(splashes) do

@@ -196,7 +196,7 @@ function debug:handleInput(key, context)
     elseif key == "f7" and context.player then
         -- F7: Hot reload player + weapon config
         hotreload.reloadPlayerConfig(context.player)
-        hotreload.reloadWeaponConfig(context.player)
+        hotreload.reloadWeaponConfig(context.player, context.inventory)
     elseif key == "f8" and context.camera then
         -- F8: Test effects at mouse position
         local mouse_x, mouse_y = love.mouse.getPosition()

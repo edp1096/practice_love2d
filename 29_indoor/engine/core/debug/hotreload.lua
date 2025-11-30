@@ -1,7 +1,14 @@
 -- engine/core/debug/hotreload.lua
 -- Hot reload functionality for debug mode
+-- Uses dependency injection - config paths set via hotreload.config_paths
 
 local hotreload = {}
+
+-- Config paths (set via dependency injection from game/setup.lua)
+hotreload.config_paths = {
+    player = nil,         -- e.g., "game.data.player"
+    entity_types = nil    -- e.g., "game.data.entities.types"
+}
 
 -- Reload player configuration at runtime
 function hotreload.reloadPlayerConfig(player)
@@ -10,13 +17,18 @@ function hotreload.reloadPlayerConfig(player)
         return
     end
 
+    if not hotreload.config_paths.player then
+        dprint("[F7] Player config path not set!")
+        return
+    end
+
     dprint("[F7] Reloading player config...")
 
     -- Clear require cache
-    package.loaded["game.data.player"] = nil
+    package.loaded[hotreload.config_paths.player] = nil
 
     -- Reload config
-    local player_config = require "game.data.player"
+    local player_config = require(hotreload.config_paths.player)
 
     -- Update player's config reference
     player.config = player_config
@@ -37,9 +49,14 @@ function hotreload.reloadPlayerConfig(player)
 end
 
 -- Reload weapon configuration at runtime
-function hotreload.reloadWeaponConfig(player)
+function hotreload.reloadWeaponConfig(player, inventory)
     if not player or not player.weapon then
         dprint("[F7] No weapon equipped!")
+        return
+    end
+
+    if not hotreload.config_paths.entity_types then
+        dprint("[F7] Entity types config path not set!")
         return
     end
 
@@ -47,10 +64,10 @@ function hotreload.reloadWeaponConfig(player)
     dprint("[F7] Reloading weapon config for: " .. weapon_type)
 
     -- Clear require cache for entity types
-    package.loaded["game.data.entities.types"] = nil
+    package.loaded[hotreload.config_paths.entity_types] = nil
 
     -- Reload types
-    local entity_types = require "game.data.entities.types"
+    local entity_types = require(hotreload.config_paths.entity_types)
 
     -- Get weapon class
     local weapon_class = require "engine.entities.weapon"
@@ -73,7 +90,29 @@ function hotreload.reloadWeaponConfig(player)
     end
     player.weapon.config.scale = old_scale
 
-    dprint(string.format("[F7] ✓ Reloaded! New range: %s", player.weapon.config.range))
+    -- Update base_stats with new weapon base values
+    if player.base_stats then
+        player.base_stats.damage = new_config.damage or 0
+        player.base_stats.range = new_config.range or 0
+        player.base_stats.swing_radius = new_config.swing_radius or 0
+    end
+
+    -- Re-apply equipment stats from inventory instance
+    if inventory and inventory.equipment_slots then
+        local combat = require "engine.entities.player.combat"
+        local equipped_weapon = inventory:getEquippedItem("weapon")
+        if equipped_weapon and equipped_weapon.stats then
+            combat.applyEquipmentStats(player, equipped_weapon.stats)
+            dprint(string.format("[F7] ✓ Reloaded! Base dmg: %d + Item bonus: %d = %d",
+                new_config.damage or 0,
+                equipped_weapon.stats.damage or 0,
+                player.weapon.config.damage))
+            return
+        end
+    end
+
+    dprint(string.format("[F7] ✓ Reloaded! Damage: %d, Range: %s",
+        player.weapon.config.damage, player.weapon.config.range))
 end
 
 return hotreload

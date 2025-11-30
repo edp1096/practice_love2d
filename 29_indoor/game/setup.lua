@@ -35,6 +35,7 @@ function setup.configure()
     local dialogue = require "engine.ui.dialogue"
     local prompt = require "engine.systems.prompt"
     local quest_system = require "engine.core.quest"
+    local hotreload = require "engine.core.debug.hotreload"
 
     -- Inject entity type registries
     enemy_class.type_registry = entity_types.enemies
@@ -83,6 +84,12 @@ function setup.configure()
 
     -- Auto-accept tutorial quest (so it can be completed by talking to NPC)
     quest_system:accept("tutorial_talk")
+
+    -- Inject hotreload config paths (for F7 debug reload)
+    hotreload.config_paths = {
+        player = "game.data.player",
+        entity_types = "game.data.entities.types"
+    }
 end
 
 -- Return scene loader function for engine's scene_control

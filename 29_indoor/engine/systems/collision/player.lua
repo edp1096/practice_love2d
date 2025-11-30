@@ -43,13 +43,14 @@ function player_collision.create(player, physicsWorld)
     player.collider:setPreSolve(function(collider_1, collider_2, contact)
         if player.game_mode == "platformer" then
             local nx, ny = contact:getNormal()
+            local _, vy = player.collider:getLinearVelocity()
 
             -- Check if normal is mostly vertical (player on top or bottom of object)
             if math.abs(ny) > 0.7 then
-                local _, vy = player.collider:getLinearVelocity()
-
-                -- Player is on ground if normal points up or player is falling
-                if ny < 0 or (ny > 0 and vy >= 0) then
+                -- Player is on ground if normal points up or player is falling/nearly stationary
+                -- Use threshold of -10 to prevent flickering when standing still
+                -- (Box2D can produce small negative velocities due to physics settling)
+                if ny < 0 or (ny > 0 and vy >= -10) then
                     player.is_grounded = true
                     player.can_jump = true
                     player.is_jumping = false
