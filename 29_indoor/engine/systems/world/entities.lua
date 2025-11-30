@@ -190,14 +190,31 @@ function entities.updateEnemies(self, dt, player_x, player_y)
                 end
 
                 local drop_x, drop_y = getEnemyDropPosition(enemy, self.game_mode)
-                stopEnemyMovement(enemy)
+                -- Don't stop movement immediately - let knockback play out
                 tryDropLoot(self, enemy, drop_x, drop_y)
-
-                -- Destroy colliders immediately when entering dead state
-                helpers.destroyColliders(enemy)
             end
 
             enemy.death_timer = (enemy.death_timer or 0) + dt
+
+            -- Sync sprite position with collider during knockback (before colliders destroyed)
+            if not enemy.colliders_destroyed then
+                if self.game_mode == "topdown" and enemy.foot_collider then
+                    local y_offset = getYOffset(enemy)
+                    enemy.x = enemy.foot_collider:getX() - enemy.collider_offset_x
+                    enemy.y = enemy.foot_collider:getY() - enemy.collider_offset_y - y_offset
+                elseif enemy.collider then
+                    enemy.x = enemy.collider:getX() - enemy.collider_offset_x
+                    enemy.y = enemy.collider:getY() - enemy.collider_offset_y
+                end
+            end
+
+            -- Destroy colliders after knockback has time to play (0.3s)
+            if not enemy.colliders_destroyed and enemy.death_timer > 0.3 then
+                enemy.colliders_destroyed = true
+                stopEnemyMovement(enemy)
+                helpers.destroyColliders(enemy)
+            end
+
             if enemy.death_timer > 2 then
                 -- Note: Do NOT remove from transformed_npcs!
                 -- We keep the transformation record so loadNPCs can skip the original NPC
@@ -214,11 +231,31 @@ function entities.updateEnemies(self, dt, player_x, player_y)
                 -- Update enemy movement
                 local vx, vy = enemy:update(dt, player_x, player_y)
 
-                -- Update position based on game mode
-                if self.game_mode == "topdown" then
-                    updateTopdownEnemyPosition(enemy, vx, vy)
+                -- Skip velocity update during hit state (let knockback play out)
+                if enemy.state == constants.ENEMY_STATES.HIT then
+                    -- Just sync position from collider without setting velocity
+                    if self.game_mode == "topdown" and enemy.foot_collider then
+                        local y_offset = getYOffset(enemy)
+                        enemy.x = enemy.foot_collider:getX() - enemy.collider_offset_x
+                        enemy.y = enemy.foot_collider:getY() - enemy.collider_offset_y - y_offset
+                        -- Sync main collider position
+                        if enemy.collider then
+                            enemy.collider:setPosition(
+                                enemy.x + enemy.collider_offset_x,
+                                enemy.y + enemy.collider_offset_y
+                            )
+                        end
+                    elseif enemy.collider then
+                        enemy.x = enemy.collider:getX() - enemy.collider_offset_x
+                        enemy.y = enemy.collider:getY() - enemy.collider_offset_y
+                    end
                 else
-                    updatePlatformerEnemyPosition(enemy, vx)
+                    -- Normal movement: Update position based on game mode
+                    if self.game_mode == "topdown" then
+                        updateTopdownEnemyPosition(enemy, vx, vy)
+                    else
+                        updatePlatformerEnemyPosition(enemy, vx)
+                    end
                 end
             end
         end
@@ -282,7 +319,54 @@ function entities.applyWeaponHit(self, hit_result)
     local damage = hit_result.damage
     local knockback = hit_result.knockback
 
+    -- Calculate knockback direction (player → enemy)
+    local player_x, player_y = self.player.x, self.player.y
+    local enemy_x, enemy_y = enemy.x + enemy.collider_offset_x, enemy.y + enemy.collider_offset_y
+
+    local dir_x = enemy_x - player_x
+    local dir_y = enemy_y - player_y
+    local dist = math.sqrt(dir_x * dir_x + dir_y * dir_y)
+
+    if dist > 0 then
+        dir_x = dir_x / dist
+        dir_y = dir_y / dist
+    else
+        dir_x, dir_y = 0, -1  -- Default: push up if same position
+    end
+
+    -- Apply damage first to check if enemy dies
+    local was_alive = enemy.health > 0
     enemy:takeDamage(damage)
+    local is_dead = enemy.health <= 0
+
+    -- Apply knockback: 50% normally, 100% on kill
+    local knockback_multiplier = is_dead and 1.0 or 0.5
+    local final_knockback = knockback * knockback_multiplier
+
+    -- Apply knockback velocity to appropriate collider
+    if final_knockback > 0 then
+        -- High initial velocity + high damping = short, snappy knockback
+        local velocity_x = dir_x * final_knockback * 16  -- 2x speed
+        local velocity_y = dir_y * final_knockback * 16
+
+        if self.game_mode == "topdown" then
+            -- Topdown: apply to foot_collider (primary movement collider)
+            if enemy.foot_collider then
+                enemy.foot_collider:setLinearVelocity(velocity_x, velocity_y)
+                enemy.foot_collider:setLinearDamping(45)  -- Higher damping for 2/3 distance
+            elseif enemy.collider then
+                enemy.collider:setLinearVelocity(velocity_x, velocity_y)
+                enemy.collider:setLinearDamping(45)
+            end
+        else
+            -- Platformer: apply horizontal knockback only, preserve vertical velocity
+            if enemy.collider then
+                local _, vy = enemy.collider:getLinearVelocity()
+                enemy.collider:setLinearVelocity(velocity_x, vy)
+                enemy.collider:setLinearDamping(45)
+            end
+        end
+    end
 
     local hit_x = enemy.x + enemy.collider_offset_x
     local hit_y = enemy.y + enemy.collider_offset_y
