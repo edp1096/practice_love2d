@@ -115,7 +115,7 @@ entity_types.weapons = {
         attack_duration = 0.25, -- Fast attack
         swing_radius = 20,  -- 30 * (2/3) for scale 2
 
-        damage = 20, -- Lower damage
+        damage = 10, -- Lower damage
         range = 50,  -- 75 * (2/3) for scale 2
         knockback = 80,
 
@@ -134,7 +134,7 @@ entity_types.weapons = {
         attack_duration = 0.2, -- Very fast attack
         swing_radius = 17,     -- 25 * (2/3) for scale 2
 
-        damage = 15,           -- Low damage
+        damage = 5,           -- Low damage
         range = 67,            -- 100 * (2/3) for scale 2 - Long reach
         knockback = 60,        -- Weak knockback
 
