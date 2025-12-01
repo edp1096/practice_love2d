@@ -148,9 +148,30 @@ return {
 ### 맵 추가
 1. Tiled에서 생성: `assets/maps/level1/newarea.tmx`
 2. 프로퍼티 설정: `name`, `game_mode`, `bgm`, `ambient`
-3. 레이어 추가: Ground, Decos, Walls, Portals, Enemies, NPCs
+3. 레이어 추가: Ground, Decos, Walls, Portals, Enemies, NPCs, Props
 4. Lua로 내보내기
 5. 이전 맵에서 포털 생성
+
+### Props 추가 (이동/파괴 가능한 오브젝트)
+**Tiled 설정:**
+1. "Props" 레이어 생성 (Object Layer)
+2. 타일 오브젝트를 추가하여 시각적 표현 (동일한 `group` 속성 공유)
+3. `type = "collider"`와 동일한 `group`을 가진 투명 사각형 추가
+
+**Collider 프로퍼티:**
+- `group` - 타일과 콜라이더 연결 (예: "crate1")
+- `type = "collider"` - 물리 콜라이더로 표시
+- `movable = true` - 플레이어가 밀 수 있음
+- `breakable = true` - 공격으로 파괴 가능
+- `hp = 10` - 체력 (breakable 전용)
+- `respawn = true` - 맵 전환 시 재생성 (기본값: false)
+
+**예시 (2타일 높이 곰인형):**
+```
+Tile Object 1: gid=136, group="teddybear1"
+Tile Object 2: gid=152, group="teddybear1"
+Collider: type="collider", group="teddybear1", movable=true, breakable=true, hp=30
+```
 
 ### 대화 추가
 **간단:** NPC 프로퍼티 `dlg = "안녕!"`
@@ -215,4 +236,4 @@ cd web_build && lua server.lua 8080
 
 **프레임워크:** LÖVE 11.5 + Lua 5.1
 **아키텍처:** Engine/Game 분리 + 데이터 기반
-**최종 업데이트:** 2025-11-27
+**최종 업데이트:** 2025-12-01

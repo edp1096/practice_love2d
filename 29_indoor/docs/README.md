@@ -148,9 +148,30 @@ return {
 ### Add Map
 1. Create in Tiled: `assets/maps/level1/newarea.tmx`
 2. Set properties: `name`, `game_mode`, `bgm`, `ambient`
-3. Add layers: Ground, Decos, Walls, Portals, Enemies, NPCs
+3. Add layers: Ground, Decos, Walls, Portals, Enemies, NPCs, Props
 4. Export to Lua
 5. Create portal from previous map
+
+### Add Props (Movable/Breakable Objects)
+**Tiled Setup:**
+1. Create "Props" layer (Object Layer)
+2. Add tile objects for visuals (share same `group` property)
+3. Add invisible rectangle with `type = "collider"` and same `group`
+
+**Collider Properties:**
+- `group` - Links tiles and collider (e.g., "crate1")
+- `type = "collider"` - Marks as physics collider
+- `movable = true` - Can be pushed by player
+- `breakable = true` - Can be destroyed by attacks
+- `hp = 10` - Health points (breakable only)
+- `respawn = true` - Respawns on map transition (default: false)
+
+**Example (2-tile tall teddy bear):**
+```
+Tile Object 1: gid=136, group="teddybear1"
+Tile Object 2: gid=152, group="teddybear1"
+Collider: type="collider", group="teddybear1", movable=true, breakable=true, hp=30
+```
 
 ### Add Dialogue
 **Simple:** Set NPC property `dlg = "Hello!"`
@@ -215,4 +236,4 @@ Open: `http://localhost:8080`
 
 **Framework:** LÖVE 11.5 + Lua 5.1
 **Architecture:** Engine/Game Separation + Data-Driven
-**Last Updated:** 2025-11-27
+**Last Updated:** 2025-12-01
