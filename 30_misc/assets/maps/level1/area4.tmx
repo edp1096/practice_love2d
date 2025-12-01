@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="2025.11.21" orientation="orthogonal" renderorder="right-down" width="25" height="24" tilewidth="32" tileheight="32" infinite="0" nextlayerid="13" nextobjectid="56">
+ <editorsettings>
+  <export target="area4.lua" format="lua"/>
+ </editorsettings>
+ <properties>
+  <property name="ambient" value="day"/>
+  <property name="bgm" value="level1"/>
+  <property name="game_mode" value="topdown"/>
+  <property name="name" value="level1_area4"/>
+ </properties>
+ <tileset firstgid="1" name="tileset_area4" tilewidth="32" tileheight="32" tilecount="486" columns="27">
+  <grid orientation="orthogonal" width="16" height="16"/>
+  <image source="tileset_area4.png" trans="ff00ff" width="864" height="576"/>
+ </tileset>
+ <tileset firstgid="487" name="poison_jar" tilewidth="32" tileheight="32" tilecount="9" columns="9">
+  <image source="poison_jar.png" trans="ff00ff" width="288" height="32"/>
+  <tile id="0">
+   <animation>
+    <frame tileid="0" duration="100"/>
+    <frame tileid="1" duration="100"/>
+    <frame tileid="2" duration="100"/>
+    <frame tileid="3" duration="100"/>
+    <frame tileid="4" duration="100"/>
+    <frame tileid="5" duration="100"/>
+    <frame tileid="6" duration="100"/>
+    <frame tileid="7" duration="100"/>
+    <frame tileid="8" duration="100"/>
+   </animation>
+  </tile>
+ </tileset>
+ <layer id="1" name="Ground" width="25" height="24" locked="1">
+  <data encoding="csv">
+184,184,184,184,184,184,184,184,184,184,184,462,463,464,184,184,184,184,184,184,184,184,184,184,184,
+184,184,184,184,184,184,184,184,184,184,184,462,463,464,184,184,184,184,184,184,184,184,184,184,184,
+184,184,184,184,184,184,184,184,184,184,181,462,463,464,181,181,181,181,181,181,181,181,181,181,181,
+184,181,118,118,118,118,118,118,118,118,118,462,463,464,29,29,29,29,29,29,29,29,29,181,181,
+184,181,118,118,118,118,118,118,118,118,118,462,463,464,29,29,29,29,29,29,29,29,29,181,181,
+184,181,118,118,118,118,118,118,118,118,118,462,463,464,29,29,29,29,29,29,29,29,29,181,181,
+184,181,118,118,118,118,118,118,118,118,118,462,463,464,29,29,29,29,29,29,29,29,29,181,181,
+184,181,118,118,118,118,118,118,118,118,118,462,463,464,29,29,29,29,29,29,29,29,29,181,181,
+184,181,118,118,118,118,118,118,118,118,118,462,463,464,29,29,29,29,29,29,29,29,29,29,29,
+184,181,118,118,118,118,118,118,118,118,118,462,463,464,29,29,29,29,29,29,29,29,29,29,29,
+184,181,118,118,118,118,118,118,118,118,118,462,463,464,29,29,29,29,29,29,29,29,29,29,29,
+184,181,118,118,118,118,118,118,118,118,118,462,463,464,29,29,29,29,29,29,29,29,29,29,29,
+184,181,118,118,0,118,118,118,118,118,118,462,463,464,29,29,29,29,29,29,29,29,29,29,29,
+184,181,118,118,118,118,118,118,118,118,118,462,463,464,29,29,29,29,29,29,29,29,29,181,181,
+184,181,118,118,118,118,118,118,118,118,118,462,463,464,29,29,29,29,29,29,29,29,29,181,181,
+184,181,118,118,118,118,118,118,118,118,118,462,463,464,29,29,29,29,29,29,29,29,29,181,181,
+184,181,118,118,118,118,118,118,118,118,118,462,463,464,29,29,29,29,29,29,29,29,29,181,181,
+184,181,181,181,181,181,181,181,181,181,118,435,436,437,29,181,181,181,181,181,181,181,181,181,181,
+184,181,181,181,181,181,181,181,181,181,118,435,436,437,29,181,181,181,181,181,181,181,181,181,181,
+438,407,407,407,407,407,407,407,407,407,407,407,407,407,407,407,407,407,407,407,407,407,407,407,439,
+462,434,434,434,434,434,434,434,434,434,434,434,434,434,434,434,434,434,434,434,434,434,434,434,464,
+465,461,461,461,461,461,461,461,461,461,461,461,461,461,461,461,461,461,461,461,461,461,461,461,466,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+ <layer id="2" name="Decos" width="25" height="24" locked="1">
+  <data encoding="csv">
+344,344,344,344,344,344,344,344,344,345,0,0,0,0,0,343,344,344,344,344,344,344,344,344,344,
+344,344,344,344,344,344,344,344,344,345,0,0,0,0,0,343,344,344,344,344,344,344,344,344,344,
+344,344,371,371,371,371,371,371,371,372,166,0,0,0,166,370,371,371,371,371,371,371,371,344,344,
+344,344,345,0,0,0,0,0,0,0,193,0,0,0,193,0,0,0,0,0,0,0,343,344,344,
+344,344,345,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,343,344,344,
+344,344,345,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,343,344,344,
+344,344,345,0,0,0,0,0,231,0,166,0,0,0,166,0,0,0,0,0,0,0,343,344,344,
+344,344,345,0,0,0,0,0,0,0,193,0,0,0,193,0,0,0,0,0,0,0,370,371,371,
+344,344,345,355,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,325,
+344,344,345,355,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,352,
+344,344,345,0,0,0,0,0,0,0,166,0,0,0,166,0,0,0,0,0,0,0,0,0,352,
+344,344,345,250,250,250,0,0,0,0,193,0,0,0,193,0,0,0,0,0,0,0,0,0,352,
+344,344,345,250,487,250,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,379,
+344,344,345,250,250,250,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,316,344,
+344,344,345,0,0,0,0,0,0,0,166,0,0,0,166,0,0,0,0,0,0,0,0,343,344,
+344,344,345,0,0,0,0,0,0,0,193,0,0,0,193,0,0,0,0,0,0,0,0,343,344,
+344,344,317,317,317,317,317,317,317,317,318,0,0,0,316,317,317,317,317,317,317,317,317,317,344,
+344,344,344,344,344,344,344,344,344,344,345,0,0,0,343,344,344,344,344,344,344,344,344,344,344,
+371,371,371,371,371,371,371,371,371,371,372,0,0,0,370,371,371,371,371,371,371,371,371,371,371,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+ <objectgroup id="3" name="Walls">
+  <object id="2" x="0" y="0" width="64" height="768"/>
+  <object id="3" x="736" y="416" width="64" height="352"/>
+  <object id="37" x="448" y="96" width="32" height="32"/>
+  <object id="38" x="0" y="672" width="800" height="96"/>
+  <object id="40" x="320" y="96" width="32" height="32"/>
+  <object id="41" x="448" y="224" width="32" height="32"/>
+  <object id="42" x="320" y="224" width="32" height="32"/>
+  <object id="43" x="448" y="352" width="32" height="32"/>
+  <object id="44" x="320" y="352" width="32" height="32"/>
+  <object id="45" x="448" y="480" width="32" height="32"/>
+  <object id="46" x="320" y="480" width="32" height="32"/>
+  <object id="47" x="0" y="544" width="320" height="64"/>
+  <object id="48" x="480" y="544" width="320" height="64"/>
+  <object id="50" x="0" y="0" width="352" height="96"/>
+  <object id="51" x="448" y="0" width="352" height="96"/>
+  <object id="52" x="736" y="0" width="64" height="256"/>
+  <object id="53" x="96" y="256" width="32" height="64"/>
+ </objectgroup>
+ <objectgroup id="4" name="Portals">
+  <object id="10" x="768" y="224" width="32" height="192">
+   <properties>
+    <property name="spawn_x" type="float" value="60"/>
+    <property name="spawn_y" type="float" value="1100"/>
+    <property name="target_map" value="assets/maps/level1/area2.lua"/>
+    <property name="type" value="portal"/>
+   </properties>
+  </object>
+  <object id="49" x="320" y="64" width="160" height="32">
+   <properties>
+    <property name="spawn_x" type="float" value="800"/>
+    <property name="spawn_y" type="float" value="880"/>
+    <property name="target_map" value="assets/maps/level1/area1.lua"/>
+    <property name="type" value="portal"/>
+   </properties>
+  </object>
+ </objectgroup>
+ <objectgroup id="5" name="Enemies">
+  <object id="15" x="96" y="128" width="32" height="32">
+   <properties>
+    <property name="patrol_points" value="30,0;-30,0"/>
+    <property name="type" value="green_slime"/>
+   </properties>
+  </object>
+  <object id="16" x="96" y="192" width="32" height="32">
+   <properties>
+    <property name="patrol_points" value="0,30;0,-30"/>
+    <property name="respawn" type="bool" value="true"/>
+    <property name="type" value="red_slime"/>
+   </properties>
+  </object>
+ </objectgroup>
+ <objectgroup id="6" name="NPCs">
+  <object id="20" x="608" y="384" width="32" height="32">
+   <properties>
+    <property name="id" value="townsperson_01"/>
+    <property name="type" value="villager"/>
+   </properties>
+  </object>
+ </objectgroup>
+ <objectgroup id="7" name="SavePoints">
+  <object id="25" x="256" y="192" width="32" height="32">
+   <properties>
+    <property name="id" value="save4-1"/>
+    <property name="type" value="savepoint"/>
+   </properties>
+  </object>
+ </objectgroup>
+ <objectgroup id="12" name="DamageZones">
+  <object id="55" x="128" y="384" width="32" height="32">
+   <properties>
+    <property name="cooldown" type="float" value="0.5"/>
+    <property name="damage" type="int" value="5"/>
+   </properties>
+  </object>
+ </objectgroup>
+</map>

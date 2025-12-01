@@ -1,0 +1,9 @@
+/compile
+/dist
+config.ini
+icon.ico
+
+.claude
+/*.md
+!/README.md
+/*handle anchor.xlsx

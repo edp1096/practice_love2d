@@ -1,0 +1,164 @@
+-- game/data/weapon/hand_anchors.lua
+-- Hand anchor positions for each animation frame
+
+local hand_anchors = {}
+
+hand_anchors.HAND_ANCHORS = {
+    -- Idle animations (4 frames each)
+    idle_right = {
+        { x = 0, y = 7, angle = -math.pi / 12 },
+        { x = 0, y = 6, angle = -math.pi / 12 + 0.05 },
+        { x = 0, y = 7, angle = -math.pi / 12 },
+        { x = 0, y = 8, angle = -math.pi / 12 - 0.05 }
+    },
+    idle_left = {
+        { x = 0, y = 7, angle = -math.pi / 1.1 },
+        { x = 0, y = 6, angle = -math.pi / 1.1 - 0.05 },
+        { x = 0, y = 7, angle = -math.pi / 1.1 },
+        { x = 0, y = 8, angle = -math.pi / 1.1 + 0.05 },
+    },
+    idle_down = {
+        { x = -5, y = 7, angle = math.pi / 2.3 },
+        { x = -5, y = 6, angle = 1.5208 * 0.9 },
+        { x = -5, y = 7, angle = math.pi / 2.2 },
+        { x = -5, y = 8, angle = 1.6208 * 0.9 },
+    },
+    idle_up = {
+        { x = 6, y = 6, angle = -math.pi / 1.1 },
+        { x = 5, y = 5, angle = -1.5208 * 1.8 },
+        { x = 6, y = 6, angle = -math.pi / 1.2 },
+        { x = 6, y = 7, angle = -1.6208 * 1.7 },
+    },
+
+    -- Walk animations
+    walk_right = {
+        { x = 7,  y = 5, angle = -math.pi / 2 },
+        { x = 3,  y = 7, angle = -math.pi / 2 + 0.05 },
+        { x = -5, y = 7, angle = -math.pi / 8 },
+        { x = -8, y = 6, angle = -math.pi / 8 - 0.05 },
+        { x = -4, y = 7, angle = -math.pi / 6 },
+        { x = 3,  y = 7, angle = -math.pi / 2 + 0.05 },
+    },
+    walk_left = {
+        { x = 7,  y = 6, angle = -math.pi * 0.85 },
+        { x = 4,  y = 6, angle = -math.pi + 0.05 },
+        { x = -5, y = 6, angle = -math.pi / 2 },
+        { x = -8, y = 5, angle = -math.pi / 2 + 0.05 },
+        { x = 6,  y = 7, angle = -math.pi * 0.85 },
+        { x = 5,  y = 6, angle = -math.pi * 0.85 },
+    },
+    walk_down = {
+        { x = -5, y = 4, angle = math.pi / 2.3 },
+        { x = -5, y = 6, angle = 1.5208 * 0.9 },
+        { x = -6, y = 6, angle = math.pi / 2.2 },
+        { x = -4, y = 8, angle = 1.6208 * 0.9 },
+        { x = -7, y = 6, angle = math.pi / 2.3 },
+        { x = -5, y = 5, angle = 1.5208 * 0.9 },
+    },
+    walk_up = {
+        { x = 4, y = 5, angle = -math.pi / 2 },
+        { x = 5, y = 7, angle = -1.3708 },
+        { x = 4, y = 5, angle = -1.7708 },
+        { x = 4, y = 5, angle = -math.pi / 2 },
+        { x = 4, y = 6, angle = -math.pi / 2 },
+        { x = 5, y = 6, angle = -math.pi / 2 },
+    },
+
+    -- Run animations (6 frames each)
+    run_right = {
+        { x = 4,  y = 7, angle = -math.pi / 2 },
+        { x = -6, y = 6, angle = -math.pi / 2 + 0.05 },
+        { x = -7, y = 3, angle = -math.pi / 8 },
+        { x = 1,  y = 8, angle = -math.pi / 8 - 0.05 },
+        { x = 7,  y = 3, angle = -math.pi / 6 },
+        { x = 9,  y = 0, angle = -math.pi / 2 + 0.05 },
+    },
+    run_left = {
+        { x = 2,   y = 5, angle = -math.pi * 0.85 },
+        { x = -8,  y = 4, angle = -math.pi + 0.05 },
+        { x = -11, y = 0, angle = -math.pi / 2 },
+        { x = -5,  y = 5, angle = -math.pi / 2 + 0.05 },
+        { x = 5,   y = 3, angle = -math.pi * 0.85 },
+        { x = 7,   y = 3, angle = -math.pi * 0.85 },
+    },
+    run_down = {
+        { x = -4,  y = 8, angle = math.pi / 2.3 },
+        { x = 0,   y = 2, angle = 1.5208 * 0.9 },
+        { x = -1,  y = 0, angle = math.pi / 2.2 },
+        { x = -6,  y = 6, angle = 1.6208 * 0.9 },
+        { x = -7,  y = 6, angle = math.pi / 2.3 },
+        { x = -10, y = 0, angle = 1.5208 * 0.9 },
+    },
+    run_up = {
+        { x = 5, y = 6, angle = -math.pi / 2 },
+        { x = 4, y = 3, angle = -1.3708 },
+        { x = 5, y = 6, angle = -1.7708 },
+        { x = 2, y = 3, angle = -math.pi / 2 },
+        { x = 6, y = 4, angle = -math.pi / 2 },
+        { x = 6, y = 6, angle = -math.pi / 2 },
+    },
+
+    -- Jump animations (standing jump, 2 frames each)
+    jump_right = {
+        { x = -1, y = 7, angle = -math.pi / 12 },
+        { x = -1, y = 7, angle = -math.pi / 12 },
+    },
+    jump_left = {
+        { x = 0, y = 7, angle = -math.pi },
+        { x = 0, y = 7, angle = -math.pi },
+    },
+    jump_down = {
+        { x = -6, y = 6, angle = math.pi / 2 },
+        { x = -6, y = 6, angle = math.pi / 2 },
+    },
+    jump_up = {
+        { x = 4, y = 7, angle = -math.pi / 2 },
+        { x = 4, y = 7, angle = -math.pi / 2 },
+    },
+
+    -- Jump move animations (moving jump, 2 frames each)
+    jump_move_right = {
+        { x = -1, y = 7, angle = -math.pi / 12 },
+        { x = -1, y = 7, angle = -math.pi / 12 },
+    },
+    jump_move_left = {
+        { x = 0, y = 7, angle = -math.pi },
+        { x = 0, y = 7, angle = -math.pi },
+    },
+    jump_move_down = {
+        { x = -6, y = 6, angle = math.pi / 2 },
+        { x = -6, y = 6, angle = math.pi / 2 },
+    },
+    jump_move_up = {
+        { x = 4, y = 7, angle = -math.pi / 2 },
+        { x = 4, y = 7, angle = -math.pi / 2 },
+    },
+
+    -- Attack animations (4 frames each)
+    attack_right = {
+        { x = 6,  y = -2, angle = -math.pi / 2 },
+        { x = 5,  y = -7, angle = -math.pi },
+        { x = 5,  y = 8,  angle = math.pi / 2 },
+        { x = -2, y = 7,  angle = math.pi / 3 }
+    },
+    attack_left = {
+        { x = -7, y = -2, angle = -math.pi / 2 },
+        { x = -5, y = -8, angle = math.pi / 6 },
+        { x = -6, y = 8,  angle = math.pi / 2 },
+        { x = 2,  y = 8,  angle = math.pi * 2 / 3 },
+    },
+    attack_down = {
+        { x = -6, y = -7,  angle = math.pi * 3 / 2 },
+        { x = -7, y = -12, angle = math.pi * 3 / 2 },
+        { x = 2,  y = 10,  angle = math.pi / 2 },
+        { x = 2,  y = 6,   angle = math.pi / 6 },
+    },
+    attack_up = {
+        { x = 4,  y = -7,  angle = 0 },
+        { x = 6,  y = -13, angle = math.pi / 2 },
+        { x = -8, y = 6,   angle = math.pi },
+        { x = -4, y = 8,   angle = math.pi * 5 / 6 }
+    }
+}
+
+return hand_anchors
