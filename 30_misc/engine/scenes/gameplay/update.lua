@@ -11,6 +11,7 @@ local input = require "engine.core.input"
 local player_sound = require "engine.entities.player.sound"
 local lighting = require "engine.systems.lighting"
 local weather = require "engine.systems.weather"
+local persistence = require "engine.core.persistence"
 
 local update = {}
 
@@ -300,11 +301,17 @@ function update.checkTransitions(self, scaled_dt)
                 -- Skip intro, treat as normal portal
                 self:switchMap(transition.target_map, transition.spawn_x, transition.spawn_y)
             else
+                -- Save persistence data before cutscene (will be restored after cutscene)
+                persistence:saveFromScene(self)
+
                 -- Show intro for the first time
                 local cutscene = require "engine.scenes.cutscene"
                 scene_control.switch(cutscene, intro_id, transition.target_map, transition.spawn_x, transition.spawn_y)
             end
         elseif transition.transition_type == "ending" then
+            -- Save persistence data before ending cutscene
+            persistence:saveFromScene(self)
+
             local cutscene = require "engine.scenes.cutscene"
             local intro_id = transition.intro_id or "ending"
             scene_control.switch(cutscene, intro_id, nil, nil, nil)

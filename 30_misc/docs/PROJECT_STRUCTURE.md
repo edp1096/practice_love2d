@@ -7,7 +7,7 @@ Complete reference for folder organization.
 ## Root Directory
 
 ```
-29_indoor/
+30_misc/
 ├── main.lua              - Entry point (dependency injection)
 ├── conf.lua              - LÖVE configuration
 ├── startup.lua           - Initialization utilities
@@ -35,6 +35,7 @@ core/
 ├── coords.lua            - Unified coordinate transformations
 ├── sound.lua             - Audio system
 ├── save.lua              - Save/load (slot-based)
+├── persistence.lua       - Global state for scene transitions ← NEW!
 ├── quest.lua             - Quest system (5 types)
 ├── level.lua             - Level/EXP system
 ├── debug/                - Debug system (modular)
@@ -271,6 +272,37 @@ vendor/
 
 ## Persistence System
 
+Two-layer persistence system for complete state management:
+
+### 1. Save System (`engine/core/save.lua`)
+File-based save/load to slots.
+
+### 2. Global Persistence (`engine/core/persistence.lua`)
+Preserves state during cutscene transitions (scene_control.switch).
+
+**Registered Systems:**
+```lua
+persistence:registerSystem("player", save_fn, load_fn)
+persistence:registerSystem("inventory", save_fn, load_fn)
+persistence:registerSystem("quest", save_fn, load_fn)
+persistence:registerSystem("dialogue", save_fn, load_fn)
+persistence:registerSystem("level", save_fn, load_fn)
+-- Add new systems with one line!
+```
+
+**State Preserved:**
+| Data | Normal Map | Cutscene | Save/Load |
+|------|------------|----------|-----------|
+| killed_enemies | ✅ | ✅ | ✅ |
+| picked_items | ✅ | ✅ | ✅ |
+| transformed_npcs | ✅ | ✅ | ✅ |
+| destroyed_props | ✅ | ✅ | ✅ |
+| player HP | ✅ | ✅ | ✅ |
+| inventory/weapon | ✅ | ✅ | ✅ |
+| quest progress | ✅ | ✅ | ✅ |
+| dialogue choices | ✅ | ✅ | ✅ |
+| level/exp/gold | ✅ | ✅ | ✅ |
+
 **Save Data Structure:**
 ```lua
 save_data = {
@@ -278,24 +310,30 @@ save_data = {
   map = "assets/maps/level1/area1.lua",
   x = 500, y = 300,
   inventory = {...},
+  quest_states = {...},
+  dialogue_choices = {...},
+  level_data = {...},
 
   -- Persistence tracking
   picked_items = {
-    ["level1_area1_obj_46"] = true,  -- Staff picked
+    ["level1_area1_obj_46"] = true,
   },
   killed_enemies = {
-    ["level1_area1_obj_40"] = true,  -- Boss killed
+    ["level1_area1_obj_40"] = true,
   }
 }
 ```
 
 **Map ID Format:** `"{map_name}_obj_{object_id}"`
 
-**Workflow:**
-1. Map load: Check tables, skip if `respawn=false` and already picked/killed
-2. Pickup/kill: Add `map_id` to table (only if `respawn=false`)
-3. Save: Include tables in save file
-4. Load: Restore tables, pass to `world:new()`
+**Adding New System:**
+```lua
+-- In your system file or main.lua
+local persistence = require "engine.core.persistence"
+persistence:registerSystem("shop", function(scene)
+    return shop_system:serialize()
+end, nil)
+```
 
 ---
 
@@ -314,5 +352,5 @@ save_data = {
 
 ---
 
-**Last Updated:** 2025-11-25
+**Last Updated:** 2025-12-02
 **Framework:** LÖVE 11.5 + Lua 5.1

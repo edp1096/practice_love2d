@@ -155,8 +155,10 @@ function cutscene:update(dt)
                 scene_control.switch("ending")
             elseif self.target_map then
                 -- Go to target map for level transitions
+                -- Pass use_persistence=true to restore persistence data from global storage
                 local gameplay = require "engine.scenes.gameplay"
-                scene_control.switch(gameplay, self.target_map, self.spawn_x, self.spawn_y, self.slot, self.is_new_game)
+                local use_persistence = not self.is_new_game  -- Use persistence unless it's a new game
+                scene_control.switch(gameplay, self.target_map, self.spawn_x, self.spawn_y, self.slot, self.is_new_game, use_persistence)
             else
                 -- Fallback to menu
                 scene_control.switch("menu")

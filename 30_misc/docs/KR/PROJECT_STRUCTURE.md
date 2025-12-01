@@ -7,7 +7,7 @@
 ## 루트 디렉토리
 
 ```
-29_indoor/
+30_misc/
 ├── main.lua              - 진입점 (의존성 주입)
 ├── conf.lua              - LÖVE 설정
 ├── startup.lua           - 초기화 유틸리티
@@ -35,6 +35,7 @@ core/
 ├── coords.lua            - 통합 좌표 변환
 ├── sound.lua             - 오디오 시스템
 ├── save.lua              - 저장/로드 (슬롯 기반)
+├── persistence.lua       - 씬 전환 시 전역 상태 ← 신규!
 ├── quest.lua             - 퀘스트 시스템 (5가지 타입)
 ├── level.lua             - 레벨/경험치 시스템
 ├── debug/                - 디버그 시스템 (모듈화)
@@ -271,6 +272,37 @@ vendor/
 
 ## 영속성 시스템
 
+완전한 상태 관리를 위한 2레이어 영속성 시스템:
+
+### 1. 세이브 시스템 (`engine/core/save.lua`)
+파일 기반 슬롯 저장/로드.
+
+### 2. 전역 영속성 (`engine/core/persistence.lua`)
+컷씬 전환(scene_control.switch) 시 상태 보존.
+
+**등록된 시스템:**
+```lua
+persistence:registerSystem("player", save_fn, load_fn)
+persistence:registerSystem("inventory", save_fn, load_fn)
+persistence:registerSystem("quest", save_fn, load_fn)
+persistence:registerSystem("dialogue", save_fn, load_fn)
+persistence:registerSystem("level", save_fn, load_fn)
+-- 한 줄로 새 시스템 추가!
+```
+
+**보존되는 상태:**
+| 데이터 | 일반 맵 전환 | 컷씬 전환 | 세이브/로드 |
+|--------|-------------|----------|------------|
+| killed_enemies | ✅ | ✅ | ✅ |
+| picked_items | ✅ | ✅ | ✅ |
+| transformed_npcs | ✅ | ✅ | ✅ |
+| destroyed_props | ✅ | ✅ | ✅ |
+| 플레이어 HP | ✅ | ✅ | ✅ |
+| 인벤토리/무기 | ✅ | ✅ | ✅ |
+| 퀘스트 진행 | ✅ | ✅ | ✅ |
+| 대화 선택 | ✅ | ✅ | ✅ |
+| 레벨/경험치/골드 | ✅ | ✅ | ✅ |
+
 **저장 데이터 구조:**
 ```lua
 save_data = {
@@ -278,24 +310,30 @@ save_data = {
   map = "assets/maps/level1/area1.lua",
   x = 500, y = 300,
   inventory = {...},
+  quest_states = {...},
+  dialogue_choices = {...},
+  level_data = {...},
 
   -- 영속성 추적
   picked_items = {
-    ["level1_area1_obj_46"] = true,  -- 스태프 획득
+    ["level1_area1_obj_46"] = true,
   },
   killed_enemies = {
-    ["level1_area1_obj_40"] = true,  -- 보스 처치
+    ["level1_area1_obj_40"] = true,
   }
 }
 ```
 
 **맵 ID 포맷:** `"{map_name}_obj_{object_id}"`
 
-**워크플로우:**
-1. 맵 로드: 테이블 확인, `respawn=false`이고 이미 획득/처치됨이면 스킵
-2. 획득/처치: 테이블에 `map_id` 추가 (`respawn=false`만)
-3. 저장: 테이블을 저장 파일에 포함
-4. 로드: 테이블 복원, `world:new()`에 전달
+**새 시스템 추가:**
+```lua
+-- 시스템 파일이나 main.lua에서
+local persistence = require "engine.core.persistence"
+persistence:registerSystem("shop", function(scene)
+    return shop_system:serialize()
+end, nil)
+```
 
 ---
 
@@ -314,5 +352,5 @@ save_data = {
 
 ---
 
-**최종 업데이트:** 2025-11-25
+**최종 업데이트:** 2025-12-02
 **프레임워크:** LÖVE 11.5 + Lua 5.1

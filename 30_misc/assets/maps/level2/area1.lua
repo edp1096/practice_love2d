@@ -11,7 +11,10 @@ return {
   tileheight = 32,
   nextlayerid = 8,
   nextobjectid = 50,
-  properties = {},
+  properties = {
+    ["game_mode"] = "topdown",
+    ["name"] = "level2_area1"
+  },
   tilesets = {
     {
       name = "tileset_area2",

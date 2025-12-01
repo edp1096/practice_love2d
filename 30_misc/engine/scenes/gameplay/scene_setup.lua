@@ -112,7 +112,7 @@ local function setupSavepointLights(savepoints)
 end
 
 -- Initialize gameplay scene (called from gameplay:enter)
-function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_slot, is_new_game)
+function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_slot, is_new_game, use_persistence)
     -- Initialize lighting system if not already initialized
     if not lighting.canvas then lighting:init() end
 
@@ -137,21 +137,58 @@ function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_sl
     -- Initialize camera
     scene_setup.initCamera(scene)
 
-    -- Load save data first (before creating world)
-    local save_data = nil
-    if not is_new_game then
-        save_data = save_sys:loadGame(save_slot)
+    -- Check if we should use persistence data from global storage (e.g., after cutscene)
+    local persistence = require "engine.core.persistence"
+    if use_persistence and persistence:hasData() then
+        -- Restore persistence from global storage (after cutscene transition)
+        persistence:loadToScene(scene)
+        scene.session_map_states = {}
+        for k, v in pairs(persistence.session_map_states or {}) do
+            scene.session_map_states[k] = v
+        end
+
+        -- Create fake save_data from persistence (not from file)
+        -- This preserves current game state instead of loading from save file
+        local player_data = persistence:getSystemData("player") or {}
+        local persistence_save_data = {
+            hp = player_data.health,
+            max_hp = player_data.max_health,
+            inventory = persistence:getSystemData("inventory"),
+            -- These come from persistence:loadToScene already
+            picked_items = scene.picked_items,
+            killed_enemies = scene.killed_enemies,
+            transformed_npcs = scene.transformed_npcs,
+            destroyed_props = scene.destroyed_props,
+            -- Quest/dialogue state from persistence (not save file)
+            quest_states = persistence:getSystemData("quest"),
+            dialogue_choices = persistence:getSystemData("dialogue"),
+            level_data = persistence:getSystemData("level"),
+        }
+
+        scene_setup.initializeFromSaveOrNew(scene, persistence_save_data, is_new_game, mapPath, spawn_x, spawn_y, save_slot)
+    else
+        -- Normal initialization from save data or new game
+        local save_data = nil
+        if not is_new_game then
+            save_data = save_sys:loadGame(save_slot)
+        end
+
+        -- Initialize persistence lists (for non-respawning items/enemies/props)
+        scene.picked_items = (save_data and save_data.picked_items) or {}
+        scene.killed_enemies = (save_data and save_data.killed_enemies) or {}
+        scene.transformed_npcs = (save_data and save_data.transformed_npcs) or {}
+        scene.destroyed_props = (save_data and save_data.destroyed_props) or {}
+
+        -- Session-based map states (preserved when entering persist_state=true maps like indoor)
+        -- Structure: { [map_name] = { killed_enemies = {...}, picked_items = {...}, destroyed_props = {...} } }
+        scene.session_map_states = {}
+
+        scene_setup.initializeFromSaveOrNew(scene, save_data, is_new_game, mapPath, spawn_x, spawn_y, save_slot)
     end
+end
 
-    -- Initialize persistence lists (for non-respawning items/enemies/props)
-    scene.picked_items = (save_data and save_data.picked_items) or {}
-    scene.killed_enemies = (save_data and save_data.killed_enemies) or {}
-    scene.transformed_npcs = (save_data and save_data.transformed_npcs) or {}
-    scene.destroyed_props = (save_data and save_data.destroyed_props) or {}
-
-    -- Session-based map states (preserved when entering persist_state=true maps like indoor)
-    -- Structure: { [map_name] = { killed_enemies = {...}, picked_items = {...}, destroyed_props = {...} } }
-    scene.session_map_states = {}
+-- Initialize scene from save data or new game (extracted for reuse)
+function scene_setup.initializeFromSaveOrNew(scene, save_data, is_new_game, mapPath, spawn_x, spawn_y, save_slot)
 
     -- Load or reset dialogue choice history
     if save_data and save_data.dialogue_choices then
