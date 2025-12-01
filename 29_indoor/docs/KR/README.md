@@ -6,17 +6,16 @@
 
 ## 철학
 
-### Engine (100% 재사용)
-- `engine/` - 모든 시스템과 엔티티, 완전히 재사용 가능
+### Engine
+- `engine/` - 재사용 가능한 시스템과 엔티티
 - Core: lifecycle, input, display, sound, save, camera, quest, inventory
 - Systems: world (물리), effects, lighting, parallax, HUD, collision
 - Entities: player, enemy, weapon, NPC, item, healing_point
 - UI: menu, dialogue, screens, widgets
 
-### Game (데이터 + 최소 코드)
+### Game
 - `game/data/` - 설정 파일 (player, quests, scenes, entities, sounds)
-- `game/scenes/` - 4개 데이터 기반 메뉴 (각 6줄), 복잡한 UI 화면들
-- **엔티티 폴더 없음** - 모두 engine으로 이동
+- `game/scenes/` - 메뉴 씬, UI 화면들
 
 ---
 
@@ -100,15 +99,15 @@
 
 ## 콘텐츠 생성
 
-### 적 추가 (코드 불필요!)
+### 적 추가
 1. 맵 열기: `assets/maps/level1/area1.tmx`
 2. "Enemies" 레이어에 오브젝트 추가, 타입 설정: `slime`
 3. 커스텀 프로퍼티 추가: `hp`, `dmg`, `spd`, `det_rng`
-4. Lua로 내보내기 - 완료!
+4. Lua로 내보내기
 
-**또는** `game/data/entities/types.lua`에 재사용 가능한 적 타입 추가.
+또는 `game/data/entities/types.lua`에 재사용 가능한 적 타입 추가.
 
-### 메뉴 추가 (6줄!)
+### 메뉴 추가
 1. `game/data/scenes.lua`에 추가:
 ```lua
 scenes.mymenu = {

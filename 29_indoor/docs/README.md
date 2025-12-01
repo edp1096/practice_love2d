@@ -6,17 +6,16 @@ A LÖVE2D game engine with clean **Engine/Game separation** architecture.
 
 ## Philosophy
 
-### Engine (100% Reusable)
-- `engine/` - All systems and entities, completely reusable
+### Engine
+- `engine/` - Reusable systems and entities
 - Core: lifecycle, input, display, sound, save, camera, quest, inventory
 - Systems: world (physics), effects, lighting, parallax, HUD, collision
 - Entities: player, enemy, weapon, NPC, item, healing_point
 - UI: menu, dialogue, screens, widgets
 
-### Game (Data + Minimal Code)
+### Game
 - `game/data/` - Configuration files (player, quests, scenes, entities, sounds)
-- `game/scenes/` - 4 data-driven menus (6 lines each), complex UI screens
-- **No entities folder** - all moved to engine
+- `game/scenes/` - Menu scenes, UI screens
 
 ---
 
@@ -100,15 +99,15 @@ A LÖVE2D game engine with clean **Engine/Game separation** architecture.
 
 ## Creating Content
 
-### Add Enemy (No Code!)
+### Add Enemy
 1. Open map: `assets/maps/level1/area1.tmx`
 2. Add object to "Enemies" layer, set type: `slime`
 3. Add custom properties: `hp`, `dmg`, `spd`, `det_rng`
-4. Export to Lua - Done!
+4. Export to Lua
 
-**Or** add to `game/data/entities/types.lua` for reusable enemy types.
+Or add to `game/data/entities/types.lua` for reusable enemy types.
 
-### Add Menu (6 lines!)
+### Add Menu
 1. Add to `game/data/scenes.lua`:
 ```lua
 scenes.mymenu = {
