@@ -310,12 +310,25 @@ function entities.checkWeaponCollisions(self, weapon)
 
     if not weapon:canDealDamage() then return hit_results end
 
+    -- Check enemies
     for _, enemy in ipairs(self.enemies) do
         if enemy.state ~= "dead" and weapon:checkHit(enemy) then
             table.insert(hit_results, {
+                type = "enemy",
                 enemy = enemy,
                 damage = weapon:getDamage(),
                 knockback = weapon:getKnockback()
+            })
+        end
+    end
+
+    -- Check breakable props
+    for _, prop in ipairs(self.props) do
+        if prop.breakable and not prop.dead and weapon:checkHitProp(prop) then
+            table.insert(hit_results, {
+                type = "prop",
+                prop = prop,
+                damage = weapon:getDamage()
             })
         end
     end
@@ -324,6 +337,45 @@ function entities.checkWeaponCollisions(self, weapon)
 end
 
 function entities.applyWeaponHit(self, hit_result)
+    -- Handle prop hit
+    if hit_result.type == "prop" then
+        local prop = hit_result.prop
+        local damage = hit_result.damage
+        local knockback = hit_result.knockback or 40
+
+        local destroyed = prop:takeDamage(damage)
+
+        -- Spawn hit effect at prop center
+        local weapon_angle = nil
+        if self.player and self.player.weapon then
+            weapon_angle = self.player.weapon.angle
+        end
+        effects:spawnHitEffect(prop.x, prop.y, "prop", weapon_angle)
+
+        -- Apply knockback to movable props
+        if prop.movable and prop.collider and not destroyed then
+            local player_x, player_y = self.player.x, self.player.y
+            local dir_x = prop.x - player_x
+            local dir_y = prop.y - player_y
+            local dist = math.sqrt(dir_x * dir_x + dir_y * dir_y)
+
+            if dist > 0 then
+                dir_x = dir_x / dist
+                dir_y = dir_y / dist
+            else
+                dir_x, dir_y = 0, -1
+            end
+
+            prop.collider:setLinearVelocity(dir_x * knockback, dir_y * knockback)
+        end
+
+        -- Hit flash effect
+        prop.hit_flash = 0.05
+
+        return
+    end
+
+    -- Handle enemy hit (existing code)
     local enemy = hit_result.enemy
     local damage = hit_result.damage
     local knockback = hit_result.knockback
@@ -726,6 +778,29 @@ function entities.transformEnemyToNPC(self, enemy, npc_type)
     end
 
     return npc
+end
+
+-- Update all props
+function entities.updateProps(self, dt)
+    for i = #self.props, 1, -1 do
+        local prop = self.props[i]
+        prop:update(dt)
+
+        -- Track destroyed props immediately (before removal)
+        if prop.dead and prop.map_id then
+            -- Permanent tracking for non-respawning props
+            if not prop.respawn then
+                self.destroyed_props[prop.map_id] = true
+            end
+            -- Session tracking for all destroyed props
+            self.session_destroyed_props[prop.map_id] = true
+        end
+
+        -- Remove dead props after delay
+        if prop.dead and prop.death_timer > 1 then
+            table.remove(self.props, i)
+        end
+    end
 end
 
 return entities

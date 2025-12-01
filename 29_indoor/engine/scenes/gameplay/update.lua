@@ -493,6 +493,7 @@ function update.update(self, dt)
     self.world:moveEntity(self.player, vx, vy, scaled_dt)
     self.world:updateEnemies(scaled_dt, self.player.x, self.player.y)
     self.world:updateNPCs(scaled_dt, self.player.x, self.player.y)
+    self.world:updateProps(scaled_dt)
 
     local shake_callback = function(intensity, duration)
         camera_sys:shake(intensity, duration)

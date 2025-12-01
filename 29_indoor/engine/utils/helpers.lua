@@ -20,6 +20,11 @@ function helpers.syncPersistenceData(scene)
         scene.killed_enemies[k] = v
     end
 
+    -- MERGE destroyed_props (new permanent destroys only)
+    for k, v in pairs(scene.world.destroyed_props or {}) do
+        scene.destroyed_props[k] = v
+    end
+
     -- Overwrite transformed_npcs (transformations are always permanent)
     scene.transformed_npcs = scene.world.transformed_npcs or scene.transformed_npcs
 end

@@ -264,6 +264,10 @@ function weapon:checkHit(enemy)
     return combat.checkHit(self, enemy)
 end
 
+function weapon:checkHitProp(prop)
+    return combat.checkHitProp(self, prop)
+end
+
 function weapon:getDamage()
     return combat.getDamage(self)
 end

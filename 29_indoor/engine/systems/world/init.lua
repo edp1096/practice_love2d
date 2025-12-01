@@ -19,9 +19,10 @@ world.enemy_class = nil
 world.npc_class = nil
 world.healing_point_class = nil
 world.world_item_class = nil
+world.prop_class = nil
 world.loot_tables = nil
 
-function world:new(map_path, entity_classes, picked_items, killed_enemies, transformed_npcs)
+function world:new(map_path, entity_classes, picked_items, killed_enemies, transformed_npcs, destroyed_props)
     local instance = setmetatable({}, world)
 
     -- Store injected entity classes (fallback to class-level if not provided)
@@ -30,6 +31,7 @@ function world:new(map_path, entity_classes, picked_items, killed_enemies, trans
     instance.npc_class = entity_classes.npc or self.npc_class
     instance.healing_point_class = entity_classes.healing_point or self.healing_point_class
     instance.world_item_class = entity_classes.world_item or self.world_item_class
+    instance.prop_class = entity_classes.prop or self.prop_class
     instance.loot_tables = entity_classes.loot_tables or self.loot_tables
 
     -- Store persistence lists
@@ -46,6 +48,13 @@ function world:new(map_path, entity_classes, picked_items, killed_enemies, trans
     -- Preserved when entering persist_state=true maps (e.g., indoor), cleared otherwise
     instance.session_killed_enemies = {}
     instance.session_picked_items = {}
+
+    -- Destroyed props tracking (same pattern as killed_enemies)
+    -- - destroyed_props: NEW permanent destroys in THIS world (respawn=false props destroyed here)
+    -- - destroyed_for_loading: merged data passed for prop spawn check
+    instance.destroyed_props = {}
+    instance.destroyed_for_loading = destroyed_props or {}
+    instance.session_destroyed_props = {}
 
     local map_info = love.filesystem.getInfo(map_path)
     if not map_info then
@@ -119,6 +128,10 @@ function world:new(map_path, entity_classes, picked_items, killed_enemies, trans
     instance.world_items = {}
     loaders.loadWorldItems(instance, instance.picked_items)
 
+    -- Props (movable/breakable objects)
+    instance.props = {}
+    loaders.loadProps(instance, instance.destroyed_for_loading)
+
     -- Load parallax backgrounds
     loaders.loadParallax(instance)
 
@@ -188,6 +201,7 @@ world.countTransformedNPCs = entities.countTransformedNPCs
 world.getStairOffset = entities.getStairOffset
 world.getStairInfo = entities.getStairInfo
 world.adjustVelocityForStairs = entities.adjustVelocityForStairs
+world.updateProps = entities.updateProps
 
 -- Delegate rendering functions
 world.draw = rendering.draw

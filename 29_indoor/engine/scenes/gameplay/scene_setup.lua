@@ -16,6 +16,7 @@ local enemy_class = require "engine.entities.enemy"
 local npc_class = require "engine.entities.npc"
 local healing_point_class = require "engine.entities.healing_point"
 local world_item_class = require "engine.entities.world_item"
+local prop_class = require "engine.entities.prop"
 local dialogue = require "engine.ui.dialogue"
 local sound = require "engine.core.sound"
 local util = require "engine.utils.util"
@@ -142,13 +143,14 @@ function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_sl
         save_data = save_sys:loadGame(save_slot)
     end
 
-    -- Initialize persistence lists (for non-respawning items/enemies)
+    -- Initialize persistence lists (for non-respawning items/enemies/props)
     scene.picked_items = (save_data and save_data.picked_items) or {}
     scene.killed_enemies = (save_data and save_data.killed_enemies) or {}
     scene.transformed_npcs = (save_data and save_data.transformed_npcs) or {}
+    scene.destroyed_props = (save_data and save_data.destroyed_props) or {}
 
     -- Session-based map states (preserved when entering persist_state=true maps like indoor)
-    -- Structure: { [map_name] = { killed_enemies = {...}, picked_items = {...} } }
+    -- Structure: { [map_name] = { killed_enemies = {...}, picked_items = {...}, destroyed_props = {...} } }
     scene.session_map_states = {}
 
     -- Load or reset dialogue choice history
@@ -230,8 +232,9 @@ function scene_setup.createWorld(scene, mapPath)
         npc = npc_class,
         healing_point = healing_point_class,
         world_item = world_item_class,
+        prop = prop_class,
         loot_tables = scene.loot_tables
-    }, scene.picked_items, scene.killed_enemies, scene.transformed_npcs)
+    }, scene.picked_items, scene.killed_enemies, scene.transformed_npcs, scene.destroyed_props)
 end
 
 -- Create player
@@ -461,7 +464,8 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
         if current_map_name then
             local session_state = scene.session_map_states[current_map_name] or {
                 killed_enemies = {},
-                picked_items = {}
+                picked_items = {},
+                destroyed_props = {}
             }
 
             -- Merge ALL killed enemies for this map (regardless of respawn setting)
@@ -474,6 +478,12 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
             for map_id, _ in pairs(scene.world.session_picked_items or {}) do
                 if map_id:find("^" .. current_map_name .. "_") then
                     session_state.picked_items[map_id] = true
+                end
+            end
+            -- Merge ALL destroyed props for this map (regardless of respawn setting)
+            for map_id, _ in pairs(scene.world.session_destroyed_props or {}) do
+                if map_id:find("^" .. current_map_name .. "_") then
+                    session_state.destroyed_props[map_id] = true
                 end
             end
 
@@ -508,10 +518,12 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
     -- Prepare merged persistence data (permanent + session)
     local merged_killed = {}
     local merged_picked = {}
+    local merged_destroyed_props = {}
 
-    -- Copy permanent data (respawn=false enemies and picked items)
+    -- Copy permanent data (respawn=false enemies, picked items, destroyed props)
     for k, v in pairs(scene.killed_enemies) do merged_killed[k] = v end
     for k, v in pairs(scene.picked_items) do merged_picked[k] = v end
+    for k, v in pairs(scene.destroyed_props or {}) do merged_destroyed_props[k] = v end
 
     -- Merge session data (respawn=true enemies killed during indoor visits)
     for map_name, state in pairs(scene.session_map_states) do
@@ -521,6 +533,9 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
         for map_id, _ in pairs(state.picked_items or {}) do
             merged_picked[map_id] = true
         end
+        for map_id, _ in pairs(state.destroyed_props or {}) do
+            merged_destroyed_props[map_id] = true
+        end
     end
 
     -- Create world with injected entity classes and merged persistence data
@@ -529,8 +544,9 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
         npc = npc_class,
         healing_point = healing_point_class,
         world_item = world_item_class,
+        prop = prop_class,
         loot_tables = scene.loot_tables
-    }, merged_picked, merged_killed, scene.transformed_npcs)
+    }, merged_picked, merged_killed, scene.transformed_npcs, merged_destroyed_props)
 
     -- Reinitialize weather for new map
     weather.camera = scene.cam

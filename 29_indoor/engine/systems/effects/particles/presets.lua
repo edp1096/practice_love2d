@@ -10,6 +10,9 @@ function presets.spawnHitEffect(particles, x, y, target_type, angle)
         particles:spawn("dust", x, y, nil, 20)
     elseif target_type == "wall" then
         particles:spawn("dust", x, y, nil, 40)
+    elseif target_type == "prop" then
+        particles:spawn("dust", x, y, angle, 30)
+        particles:spawn("spark", x, y, angle, 15)
     end
 end
 

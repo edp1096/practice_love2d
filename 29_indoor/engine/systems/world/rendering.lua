@@ -9,6 +9,11 @@ local rendering = {}
 
 -- Helper: Calculate Y position for sorting (foot bottom edge)
 local function getEntitySortY(entity, game_mode)
+    -- Prop has its own getSortY method
+    if entity.getSortY then
+        return entity:getSortY()
+    end
+
     local y = entity.y
 
     -- Check if foot_collider exists and is valid
@@ -81,6 +86,13 @@ function rendering.drawEntitiesYSorted(self, player)
     -- Add world items for Y-sorting
     for _, item in ipairs(self.world_items) do
         table.insert(drawables, item)
+    end
+
+    -- Add props for Y-sorting
+    for _, prop in ipairs(self.props) do
+        if not prop.dead then
+            table.insert(drawables, prop)
+        end
     end
 
     -- Include drawable walls for Y-sorting (topdown mode only)

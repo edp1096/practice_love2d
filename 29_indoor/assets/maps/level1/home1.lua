@@ -10,7 +10,7 @@ return {
   tilewidth = 32,
   tileheight = 32,
   nextlayerid = 9,
-  nextobjectid = 25,
+  nextobjectid = 51,
   properties = {
     ["game_mode"] = "topdown",
     ["name"] = "home1",
@@ -58,7 +58,7 @@ return {
       id = 1,
       name = "Ground",
       class = "",
-      visible = true,
+      visible = false,
       opacity = 1,
       offsetx = 0,
       offsety = 0,
@@ -102,11 +102,11 @@ return {
       encoding = "lua",
       data = {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 68, 0, 0,
-        0, 0, 18, 19, 117, 20, 21, 0, 85, 118, 84, 0, 0,
-        0, 0, 34, 35, 0, 36, 37, 0, 101, 134, 100, 0, 0,
-        0, 0, 50, 51, 0, 52, 53, 0, 0, 0, 136, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 152, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 18, 19, 117, 18, 19, 0, 0, 0, 0, 0, 0,
+        0, 0, 34, 35, 0, 34, 35, 0, 0, 0, 0, 0, 0,
+        0, 0, 50, 51, 0, 50, 51, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 66, 67, 116, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 82, 83, 132, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 120, 120, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -208,6 +208,45 @@ return {
           rotation = 0,
           visible = true,
           properties = {}
+        },
+        {
+          id = 35,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 128,
+          y = 224,
+          width = 32,
+          height = 32,
+          rotation = 0,
+          visible = true,
+          properties = {}
+        },
+        {
+          id = 37,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 64,
+          y = 256,
+          width = 32,
+          height = 32,
+          rotation = 0,
+          visible = true,
+          properties = {}
+        },
+        {
+          id = 38,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 96,
+          y = 256,
+          width = 32,
+          height = 32,
+          rotation = 0,
+          visible = true,
+          properties = {}
         }
       }
     },
@@ -217,7 +256,7 @@ return {
       id = 3,
       name = "Portals",
       class = "",
-      visible = true,
+      visible = false,
       opacity = 1,
       offsetx = 0,
       offsety = 0,
@@ -249,7 +288,7 @@ return {
       type = "objectgroup",
       draworder = "topdown",
       id = 5,
-      name = "Movable",
+      name = "Props",
       class = "",
       visible = true,
       opacity = 1,
@@ -260,75 +299,74 @@ return {
       properties = {},
       objects = {
         {
-          id = 12,
+          id = 32,
           name = "",
           type = "",
           shape = "rectangle",
-          x = 128,
+          x = 224,
           y = 224,
           width = 32,
           height = 32,
           rotation = 0,
+          gid = 136,
           visible = true,
-          properties = {}
+          properties = {
+            ["group"] = "teddybear1"
+          }
         },
         {
-          id = 13,
+          id = 33,
           name = "",
           type = "",
           shape = "rectangle",
-          x = 96,
+          x = 224,
           y = 256,
           width = 32,
           height = 32,
           rotation = 0,
+          gid = 152,
           visible = true,
-          properties = {}
+          properties = {
+            ["group"] = "teddybear1"
+          }
         },
         {
-          id = 14,
+          id = 39,
           name = "",
           type = "",
           shape = "rectangle",
-          x = 64,
-          y = 256,
-          width = 32,
-          height = 32,
+          x = 224.75,
+          y = 203.25,
+          width = 30.625,
+          height = 43.375,
           rotation = 0,
           visible = true,
-          properties = {}
+          properties = {
+            ["breakable"] = true,
+            ["group"] = "teddybear1",
+            ["hp"] = 30,
+            ["movable"] = true,
+            ["type"] = "collider"
+          }
         },
         {
-          id = 22,
+          id = 40,
           name = "",
           type = "",
           shape = "rectangle",
-          x = 320,
-          y = 160,
+          x = 256,
+          y = 128,
           width = 32,
           height = 32,
           rotation = 0,
+          gid = 101,
           visible = true,
-          properties = {}
-        }
-      }
-    },
-    {
-      type = "objectgroup",
-      draworder = "topdown",
-      id = 6,
-      name = "Breakable",
-      class = "",
-      visible = true,
-      opacity = 1,
-      offsetx = 0,
-      offsety = 0,
-      parallaxx = 1,
-      parallaxy = 1,
-      properties = {},
-      objects = {
+          properties = {
+            ["group"] = "flower1"
+          }
+        },
         {
-          id = 18,
+          id = 41,
           name = "",
           type = "",
           shape = "rectangle",
@@ -337,11 +375,30 @@ return {
           width = 32,
           height = 32,
           rotation = 0,
+          gid = 85,
           visible = true,
-          properties = {}
+          properties = {
+            ["group"] = "flwoer1"
+          }
         },
         {
-          id = 19,
+          id = 42,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 288,
+          y = 128,
+          width = 32,
+          height = 32,
+          rotation = 0,
+          gid = 134,
+          visible = true,
+          properties = {
+            ["group"] = "flower2"
+          }
+        },
+        {
+          id = 43,
           name = "",
           type = "",
           shape = "rectangle",
@@ -350,11 +407,30 @@ return {
           width = 32,
           height = 32,
           rotation = 0,
+          gid = 118,
           visible = true,
-          properties = {}
+          properties = {
+            ["group"] = "flower2"
+          }
         },
         {
-          id = 20,
+          id = 44,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 320,
+          y = 128,
+          width = 32,
+          height = 32,
+          rotation = 0,
+          gid = 100,
+          visible = true,
+          properties = {
+            ["group"] = "flower3"
+          }
+        },
+        {
+          id = 45,
           name = "",
           type = "",
           shape = "rectangle",
@@ -363,21 +439,87 @@ return {
           width = 32,
           height = 32,
           rotation = 0,
+          gid = 84,
           visible = true,
-          properties = {}
+          properties = {
+            ["group"] = "flower3"
+          }
         },
         {
-          id = 21,
+          id = 46,
           name = "",
           type = "",
           shape = "rectangle",
           x = 320,
-          y = 160,
+          y = 64,
           width = 32,
           height = 32,
           rotation = 0,
+          gid = 68,
           visible = true,
-          properties = {}
+          properties = {
+            ["group"] = "flower3"
+          }
+        },
+        {
+          id = 47,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 256,
+          y = 96,
+          width = 32,
+          height = 27.75,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["breakable"] = true,
+            ["group"] = "flower1",
+            ["hp"] = 30,
+            ["movable"] = true,
+            ["respawn"] = true,
+            ["type"] = "collider"
+          }
+        },
+        {
+          id = 49,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 288,
+          y = 96,
+          width = 32,
+          height = 27.75,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["breakable"] = true,
+            ["group"] = "flower2",
+            ["hp"] = 30,
+            ["movable"] = true,
+            ["respawn"] = true,
+            ["type"] = "collider"
+          }
+        },
+        {
+          id = 50,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 320,
+          y = 96,
+          width = 32,
+          height = 27.75,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["breakable"] = true,
+            ["group"] = "flower3",
+            ["hp"] = 30,
+            ["movable"] = true,
+            ["respawn"] = true,
+            ["type"] = "collider"
+          }
         }
       }
     },
@@ -387,7 +529,7 @@ return {
       id = 8,
       name = "HealingPoints",
       class = "",
-      visible = true,
+      visible = false,
       opacity = 1,
       offsetx = 0,
       offsety = 0,

@@ -122,6 +122,38 @@ function combat.checkHit(weapon, enemy)
     return false
 end
 
+function combat.checkHitProp(weapon, prop)
+    if weapon.hit_enemies[prop] then
+        return false
+    end
+
+    if not combat.canDealDamage(weapon) then
+        return false
+    end
+
+    local hitbox = combat.getHitbox(weapon)
+    if not hitbox then
+        return false
+    end
+
+    -- Use prop center position
+    local prop_x = prop.x
+    local prop_y = prop.y
+
+    local dx = prop_x - hitbox.x
+    local dy = prop_y - hitbox.y
+    local distance = math.sqrt(dx * dx + dy * dy)
+
+    -- Check if weapon hitbox overlaps with prop collider
+    local prop_radius = math.max(prop.collider_width, prop.collider_height) / 2
+    if distance < hitbox.radius + prop_radius then
+        weapon.hit_enemies[prop] = true  -- Reuse hit_enemies table to prevent multi-hit
+        return true
+    end
+
+    return false
+end
+
 function combat.getDamage(weapon)
     return weapon.config.damage
 end

@@ -607,4 +607,74 @@ function loaders.loadStairs(self)
     end
 end
 
+-- Load props from Props layer
+-- Groups tile objects by 'group' property
+-- Collider object (type="collider") defines physics bounds
+function loaders.loadProps(self, destroyed_props)
+    if not self.prop_class then
+        return
+    end
+
+    destroyed_props = destroyed_props or {}
+
+    local props_layer = nil
+    for _, layer in ipairs(self.map.layers) do
+        if layer.name == "Props" then
+            props_layer = layer
+            break
+        end
+    end
+
+    if not props_layer then
+        return
+    end
+
+    -- Get map name for map_id generation
+    local map_name = self.map.properties and self.map.properties.name or "unknown"
+
+    -- Group objects by 'group' property
+    local groups = {}
+    local colliders = {}
+
+    for _, obj in ipairs(props_layer.objects) do
+        local group_name = obj.properties and obj.properties.group
+        local obj_type = obj.properties and obj.properties.type
+
+        if obj_type == "collider" then
+            -- This is a collider definition
+            if group_name then
+                colliders[group_name] = obj
+            end
+        elseif obj.gid and group_name then
+            -- This is a tile object with a group
+            if not groups[group_name] then
+                groups[group_name] = {}
+            end
+            table.insert(groups[group_name], obj)
+        end
+    end
+
+    -- Create Props from groups
+    for group_name, tiles in pairs(groups) do
+        local collider_obj = colliders[group_name]
+        if collider_obj then
+            -- Generate map_id for this prop
+            local map_id = map_name .. "_prop_" .. collider_obj.id
+
+            -- Skip if destroyed (non-respawning)
+            if not destroyed_props[map_id] then
+                -- Create prop with tiles and collider
+                local new_prop = self.prop_class:new(tiles, collider_obj, self.map)
+                new_prop.world = self
+                new_prop.map_id = map_id
+
+                -- Create physics collider
+                collision.createPropCollider(new_prop, self.physicsWorld, self.game_mode)
+
+                table.insert(self.props, new_prop)
+            end
+        end
+    end
+end
+
 return loaders
