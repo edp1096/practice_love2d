@@ -81,7 +81,10 @@ dialogues.villager_greeting = {
                 {
                     text = "Sure, I'll help!",
                     next = "quest_accepted",
-                    action = { type = "accept_quest", quest_id = "slime_menace" }
+                    actions = {
+                        { type = "accept_quest", quest_id = "slime_menace" },
+                        { type = "give_item", item_id = "staff", count = 1 }
+                    }
                 },
                 { text = "I'll think about it", next = "main_menu" },
                 { text = "Not interested", next = "main_menu" }

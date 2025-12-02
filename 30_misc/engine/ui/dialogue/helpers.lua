@@ -248,13 +248,10 @@ function helpers:executeAction(dialogue, action)
                 dialogue.active = false
             end
         end
-    -- Add more action types as needed:
-    -- elseif action.type == "give_item" then
-    --     -- inventory:addItem(action.item_id, action.count)
-    -- elseif action.type == "remove_item" then
-    --     -- inventory:removeItem(action.item_id, action.count)
-    -- elseif action.type == "give_gold" then
-    --     -- player.gold = player.gold + action.amount
+    elseif action.type == "give_item" then
+        if dialogue.inventory then
+            dialogue.inventory:addItem(action.item_id, action.count or 1)
+        end
     end
 end
 

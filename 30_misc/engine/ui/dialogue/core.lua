@@ -487,9 +487,13 @@ function core:selectChoice(dialogue, choice_index)
         -- so no need to update global storage separately
     end
 
-    -- Execute choice action (if any)
-    if choice.action then
-        local helpers = require "engine.ui.dialogue.helpers"
+    -- Execute choice action(s) (if any)
+    local helpers = require "engine.ui.dialogue.helpers"
+    if choice.actions then
+        for _, action in ipairs(choice.actions) do
+            helpers:executeAction(dialogue, action)
+        end
+    elseif choice.action then
         helpers:executeAction(dialogue, choice.action)
     end
 

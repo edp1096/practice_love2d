@@ -23,13 +23,13 @@ return {
             attack_cooldown = 1.0,
             detection_range = 280,
             attack_range = 35,
-            loot_category = "humanoid",
+            loot_category = "deceiver",
 
             sprite_width = 48,
             sprite_height = 48,
             sprite_scale = 2,
-        character_width = 16,
-        character_height = 32,
+            character_width = 16,
+            character_height = 32,
 
             -- collider_width auto-calculated: 16 * 2 = 32
             -- collider_height auto-calculated: 32 * 2 = 64
@@ -57,14 +57,14 @@ return {
         surrendered_bandit = {
             name = "Surrendered Bandit",
             sprite_sheet = "assets/images/sprites/enemies/enemy-sheet-human.png",
-            dialogue_id = "surrendered_bandit",  -- References game/data/dialogues.lua
+            dialogue_id = "surrendered_bandit", -- References game/data/dialogues.lua
             interaction_range = 80,
 
             sprite_width = 48,
             sprite_height = 48,
             sprite_scale = 2,
-        character_width = 16,
-        character_height = 32,
+            character_width = 16,
+            character_height = 32,
 
             -- collider auto-calculated
 
@@ -87,14 +87,14 @@ return {
         deceiver = {
             name = "???",
             sprite_sheet = "assets/images/sprites/enemies/deceiver-sheet.png",
-            dialogue_id = "deceiver_greeting",  -- References game/data/dialogues.lua
+            dialogue_id = "deceiver_greeting", -- References game/data/dialogues.lua
             interaction_range = 80,
 
             sprite_width = 48,
             sprite_height = 48,
             sprite_scale = 2,
-        character_width = 16,
-        character_height = 32,
+            character_width = 16,
+            character_height = 32,
 
             -- collider auto-calculated
 
