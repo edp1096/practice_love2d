@@ -414,6 +414,16 @@ function update.update(self, dt)
 
     dialogue:update(dt)
 
+    -- Check for pending shop open
+    if dialogue.pending_shop_id then
+        local shop_id = dialogue.pending_shop_id
+        dialogue.pending_shop_id = nil
+        local scene_control = require "engine.core.scene_control"
+        local shop_ui = require "engine.ui.screens.shop"
+        local level_system = require "engine.core.level"
+        scene_control.push(shop_ui, shop_id, self.inventory, level_system, self.item_registry)
+    end
+
     -- Reset skip button state when dialogue is closed
     if not dialogue:isOpen() and self.skip_button_held then
         self.skip_button_held = false

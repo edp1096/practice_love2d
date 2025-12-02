@@ -15,6 +15,7 @@ function setup.configure()
     local sound_data = require "game.data.sounds"
     local item_types = require "game.data.items"
     local loot_tables = require "game.data.loot_tables"
+    local shops_data = require "game.data.shops"
     local dialogues = require "game.data.dialogues"  -- Dialogue trees
     local quests = require "game.data.quests"  -- Quest definitions
     local hand_anchors = require "game.data.weapon.hand_anchors"
@@ -35,6 +36,7 @@ function setup.configure()
     local dialogue = require "engine.ui.dialogue"
     local prompt = require "engine.systems.prompt"
     local quest_system = require "engine.core.quest"
+    local shop_system = require "engine.systems.shop"
     local hotreload = require "engine.core.debug.hotreload"
 
     -- Inject entity type registries
@@ -82,6 +84,9 @@ function setup.configure()
     -- Initialize quest system with quest definitions
     quest_system:registerQuests(quests)
 
+    -- Initialize shop system with shop data
+    shop_system:init(shops_data)
+
     -- Auto-accept tutorial quest (so it can be completed by talking to NPC)
     quest_system:accept("tutorial_talk")
 
@@ -103,7 +108,8 @@ function setup.getSceneLoader()
             questlog = "engine.ui.screens.questlog",
             container = "engine.ui.screens.container",
             load = "engine.ui.screens.load",
-            settings = "engine.ui.screens.settings"
+            settings = "engine.ui.screens.settings",
+            shop = "engine.ui.screens.shop"
         }
 
         -- Engine scenes

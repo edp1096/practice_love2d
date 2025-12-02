@@ -4,10 +4,8 @@
 return {
     merchant = {
         name = "Merchant",
-        sprite_sheet = "assets/images/player/player-sheet.png",
-        dialogue = {
-            "Hello player!",
-        },
+        sprite_sheet = "assets/images/sprites/npcs/npc-merchant_01-sheet.png",
+        dialogue_id = "merchant_greeting",  -- References game/data/dialogues.lua
         interaction_range = 80,
 
         sprite_width = 48,

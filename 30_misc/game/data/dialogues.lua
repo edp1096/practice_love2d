@@ -175,9 +175,7 @@ dialogues.merchant_greeting = {
         open_shop = {
             text = "Here's what I have in stock!",
             speaker = "Merchant",
-            -- Phase 4: This will trigger shop UI opening
-            -- action = { type = "open_shop", shop_id = "general_store" }
-            next = "main_menu"  -- Loop back until shop UI is implemented
+            action = { type = "open_shop", shop_id = "general_store" }
         },
 
         ["end"] = {

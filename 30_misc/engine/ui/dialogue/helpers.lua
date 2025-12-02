@@ -252,6 +252,10 @@ function helpers:executeAction(dialogue, action)
         if dialogue.inventory then
             dialogue.inventory:addItem(action.item_id, action.count or 1)
         end
+    elseif action.type == "open_shop" then
+        -- Open shop UI
+        dialogue.pending_shop_id = action.shop_id
+        dialogue.active = false  -- Close dialogue to open shop
     end
 end
 

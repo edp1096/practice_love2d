@@ -10,7 +10,7 @@ return {
   tilewidth = 32,
   tileheight = 32,
   nextlayerid = 14,
-  nextobjectid = 86,
+  nextobjectid = 89,
   properties = {
     ["ambient"] = "day",
     ["game_mode"] = "topdown",
@@ -221,7 +221,7 @@ return {
         263, 263, 264, 0, 0, 0, 9, 10, 10, 10, 11, 0, 0, 0, 0, 0, 0, 9, 10, 10, 10, 10, 67, 326, 0, 0, 0, 0, 0, 235,
         263, 263, 264, 0, 0, 0, 63, 64, 64, 64, 65, 0, 0, 0, 0, 406, 406, 63, 64, 64, 64, 65, 89, 380, 326, 0, 0, 0, 0, 262,
         263, 263, 264, 0, 0, 0, 181, 181, 181, 181, 181, 0, 0, 0, 0, 433, 433, 181, 181, 181, 181, 181, 143, 0, 380, 326, 0, 0, 0, 262,
-        263, 263, 264, 0, 0, 0, 208, 208, 413, 414, 208, 0, 0, 0, 0, 433, 433, 208, 208, 415, 416, 208, 0, 0, 0, 380, 326, 0, 0, 262,
+        263, 263, 264, 0, 0, 0, 208, 208, 415, 416, 208, 0, 0, 0, 0, 433, 433, 208, 208, 415, 416, 208, 0, 0, 0, 380, 326, 0, 0, 262,
         263, 263, 264, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 460, 460, 0, 0, 0, 0, 0, 0, 0, 0, 0, 380, 0, 0, 262,
         263, 263, 264, 0, 222, 222, 222, 222, 222, 222, 222, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 262,
         263, 263, 264, 0, 222, 0, 0, 0, 0, 0, 222, 0, 0, 191, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 262,
@@ -363,19 +363,6 @@ return {
           properties = {}
         },
         {
-          id = 15,
-          name = "",
-          type = "",
-          shape = "rectangle",
-          x = 192,
-          y = 640,
-          width = 160,
-          height = 96,
-          rotation = 0,
-          visible = true,
-          properties = {}
-        },
-        {
           id = 20,
           name = "",
           type = "",
@@ -432,6 +419,29 @@ return {
           type = "",
           shape = "polygon",
           x = 544,
+          y = 608,
+          width = 160,
+          height = 128,
+          rotation = 0,
+          visible = true,
+          polygon = {
+            { x = 0, y = 32 },
+            { x = 160, y = 32 },
+            { x = 160, y = 128 },
+            { x = 128, y = 128 },
+            { x = 128, y = 96 },
+            { x = 64, y = 96 },
+            { x = 64, y = 128 },
+            { x = 0, y = 128 }
+          },
+          properties = {}
+        },
+        {
+          id = 88,
+          name = "",
+          type = "",
+          shape = "polygon",
+          x = 192,
           y = 608,
           width = 160,
           height = 128,
@@ -544,7 +554,7 @@ return {
       id = 13,
       name = "NoRainSplash",
       class = "",
-      visible = true,
+      visible = false,
       opacity = 1,
       offsetx = 0,
       offsety = 0,
@@ -839,7 +849,7 @@ return {
       id = 4,
       name = "Portals",
       class = "",
-      visible = false,
+      visible = true,
       opacity = 1,
       offsetx = 0,
       offsety = 0,
@@ -916,6 +926,24 @@ return {
             ["spawn_x"] = 400,
             ["spawn_y"] = 120,
             ["target_map"] = "assets/maps/level1/area4.lua",
+            ["type"] = "portal"
+          }
+        },
+        {
+          id = 86,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 320,
+          y = 727,
+          width = 64,
+          height = 22.75,
+          rotation = 180,
+          visible = true,
+          properties = {
+            ["spawn_x"] = 230,
+            ["spawn_y"] = 270,
+            ["target_map"] = "assets/maps/level1/shop1.lua",
             ["type"] = "portal"
           }
         }
