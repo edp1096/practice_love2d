@@ -312,12 +312,12 @@ function shop_ui:close()
 end
 
 function shop_ui:draw()
-    display:Attach()
-
-    -- Draw previous scene dimmed
+    -- Draw previous scene first (before Attach to avoid double transform)
     if self.previous_scene and self.previous_scene.draw then
         self.previous_scene:draw()
     end
+
+    display:Attach()
 
     local vw, vh = display:GetVirtualDimensions()
 
