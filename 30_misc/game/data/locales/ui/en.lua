@@ -134,6 +134,22 @@ return {
             equipped = "Equipped",
             pos = "Pos",
             size = "Size",
+            -- Error messages
+            err_item_not_found = "Item not found",
+            err_not_equippable = "Item is not equippable",
+            err_wrong_slot = "Wrong slot type",
+            err_equip_failed = "Failed to equip weapon",
+            err_slot_empty = "Slot is empty",
+            err_item_data_not_found = "Item data not found",
+            err_no_space = "No space in inventory",
+            err_invalid_quickslot = "Invalid quickslot index",
+            err_equipment_quickslot = "Equipment cannot be assigned to quickslots",
+            err_consumable_only = "Only consumable items can be assigned to quickslots",
+            err_quickslot_empty = "Quickslot is empty",
+            err_item_gone = "Item no longer exists",
+            err_cannot_use = "Cannot use item",
+            err_use_failed = "Item use failed",
+            err_unequip_failed = "Cannot unequip existing item",
         },
 
         -- Quest Log

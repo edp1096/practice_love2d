@@ -2,10 +2,16 @@
 -- Grid-based inventory management system
 
 local item_actions = require "engine.systems.item_actions"
+local locale = require "engine.core.locale"
 
 local inventory = {}
 inventory.__index = inventory
 inventory.item_class = nil  -- Injected item class
+
+-- Error message helper
+local function err(key)
+    return locale:t("inventory." .. key)
+end
 
 -- Grid constants
 local DEFAULT_GRID_WIDTH = 10
@@ -533,26 +539,26 @@ function inventory:equipItem(item_id, slot_name, player)
     -- Validate item exists
     local item_data = self.items[item_id]
     if not item_data then
-        return false, "Item not found"
+        return false, err("err_item_not_found")
     end
 
     local item = item_data.item
 
     -- Validate item is equippable
     if not item.equipment_slot then
-        return false, "Item is not equippable"
+        return false, err("err_not_equippable")
     end
 
     -- Validate slot type matches
     if item.equipment_slot ~= slot_name then
-        return false, "Wrong slot type"
+        return false, err("err_wrong_slot")
     end
 
     -- Unequip existing item in slot (if any)
     if self.equipment_slots[slot_name] then
-        local success, err = self:unequipItem(slot_name, player)
+        local success, unequip_err = self:unequipItem(slot_name, player)
         if not success then
-            return false, "Cannot unequip existing item: " .. (err or "unknown")
+            return false, err("err_unequip_failed")
         end
     end
 
@@ -579,7 +585,7 @@ function inventory:equipItem(item_id, slot_name, player)
             if not success then
                 -- Restore item to grid if weapon equip failed
                 self:placeItem(item_id, item, item_data.x or 1, item_data.y or 1, item_data.width, item_data.height, item_data.rotated)
-                return false, "Failed to equip weapon"
+                return false, err("err_equip_failed")
             end
         end
     end
@@ -598,18 +604,18 @@ end
 function inventory:unequipItem(slot_name, player)
     local item_id = self.equipment_slots[slot_name]
     if not item_id then
-        return false, "Slot is empty"
+        return false, err("err_slot_empty")
     end
 
     local item_data = self.items[item_id]
     if not item_data then
-        return false, "Item data not found"
+        return false, err("err_item_data_not_found")
     end
 
     -- Find empty space in grid
     local x, y = self:findEmptySpace(item_data.width, item_data.height)
     if not x or not y then
-        return false, "No space in inventory"
+        return false, err("err_no_space")
     end
 
     -- Remove equipment stats from player
@@ -671,13 +677,13 @@ end
 -- Assign item to quickslot
 function inventory:assignQuickslot(slot_index, item_id)
     if slot_index < 1 or slot_index > 5 then
-        return false, "Invalid quickslot index"
+        return false, err("err_invalid_quickslot")
     end
 
     -- Check if item exists
     local item_data = self.items[item_id]
     if not item_data then
-        return false, "Item not found"
+        return false, err("err_item_not_found")
     end
 
     -- Only allow usable items (potions, consumables)
@@ -685,9 +691,9 @@ function inventory:assignQuickslot(slot_index, item_id)
     if not item.use or not item.canUse then
         -- Check if it's equipment
         if item.equipment_slot or item.item_type == "equipment" then
-            return false, "Equipment cannot be assigned to quickslots"
+            return false, err("err_equipment_quickslot")
         else
-            return false, "Only consumable items can be assigned to quickslots"
+            return false, err("err_consumable_only")
         end
     end
 
@@ -710,26 +716,26 @@ end
 -- Use item in quickslot
 function inventory:useQuickslot(slot_index, player)
     if slot_index < 1 or slot_index > 5 then
-        return false, "Invalid quickslot index"
+        return false, err("err_invalid_quickslot")
     end
 
     local item_id = self.quickslots[slot_index]
     if not item_id then
-        return false, "Quickslot is empty"
+        return false, err("err_quickslot_empty")
     end
 
     local item_data = self.items[item_id]
     if not item_data then
         -- Item was removed from inventory, clear quickslot
         self.quickslots[slot_index] = nil
-        return false, "Item no longer exists"
+        return false, err("err_item_gone")
     end
 
     local item = item_data.item
 
     -- Check if item can be used
     if not item.canUse or not item:canUse(player) then
-        return false, "Cannot use item"
+        return false, err("err_cannot_use")
     end
 
     -- Use the item (item:use() already decreases quantity)
@@ -744,7 +750,7 @@ function inventory:useQuickslot(slot_index, player)
         return true
     end
 
-    return false, "Item use failed"
+    return false, err("err_use_failed")
 end
 
 -- Get item in quickslot

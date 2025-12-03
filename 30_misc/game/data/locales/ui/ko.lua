@@ -134,6 +134,22 @@ return {
             equipped = "장착됨",
             pos = "위치",
             size = "크기",
+            -- Error messages
+            err_item_not_found = "아이템을 찾을 수 없음",
+            err_not_equippable = "장착할 수 없는 아이템",
+            err_wrong_slot = "잘못된 슬롯 타입",
+            err_equip_failed = "무기 장착 실패",
+            err_slot_empty = "슬롯이 비어있음",
+            err_item_data_not_found = "아이템 데이터를 찾을 수 없음",
+            err_no_space = "인벤토리 공간 부족",
+            err_invalid_quickslot = "잘못된 퀵슬롯 번호",
+            err_equipment_quickslot = "장비는 퀵슬롯에 등록할 수 없음",
+            err_consumable_only = "소모품만 퀵슬롯에 등록 가능",
+            err_quickslot_empty = "퀵슬롯이 비어있음",
+            err_item_gone = "아이템이 더 이상 존재하지 않음",
+            err_cannot_use = "사용할 수 없음",
+            err_use_failed = "아이템 사용 실패",
+            err_unequip_failed = "기존 장비 해제 실패",
         },
 
         -- Quest Log
