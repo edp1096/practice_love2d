@@ -10,6 +10,7 @@ local debug = require "engine.core.debug"
 local camera_sys = require "engine.core.camera"
 local input = require "engine.core.input"
 local fonts = require "engine.utils.fonts"
+local locale = require "engine.core.locale"
 local lighting = require "engine.systems.lighting"
 local text_ui = require "engine.utils.text"
 local weather = require "engine.systems.weather"
@@ -131,7 +132,7 @@ function render.draw(self)
 
     if self.save_notification.active then
         local alpha = math.min(1, self.save_notification.timer / 0.5)
-        local font = fonts.subtitle
+        local font = locale:getFont("subtitle") or fonts.subtitle
         if not font then return end  -- Safety check
 
         love.graphics.setFont(font)

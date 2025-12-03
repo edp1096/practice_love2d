@@ -196,6 +196,7 @@ dialogues.shopkeeper = {
 ```lua
 shops.general_store = {
   name = "General Store",
+  name_key = "shops.general_store.name",  -- i18n key
   items = {
     { type = "small_potion", price = 30, stock = 10 },
     { type = "large_potion", price = 80, stock = 5 }
@@ -221,6 +222,54 @@ nodes = {
 - **Left/Right** - Adjust quantity (±1)
 - **Up/Down** - Adjust quantity (±10)
 - **ESC/B** - Close
+
+---
+
+## Localization (i18n)
+
+### Adding Translations
+1. Create locale file: `game/data/locales/xx.lua` (e.g., `ko.lua`, `ja.lua`)
+2. Add to `game/setup.lua`:
+```lua
+available_locales = { "en", "ko", "ja" },
+default_locale = "en",
+font_scales = {
+    en = 1.0,
+    ko = 0.55,  -- Korean font needs smaller scale
+    ja = 0.8
+}
+```
+
+### Translation Keys
+- **Items:** `items.small_potion.name`, `items.small_potion.description`
+- **Quests:** `quests.quest_id.name`, `quests.quest_id.description`
+- **Shops:** `shops.general_store.name`
+- **UI:** `inventory.title`, `quest.title`, `shop.buy`, `shop.sell`
+
+### Item Translation Example
+1. Define item with `name_key`:
+```lua
+-- engine/entities/item/types/small_potion.lua
+return {
+    name = "Small Potion",
+    name_key = "items.small_potion.name",
+    description_key = "items.small_potion.description",
+    ...
+}
+```
+
+2. Add translations:
+```lua
+-- game/data/locales/ko.lua
+return {
+    items = {
+        small_potion = {
+            name = "소형 포션",
+            description = "체력을 30 회복합니다"
+        }
+    }
+}
+```
 
 ---
 

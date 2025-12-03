@@ -8,6 +8,7 @@ local sound = require "engine.core.sound"
 local display = require "engine.core.display"
 local utils = require "engine.utils.util"
 local constants = require "engine.core.constants"
+local locale = require "engine.core.locale"
 
 -- Resolution presets (desktop only)
 options.resolutions = {
@@ -31,39 +32,52 @@ options.vibration_strengths = { 0.0, 0.25, 0.5, 0.75, 1.0 }
 options.deadzones = { 0.05, 0.10, 0.15, 0.20, 0.25, 0.30 }
 
 -- Build options list based on platform
+-- Uses internal keys for logic, name for display (translated via locale)
 function options:buildOptions(is_mobile, monitor_count)
     local option_list = {}
 
+    -- Helper to add option with translated name
+    local function addOption(key, opt_type)
+        table.insert(option_list, {
+            key = key,  -- Internal key for handlers
+            name = locale:t("settings." .. key),  -- Translated display name
+            type = opt_type
+        })
+    end
+
     -- Desktop-only options (hide on mobile and web)
     if not is_mobile and love.system.getOS() ~= "Web" then
-        table.insert(option_list, { name = "Resolution", type = "list" })
-        table.insert(option_list, { name = "Fullscreen", type = "toggle" })
+        addOption("resolution", "list")
+        addOption("fullscreen", "toggle")
 
         -- Only show Monitor option if multiple monitors exist
         if monitor_count > 1 then
-            table.insert(option_list, { name = "Monitor", type = "cycle" })
+            addOption("monitor", "cycle")
         end
     end
 
     -- Add sound options (both desktop and mobile)
-    table.insert(option_list, { name = "Master Volume", type = "percent" })
-    table.insert(option_list, { name = "BGM Volume", type = "percent" })
-    table.insert(option_list, { name = "SFX Volume", type = "percent" })
-    table.insert(option_list, { name = "Mute", type = "toggle" })
+    addOption("master_volume", "percent")
+    addOption("bgm_volume", "percent")
+    addOption("sfx_volume", "percent")
+    addOption("mute", "toggle")
+
+    -- Add language option
+    addOption("language", "language")
 
     -- Add gamepad settings if controller is connected
     if input:hasGamepad() then
-        table.insert(option_list, { name = "Vibration", type = "toggle" })
-        table.insert(option_list, { name = "Vibration Strength", type = "percent" })
-        table.insert(option_list, { name = "Deadzone", type = "deadzone" })
+        addOption("vibration", "toggle")
+        addOption("vibration_strength", "percent")
+        addOption("deadzone", "deadzone")
     end
 
     -- Add mobile vibration option for Android/iOS
     if is_mobile then
-        table.insert(option_list, { name = "Mobile Vibration", type = "toggle" })
+        addOption("mobile_vibration", "toggle")
     end
 
-    table.insert(option_list, { name = "Back", type = "action" })
+    table.insert(option_list, { key = "back", name = locale:t("common.back"), type = "action" })
 
     return option_list
 end
@@ -123,30 +137,40 @@ end
 -- Get option value string for display
 function options:getOptionValue(state, index)
     local option = state.options[index]
+    local key = option.key or option.name  -- Support both key (new) and name (legacy)
 
-    if option.name == "Resolution" then
+    -- Helper for On/Off display
+    local function onOff(value)
+        return value and locale:t("common.on") or locale:t("common.off")
+    end
+
+    if key == "resolution" then
         return state.resolutions and state.resolutions[state.current_resolution_index] and state.resolutions[state.current_resolution_index].name or "N/A"
-    elseif option.name == "Fullscreen" then
-        return APP_CONFIG.fullscreen and "On" or "Off"
-    elseif option.name == "Monitor" then
+    elseif key == "fullscreen" then
+        return onOff(APP_CONFIG.fullscreen)
+    elseif key == "monitor" then
         return state.monitors and state.monitors[state.current_monitor_index] and state.monitors[state.current_monitor_index].name or "N/A"
-    elseif option.name == "Master Volume" then
+    elseif key == "master_volume" then
         return string.format("%.0f%%", self.volume_levels[state.current_master_volume_index] * 100)
-    elseif option.name == "BGM Volume" then
+    elseif key == "bgm_volume" then
         return string.format("%.0f%%", self.volume_levels[state.current_bgm_volume_index] * 100)
-    elseif option.name == "SFX Volume" then
+    elseif key == "sfx_volume" then
         return string.format("%.0f%%", self.volume_levels[state.current_sfx_volume_index] * 100)
-    elseif option.name == "Mute" then
-        return sound.settings.muted and "On" or "Off"
-    elseif option.name == "Vibration" then
-        return input.settings.vibration_enabled and "On" or "Off"
-    elseif option.name == "Mobile Vibration" then
-        return input.settings.mobile_vibration_enabled and "On" or "Off"
-    elseif option.name == "Vibration Strength" then
+    elseif key == "mute" then
+        return onOff(sound.settings.muted)
+    elseif key == "language" then
+        -- Display current language name
+        local current = locale:getLocale()
+        return current == "en" and "English" or current == "ko" and "한국어" or current
+    elseif key == "vibration" then
+        return onOff(input.settings.vibration_enabled)
+    elseif key == "mobile_vibration" then
+        return onOff(input.settings.mobile_vibration_enabled)
+    elseif key == "vibration_strength" then
         return string.format("%.0f%%", self.vibration_strengths[state.current_vibration_index] * 100)
-    elseif option.name == "Deadzone" then
+    elseif key == "deadzone" then
         return string.format("%.2f", self.deadzones[state.current_deadzone_index])
-    elseif option.name == "Back" then
+    elseif key == "back" then
         return ""
     end
 
@@ -182,9 +206,9 @@ local function syncAndSaveInputConfig()
     utils:SaveConfig(APP_CONFIG, sound.settings, input.settings, nil)
 end
 
--- Option change handlers (data-driven)
+-- Option change handlers (data-driven, use keys)
 local option_handlers = {
-    ["Resolution"] = function(self, state, direction)
+    ["resolution"] = function(self, state, direction)
         if not state.resolutions or #state.resolutions == 0 then return end
 
         state.current_resolution_index = cycleIndex(state.current_resolution_index, state.resolutions, direction)
@@ -212,7 +236,7 @@ local option_handlers = {
         sound:playSFX("menu", "navigate")
     end,
 
-    ["Fullscreen"] = function(self, state, direction)
+    ["fullscreen"] = function(self, state, direction)
         -- ToggleFullScreen now handles windowed resolution management internally
         display:ToggleFullScreen()
 
@@ -225,7 +249,7 @@ local option_handlers = {
         sound:playSFX("menu", "navigate")
     end,
 
-    ["Monitor"] = function(self, state, direction)
+    ["monitor"] = function(self, state, direction)
         if not state.monitors or #state.monitors == 0 then return end
 
         state.current_monitor_index = cycleIndex(state.current_monitor_index, state.monitors, direction)
@@ -254,32 +278,49 @@ local option_handlers = {
         sound:playSFX("menu", "navigate")
     end,
 
-    ["Master Volume"] = function(self, state, direction)
+    ["master_volume"] = function(self, state, direction)
         state.current_master_volume_index = cycleIndex(state.current_master_volume_index, self.volume_levels, direction)
         sound:setMasterVolume(self.volume_levels[state.current_master_volume_index])
         syncAndSaveSoundConfig()
         sound:playSFX("menu", "navigate")
     end,
 
-    ["BGM Volume"] = function(self, state, direction)
+    ["bgm_volume"] = function(self, state, direction)
         state.current_bgm_volume_index = cycleIndex(state.current_bgm_volume_index, self.volume_levels, direction)
         sound:setBGMVolume(self.volume_levels[state.current_bgm_volume_index])
         syncAndSaveSoundConfig()
     end,
 
-    ["SFX Volume"] = function(self, state, direction)
+    ["sfx_volume"] = function(self, state, direction)
         state.current_sfx_volume_index = cycleIndex(state.current_sfx_volume_index, self.volume_levels, direction)
         sound:setSFXVolume(self.volume_levels[state.current_sfx_volume_index])
         syncAndSaveSoundConfig()
         sound:playSFX("menu", "navigate")
     end,
 
-    ["Mute"] = function(self, state, direction)
+    ["mute"] = function(self, state, direction)
         sound:toggleMute()
         syncAndSaveSoundConfig()
     end,
 
-    ["Vibration"] = function(self, state, direction)
+    ["language"] = function(self, state, direction)
+        -- Cycle through available locales
+        locale:cycleLocale()
+        -- Rebuild options with new translations
+        local is_mobile = (love._os == "Android" or love._os == "iOS")
+        state.options = options:buildOptions(is_mobile, state.monitor_count or 1)
+        -- Update fonts for new locale
+        local fonts = require "engine.utils.fonts"
+        state.titleFont = locale:getFont("title") or fonts.title
+        state.labelFont = locale:getFont("option") or fonts.option
+        state.valueFont = locale:getFont("option") or fonts.option
+        state.hintFont = locale:getFont("hint") or fonts.hint
+        -- Save locale setting
+        utils:SaveConfig(APP_CONFIG, sound.settings, input.settings, nil)
+        sound:playSFX("menu", "navigate")
+    end,
+
+    ["vibration"] = function(self, state, direction)
         input:setVibrationEnabled(not input.settings.vibration_enabled)
         syncAndSaveInputConfig()
         if input.settings.vibration_enabled then
@@ -288,7 +329,7 @@ local option_handlers = {
         end
     end,
 
-    ["Mobile Vibration"] = function(self, state, direction)
+    ["mobile_vibration"] = function(self, state, direction)
         input:setMobileVibrationEnabled(not input.settings.mobile_vibration_enabled)
         syncAndSaveInputConfig()
         if input.settings.mobile_vibration_enabled then
@@ -297,7 +338,7 @@ local option_handlers = {
         end
     end,
 
-    ["Vibration Strength"] = function(self, state, direction)
+    ["vibration_strength"] = function(self, state, direction)
         state.current_vibration_index = cycleIndex(state.current_vibration_index, self.vibration_strengths, direction)
         input:setVibrationStrength(self.vibration_strengths[state.current_vibration_index])
         syncAndSaveInputConfig()
@@ -307,22 +348,28 @@ local option_handlers = {
         end
     end,
 
-    ["Deadzone"] = function(self, state, direction)
+    ["deadzone"] = function(self, state, direction)
         state.current_deadzone_index = cycleIndex(state.current_deadzone_index, self.deadzones, direction)
         input:setDeadzone(self.deadzones[state.current_deadzone_index])
         syncAndSaveInputConfig()
+    end,
+
+    ["back"] = function(self, state, direction)
+        -- Back action is handled by input module, not here
+        -- This is just to suppress the warning
     end
 }
 
 -- Change option value
 function options:changeOption(state, direction)
     local option = state.options[state.selected]
-    local handler = option_handlers[option.name]
+    local key = option.key or option.name  -- Support both key (new) and name (legacy)
+    local handler = option_handlers[key]
 
     if handler then
         handler(self, state, direction)
     else
-        print("WARNING: No handler for option '" .. tostring(option.name) .. "'")
+        print("WARNING: No handler for option '" .. tostring(key) .. "'")
     end
 end
 

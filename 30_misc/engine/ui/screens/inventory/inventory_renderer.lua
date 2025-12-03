@@ -6,6 +6,7 @@ local shapes = require "engine.utils.shapes"
 local text_ui = require "engine.utils.text"
 local input = require "engine.core.input"
 local colors = require "engine.utils.colors"
+local locale = require "engine.core.locale"
 
 -- Grid constants
 local CELL_SIZE = 50
@@ -72,7 +73,7 @@ function slot_renderer.renderItemGrid(inventory, selected_item_id, title_font, i
         end
 
         -- Draw empty message
-        local empty_text = "No items in inventory"
+        local empty_text = locale:t("inventory.no_items")
         local empty_w = item_font:getWidth(empty_text)
         text_ui:draw(empty_text, (vw - empty_w) / 2, start_y + 200, colors.for_text_dim, item_font)
         return start_x, start_y
@@ -405,13 +406,13 @@ function slot_renderer.renderItemDetails(inventory, selected_item_id, player, wi
 
     -- Check if this is equipment
     if item.item_type == "equipment" then
-        status_text = "⚔ Equipment (drag to slot)"
+        status_text = "⚔ " .. locale:t("inventory.equipment_drag")
         status_color = colors.for_item_equipment
     elseif item:canUse(player) then
-        status_text = "✓ Can use"
+        status_text = "✓ " .. locale:t("inventory.can_use")
         status_color = colors.for_item_usable
     else
-        status_text = "X Cannot use (HP full)"
+        status_text = "X " .. locale:t("inventory.cannot_use")
         status_color = colors.for_item_unusable
     end
 
@@ -419,15 +420,17 @@ function slot_renderer.renderItemDetails(inventory, selected_item_id, player, wi
     local line2
     if item_data.equipped then
         -- Equipped item: show slot and size only
-        line2 = string.format("Equipped: %s | Size: %dx%d | ",
-            item_data.slot or "unknown", item_data.width, item_data.height)
+        line2 = string.format("%s: %s | %s: %dx%d | ",
+            locale:t("inventory.equipped"), item_data.slot or "unknown",
+            locale:t("inventory.size"), item_data.width, item_data.height)
     elseif item_data.x and item_data.y then
         -- Grid item: show position and size
-        line2 = string.format("Pos: (%d,%d) | Size: %dx%d | ",
-            item_data.x, item_data.y, item_data.width, item_data.height)
+        line2 = string.format("%s: (%d,%d) | %s: %dx%d | ",
+            locale:t("inventory.pos"), item_data.x, item_data.y,
+            locale:t("inventory.size"), item_data.width, item_data.height)
     else
         -- Fallback: size only
-        line2 = string.format("Size: %dx%d | ", item_data.width, item_data.height)
+        line2 = string.format("%s: %dx%d | ", locale:t("inventory.size"), item_data.width, item_data.height)
     end
 
     -- Draw position/size in gray (aligned with grid)

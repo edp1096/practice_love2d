@@ -117,6 +117,14 @@ function startup.loadDesktopConfig()
                 APP_CONFIG.input.mobile_vibration_enabled = convert:toBool(config.Input.MobileVibrationEnabled)
             end
         end
+
+        -- Load Locale settings if available
+        if config.Locale then
+            APP_CONFIG.locale = APP_CONFIG.locale or {}
+            if config.Locale.Language then
+                APP_CONFIG.locale.language = config.Locale.Language
+            end
+        end
     end
 end
 
@@ -160,6 +168,12 @@ function startup.loadMobileConfig()
             end
             if mobile_config.input.mobile_vibration_enabled ~= nil then
                 APP_CONFIG.input.mobile_vibration_enabled = mobile_config.input.mobile_vibration_enabled
+            end
+        end
+        if mobile_config.locale then
+            APP_CONFIG.locale = APP_CONFIG.locale or {}
+            if mobile_config.locale.language ~= nil then
+                APP_CONFIG.locale.language = mobile_config.locale.language
             end
         end
     end

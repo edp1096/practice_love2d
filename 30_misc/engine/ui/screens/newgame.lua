@@ -7,15 +7,16 @@ local newgame = SlotSceneBase:new()
 local scene_control = require "engine.core.scene_control"
 local constants = require "engine.core.constants"
 local text_ui = require "engine.utils.text"
+local locale = require "engine.core.locale"
 
 -- Customize title
 function newgame:getTitle()
-    return "Select Save Slot"
+    return locale:t("save.new_game_title")
 end
 
 -- Customize action label
 function newgame:getActionLabel()
-    return "Start"
+    return locale:t("save.action_start")
 end
 
 -- Override slot rendering for newgame-specific display
@@ -36,12 +37,12 @@ function newgame:drawSlot(slot, i, y, is_selected)
     elseif slot.exists then
         -- Existing slot - show "Overwrite?" warning
         local title_color = is_selected and {1, 0.7, 0, 1} or {1, 1, 1, 1}
-        text_ui:draw("Slot " .. slot.slot .. " (Overwrite?)", self.virtual_width * 0.2, y, title_color, self.slotFont)
+        text_ui:draw(locale:t("save.slot", {num = slot.slot}) .. " (" .. locale:t("save.overwrite") .. ")", self.virtual_width * 0.2, y, title_color, self.slotFont)
         self:drawSlotInfo(slot, y)
     else
         -- Empty slot - show "New Game"
         local new_color = is_selected and {0, 1, 0.5, 1} or {0.7, 0.7, 0.7, 1}
-        text_ui:draw("Slot " .. slot.slot .. " - New Game", self.virtual_width * 0.2, y + 24, new_color, self.slotFont)
+        text_ui:draw(locale:t("save.slot", {num = slot.slot}) .. " - " .. locale:t("save.new_game_title"), self.virtual_width * 0.2, y + 24, new_color, self.slotFont)
     end
 end
 

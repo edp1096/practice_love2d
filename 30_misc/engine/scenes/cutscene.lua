@@ -14,6 +14,7 @@ local sound = require "engine.core.sound"
 local fonts = require "engine.utils.fonts"
 local debug = require "engine.core.debug"
 local input = require "engine.core.input"
+local locale = require "engine.core.locale"
 
 function cutscene:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot, is_new_game)
 
@@ -79,7 +80,24 @@ function cutscene:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot, 
     -- Initialize and show intro messages
     dialogue:initialize(display)
     local speaker = self.config.speaker or ""
-    dialogue:showMultiple(speaker, self.config.messages)
+
+    -- Resolve messages from keys or direct values
+    local messages = {}
+    if self.config.messages_key and #self.config.messages_key > 0 then
+        for _, key in ipairs(self.config.messages_key) do
+            local translated = locale:t(key)
+            -- i18n returns the key itself if translation not found
+            if translated ~= key then
+                table.insert(messages, translated)
+            else
+                table.insert(messages, key)  -- Fallback to key as text
+            end
+        end
+    elseif self.config.messages then
+        messages = self.config.messages
+    end
+
+    dialogue:showMultiple(speaker, messages)
 
     self.dialogue_finished = false
     self.transition_delay = 0

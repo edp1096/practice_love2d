@@ -5,16 +5,12 @@ local display = require "engine.core.display"
 local input = require "engine.core.input"
 local sound = require "engine.core.sound"
 local fonts = require "engine.utils.fonts"
+local locale = require "engine.core.locale"
 local text_ui = require "engine.utils.text"
 local colors = require "engine.utils.colors"
 local coords = require "engine.core.coords"
 
 local helpers = {}
-
--- Fallback fonts for confirmation dialogs (lazy-loaded)
-helpers.fallback_title_font = nil
-helpers.fallback_hint_font = nil
-helpers.fallback_option_font = nil
 
 -- Create standard menu layout configuration
 function helpers.createMenuLayout(vh)
@@ -27,14 +23,14 @@ function helpers.createMenuLayout(vh)
 end
 
 -- Create standard fonts for menu scenes
--- Returns references to centralized font manager
+-- Returns locale-aware fonts (falls back to fonts.lua if locale font not available)
 function helpers.createMenuFonts()
     return {
-        title = fonts.title_large,
-        option = fonts.option,
-        hint = fonts.hint,
-        label = fonts.option,
-        info = fonts.info
+        title = locale:getFont("title_large") or fonts.title_large,
+        option = locale:getFont("option") or fonts.option,
+        hint = locale:getFont("hint") or fonts.hint,
+        label = locale:getFont("option") or fonts.option,
+        info = locale:getFont("info") or fonts.info
     }
 end
 
@@ -161,10 +157,7 @@ function helpers.drawConfirmDialog(title, subtitle, button_labels, selected, mou
     -- Title
     local title_font = fonts.title
     if not title_font then
-        if not helpers.fallback_title_font then
-            helpers.fallback_title_font = love.graphics.newFont(20)
-        end
-        title_font = helpers.fallback_title_font
+        title_font = locale:getFont("option") or love.graphics.getFont()
     end
     text_ui:drawCentered(title, height / 2 - 60, width, {1, 0.3, 0.3, 1}, title_font)
 
@@ -172,10 +165,7 @@ function helpers.drawConfirmDialog(title, subtitle, button_labels, selected, mou
     if subtitle then
         local hint_font = fonts.hint
         if not hint_font then
-            if not helpers.fallback_hint_font then
-                helpers.fallback_hint_font = love.graphics.newFont(14)
-            end
-            hint_font = helpers.fallback_hint_font
+            hint_font = locale:getFont("info") or love.graphics.getFont()
         end
         text_ui:drawCentered(subtitle, height / 2 - 20, width, colors.for_text_light, hint_font)
     end
@@ -210,10 +200,7 @@ function helpers.drawConfirmDialog(title, subtitle, button_labels, selected, mou
         -- Button text
         local option_font = fonts.option
         if not option_font then
-            if not helpers.fallback_option_font then
-                helpers.fallback_option_font = love.graphics.newFont(24)
-            end
-            option_font = helpers.fallback_option_font
+            option_font = locale:getFont("option") or love.graphics.getFont()
         end
         love.graphics.setFont(option_font)
         colors:apply(is_selected and colors.for_text_normal or colors.for_text_light)

@@ -79,9 +79,8 @@ function render:drawPagedText(dialogue)
     local boxW = vw - (2 * padding)
     local boxX = padding
 
-    -- Get current node for speaker name
-    local node = dialogue.current_tree.nodes[dialogue.current_node_id]
-    local speaker = node and node.speaker or "???"
+    -- Get resolved speaker name (translated in core.lua)
+    local speaker = dialogue.current_speaker or "???"
 
     -- Draw dialogue box background
     colors:apply(colors.for_dialogue_bg)
@@ -153,13 +152,9 @@ function render:drawDialogueBoxForChoices(dialogue)
     local boxW = vw - (2 * padding)
     local boxX = padding
 
-    -- Get current node for speaker and text
-    -- Priority: Use dialogue.current_node (for dynamic virtual nodes)
-    -- Fallback: Lookup in tree by ID
-    local node = dialogue.current_node or
-                 (dialogue.current_tree and dialogue.current_tree.nodes[dialogue.current_node_id])
-    local speaker = node and node.speaker or "???"
-    local text = node and node.text or ""
+    -- Get resolved speaker and text (translated in core.lua)
+    local speaker = dialogue.current_speaker or "???"
+    local text = dialogue.current_text or ""
 
     -- Draw dialogue box background
     colors:apply(colors.for_dialogue_bg)
@@ -241,9 +236,12 @@ function render:drawChoices(dialogue)
         local is_selected = (i == dialogue.selected_choice_index)
 
         -- Check if this choice was previously selected
+        -- Use text_key for persistence if available, fallback to text
+        local choice_identifier = choice.text_key or choice.text
+        local choice_key = dialogue.current_node_id .. "|" .. choice_identifier
         -- Exception: "Other quest?" is never marked as selected
-        local choice_key = dialogue.current_node_id .. "|" .. choice.text
-        local was_selected = choice.text ~= "Other quest?" and dialogue.selected_choices[choice_key]
+        local is_other_quest = choice.text_key == "dialogue.villager_01.choice_other_quest"
+        local was_selected = not is_other_quest and dialogue.selected_choices[choice_key]
 
         -- Button background (only depends on selection, NOT visited state)
         if is_selected then
@@ -274,23 +272,40 @@ function render:drawChoices(dialogue)
 
         -- 2. Check previous selection (only for non-repeating choices)
         -- Common/repeating choices are always shown in white (never greyed)
+        -- Using text_key patterns to identify always-available choices
         if not should_grey_out then
-            local always_available_choices = {
-                ["Accept Quest"] = true,  -- Quest system buttons
+            local always_available_keys = {
+                -- Quest system buttons (dynamically generated, no text_key)
+                ["Accept Quest"] = true,
                 ["Decline"] = true,
                 ["Continue"] = true,
-                ["I'll think about it"] = true,
-                ["Not interested"] = true,
-                ["Yes"] = true,
-                ["No"] = true,
-                ["Goodbye"] = true,
-                ["Thanks"] = true,
-                ["Good to know"] = true,
-                ["Thanks for the info"] = true,
-                ["Tell me more"] = true,
-                ["I'll get right on it"] = true
             }
-            local is_always_available = always_available_choices[choice.text]
+            local always_available_key_patterns = {
+                "choice_think_about_it",
+                "choice_not_interested",
+                "choice_goodbye",
+                "choice_thanks",
+                "choice_good_to_know",
+                "choice_thanks_info",
+                "choice_tell_more",
+                "choice_get_on_it",
+                "choice_me_too",
+                "choice_see_around",
+                "choice_maybe_later",
+                "choice_keep_in_mind",
+            }
+
+            local is_always_available = always_available_keys[choice.text]
+
+            -- Check text_key patterns
+            if not is_always_available and choice.text_key then
+                for _, pattern in ipairs(always_available_key_patterns) do
+                    if choice.text_key:find(pattern) then
+                        is_always_available = true
+                        break
+                    end
+                end
+            end
 
             if was_selected and not is_always_available then
                 should_grey_out = true

@@ -3,7 +3,9 @@
 
 local mystic_staff = {
     name = "Mystic Staff",
-    description = "An ancient staff pulsing with mystic power",
+    name_key = "items.mystic_staff.name",
+    description = "A powerful mystic staff",
+    description_key = "items.mystic_staff.description",
     size = { width = 1, height = 1 },  -- Grid size: 1x1
     max_stack = 1,  -- Equipment cannot be stacked
 

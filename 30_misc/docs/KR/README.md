@@ -196,6 +196,7 @@ dialogues.shopkeeper = {
 ```lua
 shops.general_store = {
   name = "General Store",
+  name_key = "shops.general_store.name",  -- i18n 키
   items = {
     { type = "small_potion", price = 30, stock = 10 },
     { type = "large_potion", price = 80, stock = 5 }
@@ -221,6 +222,54 @@ nodes = {
 - **좌/우** - 수량 조절 (±1)
 - **위/아래** - 수량 조절 (±10)
 - **ESC/B** - 닫기
+
+---
+
+## 다국어 지원 (i18n)
+
+### 번역 추가
+1. 로케일 파일 생성: `game/data/locales/xx.lua` (예: `ko.lua`, `ja.lua`)
+2. `game/setup.lua`에 추가:
+```lua
+available_locales = { "en", "ko", "ja" },
+default_locale = "en",
+font_scales = {
+    en = 1.0,
+    ko = 0.55,  -- 한글 폰트는 작게 조정 필요
+    ja = 0.8
+}
+```
+
+### 번역 키
+- **아이템:** `items.small_potion.name`, `items.small_potion.description`
+- **퀘스트:** `quests.quest_id.name`, `quests.quest_id.description`
+- **상점:** `shops.general_store.name`
+- **UI:** `inventory.title`, `quest.title`, `shop.buy`, `shop.sell`
+
+### 아이템 번역 예시
+1. `name_key`로 아이템 정의:
+```lua
+-- engine/entities/item/types/small_potion.lua
+return {
+    name = "Small Potion",
+    name_key = "items.small_potion.name",
+    description_key = "items.small_potion.description",
+    ...
+}
+```
+
+2. 번역 추가:
+```lua
+-- game/data/locales/ko.lua
+return {
+    items = {
+        small_potion = {
+            name = "소형 포션",
+            description = "체력을 30 회복합니다"
+        }
+    }
+}
+```
 
 ---
 

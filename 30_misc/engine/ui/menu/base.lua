@@ -244,6 +244,15 @@ function MenuSceneBase:create(config)
         if self.previous then
             scene_control.previous = self.previous
         end
+
+        -- Refresh fonts (in case language changed in settings)
+        self.fonts = ui_helpers.createMenuFonts()
+
+        -- Re-run on_enter to refresh translations (e.g., after language change in settings)
+        -- This allows builder-created scenes to re-translate title and options
+        if config.on_enter then
+            config.on_enter(self, self.previous)
+        end
     end
 
     return scene

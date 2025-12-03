@@ -60,7 +60,9 @@ function quest:_cloneQuestData(data)
     local clone = {
         id = data.id,
         title = data.title,
+        title_key = data.title_key,
         description = data.description,
+        description_key = data.description_key,
         objectives = {},
         giver_npc = data.giver_npc,
         receiver_npc = data.receiver_npc or data.giver_npc,
@@ -95,6 +97,7 @@ function quest:_cloneQuestData(data)
             target = obj.target,
             count = obj.count or 1,
             description = obj.description,
+            description_key = obj.description_key,
             npc = obj.npc
         }
     end
@@ -103,7 +106,9 @@ function quest:_cloneQuestData(data)
     if data.dialogue then
         clone.dialogue = {
             offer_text = data.dialogue.offer_text,
+            offer_text_key = data.dialogue.offer_text_key,
             accept_text = data.dialogue.accept_text,
+            accept_text_key = data.dialogue.accept_text_key,
             decline_response = data.dialogue.decline_response
         }
     end

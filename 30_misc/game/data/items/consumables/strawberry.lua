@@ -3,7 +3,9 @@
 
 local strawberry = {
     name = "Strawberry",
+    name_key = "items.strawberry.name",
     description = "Restores 20 HP",
+    description_key = "items.strawberry.description",
     size = { width = 1, height = 1 },  -- Grid size: 1x1
     max_stack = 99,
 

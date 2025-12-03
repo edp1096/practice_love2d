@@ -6,6 +6,41 @@ local setup = {}
 
 -- Inject all game-specific data into engine modules
 function setup.configure()
+    -- Initialize locale system first (fonts depend on it)
+    local locale = require "engine.core.locale"
+
+    -- Use saved language from config, or default to "en"
+    local saved_language = (APP_CONFIG.locale and APP_CONFIG.locale.language) or "en"
+
+    locale:init({
+        locale_files = {
+            -- UI translations
+            "game/data/locales/ui/en.lua",
+            "game/data/locales/ui/ko.lua",
+            -- Dialogue translations
+            "game/data/locales/dialogues/en.lua",
+            "game/data/locales/dialogues/ko.lua",
+            -- Cutscene translations
+            "game/data/locales/cutscenes/en.lua",
+            "game/data/locales/cutscenes/ko.lua",
+            -- Quest translations
+            "game/data/locales/quests/en.lua",
+            "game/data/locales/quests/ko.lua",
+            -- Item/Shop translations
+            "game/data/locales/items/en.lua",
+            "game/data/locales/items/ko.lua",
+        },
+        font_paths = {
+            en = false,  -- Use default LÖVE font for English (false, not nil, to keep key in table)
+            ko = "assets/fonts/Hakgyoansim_ChaekgalpiR.ttf"
+        },
+        font_scales = {
+            en = 1.0,
+            ko = 0.85  -- Korean font is larger, scale down slightly
+        },
+        default_locale = saved_language
+    })
+
     -- Load game data
     local entity_types = require "game.data.entities.types"
     local start_config = require "game.data.start"

@@ -29,11 +29,12 @@ function settings:enter(previous, ...)
         input.virtual_gamepad:hide()
     end
 
-    -- Use centralized fonts
-    self.titleFont = fonts.title
-    self.labelFont = fonts.option
-    self.valueFont = fonts.option
-    self.hintFont = fonts.hint
+    -- Use locale-aware fonts (updated when language changes)
+    local locale = require "engine.core.locale"
+    self.titleFont = locale:getFont("title") or fonts.title
+    self.labelFont = locale:getFont("option") or fonts.option
+    self.valueFont = locale:getFont("option") or fonts.option
+    self.hintFont = locale:getFont("hint") or fonts.hint
 
     -- Detect mobile platform
     local is_mobile = (love._os == "Android" or love._os == "iOS")

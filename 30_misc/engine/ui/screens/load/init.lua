@@ -8,6 +8,7 @@ local display = require "engine.core.display"
 local save_sys = require "engine.core.save"
 local input = require "engine.core.input"
 local fonts = require "engine.utils.fonts"
+local locale = require "engine.core.locale"
 
 local slot_renderer = require "engine.ui.screens.load.save_slot_renderer"
 local input_handler = require "engine.ui.screens.load.input"
@@ -28,18 +29,19 @@ function load:enter(previous, ...)
     self.virtual_width = vw
     self.virtual_height = vh
 
-    self.titleFont = fonts.title_large
-    self.slotFont = fonts.option
-    self.infoFont = fonts.info
-    self.hintFont = fonts.info
-    self.confirmFont = fonts.option
+    -- Initialize fonts (use locale system for proper scaling)
+    self.titleFont = locale:getFont("title_large") or fonts.title_large
+    self.slotFont = locale:getFont("option") or fonts.option
+    self.infoFont = locale:getFont("info") or fonts.info
+    self.hintFont = locale:getFont("info") or fonts.info
+    self.confirmFont = locale:getFont("option") or fonts.option
 
     self.slots = save_sys:getAllSlotsInfo()
 
     table.insert(self.slots, {
         exists = false,
         slot = "back",
-        display_name = "Back to Menu"
+        display_name = locale:t("save.back_to_menu")
     })
 
     self.layout = {
@@ -141,7 +143,7 @@ function load:draw()
 
     -- Draw title
     love.graphics.setFont(self.titleFont)
-    love.graphics.printf("Load Game", 0, self.layout.title_y, self.virtual_width, "center")
+    love.graphics.printf(locale:t("save.load_title"), 0, self.layout.title_y, self.virtual_width, "center")
 
     -- Draw all slots
     slot_renderer.drawAllSlots(self)

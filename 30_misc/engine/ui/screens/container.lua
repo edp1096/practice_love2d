@@ -12,6 +12,7 @@ local input = require "engine.core.input"
 local colors = require "engine.utils.colors"
 local scene_control = require "engine.core.scene_control"
 local ui_constants = require "engine.ui.constants"
+local locale = require "engine.core.locale"
 
 -- Sub-screens
 local inventory_screen = require "engine.ui.screens.inventory"
@@ -32,8 +33,8 @@ function container:enter(previous, player_inventory, player, quest_system, initi
 
     -- Tab state
     self.tabs = {
-        { id = "inventory", label = "Inventory" },
-        { id = "questlog", label = "Quests" }
+        { id = "inventory", label_key = "inventory.title" },
+        { id = "questlog", label_key = "quest.title" }
     }
 
     -- Set initial tab (default: inventory)
@@ -49,8 +50,8 @@ function container:enter(previous, player_inventory, player, quest_system, initi
     -- Set scene context for input priority based on current tab
     input:setSceneContext(self.current_tab)
 
-    -- Initialize fonts (use shared constants)
-    self.title_font = fonts.info or love.graphics.getFont()
+    -- Initialize fonts (use locale system for proper scaling)
+    self.title_font = locale:getFont("info") or love.graphics.getFont()
 
     -- Close button settings (use shared constants)
     self.close_button_size = ui_constants.CLOSE_BUTTON_SIZE  -- 30
@@ -90,6 +91,16 @@ end
 -- Alias for compatibility
 function container:leave()
     self:exit()
+end
+
+function container:resize(w, h)
+    -- Resize display
+    display:Resize(w, h)
+
+    -- Forward resize to previous scene (gameplay)
+    if self.previous_scene and self.previous_scene.resize then
+        self.previous_scene:resize(w, h)
+    end
 end
 
 function container:update(dt)
@@ -169,20 +180,21 @@ function container:drawTabBar()
             love.graphics.rectangle("line", x, y, tab_width, self.tab_height, 5, 5)
         end
 
-        -- Tab label
+        -- Tab label (translated)
         love.graphics.setFont(self.title_font)
         local label_color = is_active and self.color.text or self.color.text_dim
         love.graphics.setColor(label_color[1], label_color[2], label_color[3], 1)
-        local label_width = self.title_font:getWidth(tab.label)
+        local label_text = locale:t(tab.label_key)
+        local label_width = self.title_font:getWidth(label_text)
         love.graphics.print(
-            tab.label,
+            label_text,
             x + (tab_width - label_width) / 2,
             y + (self.tab_height - self.title_font:getHeight()) / 2
         )
     end
 
     -- Draw tab switch hint
-    local hint_font = fonts.info or love.graphics.getFont()
+    local hint_font = locale:getFont("info") or fonts.info or love.graphics.getFont()
     love.graphics.setFont(hint_font)
     local hint_text = "LB/RB or Q/E: Switch Tabs"
     local hint_width = hint_font:getWidth(hint_text)

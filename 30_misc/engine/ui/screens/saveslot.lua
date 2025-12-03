@@ -8,6 +8,7 @@ local scene_control = require "engine.core.scene_control"
 local display = require "engine.core.display"
 local input = require "engine.core.input"
 local text_ui = require "engine.utils.text"
+local locale = require "engine.core.locale"
 
 -- Initialize with save callback
 function saveslot:onEnter(save_callback, ...)
@@ -17,7 +18,7 @@ function saveslot:onEnter(save_callback, ...)
     for i, slot in ipairs(self.slots) do
         if slot.slot == "back" then
             slot.slot = "cancel"
-            slot.display_name = "Cancel"
+            slot.display_name = locale:t("shop.cancel")
         end
     end
 
@@ -33,12 +34,12 @@ end
 
 -- Customize title
 function saveslot:getTitle()
-    return "Save Game"
+    return locale:t("save.title")
 end
 
 -- Customize action label
 function saveslot:getActionLabel()
-    return "Save"
+    return locale:t("save.action_save")
 end
 
 -- Update with overlay fade-in
@@ -108,12 +109,12 @@ function saveslot:drawSlot(slot, i, y, is_selected)
     elseif slot.exists then
         -- Show existing save data
         local title_color = is_selected and {1, 0.7, 0, 1} or {1, 1, 1, 1}
-        text_ui:draw("Slot " .. slot.slot, self.virtual_width * 0.2, y, title_color, self.slotFont)
+        text_ui:draw(locale:t("save.slot", {num = slot.slot}), self.virtual_width * 0.2, y, title_color, self.slotFont)
         self:drawSlotInfo(slot, y)
     else
         -- Empty slot
         local new_color = is_selected and {0, 1, 0.5, 1} or {0.7, 0.7, 0.7, 1}
-        text_ui:draw("Slot " .. slot.slot .. " - Empty", self.virtual_width * 0.2, y + 24, new_color, self.slotFont)
+        text_ui:draw(locale:t("save.slot", {num = slot.slot}) .. " - " .. locale:t("save.empty"), self.virtual_width * 0.2, y + 24, new_color, self.slotFont)
     end
 end
 

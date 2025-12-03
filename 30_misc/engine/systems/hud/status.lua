@@ -5,16 +5,29 @@ local fonts = require "engine.utils.fonts"
 local text_ui = require "engine.utils.text"
 local shapes = require "engine.utils.shapes"
 local colors = require "engine.utils.colors"
+local locale = require "engine.core.locale"
 
 local hud = {}
 
-hud.small_font = love.graphics.newFont(11)
-hud.tiny_font = love.graphics.newFont(10)
-hud.parry_font = love.graphics.newFont(24)
-hud.perfect_parry_font = love.graphics.newFont(32)
+-- Get fonts from locale system (supports Korean)
+function hud:getSmallFont()
+    return locale:getFont("small")
+end
+
+function hud:getTinyFont()
+    return locale:getFont("tiny")
+end
+
+function hud:getParryFont()
+    return locale:getFont("parry")
+end
+
+function hud:getPerfectParryFont()
+    return locale:getFont("parry_perfect")
+end
 
 function hud:draw_health_bar(x, y, w, h, hp, max_hp)
-    shapes:drawHealthBar(x, y, w, h, hp, max_hp, true, self.small_font)
+    shapes:drawHealthBar(x, y, w, h, hp, max_hp, true, self:getSmallFont())
 end
 
 function hud:draw_exp_bar(x, y, w, h, current_exp, required_exp)
@@ -38,23 +51,28 @@ function hud:draw_exp_bar(x, y, w, h, current_exp, required_exp)
     -- Text (exp / required)
     local text = string.format("%d / %d", current_exp, required_exp)
     local text_color = colors.WHITE or {1, 1, 1}
-    text_ui:draw(text, x + w / 2 - self.small_font:getWidth(text) / 2, y + 3, text_color, self.small_font)
+    local small_font = self:getSmallFont()
+    text_ui:draw(text, x + w / 2 - small_font:getWidth(text) / 2, y + 3, text_color, small_font)
 
     colors:reset()
 end
 
 function hud:draw_level_info(x, y, level, gold)
+    local small_font = self:getSmallFont()
+
     -- Level text
-    local level_text = "Lv." .. level
-    text_ui:draw(level_text, x, y, colors.for_hud_level or {1, 1, 0}, self.small_font)
+    local level_text = locale:t("hud.level") .. "." .. level
+    text_ui:draw(level_text, x, y, colors.for_hud_level or {1, 1, 0}, small_font)
 
     -- Gold text (right-aligned from x)
-    local gold_text = "Gold: " .. gold
-    local gold_x = x + 210 - self.small_font:getWidth(gold_text)
-    text_ui:draw(gold_text, gold_x, y, colors.for_hud_gold or {1, 0.8, 0}, self.small_font)
+    local gold_text = locale:t("hud.gold") .. ": " .. gold
+    local gold_x = x + 210 - small_font:getWidth(gold_text)
+    text_ui:draw(gold_text, gold_x, y, colors.for_hud_gold or {1, 0.8, 0}, small_font)
 end
 
 function hud:draw_cooldown(x, y, size, cd, max_cd, label, key_hint)
+    local small_font = self:getSmallFont()
+
     -- Background panel
     colors:apply(colors.for_hud_cooldown_bg)
     love.graphics.rectangle("fill", x - 2, y - 2, size + 4, 44)
@@ -64,9 +82,9 @@ function hud:draw_cooldown(x, y, size, cd, max_cd, label, key_hint)
 
     -- Label
     if cd > 0 then
-        text_ui:draw(string.format("%s CD: %.1f", label, cd), x + 5, y + 3, colors.for_hud_text_dim, self.small_font)
+        text_ui:draw(string.format("%s CD: %.1f", label, cd), x + 5, y + 3, colors.for_hud_text_dim, small_font)
     else
-        text_ui:draw(string.format("%s READY! (%s)", label, key_hint), x + 5, y + 3, colors.WHITE, self.small_font)
+        text_ui:draw(string.format("%s READY! (%s)", label, key_hint), x + 5, y + 3, colors.WHITE, small_font)
     end
 
     colors:reset()
@@ -75,8 +93,8 @@ end
 function hud:draw_parry_success(player, screen_w, screen_h)
     if player.parry_success_timer <= 0 then return end
 
-    local text = player.parry_perfect and "PERFECT PARRY!" or "PARRY!"
-    local font = player.parry_perfect and hud.perfect_parry_font or hud.parry_font
+    local text = player.parry_perfect and locale:t("hud.perfect_parry") or locale:t("hud.parry")
+    local font = player.parry_perfect and self:getPerfectParryFont() or self:getParryFont()
 
     local alpha = player.parry_success_timer / 0.5
     local base_color = player.parry_perfect and colors.for_hud_parry_perfect or colors.for_hud_parry_normal
@@ -102,6 +120,8 @@ function hud:draw_debug_panel(player, current_save_slot)
     local debug = require "engine.core.debug"
     if not debug.enabled then return end
 
+    local tiny_font = self:getTinyFont()
+
     local marking_info = player.current_anim_name and {
         animation = player.current_anim_name,
         frame = 1,
@@ -113,24 +133,24 @@ function hud:draw_debug_panel(player, current_save_slot)
     colors:apply(colors.for_debug_panel_bg)
     love.graphics.rectangle("fill", 0, 0, 220, panel_height)
 
-    text_ui:draw("FPS: " .. love.timer.getFPS(), 8, 8, colors.WHITE, self.tiny_font)
-    text_ui:draw(string.format("Player: %.1f, %.1f", player.x, player.y), 8, 22, colors.WHITE, self.tiny_font)
+    text_ui:draw("FPS: " .. love.timer.getFPS(), 8, 8, colors.WHITE, tiny_font)
+    text_ui:draw(string.format("Player: %.1f, %.1f", player.x, player.y), 8, 22, colors.WHITE, tiny_font)
 
     if current_save_slot then
-        text_ui:draw("Current Slot: " .. current_save_slot, 8, 36, colors.WHITE, self.tiny_font)
-        text_ui:draw("Press ESC to pause", 8, 50, colors.WHITE, self.tiny_font)
-        text_ui:draw("Left Click to Attack", 8, 64, colors.WHITE, self.tiny_font)
-        text_ui:draw("Right Click to Parry", 8, 78, colors.WHITE, self.tiny_font)
-        text_ui:draw("Space to Dodge/Roll", 8, 92, colors.WHITE, self.tiny_font)
-        text_ui:draw("H = Hand Marking Mode", 8, 106, colors.WHITE, self.tiny_font)
-        text_ui:draw("P = Mark Anchor Position", 8, 120, colors.WHITE, self.tiny_font)
+        text_ui:draw("Current Slot: " .. current_save_slot, 8, 36, colors.WHITE, tiny_font)
+        text_ui:draw("Press ESC to pause", 8, 50, colors.WHITE, tiny_font)
+        text_ui:draw("Left Click to Attack", 8, 64, colors.WHITE, tiny_font)
+        text_ui:draw("Right Click to Parry", 8, 78, colors.WHITE, tiny_font)
+        text_ui:draw("Space to Dodge/Roll", 8, 92, colors.WHITE, tiny_font)
+        text_ui:draw("H = Hand Marking Mode", 8, 106, colors.WHITE, tiny_font)
+        text_ui:draw("P = Mark Anchor Position", 8, 120, colors.WHITE, tiny_font)
     else
-        text_ui:draw("Press ESC to pause", 8, 36, colors.WHITE, self.tiny_font)
-        text_ui:draw("Left Click to Attack", 8, 50, colors.WHITE, self.tiny_font)
-        text_ui:draw("Right Click to Parry", 8, 64, colors.WHITE, self.tiny_font)
-        text_ui:draw("Space to Dodge/Roll", 8, 78, colors.WHITE, self.tiny_font)
-        text_ui:draw("H = Hand Marking Mode", 8, 92, colors.WHITE, self.tiny_font)
-        text_ui:draw("P = Mark Anchor Position", 8, 106, colors.WHITE, self.tiny_font)
+        text_ui:draw("Press ESC to pause", 8, 36, colors.WHITE, tiny_font)
+        text_ui:draw("Left Click to Attack", 8, 50, colors.WHITE, tiny_font)
+        text_ui:draw("Right Click to Parry", 8, 64, colors.WHITE, tiny_font)
+        text_ui:draw("Space to Dodge/Roll", 8, 78, colors.WHITE, tiny_font)
+        text_ui:draw("H = Hand Marking Mode", 8, 92, colors.WHITE, tiny_font)
+        text_ui:draw("P = Mark Anchor Position", 8, 106, colors.WHITE, tiny_font)
     end
 
     local state_text = "State: " .. player.state
@@ -141,7 +161,7 @@ function hud:draw_debug_panel(player, current_save_slot)
         state_text = state_text .. " [DODGING]"
     end
     local state_y = current_save_slot and 134 or 120
-    text_ui:draw(state_text, 8, state_y, colors.WHITE, self.tiny_font)
+    text_ui:draw(state_text, 8, state_y, colors.WHITE, tiny_font)
 end
 
 function hud:draw_inventory(inventory, screen_w, screen_h)
@@ -149,6 +169,7 @@ function hud:draw_inventory(inventory, screen_w, screen_h)
         return
     end
 
+    local small_font = self:getSmallFont()
     local slot_size = 50
     local slot_spacing = 8
     -- Position at top-left (11 o'clock), to the right of HP bar
@@ -187,13 +208,13 @@ function hud:draw_inventory(inventory, screen_w, screen_h)
         local icon_text = "HP"
         -- Use item's color property if available, otherwise default to white
         local icon_color = item.color or {1, 1, 1, 1}
-        text_ui:draw(icon_text, x + 10, y + 8, icon_color, self.small_font)
+        text_ui:draw(icon_text, x + 10, y + 8, icon_color, small_font)
 
         -- Quantity
-        text_ui:draw("x" .. item.quantity, x + 5, y + 30, {1, 1, 1, 1}, self.small_font)
+        text_ui:draw("x" .. item.quantity, x + 5, y + 30, {1, 1, 1, 1}, small_font)
 
         -- Slot number
-        text_ui:draw(tostring(i), x + 5, y + 3, {0.7, 0.7, 0.7, 1}, self.small_font)
+        text_ui:draw(tostring(i), x + 5, y + 3, {0.7, 0.7, 0.7, 1}, small_font)
     end
 
     colors:reset()

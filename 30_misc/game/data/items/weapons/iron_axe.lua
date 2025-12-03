@@ -3,7 +3,9 @@
 
 local iron_axe = {
     name = "Iron Axe",
+    name_key = "items.iron_axe.name",
     description = "A heavy iron axe",
+    description_key = "items.iron_axe.description",
     size = { width = 1, height = 1 },  -- Grid size: 1x1 (16x16 sprite)
     max_stack = 1,  -- Equipment cannot be stacked
 

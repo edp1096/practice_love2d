@@ -36,7 +36,8 @@ function input_handler:keypressed(state, key)
     elseif input:wasPressed("menu_right", "keyboard", key) then
         options_module:changeOption(state, 1)
     elseif input:wasPressed("menu_select", "keyboard", key) then
-        if state.options[state.selected].name == "Back" then
+        local option = state.options[state.selected]
+        if option.key == "back" or option.name == "Back" then
             sound:playSFX("menu", "back")
             scene_control.pop()
         else
@@ -62,7 +63,8 @@ function input_handler:gamepadpressed(state, joystick, button)
     elseif input:wasPressed("menu_right", "gamepad", button) then
         options_module:changeOption(state, 1)
     elseif input:wasPressed("menu_select", "gamepad", button) then
-        if state.options[state.selected].name == "Back" then
+        local option = state.options[state.selected]
+        if option.key == "back" or option.name == "Back" then
             sound:playSFX("menu", "back")
             scene_control.pop()
         else
@@ -79,8 +81,8 @@ function input_handler:mousereleased(state, x, y, button)
         -- Left mouse button
         if state.mouse_over > 0 then
             state.selected = state.mouse_over
-
-            if state.options[state.selected].name == "Back" then
+            local option = state.options[state.selected]
+            if option.key == "back" or option.name == "Back" then
                 sound:playSFX("menu", "back")
                 scene_control.pop()
             else

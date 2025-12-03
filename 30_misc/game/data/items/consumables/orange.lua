@@ -3,7 +3,9 @@
 
 local orange = {
     name = "Orange",
+    name_key = "items.orange.name",
     description = "Restores 20 HP",
+    description_key = "items.orange.description",
     size = { width = 1, height = 1 },  -- Grid size: 1x1
     max_stack = 99,
 

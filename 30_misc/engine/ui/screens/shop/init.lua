@@ -13,6 +13,8 @@ local colors = require "engine.utils.colors"
 local ui_constants = require "engine.ui.constants"
 local coords = require "engine.core.coords"
 local shop_system = require "engine.systems.shop"
+local locale = require "engine.core.locale"
+local item_class = require "engine.entities.item"
 
 -- Panel dimensions (shared constants)
 local PANEL_WIDTH = 320
@@ -60,9 +62,9 @@ function shop_ui:open(shop_id, inventory, level_system, item_registry)
     self.message_timer = 0
     self.message_duration = 2.0
 
-    -- Fonts
-    self.title_font = love.graphics.newFont(ui_constants.FONT_SIZE_TITLE)
-    self.item_font = fonts.info or love.graphics.getFont()
+    -- Fonts (use locale system for Korean support)
+    self.title_font = locale:getFont("option") or love.graphics.getFont()
+    self.item_font = locale:getFont("info") or love.graphics.getFont()
 
     -- Close button
     self.close_button_size = ui_constants.CLOSE_BUTTON_SIZE
@@ -227,7 +229,7 @@ function shop_ui:confirmSelection()
     end
 
     if self.quantity_max <= 0 then
-        self:showMessage(self.tab == "buy" and "Not enough gold" or "No items")
+        self:showMessage(self.tab == "buy" and locale:t("shop.not_enough_gold") or locale:t("shop.no_items"))
         play_sound("ui", "error")
         return
     end
@@ -258,8 +260,9 @@ function shop_ui:executeTransaction()
     end
 
     if success then
-        local action = self.tab == "buy" and "Purchased" or "Sold"
-        self:showMessage(action .. " " .. self.quantity .. "x " .. self:getItemName(self.quantity_item.type))
+        local item_name = self:getItemName(self.quantity_item.type)
+        local msg_key = self.tab == "buy" and "shop.purchased" or "shop.sold"
+        self:showMessage(locale:t(msg_key, { count = self.quantity, item = item_name }))
         play_sound("ui", "purchase")
     else
         self:showMessage(err or "Transaction failed")
@@ -310,10 +313,51 @@ function shop_ui:getCurrentItems()
 end
 
 function shop_ui:getItemName(item_type)
-    if self.item_registry and self.item_registry[item_type] then
-        return self.item_registry[item_type].name or item_type
+    -- Use passed item_registry or fall back to item_class.type_registry
+    local registry = self.item_registry or item_class.type_registry
+    if registry and registry[item_type] then
+        local item_def = registry[item_type]
+        -- Try translated name first
+        if item_def.name_key then
+            local translated = locale:t(item_def.name_key)
+            if translated ~= item_def.name_key then
+                return translated
+            end
+        end
+        return item_def.name or item_type
     end
     return item_type
+end
+
+function shop_ui:getItemDescription(item_type)
+    -- Use passed item_registry or fall back to item_class.type_registry
+    local registry = self.item_registry or item_class.type_registry
+    if registry and registry[item_type] then
+        local item_def = registry[item_type]
+        -- Try translated description first
+        if item_def.description_key then
+            local translated = locale:t(item_def.description_key)
+            if translated ~= item_def.description_key then
+                return translated
+            end
+        end
+        return item_def.description or ""
+    end
+    return ""
+end
+
+function shop_ui:getShopName()
+    if self.shop_data then
+        -- Try translated name first
+        if self.shop_data.name_key then
+            local translated = locale:t(self.shop_data.name_key)
+            if translated ~= self.shop_data.name_key then
+                return translated
+            end
+        end
+        return self.shop_data.name or "Shop"
+    end
+    return "Shop"
 end
 
 function shop_ui:showMessage(msg)
@@ -370,7 +414,7 @@ function shop_ui:draw()
     -- Draw title (centered, top area)
     love.graphics.setFont(self.title_font)
     love.graphics.setColor(1, 1, 1, 1)
-    local title = self.shop_data.name or "Shop"
+    local title = self:getShopName()
     local title_width = self.title_font:getWidth(title)
     love.graphics.print(title, panel_x + (PANEL_WIDTH - title_width) / 2, panel_y + 10)
 
@@ -396,8 +440,10 @@ function shop_ui:draw()
         love.graphics.setLineWidth(1)
         love.graphics.rectangle("line", buy_x, tab_y, tab_width, tab_height, 4, 4)
     end
+    local buy_text = locale:t("shop.buy")
     love.graphics.setColor(1, 1, 1, self.tab == "buy" and 1 or (self.hovered_tab_buy and 0.9 or 0.6))
-    text_ui:draw("Buy", buy_x + tab_width/2 - self.item_font:getWidth("Buy")/2, tab_y + 4)
+    love.graphics.setFont(self.item_font)
+    text_ui:draw(buy_text, buy_x + tab_width/2 - self.item_font:getWidth(buy_text)/2, tab_y + 4, nil, self.item_font)
 
     -- Sell tab (next to Buy)
     local sell_x = buy_x + tab_width + tab_gap
@@ -415,13 +461,14 @@ function shop_ui:draw()
         love.graphics.setLineWidth(1)
         love.graphics.rectangle("line", sell_x, tab_y, tab_width, tab_height, 4, 4)
     end
+    local sell_text = locale:t("shop.sell")
     love.graphics.setColor(1, 1, 1, self.tab == "sell" and 1 or (self.hovered_tab_sell and 0.9 or 0.6))
-    text_ui:draw("Sell", sell_x + tab_width/2 - self.item_font:getWidth("Sell")/2, tab_y + 4)
+    text_ui:draw(sell_text, sell_x + tab_width/2 - self.item_font:getWidth(sell_text)/2, tab_y + 4, nil, self.item_font)
 
     -- Draw gold (right side, same row as tabs)
     love.graphics.setFont(self.item_font)
     love.graphics.setColor(1, 0.85, 0, 1)
-    local gold_text = "Gold: " .. self.level_system:getGold()
+    local gold_text = locale:t("shop.gold") .. ": " .. self.level_system:getGold()
     love.graphics.print(gold_text, panel_x + PANEL_WIDTH - self.item_font:getWidth(gold_text) - 15, tab_y + 4)
 
     -- Draw items list (moved down)
@@ -433,7 +480,7 @@ function shop_ui:draw()
 
     if #items == 0 then
         love.graphics.setColor(0.6, 0.6, 0.6, 1)
-        local empty_text = self.tab == "buy" and "Nothing in stock" or "No items to sell"
+        local empty_text = self.tab == "buy" and locale:t("shop.nothing_in_stock") or locale:t("shop.no_items_to_sell")
         love.graphics.print(empty_text, panel_x + 20, list_y + 20)
     else
         for i = 1, math.min(self.max_visible_items, #items - self.scroll_offset) do
@@ -547,11 +594,11 @@ function shop_ui:draw()
         local price_text
         if self.tab == "buy" then
             total_price = self.quantity_item.price * self.quantity
-            price_text = "Total: " .. total_price .. "G"
+            price_text = locale:t("shop.total") .. ": " .. total_price .. "G"
             love.graphics.setColor(1, 0.85, 0, 1)
         else
             total_price = (self.quantity_item.sell_price or 0) * self.quantity
-            price_text = "Get: +" .. total_price .. "G"
+            price_text = locale:t("shop.get") .. ": +" .. total_price .. "G"
             love.graphics.setColor(0.5, 0.8, 0.5, 1)
         end
         local price_width = self.item_font:getWidth(price_text)
@@ -574,7 +621,7 @@ function shop_ui:draw()
         end
         love.graphics.rectangle("fill", ok_x, btn_y, btn_width, btn_height, 3, 3)
         love.graphics.setColor(self.hovered_qty_ok and 1 or 0.8, 1, self.hovered_qty_ok and 1 or 0.8, 1)
-        local ok_text = "OK"
+        local ok_text = locale:t("shop.ok")
         love.graphics.print(ok_text, ok_x + (btn_width - self.item_font:getWidth(ok_text)) / 2, btn_y + 4)
 
         -- Cancel button
@@ -585,7 +632,7 @@ function shop_ui:draw()
         end
         love.graphics.rectangle("fill", cancel_x, btn_y, btn_width, btn_height, 3, 3)
         love.graphics.setColor(1, self.hovered_qty_cancel and 1 or 0.8, self.hovered_qty_cancel and 1 or 0.8, 1)
-        local cancel_text = "Cancel"
+        local cancel_text = locale:t("shop.cancel")
         love.graphics.print(cancel_text, cancel_x + (btn_width - self.item_font:getWidth(cancel_text)) / 2, btn_y + 4)
     end
 
@@ -621,9 +668,11 @@ function shop_ui:draw()
     love.graphics.setFont(self.item_font)
     local hint_y = panel_y + PANEL_HEIGHT - 25
     if self.quantity_mode then
-        love.graphics.print("[<>] Qty  [^v] +/-10  [A] OK  [B] Cancel", panel_x + 15, hint_y)
+        local hint_qty = "[<>] " .. locale:t("shop.hint_qty") .. "  [^v] " .. locale:t("shop.hint_qty_10") .. "  [A] " .. locale:t("shop.ok") .. "  [B] " .. locale:t("shop.cancel")
+        love.graphics.print(hint_qty, panel_x + 15, hint_y)
     else
-        love.graphics.print("[A] Select  [B] Close  [LB/RB] Tab", panel_x + 20, hint_y)
+        local hint_normal = "[A] " .. locale:t("shop.hint_select") .. "  [B] " .. locale:t("shop.hint_close") .. "  [LB/RB] " .. locale:t("shop.hint_tab")
+        love.graphics.print(hint_normal, panel_x + 20, hint_y)
     end
 
     display:Detach()

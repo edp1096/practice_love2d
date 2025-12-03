@@ -94,6 +94,9 @@ function gameplay:draw()
 end
 
 function gameplay:resize(w, h)
+    -- Resize display first
+    display:Resize(w, h)
+
     -- Use screen module for proper scaling
     local vw, vh = display:GetVirtualDimensions()
     local sw, sh = display:GetScreenDimensions()

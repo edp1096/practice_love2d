@@ -5,6 +5,7 @@ local slot_renderer = {}
 local shapes = require "engine.utils.shapes"
 local text_ui = require "engine.utils.text"
 local colors = require "engine.utils.colors"
+local locale = require "engine.core.locale"
 
 -- Render individual save slot
 function slot_renderer.drawSlot(load_scene, slot, i, is_selected)
@@ -34,11 +35,11 @@ end
 function slot_renderer.drawExistingSlot(load_scene, slot, i, y, is_selected)
     -- Slot title
     local title_color = is_selected and colors.for_menu_selected or colors.for_text_normal
-    text_ui:draw("Slot " .. slot.slot, load_scene.virtual_width * 0.2, y, title_color, load_scene.slotFont)
+    text_ui:draw(locale:t("save.slot", {num = slot.slot}), load_scene.virtual_width * 0.2, y, title_color, load_scene.slotFont)
 
     -- HP info
-    text_ui:draw("HP: " .. slot.hp .. "/" .. slot.max_hp, load_scene.virtual_width * 0.2, y + 28, colors.for_text_gray, load_scene.infoFont)
-    text_ui:draw(slot.map_display or "Unknown", load_scene.virtual_width * 0.2, y + 48, colors.for_text_gray, load_scene.infoFont)
+    text_ui:draw(locale:t("hud.hp") .. ": " .. slot.hp .. "/" .. slot.max_hp, load_scene.virtual_width * 0.2, y + 28, colors.for_text_gray, load_scene.infoFont)
+    text_ui:draw(slot.map_display or locale:t("save.unknown"), load_scene.virtual_width * 0.2, y + 48, colors.for_text_gray, load_scene.infoFont)
 
     -- Timestamp
     text_ui:draw(slot.time_string, load_scene.virtual_width * 0.2, y + 65, colors.for_text_dark_gray, load_scene.hintFont)
@@ -49,7 +50,7 @@ end
 
 -- Render empty save slot
 function slot_renderer.drawEmptySlot(load_scene, slot, y)
-    text_ui:draw("Slot " .. slot.slot .. " - Empty", load_scene.virtual_width * 0.2, y + 25, colors.for_text_dim, load_scene.slotFont)
+    text_ui:draw(locale:t("save.slot", {num = slot.slot}) .. " - " .. locale:t("save.empty"), load_scene.virtual_width * 0.2, y + 25, colors.for_text_dim, load_scene.slotFont)
 end
 
 -- Render delete button (X button)
@@ -78,12 +79,12 @@ function slot_renderer.drawConfirmDialog(load_scene)
     -- Confirmation text
     love.graphics.setFont(load_scene.confirmFont)
     colors:apply(colors.for_button_delete_border_selected)
-    local confirm_text = "Delete Slot " .. load_scene.delete_slot .. "?"
+    local confirm_text = locale:t("save.confirm_delete_slot", {num = load_scene.delete_slot})
     love.graphics.printf(confirm_text, 0, load_scene.virtual_height / 2 - 60, load_scene.virtual_width, "center")
 
     love.graphics.setFont(load_scene.hintFont)
     colors:apply(colors.for_text_light)
-    love.graphics.printf("This action cannot be undone!", 0, load_scene.virtual_height / 2 - 20, load_scene.virtual_width, "center")
+    love.graphics.printf(locale:t("save.cannot_undo"), 0, load_scene.virtual_height / 2 - 20, load_scene.virtual_width, "center")
 
     -- Draw Yes/No buttons
     slot_renderer.drawConfirmButtons(load_scene)
@@ -108,7 +109,7 @@ function slot_renderer.drawConfirmButtons(load_scene)
 
     love.graphics.setFont(load_scene.slotFont)
     colors:apply(is_no_selected and colors.for_text_normal or colors.for_text_light)
-    love.graphics.printf("No", no_x, button_y + 12, button_width, "center")
+    love.graphics.printf(locale:t("save.no"), no_x, button_y + 12, button_width, "center")
 
     -- Yes button (right)
     local yes_x = load_scene.virtual_width / 2 + button_spacing / 2
@@ -123,7 +124,7 @@ function slot_renderer.drawConfirmButtons(load_scene)
 
     love.graphics.setFont(load_scene.slotFont)
     colors:apply(is_yes_selected and colors.for_text_normal or colors:withAlpha(colors.for_text_light, 0.9))
-    love.graphics.printf("Yes", yes_x, button_y + 12, button_width, "center")
+    love.graphics.printf(locale:t("save.yes"), yes_x, button_y + 12, button_width, "center")
 end
 
 -- Render confirmation dialog hints

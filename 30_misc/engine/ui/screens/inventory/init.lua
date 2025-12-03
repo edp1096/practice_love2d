@@ -15,6 +15,7 @@ local input = require "engine.core.input"
 local colors = require "engine.utils.colors"
 local ui_constants = require "engine.ui.constants"
 local coords = require "engine.core.coords"
+local locale = require "engine.core.locale"
 
 -- Safe sound wrapper
 local function play_sound(category, name)
@@ -40,9 +41,9 @@ function inventory:enter(previous, player_inventory, player)
     self.grid_start_x = 0
     self.grid_start_y = 0
 
-    self.title_font = love.graphics.newFont(ui_constants.FONT_SIZE_TITLE)  -- 16
-    self.item_font = fonts.info or love.graphics.getFont()  -- 14
-    self.desc_font = fonts.info or love.graphics.getFont()  -- 14
+    self.title_font = locale:getFont("option") or love.graphics.getFont()  -- 22
+    self.item_font = locale:getFont("info") or love.graphics.getFont()  -- 14
+    self.desc_font = locale:getFont("info") or love.graphics.getFont()  -- 14
 
     -- Close button settings (use shared constants)
     self.close_button_size = ui_constants.CLOSE_BUTTON_SIZE  -- 30
@@ -404,7 +405,7 @@ function inventory:draw()
     shapes:drawPanel(window_x, window_y, window_w, window_h, colors.for_inventory_bg, colors.for_inventory_border, 10)
 
     -- Draw title (center-aligned)
-    local title = "INVENTORY"
+    local title = locale:t("inventory.title")
     local title_w = self.title_font:getWidth(title)
     text_ui:draw(title, window_x + (window_w - title_w) / 2, window_y + 20, {1, 1, 1, 1}, self.title_font)
 
@@ -420,7 +421,7 @@ function inventory:draw()
         -- Draw close instruction with dynamic input prompts
         local close_prompt1 = input:getPrompt("open_inventory") or "I"
         local close_prompt2 = input:getPrompt("menu_back") or "ESC"
-        local close_text = string.format("Press %s or %s to close", close_prompt1, close_prompt2)
+        local close_text = locale:t("inventory.press_to_close", {key1 = close_prompt1, key2 = close_prompt2})
         text_ui:draw(close_text, window_x + 20, window_y + 20, colors.for_text_mid_gray, self.desc_font)
     end
 
@@ -433,8 +434,8 @@ function inventory:draw()
         -- Different instructions for keyboard vs gamepad
         if input:hasGamepad() then
             -- Gamepad: Draw "Press [icon] twice to use" with shape icon for PlayStation
-            local press_text = "Press "
-            local twice_text = " twice to use"
+            local press_text = locale:t("inventory.press") .. " "
+            local twice_text = " " .. locale:t("inventory.twice_to_use")
 
             -- Draw "Press "
             text_ui:draw(press_text, instruction_x, instruction_y, instruction_color, self.desc_font)
@@ -470,7 +471,7 @@ function inventory:draw()
         else
             -- Keyboard: Single press ENTER or SPACE
             local use_prompt = input:getPrompt("use_item")
-            local use_text = string.format("Press %s to use", use_prompt)
+            local use_text = locale:t("inventory.press_to_use", {key = use_prompt})
             text_ui:draw(use_text, instruction_x, instruction_y, instruction_color, self.desc_font)
         end
     end

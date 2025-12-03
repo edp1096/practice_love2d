@@ -3,7 +3,9 @@
 
 local large_potion = {
     name = "Large Health Potion",
+    name_key = "items.large_potion.name",
     description = "Restores 60 HP",
+    description_key = "items.large_potion.description",
     size = { width = 1, height = 1 },  -- Grid size: 1x1
     max_stack = 10,
 

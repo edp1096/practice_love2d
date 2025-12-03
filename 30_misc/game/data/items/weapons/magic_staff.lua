@@ -3,7 +3,9 @@
 
 local magic_staff = {
     name = "Magic Staff",
-    description = "A staff imbued with magical energy",
+    name_key = "items.magic_staff.name",
+    description = "A staff imbued with magic",
+    description_key = "items.magic_staff.description",
     size = { width = 1, height = 1 },  -- Grid size: 1x1
     max_stack = 1,  -- Equipment cannot be stacked
 

@@ -4,12 +4,22 @@
 local text_ui = require "engine.utils.text"
 local shapes = require "engine.utils.shapes"
 local colors = require "engine.utils.colors"
+local locale = require "engine.core.locale"
 
 local quest_tracker = {}
 
-quest_tracker.title_font = love.graphics.newFont(14)
-quest_tracker.objective_font = love.graphics.newFont(12)
-quest_tracker.small_font = love.graphics.newFont(10)
+-- Get fonts from locale system dynamically
+function quest_tracker:getTitleFont()
+    return locale:getFont("info")
+end
+
+function quest_tracker:getObjectiveFont()
+    return locale:getFont("small")
+end
+
+function quest_tracker:getSmallFont()
+    return locale:getFont("micro")
+end
 
 function quest_tracker:draw(quest_system, screen_w, screen_h, max_quests)
     max_quests = max_quests or 3  -- Show up to 3 quests
@@ -32,7 +42,10 @@ function quest_tracker:draw(quest_system, screen_w, screen_h, max_quests)
     -- Position: left side, below HP bar
     local margin = 10
     local hp_bar_height = 20  -- Height of HP bar
-    local font_height = self.title_font:getHeight()
+    local title_font = self:getTitleFont()
+    local objective_font = self:getObjectiveFont()
+    local small_font = self:getSmallFont()
+    local font_height = title_font:getHeight()
     local vertical_spacing = font_height * 3.5  -- 3.5 font height below HP bar (to avoid INVINCIBLE text)
 
     local panel_width = 280  -- Wide enough for quest text
@@ -67,7 +80,7 @@ function quest_tracker:draw(quest_system, screen_w, screen_h, max_quests)
 
     -- Header
     local header_y = panel_y + padding
-    text_ui:draw("Quests", panel_x + padding, header_y, colors.for_hud_quest_header or {1, 1, 0}, self.title_font)
+    text_ui:draw(locale:t("quest.title"), panel_x + padding, header_y, colors.for_hud_quest_header or {1, 1, 0}, title_font)
 
     -- Draw quests
     local current_y = header_y + 25
@@ -77,16 +90,25 @@ function quest_tracker:draw(quest_system, screen_w, screen_h, max_quests)
         local def = quest.def
         local state = quest.state
 
-        -- Quest title
+        -- Quest title (resolve from key or direct value)
+        local title = def.title_key and locale:t(def.title_key) or def.title or "???"
+        if def.title_key and title == def.title_key then
+            title = def.title or def.title_key  -- Fallback if translation not found
+        end
         local title_color = colors.for_hud_quest_title or {0.8, 0.9, 1}
-        text_ui:draw(def.title, panel_x + padding, current_y, title_color, self.title_font)
+        text_ui:draw(title, panel_x + padding, current_y, title_color, title_font)
         current_y = current_y + 22
 
         -- Objectives
         for obj_idx, obj_def in ipairs(def.objectives) do
             local progress = state.objectives[obj_idx]
+            -- Resolve objective description from key or direct value
+            local obj_desc = obj_def.description_key and locale:t(obj_def.description_key) or obj_def.description or "???"
+            if obj_def.description_key and obj_desc == obj_def.description_key then
+                obj_desc = obj_def.description or obj_def.description_key
+            end
             local obj_text = string.format("%s (%d/%d)",
-                obj_def.description,
+                obj_desc,
                 progress.current,
                 progress.target
             )
@@ -113,14 +135,14 @@ function quest_tracker:draw(quest_system, screen_w, screen_h, max_quests)
             colors:reset()
 
             -- Objective text
-            text_ui:draw(obj_text, checkbox_x + checkbox_size + 8, current_y, obj_color, self.objective_font)
+            text_ui:draw(obj_text, checkbox_x + checkbox_size + 8, current_y, obj_color, objective_font)
             current_y = current_y + line_height
         end
 
         -- Quest state indicator
         if state.state == quest_system.STATE.COMPLETED then
-            local complete_text = "[Ready to turn in]"
-            text_ui:draw(complete_text, panel_x + padding, current_y, colors.for_hud_quest_ready or {1, 1, 0}, self.small_font)
+            local complete_text = "[" .. locale:t("quest.ready_turn_in") .. "]"
+            text_ui:draw(complete_text, panel_x + padding, current_y, colors.for_hud_quest_ready or {1, 1, 0}, small_font)
             current_y = current_y + 15
         end
 
@@ -132,10 +154,9 @@ function quest_tracker:draw(quest_system, screen_w, screen_h, max_quests)
 
     -- "More quests..." indicator
     if #all_quests > max_quests then
-        local more_text = string.format("+ %d more quest%s...",
-            #all_quests - max_quests,
-            (#all_quests - max_quests) > 1 and "s" or "")
-        text_ui:draw(more_text, panel_x + padding, current_y, colors.for_hud_quest_more or {0.7, 0.7, 0.7}, self.small_font)
+        local more_count = #all_quests - max_quests
+        local more_text = locale:t("quest.more_quests", {count = more_count})
+        text_ui:draw(more_text, panel_x + padding, current_y, colors.for_hud_quest_more or {0.7, 0.7, 0.7}, small_font)
     end
 
     colors:reset()
@@ -145,6 +166,9 @@ end
 -- Draw quest notification (popup when quest accepted/completed)
 function quest_tracker:drawNotification(title, message, timer, screen_w, screen_h)
     if timer <= 0 then return end
+
+    local title_font = self:getTitleFont()
+    local objective_font = self:getObjectiveFont()
 
     local panel_width = 350
     local panel_height = 80
@@ -170,11 +194,11 @@ function quest_tracker:drawNotification(title, message, timer, screen_w, screen_
 
     -- Title
     local title_color = colors:withAlpha(colors.for_hud_notification_title or {1, 1, 0}, alpha)
-    text_ui:draw(title, panel_x + 15, panel_y + 15, title_color, self.title_font)
+    text_ui:draw(title, panel_x + 15, panel_y + 15, title_color, title_font)
 
     -- Message
     local msg_color = colors:withAlpha(colors.for_hud_notification_text or {1, 1, 1}, alpha)
-    text_ui:draw(message, panel_x + 15, panel_y + 40, msg_color, self.objective_font)
+    text_ui:draw(message, panel_x + 15, panel_y + 40, msg_color, objective_font)
 
     colors:reset()
     love.graphics.setLineWidth(1)

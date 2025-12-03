@@ -2,8 +2,10 @@
 -- Club equipment configuration (pure data - no logic)
 
 local club = {
-    name = "Club",
+    name = "Wooden Club",
+    name_key = "items.club.name",
     description = "A simple wooden club",
+    description_key = "items.club.description",
     size = { width = 1, height = 1 },  -- Grid size: 1x1 (16x16 sprite)
     max_stack = 1,  -- Equipment cannot be stacked
 

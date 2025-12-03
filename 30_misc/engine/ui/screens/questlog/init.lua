@@ -7,6 +7,7 @@ local questlog = {}
 local render_module = require "engine.ui.screens.questlog.render"
 local input_module = require "engine.ui.screens.questlog.input"
 local config = require "engine.ui.screens.questlog.config"
+local locale = require "engine.core.locale"
 
 function questlog:enter(from, quest_system)
     self.previous_scene = from
@@ -17,12 +18,12 @@ function questlog:enter(from, quest_system)
     self.selected_quest_index = 1
     self.scroll_offset = 0
 
-    -- Categories
+    -- Categories (use locale keys)
     self.categories = {
-        { id = "active", label = "Active" },
-        { id = "available", label = "Available" },
-        { id = "completed", label = "Completed" },
-        { id = "all", label = "All Quests" }
+        { id = "active", label_key = "quest.active" },
+        { id = "available", label_key = "quest.available" },
+        { id = "completed", label_key = "quest.completed" },
+        { id = "all", label_key = "quest.all" }
     }
     self.selected_category_index = 1
 

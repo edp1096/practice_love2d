@@ -6,6 +6,7 @@ local scene_control = require "engine.core.scene_control"
 local save_sys = require "engine.core.save"
 local sound = require "engine.core.sound"
 local constants = require "engine.core.constants"
+local locale = require "engine.core.locale"
 
 local builder = {}
 
@@ -130,26 +131,52 @@ local function executeAction(action_cfg, previous_scene)
   end
 end
 
+-- Translate option key to display text
+local function translateOption(key)
+  local translated = locale:t(key)
+  -- If translation returns the key itself, it's not a locale key (use as-is)
+  return translated
+end
+
 -- Build menu scene from config
 function builder:buildMenu(cfg)
   -- Dynamic options based on logic
   local function onEnter(self, previous, ...)
+    -- Update title with current locale (re-translate on each enter)
+    if cfg.title_key then
+      self.title = locale:t(cfg.title_key)
+    elseif cfg.title then
+      self.title = cfg.title
+    end
+
+    -- Store raw option keys (for action lookup)
     if cfg.options_logic == "has_saves" then
       local has_saves = save_sys:hasSaveFiles()
-      self.options = has_saves and cfg.options_with_saves or cfg.options_no_saves
-      self.selected = 1
+      self.option_keys = has_saves and cfg.options_with_saves or cfg.options_no_saves
+    else
+      self.option_keys = cfg.options or cfg.options_no_saves
     end
+
+    -- Translate keys to display text
+    self.options = {}
+    for _, key in ipairs(self.option_keys) do
+      table.insert(self.options, translateOption(key))
+    end
+    self.selected = 1
 
     -- Filter out "Quit" option on web platform
     local os = love.system.getOS()
-    if os == "Web" and self.options then
-      local filtered = {}
-      for _, opt in ipairs(self.options) do
-        if opt ~= "Quit" then
-          table.insert(filtered, opt)
+    if os == "Web" and self.option_keys then
+      local filtered_keys = {}
+      local filtered_options = {}
+      for i, key in ipairs(self.option_keys) do
+        if key ~= "menu.quit" then
+          table.insert(filtered_keys, key)
+          table.insert(filtered_options, self.options[i])
         end
       end
-      self.options = filtered
+      self.option_keys = filtered_keys
+      self.options = filtered_options
     end
 
     -- Initialize flash effect if configured
@@ -169,8 +196,9 @@ function builder:buildMenu(cfg)
 
   -- Select handler
   local function onSelect(self, option_index)
-    local option_name = self.options[option_index]
-    local action = cfg.actions[option_name]
+    -- Use option_keys for action lookup (not translated display text)
+    local option_key = self.option_keys and self.option_keys[option_index] or self.options[option_index]
+    local action = cfg.actions[option_key]
     if action then executeAction(action, self.previous) end
   end
 
@@ -195,9 +223,15 @@ function builder:buildMenu(cfg)
     end
   end
 
+  -- Determine title (use title_key for i18n, or title as-is)
+  local title = cfg.title
+  if cfg.title_key then
+    title = locale:t(cfg.title_key)
+  end
+
   -- Build config with optional flash handlers
   local scene_config = {
-    title = cfg.title,
+    title = title,
     options = cfg.options or cfg.options_no_saves,
     on_enter = onEnter,  -- Always use onEnter (handles BGM + dynamic options + flash)
     on_select = onSelect,

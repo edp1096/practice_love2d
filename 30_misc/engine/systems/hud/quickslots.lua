@@ -2,6 +2,7 @@
 -- Quickslot belt UI rendering and management
 
 local colors = require "engine.utils.colors"
+local locale = require "engine.core.locale"
 
 local quickslots = {}
 
@@ -9,23 +10,18 @@ local quickslots = {}
 local SLOT_SIZE = 50
 local SLOT_SPACING = 10
 local SLOT_COUNT = 5
-local FONT_SIZE = 16
 
--- Font
-local key_font = nil
-local quantity_font = nil
+-- Get fonts from locale system (supports Korean)
+function quickslots.getKeyFont()
+    return locale:getFont("option") or love.graphics.getFont()
+end
 
-function quickslots.initialize()
-    key_font = love.graphics.newFont(FONT_SIZE)
-    quantity_font = love.graphics.newFont(12)
+function quickslots.getQuantityFont()
+    return locale:getFont("small") or love.graphics.getFont()
 end
 
 -- Draw quickslot belt
 function quickslots.draw(inventory, player, display, selected_slot)
-    if not key_font then
-        quickslots.initialize()
-    end
-
     selected_slot = selected_slot or 1  -- Default to slot 1 if not provided
 
     -- Calculate position (bottom center of screen)
@@ -53,6 +49,10 @@ end
 function quickslots.drawSlot(slot_index, x, y, inventory, player, selected_slot)
     -- Get item in this slot
     local item, item_id, item_data = inventory:getQuickslotItem(slot_index)
+
+    -- Get fonts
+    local key_font = quickslots.getKeyFont()
+    local quantity_font = quickslots.getQuantityFont()
 
     -- Draw slot background
     colors:apply(colors.for_quickslot_bg)

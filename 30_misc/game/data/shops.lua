@@ -6,6 +6,7 @@ local shops = {}
 -- General store (shop1 merchant)
 shops.general_store = {
     name = "General Store",
+    name_key = "shops.general_store.name",
 
     -- Items for sale
     items = {

@@ -7,15 +7,30 @@ local shapes = require "engine.utils.shapes"
 local colors = require "engine.utils.colors"
 local config = require "engine.ui.screens.questlog.config"
 local coords = require "engine.core.coords"
+local locale = require "engine.core.locale"
 
 local render = {}
 
--- Fonts
-render.title_font = love.graphics.newFont(config.FONT_TITLE)
-render.category_font = love.graphics.newFont(config.FONT_CATEGORY)
-render.quest_title_font = love.graphics.newFont(config.FONT_QUEST_TITLE)
-render.text_font = love.graphics.newFont(config.FONT_TEXT)
-render.small_font = love.graphics.newFont(config.FONT_SMALL)
+-- Get fonts from locale system (supports Korean)
+function render:getTitleFont()
+    return locale:getFont("option") or love.graphics.getFont()
+end
+
+function render:getCategoryFont()
+    return locale:getFont("info") or love.graphics.getFont()
+end
+
+function render:getQuestTitleFont()
+    return locale:getFont("info") or love.graphics.getFont()
+end
+
+function render:getTextFont()
+    return locale:getFont("small") or love.graphics.getFont()
+end
+
+function render:getSmallFont()
+    return locale:getFont("tiny") or love.graphics.getFont()
+end
 
 function render:init(questlog_scene)
     self.scene = questlog_scene
@@ -50,9 +65,10 @@ function render:draw()
 
     -- Title (center-aligned)
     local title_y = panel_y + 20
-    local title_text = "Quest Log"
-    local title_w = self.title_font:getWidth(title_text)
-    text_ui:draw(title_text, panel_x + (panel_w - title_w) / 2, title_y, colors.for_ui_title or {1, 1, 1}, self.title_font)
+    local title_text = locale:t("quest.title")
+    local title_font = self:getTitleFont()
+    local title_w = title_font:getWidth(title_text)
+    text_ui:draw(title_text, panel_x + (panel_w - title_w) / 2, title_y, colors.for_ui_title or {1, 1, 1}, title_font)
 
     -- Close button (only if NOT in container)
     if not in_container then
@@ -84,8 +100,8 @@ function render:draw()
     -- Help text (only if NOT in container - container shows its own hints)
     if not in_container then
         local help_y = panel_y + panel_h - 30
-        local help_text = "ESC: Close  |  Arrow Keys: Navigate  |  Enter: Select"
-        text_ui:draw(help_text, panel_x + 20, help_y, colors.for_ui_hint or {0.7, 0.7, 0.7}, self.small_font)
+        local help_text = "ESC: " .. locale:t("common.close") .. "  |  " .. locale:t("quest.help_navigate") .. "  |  " .. locale:t("quest.help_select")
+        text_ui:draw(help_text, panel_x + 20, help_y, colors.for_ui_hint or {0.7, 0.7, 0.7}, self:getSmallFont())
 
         display:Detach()
     end
@@ -97,6 +113,7 @@ function render:drawCategoryTabs(panel_x, tab_y, panel_w)
     local tab_height = config.TAB_HEIGHT
     local spacing = config.TAB_SPACING
     local start_x = panel_x + 20
+    local category_font = self:getCategoryFont()
 
     for i, category in ipairs(scene.categories) do
         local tab_x = start_x + (i - 1) * (tab_width + spacing)
@@ -114,13 +131,14 @@ function render:drawCategoryTabs(panel_x, tab_y, panel_w)
         colors:apply(colors.for_ui_tab_border or {0.5, 0.5, 0.5})
         love.graphics.rectangle("line", tab_x, tab_y, tab_width, tab_height)
 
-        -- Tab text
+        -- Tab text (use locale key)
         local text_color = is_selected
             and (colors.WHITE or {1, 1, 1})
             or (colors.for_ui_tab_text or {0.8, 0.8, 0.8})
 
-        local text_w = self.category_font:getWidth(category.label)
-        text_ui:draw(category.label, tab_x + (tab_width - text_w) / 2, tab_y + 8, text_color, self.category_font)
+        local label_text = locale:t(category.label_key)
+        local text_w = category_font:getWidth(label_text)
+        text_ui:draw(label_text, tab_x + (tab_width - text_w) / 2, tab_y + 8, text_color, category_font)
     end
 
     colors:reset()
@@ -129,6 +147,9 @@ end
 function render:drawQuestList(list_x, list_y, list_w, list_h)
     local scene = self.scene
     local quests = scene:getQuestsForCategory(scene.selected_category)
+    local text_font = self:getTextFont()
+    local small_font = self:getSmallFont()
+    local quest_title_font = self:getQuestTitleFont()
 
     -- List background
     colors:apply(colors.for_ui_list_bg or {0.15, 0.15, 0.15})
@@ -139,8 +160,8 @@ function render:drawQuestList(list_x, list_y, list_w, list_h)
     colors:reset()
 
     if #quests == 0 then
-        local no_quest_text = "No quests"
-        text_ui:draw(no_quest_text, list_x + 10, list_y + 10, colors.for_ui_hint or {0.6, 0.6, 0.6}, self.text_font)
+        local no_quest_text = locale:t("quest.no_quests")
+        text_ui:draw(no_quest_text, list_x + 10, list_y + 10, colors.for_ui_hint or {0.6, 0.6, 0.6}, text_font)
         return
     end
 
@@ -173,32 +194,36 @@ function render:drawQuestList(list_x, list_y, list_w, list_h)
             love.graphics.rectangle("fill", item_x, item_y, item_w, item_h)
         end
 
-        -- Quest title
+        -- Quest title (resolve from key or direct value)
+        local title = def.title_key and locale:t(def.title_key) or def.title or "???"
+        if def.title_key and title == def.title_key then
+            title = def.title or def.title_key
+        end
         local title_color = is_selected
             and (colors.for_ui_selection_text or {1, 1, 1})
             or (colors.for_ui_text or {0.9, 0.9, 0.9})
 
-        text_ui:draw(def.title, item_x + 5, item_y + 5, title_color, self.quest_title_font)
+        text_ui:draw(title, item_x + 5, item_y + 5, title_color, quest_title_font)
 
         -- Quest state indicator
         local state_text = ""
         local state_color = {0.7, 0.7, 0.7}
 
         if state.state == scene.quest_system.STATE.ACTIVE then
-            state_text = "In Progress"
+            state_text = locale:t("quest.in_progress")
             state_color = colors.for_quest_in_progress or {0.8, 0.8, 1}
         elseif state.state == scene.quest_system.STATE.COMPLETED then
-            state_text = "Ready to turn in"
+            state_text = locale:t("quest.ready_turn_in")
             state_color = colors.for_quest_ready or {1, 1, 0}
         elseif state.state == scene.quest_system.STATE.TURNED_IN then
-            state_text = "Completed"
+            state_text = locale:t("quest.completed")
             state_color = colors.for_quest_completed or {0.4, 1, 0.4}
         elseif state.state == scene.quest_system.STATE.AVAILABLE then
-            state_text = "Available"
+            state_text = locale:t("quest.available")
             state_color = colors.for_quest_available or {0.9, 0.9, 0.9}
         end
 
-        text_ui:draw(state_text, item_x + 5, item_y + 28, state_color, self.small_font)
+        text_ui:draw(state_text, item_x + 5, item_y + 28, state_color, small_font)
 
         -- Divider
         colors:apply(colors.for_ui_divider or {0.3, 0.3, 0.3})
@@ -239,6 +264,8 @@ end
 function render:drawQuestDetails(details_x, details_y, details_w, details_h)
     local scene = self.scene
     local quest = scene:getSelectedQuest()
+    local text_font = self:getTextFont()
+    local quest_title_font = self:getQuestTitleFont()
 
     -- Details background
     colors:apply(colors.for_ui_details_bg or {0.12, 0.12, 0.12})
@@ -249,7 +276,7 @@ function render:drawQuestDetails(details_x, details_y, details_w, details_h)
     colors:reset()
 
     if not quest then
-        text_ui:draw("Select a quest to view details", details_x + 10, details_y + 10, colors.for_ui_hint or {0.6, 0.6, 0.6}, self.text_font)
+        text_ui:draw(locale:t("quest.select_to_view"), details_x + 10, details_y + 10, colors.for_ui_hint or {0.6, 0.6, 0.6}, text_font)
         return
     end
 
@@ -258,8 +285,12 @@ function render:drawQuestDetails(details_x, details_y, details_w, details_h)
     local current_y = details_y + 15
     local padding = 15
 
-    -- Quest title
-    text_ui:draw(def.title, details_x + padding, current_y, colors.for_ui_title or {1, 1, 1}, self.quest_title_font)
+    -- Quest title (resolve from key or direct value)
+    local title = def.title_key and locale:t(def.title_key) or def.title or "???"
+    if def.title_key and title == def.title_key then
+        title = def.title or def.title_key
+    end
+    text_ui:draw(title, details_x + padding, current_y, colors.for_ui_title or {1, 1, 1}, quest_title_font)
     current_y = current_y + 30
 
     -- Description
@@ -267,13 +298,18 @@ function render:drawQuestDetails(details_x, details_y, details_w, details_h)
     love.graphics.line(details_x + padding, current_y, details_x + details_w - padding, current_y)
     current_y = current_y + 10
 
-    text_ui:draw("Description:", details_x + padding, current_y, colors.for_ui_label or {0.7, 0.9, 1}, self.text_font)
+    text_ui:draw(locale:t("quest.description") .. ":", details_x + padding, current_y, colors.for_ui_label or {0.7, 0.9, 1}, text_font)
     current_y = current_y + 20
 
+    -- Description text (resolve from key or direct value)
+    local description = def.description_key and locale:t(def.description_key) or def.description or ""
+    if def.description_key and description == def.description_key then
+        description = def.description or def.description_key
+    end
     -- Wrap description text
-    local wrapped_desc = self:wrapText(def.description, details_w - padding * 2, self.text_font)
+    local wrapped_desc = self:wrapText(description, details_w - padding * 2, text_font)
     for i, line in ipairs(wrapped_desc) do
-        text_ui:draw(line, details_x + padding, current_y, colors.for_ui_text or {0.9, 0.9, 0.9}, self.text_font)
+        text_ui:draw(line, details_x + padding, current_y, colors.for_ui_text or {0.9, 0.9, 0.9}, text_font)
         current_y = current_y + 18
     end
 
@@ -284,13 +320,18 @@ function render:drawQuestDetails(details_x, details_y, details_w, details_h)
     love.graphics.line(details_x + padding, current_y, details_x + details_w - padding, current_y)
     current_y = current_y + 10
 
-    text_ui:draw("Objectives:", details_x + padding, current_y, colors.for_ui_label or {0.7, 0.9, 1}, self.text_font)
+    text_ui:draw(locale:t("quest.objectives") .. ":", details_x + padding, current_y, colors.for_ui_label or {0.7, 0.9, 1}, text_font)
     current_y = current_y + 22
 
     for obj_idx, obj_def in ipairs(def.objectives) do
         local progress = state.objectives[obj_idx]
+        -- Resolve objective description from key or direct value
+        local obj_desc = obj_def.description_key and locale:t(obj_def.description_key) or obj_def.description or "???"
+        if obj_def.description_key and obj_desc == obj_def.description_key then
+            obj_desc = obj_def.description or obj_def.description_key
+        end
         local obj_text = string.format("  %s (%d/%d)",
-            obj_def.description,
+            obj_desc,
             progress.current,
             progress.target
         )
@@ -313,7 +354,7 @@ function render:drawQuestDetails(details_x, details_y, details_w, details_h)
         end
         colors:reset()
 
-        text_ui:draw(obj_text, checkbox_x + checkbox_size + 8, current_y, obj_color, self.text_font)
+        text_ui:draw(obj_text, checkbox_x + checkbox_size + 8, current_y, obj_color, text_font)
         current_y = current_y + 20
     end
 
@@ -325,22 +366,22 @@ function render:drawQuestDetails(details_x, details_y, details_w, details_h)
         love.graphics.line(details_x + padding, current_y, details_x + details_w - padding, current_y)
         current_y = current_y + 10
 
-        text_ui:draw("Rewards:", details_x + padding, current_y, colors.for_ui_label or {0.7, 0.9, 1}, self.text_font)
+        text_ui:draw(locale:t("quest.rewards") .. ":", details_x + padding, current_y, colors.for_ui_label or {0.7, 0.9, 1}, text_font)
         current_y = current_y + 20
 
         if def.rewards.gold then
-            text_ui:draw("  Gold: " .. def.rewards.gold, details_x + padding, current_y, colors.for_reward_gold or {1, 0.8, 0}, self.text_font)
+            text_ui:draw("  " .. locale:t("quest.reward_gold") .. ": " .. def.rewards.gold, details_x + padding, current_y, colors.for_reward_gold or {1, 0.8, 0}, text_font)
             current_y = current_y + 18
         end
 
         if def.rewards.exp then
-            text_ui:draw("  EXP: " .. def.rewards.exp, details_x + padding, current_y, colors.for_reward_exp or {0.5, 1, 0.5}, self.text_font)
+            text_ui:draw("  " .. locale:t("quest.reward_exp") .. ": " .. def.rewards.exp, details_x + padding, current_y, colors.for_reward_exp or {0.5, 1, 0.5}, text_font)
             current_y = current_y + 18
         end
 
         if def.rewards.items and #def.rewards.items > 0 then
-            local items_text = "  Items: " .. table.concat(def.rewards.items, ", ")
-            text_ui:draw(items_text, details_x + padding, current_y, colors.for_reward_items or {0.7, 0.7, 1}, self.text_font)
+            local items_text = "  " .. locale:t("quest.reward_items") .. ": " .. table.concat(def.rewards.items, ", ")
+            text_ui:draw(items_text, details_x + padding, current_y, colors.for_reward_items or {0.7, 0.7, 1}, text_font)
             current_y = current_y + 18
         end
     end

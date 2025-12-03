@@ -4,25 +4,29 @@
 -- Structure:
 --   quest_id = {
 --     id = "quest_id",
---     title = "Quest Title",
---     description = "Quest description shown in log",
+--     title_key = "quests.quest_id.title",        -- Translation key (preferred)
+--     title = "Fallback Title",                   -- Direct text (fallback)
+--     description_key = "quests.quest_id.description",
+--     description = "Fallback description",
 --     objectives = {
 --       {
 --         type = "kill|collect|talk|explore|deliver",
 --         target = "enemy_type|item_type|npc_id|location_id",
---         count = 5,  -- How many needed (default: 1)
---         description = "Kill 5 slimes",  -- Shown in UI
+--         count = 5,
+--         description_key = "quests.quest_id.obj_1",  -- Translation key
+--         description = "Fallback objective text",
 --         npc = "npc_receiver"  -- For deliver quests only
 --       }
 --     },
---     giver_npc = "npc_id",        -- Who gives the quest
---     receiver_npc = "npc_id",     -- Who receives completion (default: same as giver)
---     rewards = {
---       gold = 100,
---       exp = 50,
---       items = { "small_potion", "sword" }
---     },
---     prerequisites = { "other_quest_id" }  -- Must complete these first
+--     giver_npc = "npc_id",
+--     receiver_npc = "npc_id",
+--     rewards = { gold = 100, exp = 50, items = { "small_potion" } },
+--     prerequisites = { "other_quest_id" },
+--     dialogue = {
+--       offer_text_key = "quests.quest_id.dialogue_offer",
+--       accept_text_key = "quests.quest_id.dialogue_accept",
+--       decline_response = "main_menu"
+--     }
 --   }
 
 local quests = {}
@@ -33,17 +37,17 @@ local quests = {}
 
 quests.tutorial_talk = {
     id = "tutorial_talk",
-    title = "Meet the Villager",
-    description = "Talk to the friendly villager to learn about the area.",
+    title_key = "quests.tutorial_talk.title",
+    description_key = "quests.tutorial_talk.description",
     objectives = {
         {
             type = "talk",
-            target = "passerby_01",  -- Talk to this NPC
+            target = "passerby_01",
             count = 1,
-            description = "Talk to the Villager"
+            description_key = "quests.tutorial_talk.obj_1"
         }
     },
-    giver_npc = "passerby_01",  -- Changed to match actual NPC
+    giver_npc = "passerby_01",
     rewards = {
         gold = 10,
         exp = 5
@@ -56,14 +60,14 @@ quests.tutorial_talk = {
 
 quests.collect_test = {
     id = "collect_test",
-    title = "Item Collection Test",
-    description = "Collect health potions to test the collection system.",
+    title_key = "quests.collect_test.title",
+    description_key = "quests.collect_test.description",
     objectives = {
         {
             type = "collect",
-            target = "small_potion",  -- Using existing item type
+            target = "small_potion",
             count = 2,
-            description = "Collect 2 Health Potions"
+            description_key = "quests.collect_test.obj_1"
         }
     },
     giver_npc = "passerby_01",
@@ -72,25 +76,23 @@ quests.collect_test = {
         exp = 25
     },
     prerequisites = { "tutorial_talk", "slime_menace" },
-
-    -- Dialogue information (for quest offer system)
     dialogue = {
-        offer_text = "Actually, I need some slime cores for research. Could you collect 3 of them?",
-        accept_text = "Great! Bring me 3 slime cores when you have them.",
-        decline_response = "main_menu"  -- Node to go to on decline
+        offer_text_key = "quests.collect_test.dialogue_offer",
+        accept_text_key = "quests.collect_test.dialogue_accept",
+        decline_response = "main_menu"
     }
 }
 
 quests.explore_test = {
     id = "explore_test",
-    title = "Exploration Test",
-    description = "Visit the second area to test the exploration system.",
+    title_key = "quests.explore_test.title",
+    description_key = "quests.explore_test.description",
     objectives = {
         {
             type = "explore",
-            target = "level1_area2",  -- Map area ID
+            target = "level1_area2",
             count = 1,
-            description = "Visit Area 2"
+            description_key = "quests.explore_test.obj_1"
         }
     },
     giver_npc = "passerby_01",
@@ -99,40 +101,36 @@ quests.explore_test = {
         exp = 20
     },
     prerequisites = { "tutorial_talk", "slime_menace" },
-
-    -- Dialogue information (for quest offer system)
     dialogue = {
-        offer_text = "Have you explored the eastern area yet? I'd like to know if it's safe.",
-        accept_text = "Thank you! Let me know what you find there.",
+        offer_text_key = "quests.explore_test.dialogue_offer",
+        accept_text_key = "quests.explore_test.dialogue_accept",
         decline_response = "main_menu"
     }
 }
 
 quests.deliver_test = {
     id = "deliver_test",
-    title = "Delivery Test",
-    description = "Deliver a small potion to test the delivery system.",
+    title_key = "quests.deliver_test.title",
+    description_key = "quests.deliver_test.description",
     objectives = {
         {
             type = "deliver",
-            target = "small_potion",  -- Item to deliver
+            target = "small_potion",
             count = 1,
-            npc = "passerby_01",  -- Deliver to this NPC
-            description = "Deliver Small Potion to Villager"
+            npc = "passerby_01",
+            description_key = "quests.deliver_test.obj_1"
         }
     },
     giver_npc = "passerby_01",
-    receiver_npc = "passerby_01",  -- Same NPC (for testing)
+    receiver_npc = "passerby_01",
     rewards = {
         gold = 40,
         exp = 15
     },
     prerequisites = { "tutorial_talk", "slime_menace" },
-
-    -- Dialogue information (for quest offer system)
     dialogue = {
-        offer_text = "I need a small health potion delivered to someone. Can you help?",
-        accept_text = "Perfect! Take this potion to the merchant when you're ready.",
+        offer_text_key = "quests.deliver_test.dialogue_offer",
+        accept_text_key = "quests.deliver_test.dialogue_accept",
         decline_response = "main_menu"
     }
 }
@@ -143,17 +141,17 @@ quests.deliver_test = {
 
 quests.slime_menace = {
     id = "slime_menace",
-    title = "Slime Menace",
-    description = "The village is being bothered by slimes. Help by defeating 3 of them.",
+    title_key = "quests.slime_menace.title",
+    description_key = "quests.slime_menace.description",
     objectives = {
         {
             type = "kill",
-            target = "red_slime",  -- Changed to match actual enemy type in game
-            count = 3,  -- Reduced to 3 for easier testing
-            description = "Defeat 3 red slimes"
+            target = "red_slime",
+            count = 3,
+            description_key = "quests.slime_menace.obj_1"
         }
     },
-    giver_npc = "passerby_01",  -- Changed to match actual NPC
+    giver_npc = "passerby_01",
     receiver_npc = "passerby_01",
     rewards = {
         gold = 100,
@@ -165,14 +163,14 @@ quests.slime_menace = {
 
 quests.forest_cleanup = {
     id = "forest_cleanup",
-    title = "Forest Cleanup",
-    description = "Clear out the forest by defeating 10 slimes.",
+    title_key = "quests.forest_cleanup.title",
+    description_key = "quests.forest_cleanup.description",
     objectives = {
         {
             type = "kill",
             target = "slime",
             count = 10,
-            description = "Defeat 10 slimes in the forest"
+            description_key = "quests.forest_cleanup.obj_1"
         }
     },
     giver_npc = "villager_main",
@@ -190,14 +188,14 @@ quests.forest_cleanup = {
 
 quests.herb_gathering = {
     id = "herb_gathering",
-    title = "Herb Gathering",
-    description = "The healer needs herbs for medicine. Collect 3 healing herbs.",
+    title_key = "quests.herb_gathering.title",
+    description_key = "quests.herb_gathering.description",
     objectives = {
         {
             type = "collect",
             target = "healing_herb",
             count = 3,
-            description = "Collect 3 Healing Herbs"
+            description_key = "quests.herb_gathering.obj_1"
         }
     },
     giver_npc = "healer",
@@ -210,14 +208,14 @@ quests.herb_gathering = {
 
 quests.rare_materials = {
     id = "rare_materials",
-    title = "Rare Materials",
-    description = "Find rare slime gel for the alchemist's research.",
+    title_key = "quests.rare_materials.title",
+    description_key = "quests.rare_materials.description",
     objectives = {
         {
             type = "collect",
             target = "slime_gel",
             count = 5,
-            description = "Collect 5 Slime Gels"
+            description_key = "quests.rare_materials.obj_1"
         }
     },
     giver_npc = "alchemist",
@@ -233,41 +231,39 @@ quests.rare_materials = {
 
 quests.explore_forest = {
     id = "explore_forest",
-    title = "Explore the Forest",
-    description = "Venture into the eastern forest and discover what lies within.",
+    title_key = "quests.explore_forest.title",
+    description_key = "quests.explore_forest.description",
     objectives = {
         {
             type = "explore",
-            target = "level1_area2",  -- Map area ID
+            target = "level1_area2",
             count = 1,
-            description = "Visit the Eastern Forest"
+            description_key = "quests.explore_forest.obj_1"
         }
     },
     giver_npc = "villager_main",
-    receiver_npc = "passerby_01",  -- TEST: Easy to turn in (same as explore_test)
+    receiver_npc = "passerby_01",
     rewards = {
         gold = 50,
         exp = 40
     },
-
-    -- Dialogue information (for quest offer system)
     dialogue = {
-        offer_text = "The eastern forest is vast and mysterious. Would you explore it and report back what you find?",
-        accept_text = "Excellent! The forest lies to the east. Be careful out there!",
+        offer_text_key = "quests.explore_forest.dialogue_offer",
+        accept_text_key = "quests.explore_forest.dialogue_accept",
         decline_response = "main_menu"
     }
 }
 
 quests.ancient_ruins = {
     id = "ancient_ruins",
-    title = "Ancient Ruins",
-    description = "Explore the mysterious ruins to the north.",
+    title_key = "quests.ancient_ruins.title",
+    description_key = "quests.ancient_ruins.description",
     objectives = {
         {
             type = "explore",
             target = "level2_area1",
             count = 1,
-            description = "Discover the Ancient Ruins"
+            description_key = "quests.ancient_ruins.obj_1"
         }
     },
     giver_npc = "scholar",
@@ -284,15 +280,15 @@ quests.ancient_ruins = {
 
 quests.medicine_delivery = {
     id = "medicine_delivery",
-    title = "Medicine Delivery",
-    description = "Deliver medicine from the healer to the sick merchant.",
+    title_key = "quests.medicine_delivery.title",
+    description_key = "quests.medicine_delivery.description",
     objectives = {
         {
             type = "deliver",
             target = "medicine_package",
             count = 1,
             npc = "merchant",
-            description = "Deliver medicine to the Merchant"
+            description_key = "quests.medicine_delivery.obj_1"
         }
     },
     giver_npc = "healer",
@@ -305,15 +301,15 @@ quests.medicine_delivery = {
 
 quests.letter_delivery = {
     id = "letter_delivery",
-    title = "Important Letter",
-    description = "Deliver an important letter from the village elder to the scholar.",
+    title_key = "quests.letter_delivery.title",
+    description_key = "quests.letter_delivery.description",
     objectives = {
         {
             type = "deliver",
             target = "sealed_letter",
             count = 1,
             npc = "scholar",
-            description = "Deliver the letter to the Scholar"
+            description_key = "quests.letter_delivery.obj_1"
         }
     },
     giver_npc = "elder",
@@ -330,33 +326,33 @@ quests.letter_delivery = {
 
 quests.village_hero = {
     id = "village_hero",
-    title = "Village Hero",
-    description = "Prove yourself as a hero by completing multiple tasks.",
+    title_key = "quests.village_hero.title",
+    description_key = "quests.village_hero.description",
     objectives = {
         {
             type = "kill",
             target = "slime",
             count = 15,
-            description = "Defeat 15 slimes"
+            description_key = "quests.village_hero.obj_1"
         },
         {
             type = "collect",
             target = "healing_herb",
             count = 5,
-            description = "Collect 5 Healing Herbs"
+            description_key = "quests.village_hero.obj_2"
         },
         {
             type = "talk",
             target = "elder",
             count = 1,
-            description = "Report to the Elder"
+            description_key = "quests.village_hero.obj_3"
         }
     },
     giver_npc = "elder",
     rewards = {
         gold = 500,
         exp = 250,
-        items = { "iron_sword", "small_potion", "small_potion", "small_potion" }  -- TODO: Add hero_medal item
+        items = { "iron_sword", "small_potion", "small_potion", "small_potion" }
     },
     prerequisites = { "slime_menace", "herb_gathering" }
 }
@@ -367,14 +363,14 @@ quests.village_hero = {
 
 quests.mysterious_stranger = {
     id = "mysterious_stranger",
-    title = "The Mysterious Stranger",
-    description = "A stranger has appeared in the village. Find out what they want.",
+    title_key = "quests.mysterious_stranger.title",
+    description_key = "quests.mysterious_stranger.description",
     objectives = {
         {
             type = "talk",
             target = "stranger",
             count = 1,
-            description = "Talk to the Mysterious Stranger"
+            description_key = "quests.mysterious_stranger.obj_1"
         }
     },
     giver_npc = "villager_main",
@@ -382,31 +378,29 @@ quests.mysterious_stranger = {
         gold = 50,
         exp = 30
     },
-
-    -- Dialogue information (for quest offer system)
     dialogue = {
-        offer_text = "Have you noticed that mysterious stranger near the village entrance? I'm curious what they want. Could you talk to them?",
-        accept_text = "Thank you! The stranger should be near the village entrance. Let me know what they say!",
+        offer_text_key = "quests.mysterious_stranger.dialogue_offer",
+        accept_text_key = "quests.mysterious_stranger.dialogue_accept",
         decline_response = "main_menu"
     }
 }
 
 quests.strangers_request = {
     id = "strangers_request",
-    title = "Stranger's Request",
-    description = "The stranger needs an ancient artifact from the ruins.",
+    title_key = "quests.strangers_request.title",
+    description_key = "quests.strangers_request.description",
     objectives = {
         {
             type = "explore",
             target = "level2_area1",
             count = 1,
-            description = "Search the Ancient Ruins"
+            description_key = "quests.strangers_request.obj_1"
         },
         {
             type = "collect",
             target = "ancient_artifact",
             count = 1,
-            description = "Find the Ancient Artifact"
+            description_key = "quests.strangers_request.obj_2"
         }
     },
     giver_npc = "stranger",

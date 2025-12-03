@@ -5,6 +5,7 @@ local Talkies = require "vendor.talkies"
 local skip_button_widget = require "engine.ui.widgets.button.skip"
 local next_button_widget = require "engine.ui.widgets.button.next"
 local colors = require "engine.utils.colors"
+local locale = require "engine.core.locale"
 
 local core = {}
 
@@ -22,8 +23,8 @@ function core:initialize(dialogue, display_module)
     Talkies.indicatorCharacter = "█"  -- Filled box cursor
 
     -- Set fixed font size (will be scaled by virtual coordinates)
-    -- Use 18pt as base size for 960x540 virtual resolution
-    Talkies.font = love.graphics.newFont(18)
+    -- Use locale font for Korean support
+    Talkies.font = locale:getFont("option") or love.graphics.newFont(18)
 
     -- Create SKIP button for mobile (rightmost)
     dialogue.skip_button = skip_button_widget:new({
@@ -54,7 +55,7 @@ function core:initialize(dialogue, display_module)
     dialogue.current_choices = nil       -- Current choice buttons (visible now)
     dialogue.pending_choices = nil       -- Pending choices (show after text)
     dialogue.selected_choice_index = 1  -- Currently selected choice (for keyboard/gamepad)
-    dialogue.choice_font = love.graphics.newFont(16)
+    dialogue.choice_font = locale:getFont("option") or love.graphics.newFont(16)
 
     -- Force closed flag (prevents reopening until new dialogue starts)
     dialogue.forced_closed = false
@@ -249,13 +250,31 @@ function core:showNode(dialogue, node_id)
                 local quest_data = available_quest.data
                 local dlg = quest_data.dialogue
 
+                -- Resolve offer text from key or direct value
+                local offer_text = dlg.offer_text_key and locale:t(dlg.offer_text_key) or dlg.offer_text or ""
+                if dlg.offer_text_key and offer_text == dlg.offer_text_key then
+                    offer_text = dlg.offer_text or dlg.offer_text_key
+                end
+
+                -- Resolve accept text from key or direct value
+                local accept_text = dlg.accept_text_key and locale:t(dlg.accept_text_key) or dlg.accept_text or ""
+                if dlg.accept_text_key and accept_text == dlg.accept_text_key then
+                    accept_text = dlg.accept_text or dlg.accept_text_key
+                end
+
+                -- Resolve speaker from key or direct value
+                local speaker = node.speaker_key and locale:t(node.speaker_key) or node.speaker or "???"
+                if node.speaker_key and speaker == node.speaker_key then
+                    speaker = node.speaker or "???"
+                end
+
                 -- Create virtual node with quest offer text
                 local virtual_node = {
-                    text = dlg.offer_text,
-                    speaker = node.speaker or "???",
+                    text = offer_text,
+                    speaker = speaker,
                     choices = {
                         {
-                            text = "Accept Quest",
+                            text = locale:t("quest.accept"),
                             next = "quest_accepted_" .. quest_id,
                             action = {
                                 type = "accept_quest",
@@ -263,7 +282,7 @@ function core:showNode(dialogue, node_id)
                             }
                         },
                         {
-                            text = "Decline",
+                            text = locale:t("quest.decline"),
                             next = dlg.decline_response or "end"
                         }
                     }
@@ -271,10 +290,10 @@ function core:showNode(dialogue, node_id)
 
                 -- Create acceptance response virtual node (persistent)
                 dialogue.current_tree.nodes["quest_accepted_" .. quest_id] = {
-                    text = dlg.accept_text,
-                    speaker = node.speaker or "???",
+                    text = accept_text,
+                    speaker = speaker,
                     choices = {
-                        { text = "Continue", next = dlg.decline_response or "end" }
+                        { text = locale:t("common.continue"), next = dlg.decline_response or "end" }
                     }
                 }
 
@@ -306,12 +325,46 @@ function core:showNode(dialogue, node_id)
         end
     end
 
+    -- Resolve text from key or direct value
+    local function resolveText(key, fallback)
+        if key then
+            local translated = locale:t(key)
+            -- i18n returns the key itself if translation not found
+            if translated ~= key then
+                return translated
+            end
+        end
+        return fallback or ""
+    end
+
+    -- Resolve speaker from key or direct value
+    local function resolveSpeaker(key, fallback)
+        if key then
+            local translated = locale:t(key)
+            if translated ~= key then
+                return translated
+            end
+        end
+        return fallback or "???"
+    end
+
     -- Check if node has pages (multi-page dialogue)
-    if node.pages and #node.pages > 0 then
+    local pages = nil
+    if node.pages_key and #node.pages_key > 0 then
+        -- Translate page keys
+        pages = {}
+        for _, page_key in ipairs(node.pages_key) do
+            table.insert(pages, resolveText(page_key, page_key))
+        end
+    elseif node.pages and #node.pages > 0 then
+        pages = node.pages
+    end
+
+    if pages and #pages > 0 then
         -- Paged mode: store pages and start at page 0
-        dialogue.current_pages = node.pages
+        dialogue.current_pages = pages
         dialogue.current_page_index = 0
-        dialogue.total_pages = #node.pages
+        dialogue.total_pages = #pages
         dialogue.showing_paged_text = true
 
         -- Don't show Talkies, we'll render pages ourselves
@@ -330,17 +383,40 @@ function core:showNode(dialogue, node_id)
         dialogue.total_pages = 0
         dialogue.showing_paged_text = false
 
-        local speaker = node.speaker or "???"
-        Talkies.say(speaker, { node.text })
+        local speaker = resolveSpeaker(node.speaker_key, node.speaker)
+        local text = resolveText(node.text_key, node.text)
+        Talkies.say(speaker, { text })
+    end
+
+    -- Store resolved speaker and text for rendering (choices mode needs it)
+    dialogue.current_speaker = resolveSpeaker(node.speaker_key, node.speaker)
+    dialogue.current_text = resolveText(node.text_key, node.text)
+
+    -- Helper function to translate choices
+    local function translateChoices(choices)
+        local translated = {}
+        for _, choice in ipairs(choices) do
+            local translated_choice = {}
+            for k, v in pairs(choice) do
+                translated_choice[k] = v
+            end
+            -- Resolve text_key to text
+            translated_choice.text = resolveText(choice.text_key, choice.text)
+            table.insert(translated, translated_choice)
+        end
+        return translated
     end
 
     -- Setup choices (if any) - with conditional filtering
     if node.choices and #node.choices > 0 then
+        -- Translate choices first
+        local translated_choices = translateChoices(node.choices)
+
         -- Filter choices based on conditions
         local helpers = require "engine.ui.dialogue.helpers"
         local filtered_choices = helpers:filterChoicesByCondition(
             dialogue,
-            node.choices,
+            translated_choices,
             dialogue.current_dialogue_id,
             dialogue.current_node_id
         )
@@ -477,9 +553,12 @@ function core:selectChoice(dialogue, choice_index)
     end
 
     -- Mark this choice as selected (for grey-out effect)
-    -- Exception: Don't mark "Other quest?" as selected (should remain available)
-    if choice.text ~= "Other quest?" then
-        local choice_key = dialogue.current_node_id .. "|" .. choice.text
+    -- Exception: Don't mark "Other quest?" related choices as selected (should remain available)
+    local is_other_quest = choice.text_key == "dialogue.villager_01.choice_other_quest"
+    if not is_other_quest then
+        -- Use text_key for persistence if available, fallback to text
+        local choice_identifier = choice.text_key or choice.text
+        local choice_key = dialogue.current_node_id .. "|" .. choice_identifier
         dialogue.selected_choices[choice_key] = true
 
         -- Note: dialogue.selected_choices is already a reference to

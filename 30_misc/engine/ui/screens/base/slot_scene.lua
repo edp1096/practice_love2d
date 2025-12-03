@@ -12,6 +12,7 @@ local debug = require "engine.core.debug"
 local shapes = require "engine.utils.shapes"
 local text_ui = require "engine.utils.text"
 local scene_control = require "engine.core.scene_control"
+local locale = require "engine.core.locale"
 
 -- Create a new slot scene instance
 function slot_scene:new()
@@ -29,11 +30,11 @@ function slot_scene:enter(previous, ...)
     self.virtual_width = vw
     self.virtual_height = vh
 
-    -- Initialize fonts
-    self.titleFont = fonts.title
-    self.slotFont = fonts.option
-    self.infoFont = fonts.info
-    self.hintFont = fonts.hint
+    -- Initialize fonts (use locale system for proper scaling)
+    self.titleFont = locale:getFont("title") or fonts.title
+    self.slotFont = locale:getFont("option") or fonts.option
+    self.infoFont = locale:getFont("info") or fonts.info
+    self.hintFont = locale:getFont("hint") or fonts.hint
 
     -- Load slots
     self.slots = save_sys:getAllSlotsInfo()
@@ -43,7 +44,7 @@ function slot_scene:enter(previous, ...)
         table.insert(self.slots, {
             exists = false,
             slot = "back",
-            display_name = "Back to Menu"
+            display_name = locale:t("common.back")
         })
     end
 
@@ -78,7 +79,7 @@ end
 
 -- Override in child classes to return scene title
 function slot_scene:getTitle()
-    return "Select Save Slot"
+    return locale:t("save.select_slot")
 end
 
 -- Common update logic - mouse over detection
@@ -132,11 +133,11 @@ function slot_scene:drawSlot(slot, i, y, is_selected)
         love.graphics.printf(slot.display_name, 0, y + 24, self.virtual_width, "center")
     elseif slot.exists then
         local title_color = is_selected and {1, 0.7, 0, 1} or {1, 1, 1, 1}
-        text_ui:draw("Slot " .. slot.slot, self.virtual_width * 0.2, y, title_color, self.slotFont)
+        text_ui:draw(locale:t("save.slot", {num = slot.slot}), self.virtual_width * 0.2, y, title_color, self.slotFont)
         self:drawSlotInfo(slot, y)
     else
         local new_color = is_selected and {0, 1, 0.5, 1} or {0.7, 0.7, 0.7, 1}
-        text_ui:draw("Slot " .. slot.slot .. " - Empty",
+        text_ui:draw(locale:t("save.slot", {num = slot.slot}) .. " - " .. locale:t("save.empty"),
                      self.virtual_width * 0.2, y + 24, new_color, self.slotFont)
     end
 end

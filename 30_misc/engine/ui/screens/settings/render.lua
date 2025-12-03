@@ -8,6 +8,7 @@ local input = require "engine.core.input"
 local text_ui = require "engine.utils.text"
 local options_module = require "engine.ui.screens.settings.options"
 local colors = require "engine.utils.colors"
+local locale = require "engine.core.locale"
 
 function render:draw(state)
     -- Draw previous scene in background if it exists
@@ -28,8 +29,8 @@ function render:draw(state)
 
     colors:reset()
 
-    -- Title
-    text_ui:drawCentered("Settings", state.layout.title_y, state.virtual_width, colors.for_text_normal, state.titleFont)
+    -- Title (use locale)
+    text_ui:drawCentered(locale:t("settings.title"), state.layout.title_y, state.virtual_width, colors.for_text_normal, state.titleFont)
 
     -- Draw settings options
     for i, option in ipairs(state.options) do

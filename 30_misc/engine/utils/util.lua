@@ -55,8 +55,14 @@ function utils:SaveConfig(APP_CONFIG, sound_settings, input_settings, resolution
                 config_str = config_str .. "    vibration_enabled = " .. tostring(input_settings.vibration_enabled) .. ",\n"
                 config_str = config_str .. "    vibration_strength = " .. tostring(input_settings.vibration_strength) .. ",\n"
                 config_str = config_str .. "    mobile_vibration_enabled = " .. tostring(input_settings.mobile_vibration_enabled) .. "\n"
-                config_str = config_str .. "  }\n"
+                config_str = config_str .. "  },\n"
             end
+
+            -- Add locale settings
+            local locale = require "engine.core.locale"
+            config_str = config_str .. "  locale = {\n"
+            config_str = config_str .. "    language = \"" .. tostring(locale:getLocale()) .. "\"\n"
+            config_str = config_str .. "  }\n"
 
             config_str = config_str .. "}\n"
 
@@ -131,6 +137,12 @@ function utils:SaveConfig(APP_CONFIG, sound_settings, input_settings, resolution
                 file:write("VibrationStrength = " .. tostring(input_settings.vibration_strength) .. "\n")
                 file:write("MobileVibrationEnabled = " .. tostring(input_settings.mobile_vibration_enabled) .. "\n")
             end
+
+            -- Write Locale settings
+            local locale = require "engine.core.locale"
+            file:write("\n")
+            file:write("[Locale]\n")
+            file:write("Language = " .. tostring(locale:getLocale()) .. "\n")
 
             file:close()
             return true

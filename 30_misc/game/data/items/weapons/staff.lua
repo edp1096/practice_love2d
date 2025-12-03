@@ -2,8 +2,10 @@
 -- Staff equipment configuration (pure data - no logic)
 
 local staff = {
-    name = "Staff",
-    description = "A long wooden staff",
+    name = "Wooden Staff",
+    name_key = "items.staff.name",
+    description = "A basic wooden staff",
+    description_key = "items.staff.description",
     size = { width = 1, height = 1 },  -- Grid size: 1x1
     max_stack = 1,  -- Equipment cannot be stacked
 
