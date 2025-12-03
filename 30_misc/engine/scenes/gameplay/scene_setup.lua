@@ -112,7 +112,7 @@ local function setupSavepointLights(savepoints)
 end
 
 -- Initialize gameplay scene (called from gameplay:enter)
-function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_slot, is_new_game, use_persistence)
+function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_slot, is_new_game, use_persistence, use_checkpoint)
     -- Initialize lighting system if not already initialized
     if not lighting.canvas then lighting:init() end
 
@@ -137,9 +137,41 @@ function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_sl
     -- Initialize camera
     scene_setup.initCamera(scene)
 
-    -- Check if we should use persistence data from global storage (e.g., after cutscene)
+    -- Check if we should use checkpoint data (for "Restart from Here")
     local persistence = require "engine.core.persistence"
-    if use_persistence and persistence:hasData() then
+    if use_checkpoint and persistence:hasCheckpoint() then
+        local checkpoint = persistence:getCheckpoint()
+
+        -- Restore world state from checkpoint
+        scene.picked_items = {}
+        scene.killed_enemies = {}
+        scene.transformed_npcs = {}
+        scene.destroyed_props = {}
+        for k, v in pairs(checkpoint.killed_enemies or {}) do scene.killed_enemies[k] = v end
+        for k, v in pairs(checkpoint.picked_items or {}) do scene.picked_items[k] = v end
+        for k, v in pairs(checkpoint.transformed_npcs or {}) do scene.transformed_npcs[k] = v end
+        for k, v in pairs(checkpoint.destroyed_props or {}) do scene.destroyed_props[k] = v end
+        scene.session_map_states = {}
+
+        -- Create save_data from checkpoint
+        local player_data = checkpoint.systems_data.player or {}
+        local checkpoint_save_data = {
+            hp = player_data.health,
+            max_hp = player_data.max_health,
+            inventory = checkpoint.systems_data.inventory,
+            picked_items = scene.picked_items,
+            killed_enemies = scene.killed_enemies,
+            transformed_npcs = scene.transformed_npcs,
+            destroyed_props = scene.destroyed_props,
+            quest_states = checkpoint.systems_data.quest,
+            dialogue_choices = checkpoint.systems_data.dialogue,
+            level_data = checkpoint.systems_data.level,
+        }
+
+        scene_setup.initializeFromSaveOrNew(scene, checkpoint_save_data, false, mapPath, spawn_x, spawn_y, save_slot)
+
+    -- Check if we should use persistence data from global storage (e.g., after cutscene)
+    elseif use_persistence and persistence:hasData() then
         -- Restore persistence from global storage (after cutscene transition)
         persistence:loadToScene(scene)
         scene.session_map_states = {}
@@ -230,6 +262,10 @@ function scene_setup.initializeFromSaveOrNew(scene, save_data, is_new_game, mapP
 
     -- Play BGM
     scene_setup.startBGM(scene, mapPath)
+
+    -- Save checkpoint for "Restart from Here" (after all initialization is complete)
+    local persistence = require "engine.core.persistence"
+    persistence:saveCheckpoint(scene)
 end
 
 -- Initialize camera
@@ -547,6 +583,10 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
 
     scene.current_map_path = new_map_path
 
+    -- Update map entry coordinates for "Restart from Here"
+    scene.map_entry_x = spawn_x
+    scene.map_entry_y = spawn_y
+
     -- Track location for explore quests
     local location_id = scene_setup.getLocationId(new_map_path)
     if location_id then
@@ -642,6 +682,10 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
 
     scene.fade_alpha = 1.0
     scene.is_fading = true
+
+    -- Save checkpoint for "Restart from Here"
+    local persistence = require "engine.core.persistence"
+    persistence:saveCheckpoint(scene)
 end
 
 -- Helper: Get location ID from map path

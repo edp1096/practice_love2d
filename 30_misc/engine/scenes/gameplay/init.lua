@@ -25,8 +25,8 @@ local lighting = require "engine.systems.lighting"
 local constants = require "engine.core.constants"
 
 -- Delegate to scene_setup module
-function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game, use_persistence)
-    scene_setup.enter(self, _, mapPath, spawn_x, spawn_y, save_slot, is_new_game, use_persistence)
+function gameplay:enter(_, mapPath, spawn_x, spawn_y, save_slot, is_new_game, use_persistence, use_checkpoint)
+    scene_setup.enter(self, _, mapPath, spawn_x, spawn_y, save_slot, is_new_game, use_persistence, use_checkpoint)
 end
 
 function gameplay:exit()

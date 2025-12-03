@@ -226,7 +226,7 @@
   </object>
   <object id="33" x="928" y="768" width="32" height="224">
    <properties>
-    <property name="spawn_x" type="float" value="25"/>
+    <property name="spawn_x" type="float" value="70"/>
     <property name="spawn_y" type="float" value="350"/>
     <property name="target_map" value="assets/maps/level1/area3.lua"/>
     <property name="type" value="portal"/>

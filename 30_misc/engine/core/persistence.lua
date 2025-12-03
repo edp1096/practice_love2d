@@ -19,6 +19,9 @@ local persistence = {
 
     -- Registered systems (name -> {save=fn, load=fn})
     registered_systems = {},
+
+    -- Checkpoint data (saved on map entry for "Restart from Here")
+    checkpoint = nil,
 }
 
 -- Register a system for automatic save/load
@@ -131,6 +134,74 @@ function persistence:clear()
     self.current_save_slot = 1
     self.current_map_path = nil
     self.systems_data = {}
+    self.checkpoint = nil
+end
+
+-- ============================================
+-- CHECKPOINT SYSTEM (for "Restart from Here")
+-- Saves state on map entry, restores on death
+-- ============================================
+
+-- Save checkpoint when entering a map
+function persistence:saveCheckpoint(scene)
+    if not scene then return end
+
+    -- Sync from world first
+    local helpers = require "engine.utils.helpers"
+    helpers.syncPersistenceData(scene)
+
+    self.checkpoint = {
+        -- Map info
+        map_path = scene.current_map_path,
+        spawn_x = scene.map_entry_x,
+        spawn_y = scene.map_entry_y,
+        save_slot = scene.current_save_slot,
+
+        -- World state (copy tables)
+        killed_enemies = {},
+        picked_items = {},
+        transformed_npcs = {},
+        destroyed_props = {},
+
+        -- Systems data
+        systems_data = {},
+    }
+
+    -- Copy world state
+    for k, v in pairs(scene.killed_enemies or {}) do
+        self.checkpoint.killed_enemies[k] = v
+    end
+    for k, v in pairs(scene.picked_items or {}) do
+        self.checkpoint.picked_items[k] = v
+    end
+    for k, v in pairs(scene.transformed_npcs or {}) do
+        self.checkpoint.transformed_npcs[k] = v
+    end
+    for k, v in pairs(scene.destroyed_props or {}) do
+        self.checkpoint.destroyed_props[k] = v
+    end
+
+    -- Save all registered systems
+    for name, system in pairs(self.registered_systems) do
+        if system.save then
+            self.checkpoint.systems_data[name] = system.save(scene)
+        end
+    end
+end
+
+-- Check if checkpoint exists
+function persistence:hasCheckpoint()
+    return self.checkpoint ~= nil
+end
+
+-- Get checkpoint data
+function persistence:getCheckpoint()
+    return self.checkpoint
+end
+
+-- Clear checkpoint only
+function persistence:clearCheckpoint()
+    self.checkpoint = nil
 end
 
 -- ============================================

@@ -639,7 +639,7 @@ return {
           rotation = 0,
           visible = true,
           properties = {
-            ["spawn_x"] = 25,
+            ["spawn_x"] = 70,
             ["spawn_y"] = 350,
             ["target_map"] = "assets/maps/level1/area3.lua",
             ["type"] = "portal"

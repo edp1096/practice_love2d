@@ -77,6 +77,8 @@ local function executeAction(action_cfg, previous_scene)
 
   elseif action_cfg.action == "start_new_game" then
     -- Start new game (with intro cutscene and is_new_game flag)
+    local persistence = require "engine.core.persistence"
+    persistence:clear()  -- Clear all persistence data including checkpoint
     local cutscene = require "engine.scenes.cutscene"
     scene_control.switch(cutscene,
       constants.GAME_START.DEFAULT_INTRO_ID,
@@ -91,6 +93,8 @@ local function executeAction(action_cfg, previous_scene)
     if recent_slot then
       local save_data = save_sys:loadGame(recent_slot)
       if save_data then
+        local persistence = require "engine.core.persistence"
+        persistence:clear()  -- Clear old checkpoint before loading save
         local gameplay = require "engine.scenes.gameplay"
         scene_control.switch(gameplay, save_data.map, save_data.x, save_data.y, recent_slot, false)  -- is_new_game = false
       else
@@ -99,14 +103,21 @@ local function executeAction(action_cfg, previous_scene)
     end
 
   elseif action_cfg.action == "restart_current" then
-    local restart_util = require "engine.core.restart"
     local gameplay = require "engine.scenes.gameplay"
     local persistence = require "engine.core.persistence"
-    -- Clear persistence data to prevent old inventory/quest state from leaking
-    persistence:clear()
-    local map, x, y, slot = restart_util:fromCurrentMap(previous_scene)
-    -- Use is_new_game=true to ensure fresh state (starting items only)
-    scene_control.switch(gameplay, map, x, y, slot, true)  -- is_new_game = true
+
+    -- Use checkpoint if available (preserves state from map entry)
+    if persistence:hasCheckpoint() then
+      local checkpoint = persistence:getCheckpoint()
+      -- Switch to gameplay with use_checkpoint flag
+      scene_control.switch(gameplay, checkpoint.map_path, checkpoint.spawn_x, checkpoint.spawn_y,
+                          checkpoint.save_slot, false, false, true)  -- use_checkpoint = true
+    else
+      -- Fallback: restart with starting items only
+      local restart_util = require "engine.core.restart"
+      local map, x, y, slot = restart_util:fromCurrentMap(previous_scene)
+      scene_control.switch(gameplay, map, x, y, slot, true)  -- is_new_game = true
+    end
 
   elseif action_cfg.action == "restart_from_save" then
     local restart_util = require "engine.core.restart"
