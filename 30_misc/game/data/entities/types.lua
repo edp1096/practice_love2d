@@ -56,7 +56,8 @@ entity_types.npcs = {
     -- Common NPCs
     merchant = humans.common.merchant,
     guard = humans.common.guard,
-    villager = humans.common.villager,
+    villager_01 = humans.common.villager_01,
+    villager_02 = humans.common.villager_02,
     elder = humans.common.elder,
 
     -- Erratic (unpredictable behavior: Enemy → NPC or NPC → Enemy)

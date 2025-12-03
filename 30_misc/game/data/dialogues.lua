@@ -21,8 +21,8 @@
 
 local dialogues = {}
 
--- Example: Simple greeting with choices
-dialogues.villager_greeting = {
+-- Villager 01 (passerby_01) - Quest giver, helpful villager
+dialogues.villager_01_greeting = {
     -- NOTE: npc_id is injected at runtime from actual NPC (see input.lua)
     start_node = "start",
     nodes = {
@@ -134,7 +134,60 @@ dialogues.villager_greeting = {
     }
 }
 
--- Example: Merchant (will be expanded to shop in Phase 4)
+-- Villager 02 (passerby_02) - Casual passerby, simpler dialogue
+dialogues.villager_02_greeting = {
+    start_node = "start",
+    nodes = {
+        start = {
+            text = "Oh, hello there!",
+            speaker = "Passerby",
+            next = "main_menu"
+        },
+
+        main_menu = {
+            text = "Nice weather we're having, isn't it?",
+            speaker = "Passerby",
+            choices = {
+                { text = "Yes, it's a beautiful day", next = "agree" },
+                { text = "Do you live around here?", next = "local_info" },
+                { text = "See you around", next = "end" }
+            }
+        },
+
+        agree = {
+            text = "Perfect for a stroll through town. I love days like this.",
+            speaker = "Passerby",
+            choices = {
+                { text = "Me too", next = "end" },
+                { text = "Do you know anything about this area?", next = "local_info" }
+            }
+        },
+
+        local_info = {
+            text = "I'm just passing through, actually. But I've heard there's a merchant nearby with interesting goods.",
+            speaker = "Passerby",
+            choices = {
+                { text = "Thanks for the tip", next = "end" },
+                { text = "Anything else?", next = "more_info" }
+            }
+        },
+
+        more_info = {
+            text = "Well, I did see some slimes in the forest earlier. Be careful if you go that way!",
+            speaker = "Passerby",
+            choices = {
+                { text = "I'll keep that in mind", next = "end" }
+            }
+        },
+
+        ["end"] = {
+            text = "Take care out there!",
+            speaker = "Passerby"
+        }
+    }
+}
+
+-- Merchant (will be expanded to shop in Phase 4)
 dialogues.merchant_greeting = {
     start_node = "start",
     nodes = {

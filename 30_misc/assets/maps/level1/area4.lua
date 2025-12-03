@@ -575,7 +575,7 @@ return {
           visible = true,
           properties = {
             ["id"] = "townsperson_01",
-            ["type"] = "villager"
+            ["type"] = "villager_02"
           }
         }
       }
