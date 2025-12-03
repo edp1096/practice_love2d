@@ -66,6 +66,15 @@ function shop_ui:enter(previous, shop_id, inventory, level_system, item_registry
     self.close_button_padding = ui_constants.CLOSE_BUTTON_PADDING
     self.close_button_hovered = false
 
+    -- Hover states
+    self.hovered_item_index = nil  -- Item list hover
+    self.hovered_qty_left = false  -- Quantity < button
+    self.hovered_qty_right = false -- Quantity > button
+    self.hovered_qty_ok = false    -- OK button area
+    self.hovered_qty_cancel = false -- Cancel button area
+    self.hovered_tab_buy = false   -- Buy tab hover
+    self.hovered_tab_sell = false  -- Sell tab hover
+
     -- Joystick cooldown
     self.joystick_cooldown = 0
     self.joystick_repeat_delay = 0.15
@@ -358,22 +367,38 @@ function shop_ui:draw()
     local buy_x = panel_x + 15
     if self.tab == "buy" then
         love.graphics.setColor(0.3, 0.5, 0.3, 1)
+    elseif self.hovered_tab_buy then
+        love.graphics.setColor(0.28, 0.38, 0.28, 1)
     else
         love.graphics.setColor(0.2, 0.2, 0.25, 1)
     end
     love.graphics.rectangle("fill", buy_x, tab_y, tab_width, tab_height, 4, 4)
-    love.graphics.setColor(1, 1, 1, self.tab == "buy" and 1 or 0.6)
+    -- Tab border on hover
+    if self.hovered_tab_buy and self.tab ~= "buy" then
+        love.graphics.setColor(0.4, 0.6, 0.4, 0.8)
+        love.graphics.setLineWidth(1)
+        love.graphics.rectangle("line", buy_x, tab_y, tab_width, tab_height, 4, 4)
+    end
+    love.graphics.setColor(1, 1, 1, self.tab == "buy" and 1 or (self.hovered_tab_buy and 0.9 or 0.6))
     text_ui:draw("Buy", buy_x + tab_width/2 - self.item_font:getWidth("Buy")/2, tab_y + 4)
 
     -- Sell tab (next to Buy)
     local sell_x = buy_x + tab_width + tab_gap
     if self.tab == "sell" then
         love.graphics.setColor(0.5, 0.3, 0.3, 1)
+    elseif self.hovered_tab_sell then
+        love.graphics.setColor(0.38, 0.28, 0.28, 1)
     else
         love.graphics.setColor(0.2, 0.2, 0.25, 1)
     end
     love.graphics.rectangle("fill", sell_x, tab_y, tab_width, tab_height, 4, 4)
-    love.graphics.setColor(1, 1, 1, self.tab == "sell" and 1 or 0.6)
+    -- Tab border on hover
+    if self.hovered_tab_sell and self.tab ~= "sell" then
+        love.graphics.setColor(0.6, 0.4, 0.4, 0.8)
+        love.graphics.setLineWidth(1)
+        love.graphics.rectangle("line", sell_x, tab_y, tab_width, tab_height, 4, 4)
+    end
+    love.graphics.setColor(1, 1, 1, self.tab == "sell" and 1 or (self.hovered_tab_sell and 0.9 or 0.6))
     text_ui:draw("Sell", sell_x + tab_width/2 - self.item_font:getWidth("Sell")/2, tab_y + 4)
 
     -- Draw gold (right side, same row as tabs)
@@ -398,6 +423,12 @@ function shop_ui:draw()
             local idx = i + self.scroll_offset
             local item = items[idx]
             local item_y = list_y + (i - 1) * item_height
+
+            -- Hover highlight (lighter, behind selection)
+            if idx == self.hovered_item_index and idx ~= self.selected_index then
+                love.graphics.setColor(0.25, 0.3, 0.35, 0.6)
+                love.graphics.rectangle("fill", panel_x + 15, item_y + 2, PANEL_WIDTH - 30, item_height - 4, 3, 3)
+            end
 
             -- Selection highlight
             if idx == self.selected_index then
@@ -470,8 +501,23 @@ function shop_ui:draw()
 
         -- Quantity selector
         local qty_y = dlg_y + 45
-        love.graphics.setColor(0.7, 0.7, 0.7, 1)
+        local arrow_width = 30
+        local arrow_height = 24
+
+        -- Left arrow with hover
+        if self.hovered_qty_left then
+            love.graphics.setColor(0.4, 0.5, 0.6, 0.8)
+            love.graphics.rectangle("fill", dlg_x + 30, qty_y - 2, arrow_width, arrow_height, 3, 3)
+        end
+        love.graphics.setColor(self.hovered_qty_left and 1 or 0.7, self.hovered_qty_left and 1 or 0.7, self.hovered_qty_left and 1 or 0.7, 1)
         love.graphics.print("<", dlg_x + 40, qty_y)
+
+        -- Right arrow with hover
+        if self.hovered_qty_right then
+            love.graphics.setColor(0.4, 0.5, 0.6, 0.8)
+            love.graphics.rectangle("fill", dlg_x + DLG_WIDTH - 60, qty_y - 2, arrow_width, arrow_height, 3, 3)
+        end
+        love.graphics.setColor(self.hovered_qty_right and 1 or 0.7, self.hovered_qty_right and 1 or 0.7, self.hovered_qty_right and 1 or 0.7, 1)
         love.graphics.print(">", dlg_x + DLG_WIDTH - 50, qty_y)
 
         love.graphics.setColor(1, 1, 1, 1)
@@ -494,11 +540,36 @@ function shop_ui:draw()
         local price_width = self.item_font:getWidth(price_text)
         love.graphics.print(price_text, dlg_x + (DLG_WIDTH - price_width) / 2, dlg_y + 70)
 
-        -- Hint (bottom, centered)
-        love.graphics.setColor(0.5, 0.5, 0.5, 1)
-        local hint_text = "[A] OK  [B] Cancel"
-        local hint_width = self.item_font:getWidth(hint_text)
-        love.graphics.print(hint_text, dlg_x + (DLG_WIDTH - hint_width) / 2, dlg_y + 95)
+        -- Action buttons (bottom)
+        local btn_y = dlg_y + 90
+        local btn_width = 70
+        local btn_height = 22
+        local btn_gap = 20
+        local btns_total_width = btn_width * 2 + btn_gap
+        local ok_x = dlg_x + (DLG_WIDTH - btns_total_width) / 2
+        local cancel_x = ok_x + btn_width + btn_gap
+
+        -- OK button
+        if self.hovered_qty_ok then
+            love.graphics.setColor(0.3, 0.5, 0.3, 0.9)
+        else
+            love.graphics.setColor(0.25, 0.35, 0.25, 0.7)
+        end
+        love.graphics.rectangle("fill", ok_x, btn_y, btn_width, btn_height, 3, 3)
+        love.graphics.setColor(self.hovered_qty_ok and 1 or 0.8, 1, self.hovered_qty_ok and 1 or 0.8, 1)
+        local ok_text = "OK"
+        love.graphics.print(ok_text, ok_x + (btn_width - self.item_font:getWidth(ok_text)) / 2, btn_y + 4)
+
+        -- Cancel button
+        if self.hovered_qty_cancel then
+            love.graphics.setColor(0.5, 0.3, 0.3, 0.9)
+        else
+            love.graphics.setColor(0.35, 0.25, 0.25, 0.7)
+        end
+        love.graphics.rectangle("fill", cancel_x, btn_y, btn_width, btn_height, 3, 3)
+        love.graphics.setColor(1, self.hovered_qty_cancel and 1 or 0.8, self.hovered_qty_cancel and 1 or 0.8, 1)
+        local cancel_text = "Cancel"
+        love.graphics.print(cancel_text, cancel_x + (btn_width - self.item_font:getWidth(cancel_text)) / 2, btn_y + 4)
     end
 
     -- Draw toast message
@@ -545,15 +616,84 @@ function shop_ui:mousemoved(x, y)
     local vx, vy = coords:physicalToVirtual(x, y)
     local vw, vh = display:GetVirtualDimensions()
 
-    -- Check close button hover
     local panel_x = (vw - PANEL_WIDTH) / 2
     local panel_y = (vh - PANEL_HEIGHT) / 2
 
+    -- Check close button hover
     local close_x = panel_x + PANEL_WIDTH - self.close_button_size - self.close_button_padding
     local close_y = panel_y + self.close_button_padding
-
     self.close_button_hovered = vx >= close_x and vx <= close_x + self.close_button_size
         and vy >= close_y and vy <= close_y + self.close_button_size
+
+    -- Quantity mode hover detection
+    if self.quantity_mode then
+        local dlg_x = panel_x + (PANEL_WIDTH - DLG_WIDTH) / 2
+        local dlg_y = panel_y + (PANEL_HEIGHT - DLG_HEIGHT) / 2
+        local qty_y = dlg_y + 45
+        local arrow_width = 30
+        local arrow_height = 24
+
+        -- Left arrow hover
+        self.hovered_qty_left = vx >= dlg_x + 30 and vx <= dlg_x + 30 + arrow_width
+            and vy >= qty_y - 2 and vy <= qty_y - 2 + arrow_height
+
+        -- Right arrow hover
+        self.hovered_qty_right = vx >= dlg_x + DLG_WIDTH - 60 and vx <= dlg_x + DLG_WIDTH - 60 + arrow_width
+            and vy >= qty_y - 2 and vy <= qty_y - 2 + arrow_height
+
+        -- OK/Cancel button hover
+        local btn_y = dlg_y + 90
+        local btn_width = 70
+        local btn_height = 22
+        local btn_gap = 20
+        local btns_total_width = btn_width * 2 + btn_gap
+        local ok_x = dlg_x + (DLG_WIDTH - btns_total_width) / 2
+        local cancel_x = ok_x + btn_width + btn_gap
+
+        self.hovered_qty_ok = vx >= ok_x and vx <= ok_x + btn_width
+            and vy >= btn_y and vy <= btn_y + btn_height
+        self.hovered_qty_cancel = vx >= cancel_x and vx <= cancel_x + btn_width
+            and vy >= btn_y and vy <= btn_y + btn_height
+
+        -- Clear item hover in quantity mode
+        self.hovered_item_index = nil
+    else
+        -- Clear quantity hover states
+        self.hovered_qty_left = false
+        self.hovered_qty_right = false
+        self.hovered_qty_ok = false
+        self.hovered_qty_cancel = false
+
+        -- Tab hover detection
+        local tab_y = panel_y + 50
+        local tab_width = 70
+        local tab_height = 24
+        local tab_gap = 8
+        local buy_x = panel_x + 15
+        local sell_x = buy_x + tab_width + tab_gap
+
+        self.hovered_tab_buy = vx >= buy_x and vx <= buy_x + tab_width
+            and vy >= tab_y and vy <= tab_y + tab_height
+        self.hovered_tab_sell = vx >= sell_x and vx <= sell_x + tab_width
+            and vy >= tab_y and vy <= tab_y + tab_height
+
+        -- Item list hover detection
+        local list_y = tab_y + 35
+        local item_height = 26
+        local items = self:getCurrentItems()
+
+        self.hovered_item_index = nil
+        for i = 1, math.min(self.max_visible_items, #items - self.scroll_offset) do
+            local idx = i + self.scroll_offset
+            local item_y = list_y + (i - 1) * item_height
+
+            if vx >= panel_x + 15 and vx <= panel_x + PANEL_WIDTH - 15
+                and vy >= item_y and vy <= item_y + item_height then
+                self.hovered_item_index = idx
+                break
+            end
+        end
+    end
 end
 
 function shop_ui:mousepressed(x, y, button)
@@ -567,25 +707,29 @@ function shop_ui:mousepressed(x, y, button)
 
     -- Quantity mode mouse handling
     if self.quantity_mode then
-        local dlg_x = panel_x + (PANEL_WIDTH - DLG_WIDTH) / 2
-        local dlg_y = panel_y + (PANEL_HEIGHT - DLG_HEIGHT) / 2
-
         -- Left arrow click
-        if vx >= dlg_x + 30 and vx <= dlg_x + 60 and vy >= dlg_y + 40 and vy <= dlg_y + 60 then
+        if self.hovered_qty_left then
             self:adjustQuantity(-1)
             return
         end
         -- Right arrow click
-        if vx >= dlg_x + DLG_WIDTH - 60 and vx <= dlg_x + DLG_WIDTH - 30 and vy >= dlg_y + 40 and vy <= dlg_y + 60 then
+        if self.hovered_qty_right then
             self:adjustQuantity(1)
             return
         end
-        -- OK button area (center bottom)
-        if vx >= dlg_x + 20 and vx <= dlg_x + DLG_WIDTH - 20 and vy >= dlg_y + 85 and vy <= dlg_y + 110 then
+        -- OK button click
+        if self.hovered_qty_ok then
             self:executeTransaction()
             return
         end
+        -- Cancel button click
+        if self.hovered_qty_cancel then
+            self:cancelQuantityMode()
+            return
+        end
         -- Cancel - click outside dialog
+        local dlg_x = panel_x + (PANEL_WIDTH - DLG_WIDTH) / 2
+        local dlg_y = panel_y + (PANEL_HEIGHT - DLG_HEIGHT) / 2
         if vx < dlg_x or vx > dlg_x + DLG_WIDTH or vy < dlg_y or vy > dlg_y + DLG_HEIGHT then
             self:cancelQuantityMode()
             return
@@ -599,25 +743,18 @@ function shop_ui:mousepressed(x, y, button)
         return
     end
 
-    -- Tab click areas (left-aligned)
-    local tab_y = panel_y + 50
-    local tab_width = 70
-    local tab_height = 24
-    local tab_gap = 8
-
-    local buy_x = panel_x + 15
-    if vx >= buy_x and vx <= buy_x + tab_width and vy >= tab_y and vy <= tab_y + tab_height then
+    -- Tab click using hover state
+    if self.hovered_tab_buy then
         self:switchTab("buy")
         return
     end
-
-    local sell_x = buy_x + tab_width + tab_gap
-    if vx >= sell_x and vx <= sell_x + tab_width and vy >= tab_y and vy <= tab_y + tab_height then
+    if self.hovered_tab_sell then
         self:switchTab("sell")
         return
     end
 
     -- Item clicks
+    local tab_y = panel_y + 50
     local list_y = tab_y + 35
     local item_height = 26
     local items = self:getCurrentItems()
