@@ -191,6 +191,37 @@ dialogues.shopkeeper = {
 }
 ```
 
+### 상점 추가
+1. `game/data/shops.lua`에 추가:
+```lua
+shops.general_store = {
+  name = "General Store",
+  items = {
+    { type = "small_potion", price = 30, stock = 10 },
+    { type = "large_potion", price = 80, stock = 5 }
+  },
+  sell_rate = 0.5  -- 구매가의 50%
+}
+```
+
+2. 대화에서 `open_shop` 액션으로 상점 열기:
+```lua
+nodes = {
+  shop = {
+    text = "구경하세요!",
+    actions = { { type = "open_shop", shop_id = "general_store" } }
+  }
+}
+```
+
+**상점 UI 조작:**
+- **Tab / LB/RB** - Buy/Sell 탭 전환
+- **위/아래** - 아이템 선택
+- **Enter/A** - 수량 선택 다이얼로그
+- **좌/우** - 수량 조절 (±1)
+- **위/아래** - 수량 조절 (±10)
+- **ESC/B** - 닫기
+
 ---
 
 ## 문서
@@ -235,4 +266,4 @@ cd web_build && lua server.lua 8080
 
 **프레임워크:** LÖVE 11.5 + Lua 5.1
 **아키텍처:** Engine/Game 분리 + 데이터 기반
-**최종 업데이트:** 2025-12-01
+**최종 업데이트:** 2025-12-03

@@ -14,6 +14,12 @@ local ui_constants = require "engine.ui.constants"
 local coords = require "engine.core.coords"
 local shop_system = require "engine.systems.shop"
 
+-- Panel dimensions (shared constants)
+local PANEL_WIDTH = 320
+local PANEL_HEIGHT = 300
+local DLG_WIDTH = 220
+local DLG_HEIGHT = 120
+
 -- Safe sound wrapper
 local function play_sound(category, name)
     if sound and sound.playSFX then
@@ -322,41 +328,34 @@ function shop_ui:draw()
     love.graphics.setColor(0, 0, 0, 0.7)
     love.graphics.rectangle("fill", 0, 0, vw, vh)
 
-    -- Panel dimensions
-    local panel_width = 300
-    local panel_height = 280
-    local panel_x = (vw - panel_width) / 2
-    local panel_y = (vh - panel_height) / 2
+    -- Panel dimensions (use constants)
+    local panel_x = (vw - PANEL_WIDTH) / 2
+    local panel_y = (vh - PANEL_HEIGHT) / 2
 
     -- Draw panel background
     love.graphics.setColor(colors.for_panel_bg or {0.15, 0.15, 0.2, 0.95})
-    love.graphics.rectangle("fill", panel_x, panel_y, panel_width, panel_height, 8, 8)
+    love.graphics.rectangle("fill", panel_x, panel_y, PANEL_WIDTH, PANEL_HEIGHT, 8, 8)
 
     -- Draw panel border
     love.graphics.setColor(colors.for_panel_border or {0.4, 0.4, 0.5, 1})
     love.graphics.setLineWidth(2)
-    love.graphics.rectangle("line", panel_x, panel_y, panel_width, panel_height, 8, 8)
+    love.graphics.rectangle("line", panel_x, panel_y, PANEL_WIDTH, PANEL_HEIGHT, 8, 8)
 
-    -- Draw title
+    -- Draw title (centered, top area)
     love.graphics.setFont(self.title_font)
     love.graphics.setColor(1, 1, 1, 1)
     local title = self.shop_data.name or "Shop"
     local title_width = self.title_font:getWidth(title)
-    love.graphics.print(title, panel_x + (panel_width - title_width) / 2, panel_y + 10)
+    love.graphics.print(title, panel_x + (PANEL_WIDTH - title_width) / 2, panel_y + 10)
 
-    -- Draw gold
-    love.graphics.setFont(self.item_font)
-    love.graphics.setColor(1, 0.85, 0, 1)
-    local gold_text = "Gold: " .. self.level_system:getGold()
-    love.graphics.print(gold_text, panel_x + panel_width - self.item_font:getWidth(gold_text) - 15, panel_y + 12)
+    -- Draw tabs (left-aligned, moved down)
+    local tab_y = panel_y + 50
+    local tab_width = 70
+    local tab_height = 24
+    local tab_gap = 8
 
-    -- Draw tabs
-    local tab_y = panel_y + 40
-    local tab_width = 80
-    local tab_height = 25
-
-    -- Buy tab
-    local buy_x = panel_x + 30
+    -- Buy tab (left)
+    local buy_x = panel_x + 15
     if self.tab == "buy" then
         love.graphics.setColor(0.3, 0.5, 0.3, 1)
     else
@@ -364,10 +363,10 @@ function shop_ui:draw()
     end
     love.graphics.rectangle("fill", buy_x, tab_y, tab_width, tab_height, 4, 4)
     love.graphics.setColor(1, 1, 1, self.tab == "buy" and 1 or 0.6)
-    text_ui:draw("Buy", buy_x + tab_width/2 - self.item_font:getWidth("Buy")/2, tab_y + 5)
+    text_ui:draw("Buy", buy_x + tab_width/2 - self.item_font:getWidth("Buy")/2, tab_y + 4)
 
-    -- Sell tab
-    local sell_x = panel_x + panel_width - tab_width - 30
+    -- Sell tab (next to Buy)
+    local sell_x = buy_x + tab_width + tab_gap
     if self.tab == "sell" then
         love.graphics.setColor(0.5, 0.3, 0.3, 1)
     else
@@ -375,12 +374,18 @@ function shop_ui:draw()
     end
     love.graphics.rectangle("fill", sell_x, tab_y, tab_width, tab_height, 4, 4)
     love.graphics.setColor(1, 1, 1, self.tab == "sell" and 1 or 0.6)
-    text_ui:draw("Sell", sell_x + tab_width/2 - self.item_font:getWidth("Sell")/2, tab_y + 5)
+    text_ui:draw("Sell", sell_x + tab_width/2 - self.item_font:getWidth("Sell")/2, tab_y + 4)
 
-    -- Draw items list
+    -- Draw gold (right side, same row as tabs)
+    love.graphics.setFont(self.item_font)
+    love.graphics.setColor(1, 0.85, 0, 1)
+    local gold_text = "Gold: " .. self.level_system:getGold()
+    love.graphics.print(gold_text, panel_x + PANEL_WIDTH - self.item_font:getWidth(gold_text) - 15, tab_y + 4)
+
+    -- Draw items list (moved down)
     local list_y = tab_y + 35
-    local list_height = 150
-    local item_height = 24
+    local list_height = 160
+    local item_height = 26
 
     local items = self:getCurrentItems()
 
@@ -397,44 +402,47 @@ function shop_ui:draw()
             -- Selection highlight
             if idx == self.selected_index then
                 love.graphics.setColor(0.3, 0.4, 0.5, 0.8)
-                love.graphics.rectangle("fill", panel_x + 15, item_y, panel_width - 30, item_height - 2, 3, 3)
+                love.graphics.rectangle("fill", panel_x + 15, item_y + 2, PANEL_WIDTH - 30, item_height - 4, 3, 3)
             end
+
+            -- Text vertical offset for centering in item_height
+            local text_y = item_y + 5
 
             -- Item name
             love.graphics.setColor(1, 1, 1, 1)
             local name = self:getItemName(item.type)
-            love.graphics.print(name, panel_x + 20, item_y + 3)
+            love.graphics.print(name, panel_x + 20, text_y)
 
             -- Price/quantity
             if self.tab == "buy" then
                 -- Show price and stock
                 love.graphics.setColor(1, 0.85, 0, 1)
                 local price_text = item.price .. "G"
-                love.graphics.print(price_text, panel_x + panel_width - 80, item_y + 3)
+                love.graphics.print(price_text, panel_x + PANEL_WIDTH - 85, text_y)
 
                 love.graphics.setColor(0.7, 0.7, 0.7, 1)
                 local stock_text = "x" .. item.stock
-                love.graphics.print(stock_text, panel_x + panel_width - 35, item_y + 3)
+                love.graphics.print(stock_text, panel_x + PANEL_WIDTH - 40, text_y)
             else
                 -- Show sell price and quantity
                 love.graphics.setColor(0.5, 0.8, 0.5, 1)
                 local sell_text = "+" .. item.sell_price .. "G"
-                love.graphics.print(sell_text, panel_x + panel_width - 80, item_y + 3)
+                love.graphics.print(sell_text, panel_x + PANEL_WIDTH - 85, text_y)
 
                 love.graphics.setColor(0.7, 0.7, 0.7, 1)
                 local qty_text = "x" .. item.quantity
-                love.graphics.print(qty_text, panel_x + panel_width - 35, item_y + 3)
+                love.graphics.print(qty_text, panel_x + PANEL_WIDTH - 40, text_y)
             end
         end
 
         -- Scroll indicators
         if self.scroll_offset > 0 then
             love.graphics.setColor(1, 1, 1, 0.5)
-            love.graphics.print("▲", panel_x + panel_width/2 - 5, list_y - 12)
+            love.graphics.print("^", panel_x + PANEL_WIDTH/2 - 3, list_y - 12)
         end
         if self.scroll_offset + self.max_visible_items < #items then
             love.graphics.setColor(1, 1, 1, 0.5)
-            love.graphics.print("▼", panel_x + panel_width/2 - 5, list_y + list_height - 5)
+            love.graphics.print("v", panel_x + PANEL_WIDTH/2 - 3, list_y + list_height - 5)
         end
     end
 
@@ -442,80 +450,92 @@ function shop_ui:draw()
     if self.quantity_mode and self.quantity_item then
         -- Dim background
         love.graphics.setColor(0, 0, 0, 0.5)
-        love.graphics.rectangle("fill", panel_x, panel_y, panel_width, panel_height, 8, 8)
+        love.graphics.rectangle("fill", panel_x, panel_y, PANEL_WIDTH, PANEL_HEIGHT, 8, 8)
 
-        -- Quantity dialog
-        local dlg_width = 200
-        local dlg_height = 100
-        local dlg_x = panel_x + (panel_width - dlg_width) / 2
-        local dlg_y = panel_y + (panel_height - dlg_height) / 2
+        -- Quantity dialog (use constants)
+        local dlg_x = panel_x + (PANEL_WIDTH - DLG_WIDTH) / 2
+        local dlg_y = panel_y + (PANEL_HEIGHT - DLG_HEIGHT) / 2
 
         love.graphics.setColor(0.2, 0.2, 0.25, 1)
-        love.graphics.rectangle("fill", dlg_x, dlg_y, dlg_width, dlg_height, 6, 6)
+        love.graphics.rectangle("fill", dlg_x, dlg_y, DLG_WIDTH, DLG_HEIGHT, 6, 6)
         love.graphics.setColor(0.5, 0.5, 0.6, 1)
         love.graphics.setLineWidth(2)
-        love.graphics.rectangle("line", dlg_x, dlg_y, dlg_width, dlg_height, 6, 6)
+        love.graphics.rectangle("line", dlg_x, dlg_y, DLG_WIDTH, DLG_HEIGHT, 6, 6)
 
         -- Item name
         love.graphics.setColor(1, 1, 1, 1)
         local item_name = self:getItemName(self.quantity_item.type)
         local name_width = self.item_font:getWidth(item_name)
-        love.graphics.print(item_name, dlg_x + (dlg_width - name_width) / 2, dlg_y + 10)
+        love.graphics.print(item_name, dlg_x + (DLG_WIDTH - name_width) / 2, dlg_y + 12)
 
         -- Quantity selector
-        local qty_y = dlg_y + 40
+        local qty_y = dlg_y + 45
         love.graphics.setColor(0.7, 0.7, 0.7, 1)
-        love.graphics.print("◀", dlg_x + 30, qty_y)
-        love.graphics.print("▶", dlg_x + dlg_width - 45, qty_y)
+        love.graphics.print("<", dlg_x + 40, qty_y)
+        love.graphics.print(">", dlg_x + DLG_WIDTH - 50, qty_y)
 
         love.graphics.setColor(1, 1, 1, 1)
         local qty_text = tostring(self.quantity)
         local qty_width = self.item_font:getWidth(qty_text)
-        love.graphics.print(qty_text, dlg_x + (dlg_width - qty_width) / 2, qty_y)
+        love.graphics.print(qty_text, dlg_x + (DLG_WIDTH - qty_width) / 2, qty_y)
 
-        -- Total price
+        -- Total price (centered)
         local total_price
+        local price_text
         if self.tab == "buy" then
             total_price = self.quantity_item.price * self.quantity
+            price_text = "Total: " .. total_price .. "G"
             love.graphics.setColor(1, 0.85, 0, 1)
-            love.graphics.print("Total: " .. total_price .. "G", dlg_x + 20, dlg_y + 65)
         else
             total_price = (self.quantity_item.sell_price or 0) * self.quantity
+            price_text = "Get: +" .. total_price .. "G"
             love.graphics.setColor(0.5, 0.8, 0.5, 1)
-            love.graphics.print("Get: +" .. total_price .. "G", dlg_x + 20, dlg_y + 65)
         end
+        local price_width = self.item_font:getWidth(price_text)
+        love.graphics.print(price_text, dlg_x + (DLG_WIDTH - price_width) / 2, dlg_y + 70)
 
-        -- Hint
+        -- Hint (bottom, centered)
         love.graphics.setColor(0.5, 0.5, 0.5, 1)
-        love.graphics.print("[A] OK  [B] Cancel", dlg_x + dlg_width - 110, dlg_y + 65)
+        local hint_text = "[A] OK  [B] Cancel"
+        local hint_width = self.item_font:getWidth(hint_text)
+        love.graphics.print(hint_text, dlg_x + (DLG_WIDTH - hint_width) / 2, dlg_y + 95)
     end
 
-    -- Draw message
+    -- Draw toast message
     if self.message and not self.quantity_mode then
-        love.graphics.setColor(0, 0, 0, 0.8)
-        local msg_width = self.item_font:getWidth(self.message) + 20
-        local msg_x = panel_x + (panel_width - msg_width) / 2
-        local msg_y = panel_y + panel_height - 35
-        love.graphics.rectangle("fill", msg_x, msg_y, msg_width, 22, 4, 4)
+        local msg_width = self.item_font:getWidth(self.message) + 24
+        local msg_height = 24
+        local msg_x = panel_x + (PANEL_WIDTH - msg_width) / 2
+        local msg_y = panel_y + PANEL_HEIGHT - 50
 
+        -- Background (more opaque)
+        love.graphics.setColor(0.1, 0.1, 0.15, 0.95)
+        love.graphics.rectangle("fill", msg_x, msg_y, msg_width, msg_height, 4, 4)
+        -- Border
+        love.graphics.setColor(0.4, 0.4, 0.5, 1)
+        love.graphics.setLineWidth(1)
+        love.graphics.rectangle("line", msg_x, msg_y, msg_width, msg_height, 4, 4)
+
+        -- Text
         love.graphics.setColor(1, 1, 0.5, 1)
-        love.graphics.print(self.message, msg_x + 10, msg_y + 4)
+        love.graphics.print(self.message, msg_x + 12, msg_y + 5)
     end
 
     -- Draw close button (only when not in quantity mode)
     if not self.quantity_mode then
-        local close_x = panel_x + panel_width - self.close_button_size - self.close_button_padding
+        local close_x = panel_x + PANEL_WIDTH - self.close_button_size - self.close_button_padding
         local close_y = panel_y + self.close_button_padding
         shapes:drawCloseButton(close_x, close_y, self.close_button_size, self.close_button_hovered)
     end
 
-    -- Draw controls hint
+    -- Draw controls hint (inside panel with padding)
     love.graphics.setColor(0.5, 0.5, 0.5, 1)
     love.graphics.setFont(self.item_font)
+    local hint_y = panel_y + PANEL_HEIGHT - 25
     if self.quantity_mode then
-        love.graphics.print("[←→] Qty  [↑↓] ±10  [A] OK  [B] Cancel", panel_x + 15, panel_y + panel_height - 18)
+        love.graphics.print("[<>] Qty  [^v] +/-10  [A] OK  [B] Cancel", panel_x + 15, hint_y)
     else
-        love.graphics.print("[A] Select  [B] Close  [LB/RB] Tab", panel_x + 20, panel_y + panel_height - 18)
+        love.graphics.print("[A] Select  [B] Close  [LB/RB] Tab", panel_x + 20, hint_y)
     end
 
     display:Detach()
@@ -526,12 +546,10 @@ function shop_ui:mousemoved(x, y)
     local vw, vh = display:GetVirtualDimensions()
 
     -- Check close button hover
-    local panel_width = 300
-    local panel_height = 280
-    local panel_x = (vw - panel_width) / 2
-    local panel_y = (vh - panel_height) / 2
+    local panel_x = (vw - PANEL_WIDTH) / 2
+    local panel_y = (vh - PANEL_HEIGHT) / 2
 
-    local close_x = panel_x + panel_width - self.close_button_size - self.close_button_padding
+    local close_x = panel_x + PANEL_WIDTH - self.close_button_size - self.close_button_padding
     local close_y = panel_y + self.close_button_padding
 
     self.close_button_hovered = vx >= close_x and vx <= close_x + self.close_button_size
@@ -544,35 +562,31 @@ function shop_ui:mousepressed(x, y, button)
     local vx, vy = coords:physicalToVirtual(x, y)
     local vw, vh = display:GetVirtualDimensions()
 
-    local panel_width = 300
-    local panel_height = 280
-    local panel_x = (vw - panel_width) / 2
-    local panel_y = (vh - panel_height) / 2
+    local panel_x = (vw - PANEL_WIDTH) / 2
+    local panel_y = (vh - PANEL_HEIGHT) / 2
 
     -- Quantity mode mouse handling
     if self.quantity_mode then
-        local dlg_width = 200
-        local dlg_height = 100
-        local dlg_x = panel_x + (panel_width - dlg_width) / 2
-        local dlg_y = panel_y + (panel_height - dlg_height) / 2
+        local dlg_x = panel_x + (PANEL_WIDTH - DLG_WIDTH) / 2
+        local dlg_y = panel_y + (PANEL_HEIGHT - DLG_HEIGHT) / 2
 
         -- Left arrow click
-        if vx >= dlg_x + 20 and vx <= dlg_x + 50 and vy >= dlg_y + 35 and vy <= dlg_y + 55 then
+        if vx >= dlg_x + 30 and vx <= dlg_x + 60 and vy >= dlg_y + 40 and vy <= dlg_y + 60 then
             self:adjustQuantity(-1)
             return
         end
         -- Right arrow click
-        if vx >= dlg_x + dlg_width - 50 and vx <= dlg_x + dlg_width - 20 and vy >= dlg_y + 35 and vy <= dlg_y + 55 then
+        if vx >= dlg_x + DLG_WIDTH - 60 and vx <= dlg_x + DLG_WIDTH - 30 and vy >= dlg_y + 40 and vy <= dlg_y + 60 then
             self:adjustQuantity(1)
             return
         end
-        -- OK button area (bottom left)
-        if vx >= dlg_x + 10 and vx <= dlg_x + 80 and vy >= dlg_y + 60 and vy <= dlg_y + 80 then
+        -- OK button area (center bottom)
+        if vx >= dlg_x + 20 and vx <= dlg_x + DLG_WIDTH - 20 and vy >= dlg_y + 85 and vy <= dlg_y + 110 then
             self:executeTransaction()
             return
         end
         -- Cancel - click outside dialog
-        if vx < dlg_x or vx > dlg_x + dlg_width or vy < dlg_y or vy > dlg_y + dlg_height then
+        if vx < dlg_x or vx > dlg_x + DLG_WIDTH or vy < dlg_y or vy > dlg_y + DLG_HEIGHT then
             self:cancelQuantityMode()
             return
         end
@@ -585,18 +599,19 @@ function shop_ui:mousepressed(x, y, button)
         return
     end
 
-    -- Tab clicks
-    local tab_y = panel_y + 40
-    local tab_width = 80
-    local tab_height = 25
+    -- Tab click areas (left-aligned)
+    local tab_y = panel_y + 50
+    local tab_width = 70
+    local tab_height = 24
+    local tab_gap = 8
 
-    local buy_x = panel_x + 30
+    local buy_x = panel_x + 15
     if vx >= buy_x and vx <= buy_x + tab_width and vy >= tab_y and vy <= tab_y + tab_height then
         self:switchTab("buy")
         return
     end
 
-    local sell_x = panel_x + panel_width - tab_width - 30
+    local sell_x = buy_x + tab_width + tab_gap
     if vx >= sell_x and vx <= sell_x + tab_width and vy >= tab_y and vy <= tab_y + tab_height then
         self:switchTab("sell")
         return
@@ -604,14 +619,14 @@ function shop_ui:mousepressed(x, y, button)
 
     -- Item clicks
     local list_y = tab_y + 35
-    local item_height = 24
+    local item_height = 26
     local items = self:getCurrentItems()
 
     for i = 1, math.min(self.max_visible_items, #items - self.scroll_offset) do
         local idx = i + self.scroll_offset
         local item_y = list_y + (i - 1) * item_height
 
-        if vx >= panel_x + 15 and vx <= panel_x + panel_width - 15
+        if vx >= panel_x + 15 and vx <= panel_x + PANEL_WIDTH - 15
             and vy >= item_y and vy <= item_y + item_height then
             self.selected_index = idx
             self:confirmSelection()

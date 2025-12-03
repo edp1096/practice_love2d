@@ -191,6 +191,37 @@ dialogues.shopkeeper = {
 }
 ```
 
+### Add Shop
+1. Add to `game/data/shops.lua`:
+```lua
+shops.general_store = {
+  name = "General Store",
+  items = {
+    { type = "small_potion", price = 30, stock = 10 },
+    { type = "large_potion", price = 80, stock = 5 }
+  },
+  sell_rate = 0.5  -- 50% of buy price
+}
+```
+
+2. Open shop from dialogue using `open_shop` action:
+```lua
+nodes = {
+  shop = {
+    text = "Take a look!",
+    actions = { { type = "open_shop", shop_id = "general_store" } }
+  }
+}
+```
+
+**Shop UI Controls:**
+- **Tab / LB/RB** - Switch Buy/Sell tabs
+- **Up/Down** - Select item
+- **Enter/A** - Open quantity dialog
+- **Left/Right** - Adjust quantity (±1)
+- **Up/Down** - Adjust quantity (±10)
+- **ESC/B** - Close
+
 ---
 
 ## Documentation
@@ -235,4 +266,4 @@ Open: `http://localhost:8080`
 
 **Framework:** LÖVE 11.5 + Lua 5.1
 **Architecture:** Engine/Game Separation + Data-Driven
-**Last Updated:** 2025-12-01
+**Last Updated:** 2025-12-03

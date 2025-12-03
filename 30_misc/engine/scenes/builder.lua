@@ -101,12 +101,19 @@ local function executeAction(action_cfg, previous_scene)
   elseif action_cfg.action == "restart_current" then
     local restart_util = require "engine.core.restart"
     local gameplay = require "engine.scenes.gameplay"
+    local persistence = require "engine.core.persistence"
+    -- Clear persistence data to prevent old inventory/quest state from leaking
+    persistence:clear()
     local map, x, y, slot = restart_util:fromCurrentMap(previous_scene)
-    scene_control.switch(gameplay, map, x, y, slot, false)  -- is_new_game = false
+    -- Use is_new_game=true to ensure fresh state (starting items only)
+    scene_control.switch(gameplay, map, x, y, slot, true)  -- is_new_game = true
 
   elseif action_cfg.action == "restart_from_save" then
     local restart_util = require "engine.core.restart"
     local gameplay = require "engine.scenes.gameplay"
+    local persistence = require "engine.core.persistence"
+    -- Clear persistence data to load fresh from save file
+    persistence:clear()
     local map, x, y, slot = restart_util:fromLastSave(previous_scene)
     scene_control.switch(gameplay, map, x, y, slot, false)  -- is_new_game = false
   end
