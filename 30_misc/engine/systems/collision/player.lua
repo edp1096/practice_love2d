@@ -2,6 +2,7 @@
 -- Player collider creation
 
 local constants = require "engine.core.constants"
+local helpers = require "engine.systems.collision.helpers"
 
 local player_collision = {}
 
@@ -12,31 +13,22 @@ function player_collision.create(player, physicsWorld)
     end
 
     -- Main collider (combat, platformer physics)
-    player.collider = physicsWorld:newBSGRectangleCollider(
+    player.collider = helpers.createBSGCollider(
+        physicsWorld,
         player.x, player.y,
         player.collider_width, player.collider_height,
-        10
+        10, constants.COLLISION_CLASSES.PLAYER, nil
     )
-    player.collider:setFixedRotation(true)
-    player.collider:setCollisionClass(constants.COLLISION_CLASSES.PLAYER)
     player.collider:setFriction(0.0)  -- No friction for better platformer feel
 
     -- Topdown mode: Add foot collider (bottom only)
     if player.game_mode == "topdown" then
-        local bottom_height = player.collider_height * 0.2465
-        local bottom_y_offset = player.collider_height * 0.40625  -- Position at 81.25% down
-
-        player.foot_collider = physicsWorld:newBSGRectangleCollider(
-            player.x,
-            player.y + bottom_y_offset,
-            player.collider_width,
-            bottom_height,
-            5  -- Smaller corner radius
+        player.foot_collider = helpers.createFootCollider(
+            physicsWorld,
+            player.x, player.y,
+            player.collider_width, player.collider_height,
+            "player", constants.COLLISION_CLASSES.PLAYER_FOOT, player
         )
-        player.foot_collider:setFixedRotation(true)
-        player.foot_collider:setCollisionClass(constants.COLLISION_CLASSES.PLAYER_FOOT)
-        player.foot_collider:setFriction(0.0)
-        player.foot_collider:setObject(player)  -- Link back to player
     end
 
     -- Platformer grounded detection using PreSolve

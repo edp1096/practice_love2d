@@ -78,6 +78,18 @@ constants.DEBUG = {
     SHOW_FPS = true,
 }
 
+-- UI Layout Constants
+constants.UI = {
+    PADDING_SMALL = 5,
+    PADDING_MEDIUM = 10,
+    PADDING_LARGE = 20,
+    SPACING_SMALL = 5,
+    SPACING_MEDIUM = 10,
+    SPACING_LARGE = 15,
+    BORDER_RADIUS = 8,
+    PANEL_MARGIN = 20,
+}
+
 -- Virtual Gamepad (for mobile)
 constants.VIRTUAL_GAMEPAD = {
     STICK_OUTER_RADIUS = 80,
@@ -95,6 +107,29 @@ constants.HEALING_POINT = {
     PULSE_SPEED = 2,
     PARTICLE_MIN_SPEED = 20,
     PARTICLE_MAX_SPEED = 50,
+}
+
+-- Collider Offset Constants (for dual collider system)
+-- These define foot collider proportions relative to entity height
+constants.COLLIDER_OFFSETS = {
+    -- Player foot collider (topdown mode)
+    PLAYER_FOOT_HEIGHT = 0.2465,      -- 24.65% of collider height
+    PLAYER_FOOT_POSITION = 0.40625,   -- Position at 81.25% down from center
+
+    -- Humanoid enemy foot collider (human-shaped enemies)
+    HUMANOID_FOOT_HEIGHT = 0.125,     -- 12.5% of collider height (bottom portion)
+    HUMANOID_FOOT_POSITION = 0.4375,  -- Position at 87.5% down from center
+
+    -- Slime enemy foot collider (blob-shaped enemies)
+    SLIME_FOOT_HEIGHT = 0.6,          -- 60% of collider height (large bottom)
+    SLIME_FOOT_POSITION = 0.2,        -- Position at 40% down from center
+
+    -- NPC foot collider
+    NPC_FOOT_HEIGHT = 0.25,           -- 25% of collider height
+    NPC_FOOT_POSITION = 0.75,         -- Start at 75% down (bottom 25%)
+
+    -- Rendering/Sorting offsets
+    PLAYER_SORT_HEIGHT = 0.26,        -- For Y-sort calculation
 }
 
 -- Collision Classes (Box2D/Windfield)

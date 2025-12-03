@@ -4,6 +4,7 @@
 local effects = require "engine.systems.effects"
 local prompt = require "engine.systems.prompt"
 local text_ui = require "engine.utils.text"
+local constants = require "engine.core.constants"
 
 local rendering = {}
 
@@ -19,14 +20,16 @@ local function getEntitySortY(entity, game_mode)
     -- Check if foot_collider exists and is valid
     if game_mode == "topdown" and entity.foot_collider and entity.foot_collider.body then
         -- Use foot_collider bottom edge
+        local offsets = constants.COLLIDER_OFFSETS
         local foot_height
         if entity.is_humanoid ~= nil then
-            -- Enemy
-            foot_height = entity.is_humanoid and (entity.collider_height * 0.125) or (entity.collider_height * 0.6)
+            -- Enemy: use humanoid or slime offset
+            foot_height = entity.is_humanoid
+                and (entity.collider_height * offsets.HUMANOID_FOOT_HEIGHT)
+                or (entity.collider_height * offsets.SLIME_FOOT_HEIGHT)
         else
-            -- Player (18.75% height)
-            -- foot_height = entity.collider_height * 0.1875
-            foot_height = entity.collider_height * 0.26
+            -- Player
+            foot_height = entity.collider_height * offsets.PLAYER_SORT_HEIGHT
         end
         y = entity.foot_collider:getY() + foot_height / 2
     elseif entity.collider_offset_y and entity.collider_height then

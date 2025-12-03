@@ -2,6 +2,7 @@
 -- NPC collider creation
 
 local constants = require "engine.core.constants"
+local helpers = require "engine.systems.collision.helpers"
 
 local npc_collision = {}
 
@@ -11,32 +12,27 @@ function npc_collision.create(npc, physicsWorld, game_mode)
 
     -- Main collider (interaction detection, combat in platformer)
     -- bounds.x/y are center point, need to pass top-left corner
-    npc.collider = physicsWorld:newBSGRectangleCollider(
+    npc.collider = helpers.createBSGCollider(
+        physicsWorld,
         bounds.left, bounds.top,
         bounds.width, bounds.height,
-        8
+        8, constants.COLLISION_CLASSES.NPC, npc
     )
-    npc.collider:setFixedRotation(true)
     npc.collider:setType("static")
-    npc.collider:setCollisionClass(constants.COLLISION_CLASSES.NPC)
-    npc.collider:setObject(npc)
 
     -- Topdown mode: Add foot collider (bottom 25% of main collider)
     if game_mode == "topdown" then
-        local foot_height = bounds.height * 0.25
-        local foot_top = bounds.top + bounds.height * 0.75  -- Start at 75% down (bottom 25%)
+        local offsets = constants.COLLIDER_OFFSETS
+        local foot_height = bounds.height * offsets.NPC_FOOT_HEIGHT
+        local foot_top = bounds.top + bounds.height * offsets.NPC_FOOT_POSITION
 
-        npc.foot_collider = physicsWorld:newBSGRectangleCollider(
-            bounds.left,
-            foot_top,
-            bounds.width,
-            foot_height,
-            4  -- Smaller corner radius
+        npc.foot_collider = helpers.createBSGCollider(
+            physicsWorld,
+            bounds.left, foot_top,
+            bounds.width, foot_height,
+            4, constants.COLLISION_CLASSES.NPC_FOOT, npc
         )
-        npc.foot_collider:setFixedRotation(true)
         npc.foot_collider:setType("static")
-        npc.foot_collider:setCollisionClass(constants.COLLISION_CLASSES.NPC_FOOT)
-        npc.foot_collider:setObject(npc)
     end
 
     -- Platformer: Make NPC a sensor (no physical collision, only detection)

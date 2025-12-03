@@ -52,10 +52,11 @@ end
 
 -- Calculate Y offset based on enemy type
 local function getYOffset(enemy)
+    local offsets = constants.COLLIDER_OFFSETS
     if enemy.is_humanoid then
-        return enemy.collider_height * 0.4375  -- Same as player
+        return enemy.collider_height * offsets.HUMANOID_FOOT_POSITION
     else
-        return enemy.collider_height * 0.2  -- Slime offset
+        return enemy.collider_height * offsets.SLIME_FOOT_POSITION
     end
 end
 

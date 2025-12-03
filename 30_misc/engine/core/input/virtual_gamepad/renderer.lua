@@ -3,6 +3,7 @@
 
 local text_ui = require "engine.utils.text"
 local button_icons = require "engine.utils.button_icons"
+local colors = require "engine.utils.colors"
 
 local renderer = {}
 
@@ -34,18 +35,18 @@ function renderer.drawDPad(vgp)
     local r = vgp.dpad.radius * scale
 
     -- Outer circle
-    love.graphics.setColor(0.2, 0.2, 0.2, vgp.alpha)
+    colors:apply(colors.for_gamepad_bg, vgp.alpha)
     love.graphics.circle("fill", px, py, r)
-    love.graphics.setColor(0.5, 0.5, 0.5, vgp.alpha * 1.5)
+    colors:apply(colors.for_gamepad_border, vgp.alpha * 1.5)
     love.graphics.setLineWidth(3 * scale)
     love.graphics.circle("line", px, py, r)
 
     -- Directional indicators
-    love.graphics.setColor(0.4, 0.4, 0.4, vgp.alpha)
+    colors:apply(colors.for_gamepad_button, vgp.alpha)
 
     -- Up arrow
     if vgp.dpad_direction.up then
-        love.graphics.setColor(0.8, 0.8, 1.0, vgp.alpha * 2)
+        colors:apply(colors.for_gamepad_stick, vgp.alpha * 2)
     end
     love.graphics.polygon("fill",
         px, py - r + 20 * scale,
@@ -54,9 +55,9 @@ function renderer.drawDPad(vgp)
     )
 
     -- Down arrow
-    love.graphics.setColor(0.4, 0.4, 0.4, vgp.alpha)
+    colors:apply(colors.for_gamepad_button, vgp.alpha)
     if vgp.dpad_direction.down then
-        love.graphics.setColor(0.8, 0.8, 1.0, vgp.alpha * 2)
+        colors:apply(colors.for_gamepad_stick, vgp.alpha * 2)
     end
     love.graphics.polygon("fill",
         px, py + r - 20 * scale,
@@ -65,9 +66,9 @@ function renderer.drawDPad(vgp)
     )
 
     -- Left arrow
-    love.graphics.setColor(0.4, 0.4, 0.4, vgp.alpha)
+    colors:apply(colors.for_gamepad_button, vgp.alpha)
     if vgp.dpad_direction.left then
-        love.graphics.setColor(0.8, 0.8, 1.0, vgp.alpha * 2)
+        colors:apply(colors.for_gamepad_stick, vgp.alpha * 2)
     end
     love.graphics.polygon("fill",
         px - r + 20 * scale, py,
@@ -76,9 +77,9 @@ function renderer.drawDPad(vgp)
     )
 
     -- Right arrow
-    love.graphics.setColor(0.4, 0.4, 0.4, vgp.alpha)
+    colors:apply(colors.for_gamepad_button, vgp.alpha)
     if vgp.dpad_direction.right then
-        love.graphics.setColor(0.8, 0.8, 1.0, vgp.alpha * 2)
+        colors:apply(colors.for_gamepad_stick, vgp.alpha * 2)
     end
     love.graphics.polygon("fill",
         px + r - 20 * scale, py,
@@ -90,14 +91,14 @@ function renderer.drawDPad(vgp)
     local knob_x = px + (vgp.stick_x * (r - 30 * scale))
     local knob_y = py + (vgp.stick_y * (r - 30 * scale))
 
-    love.graphics.setColor(0.3, 0.3, 0.3, vgp.alpha * 1.2)
+    colors:apply(colors.CHARCOAL, vgp.alpha * 1.2)
     love.graphics.circle("fill", knob_x, knob_y, vgp.dpad.center_radius * scale)
-    love.graphics.setColor(0.6, 0.6, 0.6, vgp.alpha * 1.5)
+    colors:apply(colors.DARK_GRAY, vgp.alpha * 1.5)
     love.graphics.setLineWidth(2 * scale)
     love.graphics.circle("line", knob_x, knob_y, vgp.dpad.center_radius * scale)
 
     love.graphics.setLineWidth(1)
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
 end
 
 -- Draw aim stick
@@ -108,14 +109,14 @@ function renderer.drawAimStick(vgp)
     local r = stick.radius * scale
 
     -- Outer circle (base)
-    love.graphics.setColor(0.2, 0.2, 0.2, vgp.alpha * 0.7)
+    colors:apply(colors.for_gamepad_bg, vgp.alpha * 0.7)
     love.graphics.circle("fill", px, py, r)
-    love.graphics.setColor(0.5, 0.5, 0.5, vgp.alpha * 1.2)
+    colors:apply(colors.for_gamepad_border, vgp.alpha * 1.2)
     love.graphics.setLineWidth(3 * scale)
     love.graphics.circle("line", px, py, r)
 
     -- Center crosshair indicator
-    love.graphics.setColor(0.6, 0.6, 0.6, vgp.alpha * 0.8)
+    colors:apply(colors.DARK_GRAY, vgp.alpha * 0.8)
     love.graphics.setLineWidth(2 * scale)
     local cross_size = 12 * scale
     love.graphics.line(px - cross_size, py, px + cross_size, py)
@@ -127,7 +128,7 @@ function renderer.drawAimStick(vgp)
 
     -- Direction line (if active)
     if stick.active and stick.magnitude > stick.deadzone then
-        love.graphics.setColor(1, 1, 0, vgp.alpha * 1.2)
+        colors:apply(colors.for_gamepad_active, vgp.alpha * 1.2)
         love.graphics.setLineWidth(3 * scale)
         love.graphics.line(px, py, stick_px, stick_py)
     end
@@ -135,27 +136,27 @@ function renderer.drawAimStick(vgp)
     -- Stick knob
     if stick.active then
         -- Active - yellow/gold
-        love.graphics.setColor(1, 0.9, 0, vgp.alpha * 1.5)
+        colors:apply(colors.for_gamepad_active, vgp.alpha * 1.5)
     else
         -- Inactive - gray
-        love.graphics.setColor(0.3, 0.3, 0.3, vgp.alpha * 1.2)
+        colors:apply(colors.CHARCOAL, vgp.alpha * 1.2)
     end
     love.graphics.circle("fill", stick_px, stick_py, stick.center_radius * scale)
 
     -- Stick outline
     if stick.active then
-        love.graphics.setColor(1, 1, 0.5, vgp.alpha * 1.8)
+        colors:apply(colors.PASTEL_YELLOW, vgp.alpha * 1.8)
     else
-        love.graphics.setColor(0.6, 0.6, 0.6, vgp.alpha * 1.5)
+        colors:apply(colors.DARK_GRAY, vgp.alpha * 1.5)
     end
     love.graphics.setLineWidth(2 * scale)
     love.graphics.circle("line", stick_px, stick_py, stick.center_radius * scale)
 
     -- Label
-    text_ui:draw("AIM", px - 15 * scale, py + r + 10 * scale, {1, 1, 1, vgp.alpha * 1.5})
+    text_ui:draw("AIM", px - 15 * scale, py + r + 10 * scale, colors:withAlpha(colors.WHITE, vgp.alpha * 1.5))
 
     love.graphics.setLineWidth(1)
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
 end
 
 function renderer.drawActionButtons(vgp)
@@ -167,17 +168,17 @@ function renderer.drawActionButtons(vgp)
 
         -- Button circle
         if button.pressed then
-            love.graphics.setColor(0.3, 0.6, 1.0, vgp.alpha * 1.5)
+            colors:apply(colors.MEDIUM_BLUE, vgp.alpha * 1.5)
         else
-            love.graphics.setColor(0.2, 0.2, 0.2, vgp.alpha)
+            colors:apply(colors.for_gamepad_bg, vgp.alpha)
         end
         love.graphics.circle("fill", px, py, radius)
 
         -- Button outline
         if button.pressed then
-            love.graphics.setColor(0.5, 0.8, 1.0, vgp.alpha * 2)
+            colors:apply(colors.SKY_BLUE, vgp.alpha * 2)
         else
-            love.graphics.setColor(0.5, 0.5, 0.5, vgp.alpha * 1.5)
+            colors:apply(colors.for_gamepad_border, vgp.alpha * 1.5)
         end
         love.graphics.setLineWidth(3 * scale)
         love.graphics.circle("line", px, py, radius)
@@ -186,11 +187,11 @@ function renderer.drawActionButtons(vgp)
         local font = love.graphics.getFont()
         local text_w = font:getWidth(button.label)
         local text_h = font:getHeight()
-        text_ui:draw(button.label, px - text_w / 2, py - text_h / 2, {1, 1, 1, vgp.alpha * 2})
+        text_ui:draw(button.label, px - text_w / 2, py - text_h / 2, colors:withAlpha(colors.WHITE, vgp.alpha * 2))
     end
 
     love.graphics.setLineWidth(1)
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
 end
 
 function renderer.drawMenuButton(vgp)
@@ -201,28 +202,28 @@ function renderer.drawMenuButton(vgp)
 
     -- Button circle
     if button.pressed then
-        love.graphics.setColor(0.3, 0.6, 1.0, vgp.alpha * 1.5)
+        colors:apply(colors.MEDIUM_BLUE, vgp.alpha * 1.5)
     else
-        love.graphics.setColor(0.2, 0.2, 0.2, vgp.alpha)
+        colors:apply(colors.for_gamepad_bg, vgp.alpha)
     end
     love.graphics.circle("fill", px, py, radius)
 
     -- Button outline
     if button.pressed then
-        love.graphics.setColor(0.5, 0.8, 1.0, vgp.alpha * 2)
+        colors:apply(colors.SKY_BLUE, vgp.alpha * 2)
     else
-        love.graphics.setColor(0.5, 0.5, 0.5, vgp.alpha * 1.5)
+        colors:apply(colors.for_gamepad_border, vgp.alpha * 1.5)
     end
     love.graphics.setLineWidth(3 * scale)
     love.graphics.circle("line", px, py, radius)
 
     -- Hamburger menu icon (3 horizontal lines)
     local icon_size = radius * 1.2  -- Icon size relative to button radius
-    local icon_color = {1, 1, 1, vgp.alpha * 2}
+    local icon_color = colors:withAlpha(colors.WHITE, vgp.alpha * 2)
     button_icons:drawHamburger(px, py, icon_size, icon_color)
 
     love.graphics.setLineWidth(1)
-    love.graphics.setColor(1, 1, 1, 1)
+    colors:reset()
 end
 
 return renderer
