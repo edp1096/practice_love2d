@@ -234,31 +234,19 @@ end
 function shop_ui:executeTransaction()
     if not self.quantity_item then return end
 
-    local success_count = 0
-    local last_error = nil
-
-    for i = 1, self.quantity do
-        local success, err
-        if self.tab == "buy" then
-            success, err = shop_system:buyItem(self.shop_id, self.quantity_item.type, self.level_system, self.inventory)
-        else
-            success, err = shop_system:sellItem(self.shop_id, self.quantity_item.item_id, self.level_system, self.inventory)
-        end
-
-        if success then
-            success_count = success_count + 1
-        else
-            last_error = err
-            break
-        end
+    local success, err
+    if self.tab == "buy" then
+        success, err = shop_system:buyItem(self.shop_id, self.quantity_item.type, self.quantity, self.level_system, self.inventory)
+    else
+        success, err = shop_system:sellItem(self.shop_id, self.quantity_item.type, self.quantity, self.level_system, self.inventory)
     end
 
-    if success_count > 0 then
+    if success then
         local action = self.tab == "buy" and "Purchased" or "Sold"
-        self:showMessage(action .. " " .. success_count .. "x " .. self:getItemName(self.quantity_item.type))
+        self:showMessage(action .. " " .. self.quantity .. "x " .. self:getItemName(self.quantity_item.type))
         play_sound("ui", "purchase")
     else
-        self:showMessage(last_error or "Transaction failed")
+        self:showMessage(err or "Transaction failed")
         play_sound("ui", "error")
     end
 
@@ -853,6 +841,31 @@ function shop_ui:gamepadpressed(joystick, button)
     elseif button == "rightshoulder" then
         self:switchTab("sell")
     end
+end
+
+-- Touch input (mobile support)
+function shop_ui:touchpressed(id, x, y, dx, dy, pressure)
+    -- Update hover state first
+    self:mousemoved(x, y)
+    -- Then handle as click
+    self:mousepressed(x, y, 1)
+end
+
+function shop_ui:touchmoved(id, x, y, dx, dy, pressure)
+    -- Update hover state for visual feedback
+    self:mousemoved(x, y)
+end
+
+function shop_ui:touchreleased(id, x, y, dx, dy, pressure)
+    -- Clear hover states on touch release
+    self.hovered_item_index = nil
+    self.hovered_qty_left = false
+    self.hovered_qty_right = false
+    self.hovered_qty_ok = false
+    self.hovered_qty_cancel = false
+    self.hovered_tab_buy = false
+    self.hovered_tab_sell = false
+    self.close_button_hovered = false
 end
 
 return shop_ui

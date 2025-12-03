@@ -92,52 +92,60 @@ end
 
 -- Buy item from shop
 -- Returns: success, error_message
-function shop:buyItem(shop_id, item_type, level_system, inventory)
+-- quantity: number of items to buy (default 1)
+function shop:buyItem(shop_id, item_type, quantity, level_system, inventory)
+    quantity = quantity or 1
+
     local stock = self:getStock(shop_id, item_type)
-    if stock <= 0 then
+    if stock < quantity then
         return false, "Out of stock"
     end
 
     local price = self:getPrice(shop_id, item_type)
-    if not level_system:hasGold(price) then
+    local total_price = price * quantity
+    if not level_system:hasGold(total_price) then
         return false, "Not enough gold"
     end
 
     -- Add to inventory
-    local success = inventory:addItem(item_type, 1)
+    local success = inventory:addItem(item_type, quantity)
     if not success then
         return false, "Inventory full"
     end
 
     -- Deduct gold and reduce stock
-    level_system:removeGold(price)
-    self:reduceStock(shop_id, item_type, 1)
+    level_system:removeGold(total_price)
+    self:reduceStock(shop_id, item_type, quantity)
 
     return true, nil
 end
 
 -- Sell item to shop
 -- Returns: success, error_message
-function shop:sellItem(shop_id, item_id, level_system, inventory)
-    local item_data = inventory.items[item_id]
-    if not item_data then
-        return false, "Item not found"
+-- quantity: number of items to sell (default 1)
+function shop:sellItem(shop_id, item_type, quantity, level_system, inventory)
+    quantity = quantity or 1
+
+    -- Check if player has enough items
+    local current_count = inventory:getItemCountByType(item_type)
+    if current_count < quantity then
+        return false, "Not enough items"
     end
 
-    local item_type = item_data.item.type
     local sell_price = self:getSellPrice(shop_id, item_type)
+    local total_price = sell_price * quantity
 
     -- Remove from inventory
-    local removed = inventory:removeItem(item_id, 1)
+    local removed = inventory:removeItemByType(item_type, quantity)
     if not removed then
         return false, "Failed to remove item"
     end
 
     -- Add gold
-    level_system:addGold(sell_price)
+    level_system:addGold(total_price)
 
     -- Optionally add to shop stock (commented out - shops don't buy back by default)
-    -- self:addStock(shop_id, item_type, 1)
+    -- self:addStock(shop_id, item_type, quantity)
 
     return true, nil
 end

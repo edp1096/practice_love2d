@@ -166,6 +166,7 @@ function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_sl
             quest_states = checkpoint.systems_data.quest,
             dialogue_choices = checkpoint.systems_data.dialogue,
             level_data = checkpoint.systems_data.level,
+            shop_data = checkpoint.systems_data.shop,
         }
 
         scene_setup.initializeFromSaveOrNew(scene, checkpoint_save_data, false, mapPath, spawn_x, spawn_y, save_slot)
@@ -195,6 +196,7 @@ function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_sl
             quest_states = persistence:getSystemData("quest"),
             dialogue_choices = persistence:getSystemData("dialogue"),
             level_data = persistence:getSystemData("level"),
+            shop_data = persistence:getSystemData("shop"),
         }
 
         scene_setup.initializeFromSaveOrNew(scene, persistence_save_data, is_new_game, mapPath, spawn_x, spawn_y, save_slot)
@@ -295,6 +297,15 @@ function scene_setup.initLevelSystem(scene, save_data, is_new_game)
     else
         -- New Game: Reset level to 1
         level_system:reset()
+    end
+
+    -- Load shop system data from save or reset
+    local shop_system = require "engine.systems.shop"
+    if save_data and save_data.shop_data then
+        shop_system:deserialize(save_data.shop_data)
+    else
+        -- New Game: Reset shop states
+        shop_system:reset()
     end
 end
 

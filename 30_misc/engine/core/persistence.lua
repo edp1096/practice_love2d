@@ -245,4 +245,10 @@ persistence:registerSystem("level", function(scene)
     return level_system:serialize()
 end, nil)
 
+-- Shop system (stock changes)
+persistence:registerSystem("shop", function(scene)
+    local shop_system = require "engine.systems.shop"
+    return shop_system:serialize()
+end, nil)
+
 return persistence

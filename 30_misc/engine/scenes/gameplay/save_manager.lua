@@ -8,6 +8,7 @@ local sound = require "engine.core.sound"
 local dialogue = require "engine.ui.dialogue"
 local quest_system = require "engine.core.quest"
 local level_system = require "engine.core.level"
+local shop_system = require "engine.systems.shop"
 local helpers = require "engine.utils.helpers"
 
 -- Save current game state to slot
@@ -33,6 +34,7 @@ function save_manager.saveGame(scene, slot)
         dialogue_choices = dialogue:exportChoiceHistory(),
         quest_states = quest_system:exportStates(),
         level_data = level_system:serialize(),
+        shop_data = shop_system:serialize(),
     }
 
     local success = save_sys:saveGame(slot, save_data)
