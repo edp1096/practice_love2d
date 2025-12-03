@@ -12,6 +12,7 @@ local player_sound = require "engine.entities.player.sound"
 local lighting = require "engine.systems.lighting"
 local weather = require "engine.systems.weather"
 local persistence = require "engine.core.persistence"
+local shop_ui = require "engine.ui.screens.shop"
 
 local update = {}
 
@@ -418,10 +419,13 @@ function update.update(self, dt)
     if dialogue.pending_shop_id then
         local shop_id = dialogue.pending_shop_id
         dialogue.pending_shop_id = nil
-        local scene_control = require "engine.core.scene_control"
-        local shop_ui = require "engine.ui.screens.shop"
         local level_system = require "engine.core.level"
-        scene_control.push(shop_ui, shop_id, self.inventory, level_system, self.item_registry)
+        shop_ui:open(shop_id, self.inventory, level_system, self.item_registry)
+    end
+
+    -- Update shop UI if open
+    if shop_ui:isOpen() then
+        shop_ui:update(dt)
     end
 
     -- Reset skip button state when dialogue is closed
@@ -479,10 +483,11 @@ function update.update(self, dt)
     end
 
     local is_dialogue_open = dialogue:isOpen()
+    local is_shop_open = shop_ui:isOpen()
 
-    -- Hide/show virtual gamepad based on dialogue state
+    -- Hide/show virtual gamepad based on dialogue/shop state
     if input.virtual_gamepad then
-        if is_dialogue_open then
+        if is_dialogue_open or is_shop_open then
             input.virtual_gamepad:hide()
         else
             input.virtual_gamepad:show()

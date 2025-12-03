@@ -27,8 +27,11 @@ local function play_sound(category, name)
     end
 end
 
-function shop_ui:enter(previous, shop_id, inventory, level_system, item_registry)
-    self.previous_scene = previous
+-- Overlay state
+shop_ui.is_open = false
+
+-- Open shop as overlay (called from gameplay)
+function shop_ui:open(shop_id, inventory, level_system, item_registry)
     self.shop_id = shop_id
     self.inventory = inventory
     self.level_system = level_system
@@ -38,7 +41,7 @@ function shop_ui:enter(previous, shop_id, inventory, level_system, item_registry
     self.shop_data = shop_system:getShop(shop_id)
     if not self.shop_data then
         print("[Shop] ERROR: Shop not found:", shop_id)
-        return
+        return false
     end
 
     -- Hide virtual gamepad
@@ -85,7 +88,20 @@ function shop_ui:enter(previous, shop_id, inventory, level_system, item_registry
     self.quantity_max = 1
     self.quantity_item = nil
 
+    self.is_open = true
     play_sound("ui", "open")
+    return true
+end
+
+-- Check if shop is open
+function shop_ui:isOpen()
+    return self.is_open
+end
+
+-- Legacy scene enter (for backwards compatibility)
+function shop_ui:enter(previous, shop_id, inventory, level_system, item_registry)
+    self.previous_scene = previous
+    self:open(shop_id, inventory, level_system, item_registry)
 end
 
 function shop_ui:leave()
@@ -307,13 +323,26 @@ end
 
 function shop_ui:close()
     play_sound("ui", "close")
+
+    -- Show virtual gamepad
+    if input.virtual_gamepad then
+        input.virtual_gamepad:show()
+    end
+
+    -- Overlay mode: just close
+    if self.is_open then
+        self.is_open = false
+        return
+    end
+
+    -- Legacy scene mode: pop from stack
     local scene_control = require "engine.core.scene_control"
     scene_control.pop()
 end
 
 function shop_ui:draw()
-    -- Draw previous scene first (before Attach to avoid double transform)
-    if self.previous_scene and self.previous_scene.draw then
+    -- Only draw previous scene in legacy scene mode (not overlay)
+    if not self.is_open and self.previous_scene and self.previous_scene.draw then
         self.previous_scene:draw()
     end
 

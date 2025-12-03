@@ -9,6 +9,7 @@ local debug = require "engine.core.debug"
 local quest_system = require "engine.core.quest"
 local coords = require "engine.core.coords"
 local display = require "engine.core.display"
+local shop_ui = require "engine.ui.screens.shop"
 
 local input_handler = {}
 
@@ -17,6 +18,12 @@ local is_mobile = (love.system.getOS() == "Android" or love.system.getOS() == "i
 
 -- Keyboard input handler
 function input_handler.keypressed(self, key)
+    -- Shop takes priority when open
+    if shop_ui:isOpen() then
+        shop_ui:keypressed(key)
+        return
+    end
+
     -- Dialogue takes priority (pass key for choice navigation)
     if input:wasPressed("interact", "keyboard", key) or
         input:wasPressed("menu_select", "keyboard", key) then
@@ -174,6 +181,12 @@ end
 function input_handler.mousepressed(self, x, y, button)
     if is_mobile then return end
 
+    -- Shop takes priority when open
+    if shop_ui:isOpen() then
+        shop_ui:mousepressed(x, y, button)
+        return
+    end
+
     if input:wasPressed("menu_select", "mouse", button) then
         if dialogue:handleInput("mouse", x, y) then
             return
@@ -184,6 +197,29 @@ function input_handler.mousepressed(self, x, y, button)
         self.player:attack()
     elseif input:wasPressed("parry", "mouse", button) then
         self.player:startParry()
+    end
+end
+
+-- Mouse move handler
+function input_handler.mousemoved(self, x, y, dx, dy)
+    if is_mobile then return end
+
+    -- Shop takes priority when open
+    if shop_ui:isOpen() then
+        shop_ui:mousemoved(x, y)
+        return
+    end
+
+    -- Pass to dialogue for choice hover
+    dialogue:handleInput("touch_move", 0, x, y)
+end
+
+-- Mouse wheel handler
+function input_handler.wheelmoved(self, x, y)
+    -- Shop takes priority when open
+    if shop_ui:isOpen() then
+        shop_ui:wheelmoved(x, y)
+        return
     end
 end
 
@@ -200,6 +236,12 @@ end
 
 -- Gamepad input handler
 function input_handler.gamepadpressed(self, joystick, button)
+    -- Shop takes priority when open
+    if shop_ui:isOpen() then
+        shop_ui:gamepadpressed(joystick, button)
+        return
+    end
+
     -- Dialogue takes priority
     if dialogue:isOpen() then
         -- Start charging skip with menu_back button (B/Circle)
@@ -476,6 +518,12 @@ end
 
 -- Touch input handler
 function input_handler.touchpressed(self, id, x, y, dx, dy, pressure)
+    -- Shop takes priority when open
+    if shop_ui:isOpen() then
+        shop_ui:touchpressed(id, x, y, dx, dy, pressure)
+        return true
+    end
+
     if dialogue:handleInput("touch", id, x, y) then
         return true
     end
@@ -519,6 +567,12 @@ function input_handler.checkQuickslotTouch(self, touch_x, touch_y)
 end
 
 function input_handler.touchreleased(self, id, x, y, dx, dy, pressure)
+    -- Shop takes priority when open
+    if shop_ui:isOpen() then
+        shop_ui:touchreleased(id, x, y, dx, dy, pressure)
+        return true
+    end
+
     if dialogue:handleInput("touch_release", id, x, y) then
         return true
     end
@@ -529,6 +583,12 @@ function input_handler.touchreleased(self, id, x, y, dx, dy, pressure)
 end
 
 function input_handler.touchmoved(self, id, x, y, dx, dy, pressure)
+    -- Shop takes priority when open
+    if shop_ui:isOpen() then
+        shop_ui:touchmoved(id, x, y, dx, dy, pressure)
+        return
+    end
+
     dialogue:handleInput("touch_move", id, x, y)
 end
 

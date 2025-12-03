@@ -73,7 +73,7 @@
   </object>
   <object id="41" gid="85" x="256" y="96" width="32" height="32">
    <properties>
-    <property name="group" value="flwoer1"/>
+    <property name="group" value="flower1"/>
    </properties>
   </object>
   <object id="42" gid="134" x="288" y="128" width="32" height="32">

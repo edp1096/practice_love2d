@@ -378,7 +378,7 @@ return {
           gid = 85,
           visible = true,
           properties = {
-            ["group"] = "flwoer1"
+            ["group"] = "flower1"
           }
         },
         {

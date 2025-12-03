@@ -16,6 +16,7 @@ local weather = require "engine.systems.weather"
 local quest_system = require "engine.core.quest"
 local quest_tracker = require "engine.systems.hud.quest_tracker"
 local level_system = require "engine.core.level"
+local shop_ui = require "engine.ui.screens.shop"
 
 local render = {}
 
@@ -162,6 +163,13 @@ function render.draw(self)
 
     -- Draw dialogue (inside virtual coordinates for proper scaling)
     dialogue:draw()
+
+    -- Draw shop UI overlay (after dialogue, before debug)
+    if shop_ui:isOpen() then
+        display:Detach()  -- Shop manages its own display transform
+        shop_ui:draw()
+        display:Attach()  -- Re-attach for remaining UI
+    end
 
     -- Draw debug help (avoid minimap: size=126, padding=10, total=146)
     if debug.enabled then
