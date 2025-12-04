@@ -155,18 +155,12 @@ function helpers.drawConfirmDialog(title, subtitle, button_labels, selected, mou
     love.graphics.rectangle("fill", 0, 0, width, height)
 
     -- Title
-    local title_font = fonts.title
-    if not title_font then
-        title_font = locale:getFont("option") or love.graphics.getFont()
-    end
+    local title_font = locale:getFont("title") or fonts.title or love.graphics.getFont()
     text_ui:drawCentered(title, height / 2 - 60, width, {1, 0.3, 0.3, 1}, title_font)
 
     -- Subtitle
     if subtitle then
-        local hint_font = fonts.hint
-        if not hint_font then
-            hint_font = locale:getFont("info") or love.graphics.getFont()
-        end
+        local hint_font = locale:getFont("hint") or fonts.hint or love.graphics.getFont()
         text_ui:drawCentered(subtitle, height / 2 - 20, width, colors.for_text_light, hint_font)
     end
 
@@ -198,10 +192,7 @@ function helpers.drawConfirmDialog(title, subtitle, button_labels, selected, mou
         love.graphics.rectangle("line", button_x, button_y, button_width, button_height)
 
         -- Button text
-        local option_font = fonts.option
-        if not option_font then
-            option_font = locale:getFont("option") or love.graphics.getFont()
-        end
+        local option_font = locale:getFont("option") or fonts.option or love.graphics.getFont()
         love.graphics.setFont(option_font)
         colors:apply(is_selected and colors.for_text_normal or colors.for_text_light)
         love.graphics.printf(button_labels[i], button_x, button_y + 12, button_width, "center")
