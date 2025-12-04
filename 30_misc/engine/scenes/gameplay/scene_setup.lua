@@ -604,8 +604,9 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
     local dest_map_data = love.filesystem.load(new_map_path)()
     local dest_persist_state = dest_map_data and dest_map_data.properties and dest_map_data.properties.persist_state
 
-    -- Always save current map's vehicle states before leaving
-    if current_map_name and scene.world and scene.world.vehicles then
+    -- Save current map's vehicle states before leaving
+    -- NOTE: Skip if player was boarded (that vehicle travels with player, not saved to this map)
+    if current_map_name and scene.world and scene.world.vehicles and not boarded_vehicle_type then
         scene.session_vehicle_states = scene.session_vehicle_states or {}
         scene.session_vehicle_states[current_map_name] = {}
         for _, vehicle in ipairs(scene.world.vehicles) do
