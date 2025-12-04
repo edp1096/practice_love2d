@@ -2,6 +2,8 @@
 -- Fog/mist weather effect using soft gradient textures
 -- Features: smooth edges, multi-layer scrolling, natural blending
 
+local constants = require "engine.core.constants"
+
 local fog = {}
 
 -- Textures and layers
@@ -9,8 +11,8 @@ local fog_texture = nil        -- Soft gradient fog puff
 local fog_texture_large = nil  -- Larger, softer fog
 local layers = {}
 
--- Virtual screen size
-local VW, VH = 960, 540
+-- Virtual screen size (from constants)
+local VW, VH = constants.RENDER_WIDTH, constants.RENDER_HEIGHT
 
 -- Configuration
 local FOG_COLOR = {0.85, 0.88, 0.92}  -- Light gray-blue

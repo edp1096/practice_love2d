@@ -2,14 +2,16 @@
 -- Snow weather effect for TOP-DOWN view
 -- Snow appears across entire screen, drifting gently
 
+local constants = require "engine.core.constants"
+
 local snow = {}
 
 -- Particle system
 local snow_system = nil
 local snow_image = nil
 
--- Virtual screen size
-local VW, VH = 960, 540
+-- Virtual screen size (from constants)
+local VW, VH = constants.RENDER_WIDTH, constants.RENDER_HEIGHT
 
 -- Snow configuration
 local SNOW_EMIT_RATE = 150
