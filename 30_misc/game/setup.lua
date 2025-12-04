@@ -61,6 +61,7 @@ function setup.configure()
     local npc_class = require "engine.entities.npc"
     local weapon_class = require "engine.entities.weapon"
     local item_class = require "engine.entities.item"
+    local vehicle_class = require "engine.entities.vehicle"
     local constants = require "engine.core.constants"
     local factory = require "engine.systems.entity_factory"
     local player_sound = require "engine.entities.player.sound"
@@ -82,6 +83,7 @@ function setup.configure()
     weapon_class.hand_anchors = hand_anchors.HAND_ANCHORS
     weapon_class.handle_anchors = handle_anchors.WEAPON_HANDLE_ANCHORS
     item_class.type_registry = item_types
+    vehicle_class.type_registry = entity_types.vehicles
 
     -- Inject game start defaults
     constants.GAME_START.DEFAULT_MAP = start_config.map

@@ -128,6 +128,10 @@ constants.COLLIDER_OFFSETS = {
     NPC_FOOT_HEIGHT = 0.25,           -- 25% of collider height
     NPC_FOOT_POSITION = 0.75,         -- Start at 75% down (bottom 25%)
 
+    -- Vehicle foot collider
+    VEHICLE_FOOT_HEIGHT = 0.3,          -- 30% of collider height
+    VEHICLE_FOOT_POSITION = 0.35,       -- Position at 70% down from center
+
     -- Rendering/Sorting offsets
     PLAYER_SORT_HEIGHT = 0.26,        -- For Y-sort calculation
 }
@@ -146,6 +150,8 @@ constants.COLLISION_CLASSES = {
     NPC_FOOT = "NPCFoot",        -- Topdown mode: NPC foot collider for ground collision
     PROP = "Prop",               -- Prop entity (movable/breakable objects)
     PROP_FOOT = "PropFoot",      -- Topdown mode: prop foot collider for ground collision
+    VEHICLE = "Vehicle",         -- Vehicle entity (rideable: horse, boat, etc.)
+    VEHICLE_FOOT = "VehicleFoot", -- Topdown mode: vehicle foot collider for ground collision
     WEAPON = "Weapon",
     HEALING_POINT = "HealingPoint",
     ITEM = "Item",

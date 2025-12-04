@@ -632,4 +632,68 @@ function loaders.loadProps(self, destroyed_props)
     end
 end
 
+-- Load vehicles from Vehicles layer
+function loaders.loadVehicles(self)
+    if not self.vehicle_class then
+        return
+    end
+
+    -- Skip loading if player is entering map while boarded
+    if self.skip_vehicle_loading then
+        return
+    end
+
+    local vehicles_layer = nil
+    for _, layer in ipairs(self.map.layers) do
+        if layer.name == "Vehicles" then
+            vehicles_layer = layer
+            break
+        end
+    end
+
+    if not vehicles_layer then
+        return
+    end
+
+    local map_name = self.map.properties and self.map.properties.name or "unknown"
+
+    for _, obj in ipairs(vehicles_layer.objects) do
+        -- Get vehicle type from object type or properties
+        local vehicle_type = obj.type
+        if not vehicle_type or vehicle_type == "" then
+            vehicle_type = obj.properties and obj.properties.type
+        end
+
+        if not vehicle_type or vehicle_type == "" then
+            vehicle_type = "horse"  -- Default type
+        end
+
+        -- Generate map_id for persistence
+        local map_id = string.format("%s_vehicle_%d", map_name, obj.id)
+
+        -- Calculate center position
+        local center_x = obj.x + (obj.width or 0) / 2
+        local center_y = obj.y + (obj.height or 0) / 2
+
+        -- Create vehicle entity
+        local new_vehicle = self.vehicle_class:new(center_x, center_y, vehicle_type, map_id)
+        new_vehicle.world = self
+
+        -- Override properties from Tiled
+        if obj.properties then
+            if obj.properties.ride_speed then
+                new_vehicle.ride_speed = obj.properties.ride_speed
+            end
+            if obj.properties.name then
+                new_vehicle.name = obj.properties.name
+            end
+        end
+
+        -- Create colliders
+        collision.createVehicleCollider(new_vehicle, self.physicsWorld, self.game_mode)
+
+        table.insert(self.vehicles, new_vehicle)
+    end
+end
+
 return loaders

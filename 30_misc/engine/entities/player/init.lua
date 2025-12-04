@@ -67,6 +67,11 @@ function player:new(x, y, config)
     instance.collider_width = character_width * instance.sprite_scale
     instance.collider_height = character_height * instance.sprite_scale
 
+    -- Vehicle state (boarding)
+    instance.is_boarded = false
+    instance.boarded_vehicle = nil
+    instance.original_speed = nil
+
     return instance
 end
 
@@ -158,5 +163,46 @@ function player:unequipWeapon() return combat.unequipWeapon(self) end
 function player:applyEquipmentStats(stats) return combat.applyEquipmentStats(self, stats) end
 
 function player:removeEquipmentStats(stats) return combat.removeEquipmentStats(self, stats) end
+
+-- Vehicle system (boarding)
+function player:boardVehicle(vehicle)
+    if self.is_boarded or not vehicle then return false end
+
+    -- Store original speed
+    self.original_speed = self.speed
+
+    -- Apply vehicle speed
+    self.speed = vehicle.ride_speed
+
+    -- Set vehicle state
+    self.is_boarded = true
+    self.boarded_vehicle = vehicle
+
+    -- Tell vehicle it's being ridden
+    vehicle:boardPlayer(self)
+
+    return true
+end
+
+function player:disembark()
+    if not self.is_boarded or not self.boarded_vehicle then return false end
+
+    local vehicle = self.boarded_vehicle
+
+    -- Restore original speed
+    if self.original_speed then
+        self.speed = self.original_speed
+        self.original_speed = nil
+    end
+
+    -- Clear vehicle state
+    self.is_boarded = false
+    self.boarded_vehicle = nil
+
+    -- Tell vehicle player disembarked
+    vehicle:disembarkPlayer()
+
+    return true
+end
 
 return player

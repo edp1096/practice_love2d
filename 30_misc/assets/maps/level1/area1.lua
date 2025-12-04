@@ -9,8 +9,8 @@ return {
   height = 30,
   tilewidth = 32,
   tileheight = 32,
-  nextlayerid = 14,
-  nextobjectid = 89,
+  nextlayerid = 15,
+  nextobjectid = 101,
   properties = {
     ["ambient"] = "day",
     ["game_mode"] = "topdown",
@@ -817,7 +817,7 @@ return {
       id = 6,
       name = "NPCs",
       class = "",
-      visible = false,
+      visible = true,
       opacity = 1,
       offsetx = 0,
       offsety = 0,
@@ -1072,6 +1072,35 @@ return {
             ["quantity"] = 1,
             ["respawn"] = false
           }
+        }
+      }
+    },
+    {
+      type = "objectgroup",
+      draworder = "topdown",
+      id = 14,
+      name = "Vehicles",
+      class = "",
+      visible = true,
+      opacity = 1,
+      offsetx = 0,
+      offsety = 0,
+      parallaxx = 1,
+      parallaxy = 1,
+      properties = {},
+      objects = {
+        {
+          id = 100,
+          name = "TestHorse",
+          type = "horse",
+          shape = "rectangle",
+          x = 768,
+          y = 800,
+          width = 64,
+          height = 40,
+          rotation = 0,
+          visible = true,
+          properties = {}
         }
       }
     }

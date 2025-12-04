@@ -20,6 +20,7 @@ world.npc_class = nil
 world.healing_point_class = nil
 world.world_item_class = nil
 world.prop_class = nil
+world.vehicle_class = nil
 world.loot_tables = nil
 
 function world:new(map_path, entity_classes, picked_items, killed_enemies, transformed_npcs, destroyed_props)
@@ -32,7 +33,9 @@ function world:new(map_path, entity_classes, picked_items, killed_enemies, trans
     instance.healing_point_class = entity_classes.healing_point or self.healing_point_class
     instance.world_item_class = entity_classes.world_item or self.world_item_class
     instance.prop_class = entity_classes.prop or self.prop_class
+    instance.vehicle_class = entity_classes.vehicle or self.vehicle_class
     instance.loot_tables = entity_classes.loot_tables or self.loot_tables
+    instance.skip_vehicle_loading = entity_classes.skip_vehicle_loading or false
 
     -- Store persistence lists
     instance.picked_items = picked_items or {}
@@ -132,6 +135,10 @@ function world:new(map_path, entity_classes, picked_items, killed_enemies, trans
     instance.props = {}
     loaders.loadProps(instance, instance.destroyed_for_loading)
 
+    -- Vehicles (rideable: horse, boat, etc.)
+    instance.vehicles = {}
+    loaders.loadVehicles(instance)
+
     -- Load parallax backgrounds
     loaders.loadParallax(instance)
 
@@ -202,6 +209,9 @@ world.getStairOffset = entities.getStairOffset
 world.getStairInfo = entities.getStairInfo
 world.adjustVelocityForStairs = entities.adjustVelocityForStairs
 world.updateProps = entities.updateProps
+world.updateVehicles = entities.updateVehicles
+world.getInteractableVehicle = entities.getInteractableVehicle
+world.addVehicle = entities.addVehicle
 
 -- Delegate rendering functions
 world.draw = rendering.draw

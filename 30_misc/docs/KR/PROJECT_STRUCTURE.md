@@ -102,6 +102,9 @@ entities/
 ├── npc/                  - NPC 시스템
 ├── item/                 - 아이템 시스템
 ├── world_item/           - 드롭 아이템 (리스폰 제어)
+├── vehicle/              - 탈것 시스템 (탑승/하차)
+│   ├── init.lua          - Vehicle 엔티티 클래스
+│   └── render.lua        - 그리기
 └── healing_point/        - 체력 회복
 ```
 
@@ -179,7 +182,8 @@ game/
 └── data/                 - 설정 파일
     ├── player.lua        - 플레이어 스탯, 애니메이션 (주입됨)
     ├── entities/
-    │   └── types.lua     - 적 타입 (주입됨)
+    │   ├── types.lua     - 적/NPC/탈것 타입 (주입됨)
+    │   └── vehicles.lua  - 탈것 정의 (말 등)
     ├── weapon/
     │   ├── hand_anchors.lua   - 프레임별 손 위치 (주입됨)
     │   └── handle_anchors.lua - 무기 손잡이 위치 (주입됨)
@@ -245,6 +249,10 @@ Enemies:
   type = "boss_slime"
   respawn = false        ← 일회성 처치!
 
+Vehicles ("Vehicles" 레이어):
+  type = "horse"         ← vehicles.lua의 탈것 타입
+  ride_speed = 500       ← 탑승 시 속도 (선택적 오버라이드)
+
 Parallax ("Parallax" objectgroup):
   Type = "parallax"
   image = "assets/images/parallax/layer1_sky.png"
@@ -297,6 +305,7 @@ persistence:registerSystem("level", save_fn, load_fn)
 | picked_items | ✅ | ✅ | ✅ |
 | transformed_npcs | ✅ | ✅ | ✅ |
 | destroyed_props | ✅ | ✅ | ✅ |
+| vehicle_states | ✅ | ✅ | ✅ |
 | 플레이어 HP | ✅ | ✅ | ✅ |
 | 인벤토리/무기 | ✅ | ✅ | ✅ |
 | 퀘스트 진행 | ✅ | ✅ | ✅ |
@@ -352,5 +361,5 @@ end, nil)
 
 ---
 
-**최종 업데이트:** 2025-12-02
+**최종 업데이트:** 2025-12-05
 **프레임워크:** LÖVE 11.5 + Lua 5.1

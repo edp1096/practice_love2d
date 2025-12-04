@@ -208,4 +208,34 @@ persistence:registerSystem("shop", function(scene)
     return shop_system:serialize()
 end, nil)
 
+-- Vehicle system (vehicle state across level transitions)
+persistence:registerSystem("vehicle", function(scene)
+    local vehicle_data = {
+        is_boarded = scene.player and scene.player.is_boarded or false,
+        boarded_type = nil,
+        vehicles = {}
+    }
+
+    -- Save boarded vehicle type
+    if scene.player and scene.player.is_boarded and scene.player.boarded_vehicle then
+        vehicle_data.boarded_type = scene.player.boarded_vehicle.type
+    end
+
+    -- Save all vehicles in current world
+    if scene.world and scene.world.vehicles then
+        for _, vehicle in ipairs(scene.world.vehicles) do
+            table.insert(vehicle_data.vehicles, {
+                x = vehicle.x,
+                y = vehicle.y,
+                type = vehicle.type,
+                map_id = vehicle.map_id,
+                direction = vehicle.direction,
+                is_boarded = vehicle.is_boarded
+            })
+        end
+    end
+
+    return vehicle_data
+end, nil)
+
 return persistence

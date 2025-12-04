@@ -804,4 +804,28 @@ function entities.updateProps(self, dt)
     end
 end
 
+-- Update all vehicles
+function entities.updateVehicles(self, dt, player_x, player_y)
+    for _, vehicle in ipairs(self.vehicles) do
+        vehicle:update(dt, player_x, player_y)
+    end
+end
+
+-- Get interactable vehicle near player
+function entities.getInteractableVehicle(self, player_x, player_y)
+    for _, vehicle in ipairs(self.vehicles) do
+        if vehicle.can_interact and not vehicle.is_boarded then
+            return vehicle
+        end
+    end
+    return nil
+end
+
+-- Add a vehicle to the world (for map transition persistence)
+function entities.addVehicle(self, vehicle)
+    vehicle.world = self
+    collision.createVehicleCollider(vehicle, self.physicsWorld, self.game_mode)
+    table.insert(self.vehicles, vehicle)
+end
+
 return entities

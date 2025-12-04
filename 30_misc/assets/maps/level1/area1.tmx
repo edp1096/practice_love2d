@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="2025.11.21" orientation="orthogonal" renderorder="right-down" width="30" height="30" tilewidth="32" tileheight="32" infinite="0" nextlayerid="14" nextobjectid="89">
+<map version="1.10" tiledversion="2025.11.21" orientation="orthogonal" renderorder="right-down" width="30" height="30" tilewidth="32" tileheight="32" infinite="0" nextlayerid="15" nextobjectid="101">
  <editorsettings>
   <export target="area1.lua" format="lua"/>
  </editorsettings>
@@ -202,11 +202,11 @@
    </properties>
   </object>
  </objectgroup>
- <objectgroup id="6" name="NPCs" visible="0" locked="1">
+ <objectgroup id="6" name="NPCs" locked="1">
   <object id="42" x="672" y="800" width="32" height="32">
    <properties>
     <property name="id" value="passerby_01"/>
-    <property name="type" value="villager"/>
+    <property name="type" value="villager_01"/>
    </properties>
   </object>
  </objectgroup>
@@ -279,5 +279,8 @@
     <property name="respawn" type="bool" value="false"/>
    </properties>
   </object>
+ </objectgroup>
+ <objectgroup id="14" name="Vehicles">
+  <object id="100" name="TestHorse" type="horse" x="768" y="800" width="64" height="40"/>
  </objectgroup>
 </map>

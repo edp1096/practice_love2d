@@ -87,7 +87,9 @@ function input_handler.keypressed(self, key)
     elseif input:wasPressed("slot_5", "keyboard", key) then
         if self.inventory then self.inventory:selectSlot(5) end
     elseif input:wasPressed("interact", "keyboard", key) then
-        -- F key: Interact with NPC, Save Point, or Pick up Item (A button on gamepad uses context logic)
+        -- F key: Interact with NPC, Save Point, Pick up Item, or Vehicle (A button on gamepad uses context logic)
+        -- Priority: NPC/SavePoint/Item > Disembark > Board vehicle
+
         local npc = self.world:getInteractableNPC(self.player.x, self.player.y)
         if npc then
             self:processDeliveryQuests(npc.id)
@@ -164,6 +166,21 @@ function input_handler.keypressed(self, key)
                 self.world:removeWorldItem(world_item.id)
                 sound:playSFX("item", "pickup")
             end
+            return
+        end
+
+        -- Board/Disembark vehicle (lowest priority - only if no other interaction available)
+        if self.player.is_boarded then
+            self.player:disembark()
+            sound:playSFX("ui", "select")
+            return
+        end
+
+        local vehicle = self.world:getInteractableVehicle(self.player.x, self.player.y)
+        if vehicle then
+            self.player:boardVehicle(vehicle)
+            sound:playSFX("ui", "select")
+            return
         end
     else
         debug:handleInput(key, {
@@ -312,7 +329,7 @@ function input_handler.gamepadpressed(self, joystick, button)
 
     elseif action == "interact" then
         -- Y button logic:
-        -- NPC/SavePoint/Item (if near)
+        -- Priority: NPC/SavePoint/Item > Disembark > Board vehicle > Quickslot
         -- Quickslot selection/use
         --   - First press on slot: Select
         --   - Second press on same slot: Use
@@ -399,7 +416,21 @@ function input_handler.gamepadpressed(self, joystick, button)
             return
         end
 
-        -- Quickslot selection/use (no NPC/SavePoint/Item nearby)
+        -- Board/Disembark vehicle (lower priority than NPC/SavePoint/Item)
+        if self.player.is_boarded then
+            self.player:disembark()
+            sound:playSFX("ui", "select")
+            return
+        end
+
+        local vehicle = self.world:getInteractableVehicle(self.player.x, self.player.y)
+        if vehicle then
+            self.player:boardVehicle(vehicle)
+            sound:playSFX("ui", "select")
+            return
+        end
+
+        -- Quickslot selection/use (no NPC/SavePoint/Item/Vehicle nearby)
         -- First press: Select quickslot
         -- Second press on same slot: Use quickslot
         if not self.last_selected_quickslot or self.last_selected_quickslot ~= self.selected_quickslot then

@@ -30,6 +30,7 @@
 
 local humans = require "game.data.entities.humans"
 local monsters = require "game.data.entities.monsters"
+local vehicles = require "game.data.entities.vehicles"
 
 local entity_types = {}
 
@@ -174,6 +175,13 @@ entity_types.weapon_effects = {
         left = { flip_x = slash_size, flip_y = -1 * slash_size },
         right = { flip_x = slash_size, flip_y = slash_size }
     }
+}
+
+-- Vehicle type definitions
+entity_types.vehicles = {
+    horse = vehicles.horse,
+    donkey = vehicles.donkey,
+    boat = vehicles.boat,
 }
 
 return entity_types

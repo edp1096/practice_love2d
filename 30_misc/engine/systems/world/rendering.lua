@@ -98,6 +98,15 @@ function rendering.drawEntitiesYSorted(self, player)
         end
     end
 
+    -- Add vehicles for Y-sorting (only non-boarded ones)
+    if self.vehicles then
+        for _, vehicle in ipairs(self.vehicles) do
+            if not vehicle.is_boarded then
+                table.insert(drawables, vehicle)
+            end
+        end
+    end
+
     -- Include drawable walls for Y-sorting (topdown mode only)
     if self.drawable_walls then
         for _, wall in ipairs(self.drawable_walls) do
@@ -121,7 +130,14 @@ function rendering.drawEntitiesYSorted(self, player)
     -- Draw in sorted order
     for _, entity in ipairs(drawables) do
         if entity == player then
+            -- If player is on vehicle, handle vehicle rendering based on direction
+            if player.is_boarded and player.boarded_vehicle then
+                player.boarded_vehicle:drawBoardedBefore()  -- Draw vehicle first if facing "up"
+            end
             entity:drawAll()
+            if player.is_boarded and player.boarded_vehicle then
+                player.boarded_vehicle:drawBoardedAfter()   -- Draw vehicle after if facing down/left/right
+            end
         elseif entity.draw then
             entity:draw()
         end
@@ -272,6 +288,12 @@ function rendering.drawDebug(self)
     if self.npcs then
         for _, npc in ipairs(self.npcs) do
             if npc and npc.drawDebug then npc:drawDebug() end
+        end
+    end
+
+    if self.vehicles then
+        for _, vehicle in ipairs(self.vehicles) do
+            if vehicle and vehicle.drawDebug then vehicle:drawDebug() end
         end
     end
 

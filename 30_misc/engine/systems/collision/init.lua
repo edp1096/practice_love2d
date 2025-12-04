@@ -6,6 +6,7 @@ local player_collision = require "engine.systems.collision.player"
 local enemy_collision = require "engine.systems.collision.enemy"
 local npc_collision = require "engine.systems.collision.npc"
 local prop_collision = require "engine.systems.collision.prop"
+local vehicle_collision = require "engine.systems.collision.vehicle"
 local walls = require "engine.systems.collision.walls"
 local zones = require "engine.systems.collision.zones"
 
@@ -39,6 +40,11 @@ end
 -- Create collider for Prop entity
 function collision.createPropCollider(prop, physicsWorld, game_mode)
     prop_collision.create(prop, physicsWorld, game_mode)
+end
+
+-- Create collider for Vehicle entity
+function collision.createVehicleCollider(vehicle, physicsWorld, game_mode)
+    vehicle_collision.create(vehicle, physicsWorld, game_mode)
 end
 
 -- Create collider for death zone (returns collider or nil)

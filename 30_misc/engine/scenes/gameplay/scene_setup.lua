@@ -17,6 +17,7 @@ local npc_class = require "engine.entities.npc"
 local healing_point_class = require "engine.entities.healing_point"
 local world_item_class = require "engine.entities.world_item"
 local prop_class = require "engine.entities.prop"
+local vehicle_class = require "engine.entities.vehicle"
 local dialogue = require "engine.ui.dialogue"
 local sound = require "engine.core.sound"
 local util = require "engine.utils.util"
@@ -186,6 +187,7 @@ function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_sl
         local persistence_save_data = {
             hp = player_data.health,
             max_hp = player_data.max_health,
+            map = persistence.current_map_path,  -- For vehicle restoration (same map check)
             inventory = persistence:getSystemData("inventory"),
             -- These come from persistence:loadToScene already
             picked_items = scene.picked_items,
@@ -197,6 +199,7 @@ function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_sl
             dialogue_choices = persistence:getSystemData("dialogue"),
             level_data = persistence:getSystemData("level"),
             shop_data = persistence:getSystemData("shop"),
+            vehicle_data = persistence:getSystemData("vehicle"),
         }
 
         scene_setup.initializeFromSaveOrNew(scene, persistence_save_data, is_new_game, mapPath, spawn_x, spawn_y, save_slot)
@@ -250,6 +253,11 @@ function scene_setup.initializeFromSaveOrNew(scene, save_data, is_new_game, mapP
     -- Create world and player
     scene_setup.createWorld(scene, mapPath)
     scene_setup.createPlayer(scene, spawn_x, spawn_y, save_data)
+
+    -- Restore vehicles from save data (after player is created)
+    -- is_same_map: check if save data's map matches current map
+    local is_same_map = save_data and save_data.map == mapPath
+    scene_setup.restoreVehicles(scene, save_data, is_same_map)
 
     -- Initialize systems
     scene_setup.initSystems(scene)
@@ -317,6 +325,7 @@ function scene_setup.createWorld(scene, mapPath)
         healing_point = healing_point_class,
         world_item = world_item_class,
         prop = prop_class,
+        vehicle = vehicle_class,
         loot_tables = scene.loot_tables
     }, scene.picked_items, scene.killed_enemies, scene.transformed_npcs, scene.destroyed_props)
 end
@@ -346,6 +355,49 @@ function scene_setup.createPlayer(scene, spawn_x, spawn_y, save_data)
     end
 
     scene.world:addEntity(scene.player)
+end
+
+-- Restore vehicles from save data
+-- is_same_map: true if loading same map (restore all vehicles), false if different map (only boarded)
+function scene_setup.restoreVehicles(scene, save_data, is_same_map)
+    if not save_data or not save_data.vehicle_data then
+        return
+    end
+
+    local vehicle_data = save_data.vehicle_data
+
+    -- Case 1: Same map (save/load) - restore all vehicles at their saved positions
+    if is_same_map and vehicle_data.vehicles and #vehicle_data.vehicles > 0 then
+        -- Destroy colliders of vehicles loaded from map before clearing
+        for _, vehicle in ipairs(scene.world.vehicles) do
+            if vehicle.collider and not vehicle.collider:isDestroyed() then
+                vehicle.collider:destroy()
+            end
+            if vehicle.foot_collider and not vehicle.foot_collider:isDestroyed() then
+                vehicle.foot_collider:destroy()
+            end
+        end
+        -- Clear any vehicles loaded from map (we'll restore from save)
+        scene.world.vehicles = {}
+
+        -- Restore each vehicle
+        for _, v_data in ipairs(vehicle_data.vehicles) do
+            local new_vehicle = vehicle_class:new(v_data.x, v_data.y, v_data.type, v_data.map_id)
+            new_vehicle.direction = v_data.direction or "down"
+            scene.world:addVehicle(new_vehicle)
+
+            -- If this vehicle was being ridden, reboard
+            if v_data.is_boarded and vehicle_data.is_boarded then
+                scene.player:boardVehicle(new_vehicle)
+            end
+        end
+    -- Case 2: Different map (level transition) - only bring boarded vehicle
+    elseif vehicle_data.is_boarded and vehicle_data.boarded_type then
+        -- Create vehicle at player position and board player
+        local new_vehicle = vehicle_class:new(scene.player.x, scene.player.y, vehicle_data.boarded_type)
+        scene.world:addVehicle(new_vehicle)
+        scene.player:boardVehicle(new_vehicle)
+    end
 end
 
 -- Initialize minimap and weather
@@ -529,6 +581,14 @@ end
 
 -- Switch to a new map
 function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
+    -- Save boarded vehicle type BEFORE destroying world (to recreate in new map)
+    local boarded_vehicle_type = nil
+    if scene.player.is_boarded and scene.player.boarded_vehicle then
+        boarded_vehicle_type = scene.player.boarded_vehicle.type
+        -- Disembark temporarily (vehicle will be recreated in new map)
+        scene.player:disembark()
+    end
+
     -- CRITICAL: Sync persistence data from world BEFORE destroying it
     -- (world may have killed enemies, picked items, transformed NPCs that scene doesn't have)
     helpers.syncPersistenceData(scene)
@@ -543,6 +603,21 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
     -- Check DESTINATION map's persist_state (where we're going TO)
     local dest_map_data = love.filesystem.load(new_map_path)()
     local dest_persist_state = dest_map_data and dest_map_data.properties and dest_map_data.properties.persist_state
+
+    -- Always save current map's vehicle states before leaving
+    if current_map_name and scene.world and scene.world.vehicles then
+        scene.session_vehicle_states = scene.session_vehicle_states or {}
+        scene.session_vehicle_states[current_map_name] = {}
+        for _, vehicle in ipairs(scene.world.vehicles) do
+            table.insert(scene.session_vehicle_states[current_map_name], {
+                x = vehicle.x,
+                y = vehicle.y,
+                type = vehicle.type,
+                map_id = vehicle.map_id,
+                direction = vehicle.direction,
+            })
+        end
+    end
 
     if dest_persist_state then
         -- Entering persist_state=true map (indoor): save current map's session state
@@ -582,6 +657,7 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
         -- Leaving persist_state=false map to persist_state=false map (outdoor → outdoor)
         -- Clear session states only - respawn=true enemies will respawn
         -- NOTE: Do NOT clear scene.killed_enemies - it contains permanent deaths (respawn=false)
+        -- NOTE: Do NOT clear session_vehicle_states - vehicles should persist across outdoor maps
         scene.session_map_states = {}
     end
 
@@ -634,7 +710,9 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
         healing_point = healing_point_class,
         world_item = world_item_class,
         prop = prop_class,
-        loot_tables = scene.loot_tables
+        vehicle = vehicle_class,
+        loot_tables = scene.loot_tables,
+        skip_vehicle_loading = (boarded_vehicle_type ~= nil)  -- Skip if player was on vehicle
     }, merged_picked, merged_killed, scene.transformed_npcs, merged_destroyed_props)
 
     -- Reinitialize weather for new map
@@ -654,6 +732,35 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
     scene.player.default_move = (map_props and map_props.move_mode) or config_default
 
     scene.world:addEntity(scene.player)
+
+    -- Recreate vehicle if player was on vehicle during map transition
+    if boarded_vehicle_type and vehicle_class then
+        local new_vehicle = vehicle_class:new(spawn_x, spawn_y, boarded_vehicle_type)
+        scene.world:addVehicle(new_vehicle)
+        scene.player:boardVehicle(new_vehicle)
+    end
+
+    -- Restore vehicles from session state (for vehicles left in this map during previous visit)
+    -- Only restore if player is NOT boarding a vehicle (to avoid duplicate vehicles)
+    local new_map_name = scene.world.map.properties and scene.world.map.properties.name
+    if not boarded_vehicle_type and new_map_name and scene.session_vehicle_states and scene.session_vehicle_states[new_map_name] then
+        -- Clear map-loaded vehicles (they'll be replaced by session state)
+        for _, vehicle in ipairs(scene.world.vehicles or {}) do
+            if vehicle.collider then vehicle.collider:destroy() end
+            if vehicle.foot_collider then vehicle.foot_collider:destroy() end
+        end
+        scene.world.vehicles = {}
+
+        -- Restore vehicles from session state
+        for _, saved_vehicle in ipairs(scene.session_vehicle_states[new_map_name]) do
+            if vehicle_class then
+                local restored_vehicle = vehicle_class:new(saved_vehicle.x, saved_vehicle.y, saved_vehicle.type)
+                restored_vehicle.map_id = saved_vehicle.map_id
+                restored_vehicle.direction = saved_vehicle.direction or "down"
+                scene.world:addVehicle(restored_vehicle)
+            end
+        end
+    end
 
     -- Update minimap for new map
     if scene.minimap then

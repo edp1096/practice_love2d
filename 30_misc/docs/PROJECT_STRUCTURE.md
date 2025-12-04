@@ -102,6 +102,9 @@ entities/
 ├── npc/                  - NPC system
 ├── item/                 - Item system
 ├── world_item/           - Dropped items (respawn control)
+├── vehicle/              - Vehicle system (mount/dismount)
+│   ├── init.lua          - Vehicle entity class
+│   └── render.lua        - Drawing
 └── healing_point/        - Health restoration
 ```
 
@@ -179,7 +182,8 @@ game/
 └── data/                 - Configuration files
     ├── player.lua        - Player stats, animations (injected)
     ├── entities/
-    │   └── types.lua     - Enemy types (injected)
+    │   ├── types.lua     - Enemy/NPC/Vehicle types (injected)
+    │   └── vehicles.lua  - Vehicle definitions (horse, etc.)
     ├── weapon/
     │   ├── hand_anchors.lua   - Hand positions per frame (injected)
     │   └── handle_anchors.lua - Weapon grip positions (injected)
@@ -245,6 +249,10 @@ Enemies:
   type = "boss_slime"
   respawn = false        ← One-time kill!
 
+Vehicles (in "Vehicles" layer):
+  type = "horse"         ← Vehicle type from vehicles.lua
+  ride_speed = 500       ← Speed when mounted (optional override)
+
 Parallax (in "Parallax" objectgroup):
   Type = "parallax"
   image = "assets/images/parallax/layer1_sky.png"
@@ -297,6 +305,7 @@ persistence:registerSystem("level", save_fn, load_fn)
 | picked_items | ✅ | ✅ | ✅ |
 | transformed_npcs | ✅ | ✅ | ✅ |
 | destroyed_props | ✅ | ✅ | ✅ |
+| vehicle_states | ✅ | ✅ | ✅ |
 | player HP | ✅ | ✅ | ✅ |
 | inventory/weapon | ✅ | ✅ | ✅ |
 | quest progress | ✅ | ✅ | ✅ |
@@ -352,5 +361,5 @@ end, nil)
 
 ---
 
-**Last Updated:** 2025-12-02
+**Last Updated:** 2025-12-05
 **Framework:** LÖVE 11.5 + Lua 5.1
