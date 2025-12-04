@@ -86,7 +86,6 @@ constants.UI = {
     SPACING_SMALL = 5,
     SPACING_MEDIUM = 10,
     SPACING_LARGE = 15,
-    BORDER_RADIUS = 8,
     PANEL_MARGIN = 20,
 }
 
@@ -152,7 +151,6 @@ constants.COLLISION_CLASSES = {
     PROP_FOOT = "PropFoot",      -- Topdown mode: prop foot collider for ground collision
     VEHICLE = "Vehicle",         -- Vehicle entity (rideable: horse, boat, etc.)
     VEHICLE_FOOT = "VehicleFoot", -- Topdown mode: vehicle foot collider for ground collision
-    WEAPON = "Weapon",
     HEALING_POINT = "HealingPoint",
     ITEM = "Item",
 }
