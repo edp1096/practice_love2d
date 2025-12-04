@@ -272,33 +272,26 @@ function render:drawChoices(dialogue)
 
         -- 2. Check previous selection (only for non-repeating choices)
         -- Common/repeating choices are always shown in white (never greyed)
-        -- Using text_key patterns to identify always-available choices
         if not should_grey_out then
-            local always_available_keys = {
-                -- Quest system buttons (dynamically generated, no text_key)
-                ["Accept Quest"] = true,
-                ["Decline"] = true,
-                ["Continue"] = true,
-            }
-            local always_available_key_patterns = {
-                "choice_think_about_it",
-                "choice_not_interested",
-                "choice_goodbye",
-                "choice_thanks",
-                "choice_good_to_know",
-                "choice_thanks_info",
-                "choice_tell_more",
-                "choice_get_on_it",
-                "choice_me_too",
-                "choice_see_around",
-                "choice_maybe_later",
-                "choice_keep_in_mind",
-            }
+            -- Quest action choices are always shown as unread
+            local is_always_available = choice._is_quest_action
 
-            local is_always_available = always_available_keys[choice.text]
-
-            -- Check text_key patterns
+            -- Check text_key patterns for common dialogue choices
             if not is_always_available and choice.text_key then
+                local always_available_key_patterns = {
+                    "choice_think_about_it",
+                    "choice_not_interested",
+                    "choice_goodbye",
+                    "choice_thanks",
+                    "choice_good_to_know",
+                    "choice_thanks_info",
+                    "choice_tell_more",
+                    "choice_get_on_it",
+                    "choice_me_too",
+                    "choice_see_around",
+                    "choice_maybe_later",
+                    "choice_keep_in_mind",
+                }
                 for _, pattern in ipairs(always_available_key_patterns) do
                     if choice.text_key:find(pattern) then
                         is_always_available = true

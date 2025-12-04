@@ -124,11 +124,13 @@ function quest_interactions.showQuestOfferDialogue(scene, quest_info, npc_name)
                         action = {
                             type = "accept_quest",
                             quest_id = quest_info.id
-                        }
+                        },
+                        _is_quest_action = true  -- Always show as unread
                     },
                     {
                         text = locale:t("quest.decline"),
-                        next = "declined"
+                        next = "declined",
+                        _is_quest_action = true  -- Always show as unread
                     }
                 }
             },

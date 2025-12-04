@@ -96,11 +96,13 @@ function core:handleQuestOffer(dialogue, node)
             {
                 text = locale:t("quest.accept"),
                 next = "quest_accepted_" .. quest_id,
-                action = { type = "accept_quest", quest_id = quest_id }
+                action = { type = "accept_quest", quest_id = quest_id },
+                _is_quest_action = true  -- Always show as unread
             },
             {
                 text = locale:t("quest.decline"),
-                next = dlg.decline_response or "end"
+                next = dlg.decline_response or "end",
+                _is_quest_action = true  -- Always show as unread
             }
         }
     }
@@ -110,7 +112,7 @@ function core:handleQuestOffer(dialogue, node)
         text = accept_text,
         speaker = speaker,
         choices = {
-            { text = locale:t("common.continue"), next = dlg.decline_response or "end" }
+            { text = locale:t("common.continue"), next = dlg.decline_response or "end", _is_quest_action = true }
         }
     }
 
