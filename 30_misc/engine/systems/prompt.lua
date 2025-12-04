@@ -75,6 +75,9 @@ function prompt:draw(action, x, y, y_offset, color)
         -- Text foreground (bright yellow)
         text_ui:draw(button_text, text_x, text_y, colors.for_prompt_outline)
     end
+
+    -- Reset color to white
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 return prompt

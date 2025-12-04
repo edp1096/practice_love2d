@@ -475,6 +475,10 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
     colors:apply(self.border_color)
     love.graphics.setLineWidth(self.border_width)
     love.graphics.rectangle("line", x, y, display_size, display_size)
+
+    -- Reset graphics state
+    love.graphics.setLineWidth(1)
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 return minimap
