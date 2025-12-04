@@ -31,6 +31,16 @@ function utils:DeepCopy(obj, seen)
     return res
 end
 
+-- Shallow copy a table (one level deep)
+function utils:ShallowCopy(source)
+    if type(source) ~= 'table' then return source end
+    local dest = {}
+    for k, v in pairs(source) do
+        dest[k] = v
+    end
+    return dest
+end
+
 function utils:SaveConfig(APP_CONFIG, sound_settings, input_settings, resolution_override)
     local os_name = love.system.getOS()
     local is_mobile = (os_name == "Android" or os_name == "iOS")

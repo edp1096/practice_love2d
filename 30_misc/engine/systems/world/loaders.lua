@@ -4,6 +4,7 @@
 local factory = require "engine.systems.entity_factory"
 local constants = require "engine.core.constants"
 local collision = require "engine.systems.collision"
+local geometry = require "engine.utils.geometry"
 
 local loaders = {}
 
@@ -77,40 +78,9 @@ local function shouldSpawnOriginalNPC(map_id, killed_enemies, transformed_npcs)
     return true
 end
 
--- Helper: Check if a point is inside any stair polygon
+-- Helper: Check if a point is inside any stair area (uses geometry utilities)
 local function isInStairArea(stairs, x, y)
-    if not stairs or #stairs == 0 then
-        return false
-    end
-
-    for _, stair in ipairs(stairs) do
-        if stair.shape == "polygon" and stair.polygon and stair.bounds then
-            -- Quick bounding box check
-            local b = stair.bounds
-            if x >= b.min_x and x <= b.max_x and y >= b.min_y and y <= b.max_y then
-                -- Point-in-polygon test (ray casting)
-                local inside = false
-                local j = #stair.polygon
-                for i = 1, #stair.polygon do
-                    local pi = stair.polygon[i]
-                    local pj = stair.polygon[j]
-                    if (pi.y > y) ~= (pj.y > y) and
-                       x < (pj.x - pi.x) * (y - pi.y) / (pj.y - pi.y) + pi.x then
-                        inside = not inside
-                    end
-                    j = i
-                end
-                if inside then return true end
-            end
-        elseif stair.x and stair.width then
-            -- Rectangle stair
-            if x >= stair.x and x <= stair.x + stair.width and
-               y >= stair.y and y <= stair.y + stair.height then
-                return true
-            end
-        end
-    end
-    return false
+    return geometry.pointInZones(stairs, x, y)
 end
 
 -- Helper: Create a drawable tile object
@@ -147,53 +117,48 @@ local function createDrawableTile(tile_info, tileset, world_x, world_y, tile_hei
     }
 end
 
+-- Helper: Process a single tile for loading
+local function processTile(self, tile_data, world_x, world_y, tile_width, tile_height)
+    if not (tile_data and tile_data.gid and tile_data.gid > 0) then return end
+
+    local tile_info = self.map.tiles[tile_data.gid]
+    if not tile_info then return end
+
+    local tileset = self.map.tilesets[tile_info.tileset]
+    if not (tileset and tileset.image) then return end
+
+    local drawable = createDrawableTile(
+        tile_info, tileset, world_x, world_y,
+        tile_height, tile_data.gid, self.map
+    )
+
+    -- Check if tile is in stair area
+    local tile_center_x = world_x + tile_width / 2
+    local tile_center_y = world_y + tile_height / 2
+
+    if isInStairArea(self.stairs, tile_center_x, tile_center_y) then
+        table.insert(self.stair_tiles, drawable)
+    else
+        table.insert(self.drawable_tiles, drawable)
+    end
+end
+
 function loaders.loadTreeTiles(self)
     if not self.map.layers["Decos"] then return end
 
-    -- Initialize drawable tiles arrays
-    if not self.drawable_tiles then
-        self.drawable_tiles = {}
-    end
-    -- Stair tiles are drawn BEFORE Y-sorted entities (always behind player)
-    if not self.stair_tiles then
-        self.stair_tiles = {}
-    end
+    self.drawable_tiles = self.drawable_tiles or {}
+    self.stair_tiles = self.stair_tiles or {}
 
     local layer = self.map.layers["Decos"]
     local tile_width = self.map.tilewidth
     local tile_height = self.map.tileheight
 
-    -- Iterate through all tiles in the layer
     for y = 1, layer.height do
         for x = 1, layer.width do
             local tile_data = layer.data[y] and layer.data[y][x]
-            if tile_data and tile_data.gid and tile_data.gid > 0 then
-                local tile_info = self.map.tiles[tile_data.gid]
-                if tile_info then
-                    local tileset = self.map.tilesets[tile_info.tileset]
-                    if tileset and tileset.image then
-                        local world_x = (x - 1) * tile_width
-                        local world_y = (y - 1) * tile_height
-
-                        -- Check if tile is in stair area
-                        local tile_center_x = world_x + tile_width / 2
-                        local tile_center_y = world_y + tile_height / 2
-
-                        local drawable = createDrawableTile(
-                            tile_info, tileset, world_x, world_y,
-                            tile_height, tile_data.gid, self.map
-                        )
-
-                        if isInStairArea(self.stairs, tile_center_x, tile_center_y) then
-                            -- Stair tiles: drawn before Y-sorted entities (always behind player)
-                            table.insert(self.stair_tiles, drawable)
-                        else
-                            -- Normal tiles: Y-sorted with entities
-                            table.insert(self.drawable_tiles, drawable)
-                        end
-                    end
-                end
-            end
+            local world_x = (x - 1) * tile_width
+            local world_y = (y - 1) * tile_height
+            processTile(self, tile_data, world_x, world_y, tile_width, tile_height)
         end
     end
 end
@@ -562,42 +527,32 @@ function loaders.loadStairs(self)
             end
 
             -- Calculate bounding box for quick rejection test
-            local min_x, min_y = math.huge, math.huge
-            local max_x, max_y = -math.huge, -math.huge
-            for _, p in ipairs(stair.polygon) do
-                min_x = math.min(min_x, p.x)
-                min_y = math.min(min_y, p.y)
-                max_x = math.max(max_x, p.x)
-                max_y = math.max(max_y, p.y)
-            end
-            stair.bounds = { min_x = min_x, min_y = min_y, max_x = max_x, max_y = max_y }
+            stair.bounds = geometry.polygonBounds(stair.polygon)
 
             -- Auto-detect stair direction from polygon shape
             -- Find the average Y at left edge vs right edge
+            local b = stair.bounds
             local left_y_sum, left_count = 0, 0
             local right_y_sum, right_count = 0, 0
-            local threshold = (max_x - min_x) * 0.3  -- 30% from each edge
+            local threshold = (b.max_x - b.min_x) * 0.3  -- 30% from each edge
 
             for _, p in ipairs(stair.polygon) do
-                if p.x <= min_x + threshold then
+                if p.x <= b.min_x + threshold then
                     left_y_sum = left_y_sum + p.y
                     left_count = left_count + 1
-                elseif p.x >= max_x - threshold then
+                elseif p.x >= b.max_x - threshold then
                     right_y_sum = right_y_sum + p.y
                     right_count = right_count + 1
                 end
             end
 
-            local avg_left_y = left_count > 0 and (left_y_sum / left_count) or (min_y + max_y) / 2
-            local avg_right_y = right_count > 0 and (right_y_sum / right_count) or (min_y + max_y) / 2
+            local mid_y = (b.min_y + b.max_y) / 2
+            local avg_left_y = left_count > 0 and (left_y_sum / left_count) or mid_y
+            local avg_right_y = right_count > 0 and (right_y_sum / right_count) or mid_y
 
             -- If left side is higher (lower Y), hill goes left
             -- If right side is higher (lower Y), hill goes right
-            if avg_left_y < avg_right_y then
-                stair.hill_direction = "left"  -- Left side is higher
-            else
-                stair.hill_direction = "right"  -- Right side is higher
-            end
+            stair.hill_direction = avg_left_y < avg_right_y and "left" or "right"
         else
             -- Rectangle shape - use properties or default
             stair.hill_direction = obj.properties and obj.properties.hill_direction or "up"

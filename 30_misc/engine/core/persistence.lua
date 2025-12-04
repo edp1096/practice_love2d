@@ -2,6 +2,8 @@
 -- Global persistence storage for scene transitions
 -- Extensible system: register new systems with registerSystem()
 
+local utils = require "engine.utils.util"
+
 local persistence = {
     -- Core persistence data (world state)
     killed_enemies = {},
@@ -24,6 +26,15 @@ local persistence = {
     checkpoint = nil,
 }
 
+-- Tables that need to be persisted
+local PERSISTENCE_TABLES = {
+    "killed_enemies",
+    "picked_items",
+    "transformed_npcs",
+    "destroyed_props",
+    "session_map_states",
+}
+
 -- Register a system for automatic save/load
 -- save_fn(scene) -> returns serializable data
 -- load_fn(scene, data) -> restores state from data
@@ -43,29 +54,8 @@ function persistence:saveFromScene(scene)
     helpers.syncPersistenceData(scene)
 
     -- Copy core world state
-    self.killed_enemies = {}
-    for k, v in pairs(scene.killed_enemies or {}) do
-        self.killed_enemies[k] = v
-    end
-
-    self.picked_items = {}
-    for k, v in pairs(scene.picked_items or {}) do
-        self.picked_items[k] = v
-    end
-
-    self.transformed_npcs = {}
-    for k, v in pairs(scene.transformed_npcs or {}) do
-        self.transformed_npcs[k] = v
-    end
-
-    self.destroyed_props = {}
-    for k, v in pairs(scene.destroyed_props or {}) do
-        self.destroyed_props[k] = v
-    end
-
-    self.session_map_states = {}
-    for k, v in pairs(scene.session_map_states or {}) do
-        self.session_map_states[k] = v
+    for _, table_name in ipairs(PERSISTENCE_TABLES) do
+        self[table_name] = utils:ShallowCopy(scene[table_name] or {})
     end
 
     self.current_save_slot = scene.current_save_slot
@@ -84,29 +74,9 @@ end
 function persistence:loadToScene(scene)
     if not scene then return end
 
-    scene.killed_enemies = {}
-    for k, v in pairs(self.killed_enemies or {}) do
-        scene.killed_enemies[k] = v
-    end
-
-    scene.picked_items = {}
-    for k, v in pairs(self.picked_items or {}) do
-        scene.picked_items[k] = v
-    end
-
-    scene.transformed_npcs = {}
-    for k, v in pairs(self.transformed_npcs or {}) do
-        scene.transformed_npcs[k] = v
-    end
-
-    scene.destroyed_props = {}
-    for k, v in pairs(self.destroyed_props or {}) do
-        scene.destroyed_props[k] = v
-    end
-
-    scene.session_map_states = {}
-    for k, v in pairs(self.session_map_states or {}) do
-        scene.session_map_states[k] = v
+    -- Copy core world state
+    for _, table_name in ipairs(PERSISTENCE_TABLES) do
+        scene[table_name] = utils:ShallowCopy(self[table_name] or {})
     end
 end
 
@@ -157,28 +127,15 @@ function persistence:saveCheckpoint(scene)
         spawn_y = scene.map_entry_y,
         save_slot = scene.current_save_slot,
 
-        -- World state (copy tables)
-        killed_enemies = {},
-        picked_items = {},
-        transformed_npcs = {},
-        destroyed_props = {},
-
         -- Systems data
         systems_data = {},
     }
 
-    -- Copy world state
-    for k, v in pairs(scene.killed_enemies or {}) do
-        self.checkpoint.killed_enemies[k] = v
-    end
-    for k, v in pairs(scene.picked_items or {}) do
-        self.checkpoint.picked_items[k] = v
-    end
-    for k, v in pairs(scene.transformed_npcs or {}) do
-        self.checkpoint.transformed_npcs[k] = v
-    end
-    for k, v in pairs(scene.destroyed_props or {}) do
-        self.checkpoint.destroyed_props[k] = v
+    -- Copy world state (excluding session_map_states for checkpoint)
+    for _, table_name in ipairs(PERSISTENCE_TABLES) do
+        if table_name ~= "session_map_states" then
+            self.checkpoint[table_name] = utils:ShallowCopy(scene[table_name] or {})
+        end
     end
 
     -- Save all registered systems

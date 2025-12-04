@@ -10,6 +10,114 @@ local locale = require "engine.core.locale"
 local core = {}
 
 -- ============================================================================
+-- HELPER FUNCTIONS
+-- ============================================================================
+
+-- Helper: Resolve text from localization key or direct value
+local function resolveTextKey(key, fallback, default)
+    default = default or ""
+    if not key then return fallback or default end
+
+    local translated = locale:t(key)
+    -- i18n returns the key itself if translation not found
+    if translated ~= key then
+        return translated
+    end
+    return fallback or default
+end
+
+-- Helper: Handle fallback for quest offer nodes
+local function handleQuestFallback(self, dialogue, node)
+    local fallback = node.no_quest_fallback or "end"
+    if fallback == "end" then
+        return "clear"
+    else
+        self:showNode(dialogue, fallback)
+        return "redirect"
+    end
+end
+
+-- Helper: Translate choice texts using locale
+local function translateChoices(choices)
+    local translated = {}
+    for _, choice in ipairs(choices) do
+        local translated_choice = {}
+        for k, v in pairs(choice) do
+            translated_choice[k] = v
+        end
+        translated_choice.text = resolveTextKey(choice.text_key, choice.text)
+        table.insert(translated, translated_choice)
+    end
+    return translated
+end
+
+-- Helper: Find first available quest for NPC
+local function findAvailableQuest(quest_system, npc_id)
+    if not (quest_system and quest_system.quest_registry and npc_id) then
+        return nil
+    end
+
+    for quest_id, quest_data in pairs(quest_system.quest_registry) do
+        if quest_data.giver_npc == npc_id and quest_data.dialogue then
+            if quest_system:canAccept(quest_id) then
+                return { id = quest_id, data = quest_data }
+            end
+        end
+    end
+    return nil
+end
+
+-- Handle quest_offer node type (dynamic quest dialogue generation)
+-- Returns: virtual_node table, "clear", "redirect", or nil
+function core:handleQuestOffer(dialogue, node)
+    local npc_id = node.npc_id or dialogue.current_npc_id
+    local quest_system = dialogue.quest_system
+
+    local available_quest = findAvailableQuest(quest_system, npc_id)
+
+    if not available_quest then
+        return handleQuestFallback(self, dialogue, node)
+    end
+
+    -- Generate quest offer node dynamically
+    local quest_id = available_quest.id
+    local quest_data = available_quest.data
+    local dlg = quest_data.dialogue
+
+    local offer_text = resolveTextKey(dlg.offer_text_key, dlg.offer_text)
+    local accept_text = resolveTextKey(dlg.accept_text_key, dlg.accept_text)
+    local speaker = resolveTextKey(node.speaker_key, node.speaker, "???")
+
+    -- Create virtual node with quest offer text
+    local virtual_node = {
+        text = offer_text,
+        speaker = speaker,
+        choices = {
+            {
+                text = locale:t("quest.accept"),
+                next = "quest_accepted_" .. quest_id,
+                action = { type = "accept_quest", quest_id = quest_id }
+            },
+            {
+                text = locale:t("quest.decline"),
+                next = dlg.decline_response or "end"
+            }
+        }
+    }
+
+    -- Create acceptance response virtual node (persistent)
+    dialogue.current_tree.nodes["quest_accepted_" .. quest_id] = {
+        text = accept_text,
+        speaker = speaker,
+        choices = {
+            { text = locale:t("common.continue"), next = dlg.decline_response or "end" }
+        }
+    }
+
+    return virtual_node
+end
+
+-- ============================================================================
 -- INITIALIZATION
 -- ============================================================================
 
@@ -220,132 +328,15 @@ function core:showNode(dialogue, node_id)
 
     -- Check for quest_offer node type (dynamic quest dialogue generation)
     if node.type == "quest_offer" then
-        -- Find available quest for this NPC
-        -- Use node.npc_id if specified, otherwise use current NPC from dialogue
-        local npc_id = node.npc_id or dialogue.current_npc_id
-        local quest_system = dialogue.quest_system
-
-        if quest_system and quest_system.quest_registry and npc_id then
-            -- Find first available quest for this NPC
-            local available_quest = nil
-            for quest_id, quest_data in pairs(quest_system.quest_registry) do
-                if quest_data.giver_npc == npc_id and quest_data.dialogue then
-                    -- Check quest state first
-                    local quest_state = quest_system.quest_states[quest_id]
-                    local state_str = quest_state and quest_state.state or "NO_STATE"
-
-                    -- Use canAccept() to check prerequisites
-                    local can_accept = quest_system:canAccept(quest_id)
-
-                    if can_accept then
-                        available_quest = { id = quest_id, data = quest_data }
-                        break
-                    end
-                end
-            end
-
-            if available_quest then
-                -- Generate quest offer node dynamically
-                local quest_id = available_quest.id
-                local quest_data = available_quest.data
-                local dlg = quest_data.dialogue
-
-                -- Resolve offer text from key or direct value
-                local offer_text = dlg.offer_text_key and locale:t(dlg.offer_text_key) or dlg.offer_text or ""
-                if dlg.offer_text_key and offer_text == dlg.offer_text_key then
-                    offer_text = dlg.offer_text or dlg.offer_text_key
-                end
-
-                -- Resolve accept text from key or direct value
-                local accept_text = dlg.accept_text_key and locale:t(dlg.accept_text_key) or dlg.accept_text or ""
-                if dlg.accept_text_key and accept_text == dlg.accept_text_key then
-                    accept_text = dlg.accept_text or dlg.accept_text_key
-                end
-
-                -- Resolve speaker from key or direct value
-                local speaker = node.speaker_key and locale:t(node.speaker_key) or node.speaker or "???"
-                if node.speaker_key and speaker == node.speaker_key then
-                    speaker = node.speaker or "???"
-                end
-
-                -- Create virtual node with quest offer text
-                local virtual_node = {
-                    text = offer_text,
-                    speaker = speaker,
-                    choices = {
-                        {
-                            text = locale:t("quest.accept"),
-                            next = "quest_accepted_" .. quest_id,
-                            action = {
-                                type = "accept_quest",
-                                quest_id = quest_id
-                            }
-                        },
-                        {
-                            text = locale:t("quest.decline"),
-                            next = dlg.decline_response or "end"
-                        }
-                    }
-                }
-
-                -- Create acceptance response virtual node (persistent)
-                dialogue.current_tree.nodes["quest_accepted_" .. quest_id] = {
-                    text = accept_text,
-                    speaker = speaker,
-                    choices = {
-                        { text = locale:t("common.continue"), next = dlg.decline_response or "end" }
-                    }
-                }
-
-                -- IMPORTANT: Don't store virtual_node in tree!
-                -- quest_offer nodes are dynamic - they regenerate on each visit
-                -- Just replace current node for immediate display
-                node = virtual_node
-            else
-                -- No available quests - redirect to fallback or end
-                local fallback = node.no_quest_fallback or "end"
-                if fallback == "end" then
-                    self:clear(dialogue)
-                    return
-                else
-                    self:showNode(dialogue, fallback)
-                    return
-                end
-            end
-        else
-            -- No quest system or NPC - redirect to fallback or end
-            local fallback = node.no_quest_fallback or "end"
-            if fallback == "end" then
-                self:clear(dialogue)
-                return
-            else
-                self:showNode(dialogue, fallback)
-                return
-            end
+        local result = self:handleQuestOffer(dialogue, node)
+        if result == "clear" then
+            self:clear(dialogue)
+            return
+        elseif result == "redirect" then
+            return
+        elseif result then
+            node = result  -- Virtual node returned
         end
-    end
-
-    -- Resolve text from key or direct value
-    local function resolveText(key, fallback)
-        if key then
-            local translated = locale:t(key)
-            -- i18n returns the key itself if translation not found
-            if translated ~= key then
-                return translated
-            end
-        end
-        return fallback or ""
-    end
-
-    -- Resolve speaker from key or direct value
-    local function resolveSpeaker(key, fallback)
-        if key then
-            local translated = locale:t(key)
-            if translated ~= key then
-                return translated
-            end
-        end
-        return fallback or "???"
     end
 
     -- Check if node has pages (multi-page dialogue)
@@ -354,7 +345,7 @@ function core:showNode(dialogue, node_id)
         -- Translate page keys
         pages = {}
         for _, page_key in ipairs(node.pages_key) do
-            table.insert(pages, resolveText(page_key, page_key))
+            table.insert(pages, resolveTextKey(page_key, page_key))
         end
     elseif node.pages and #node.pages > 0 then
         pages = node.pages
@@ -383,29 +374,14 @@ function core:showNode(dialogue, node_id)
         dialogue.total_pages = 0
         dialogue.showing_paged_text = false
 
-        local speaker = resolveSpeaker(node.speaker_key, node.speaker)
-        local text = resolveText(node.text_key, node.text)
+        local speaker = resolveTextKey(node.speaker_key, node.speaker, "???")
+        local text = resolveTextKey(node.text_key, node.text)
         Talkies.say(speaker, { text })
     end
 
     -- Store resolved speaker and text for rendering (choices mode needs it)
-    dialogue.current_speaker = resolveSpeaker(node.speaker_key, node.speaker)
-    dialogue.current_text = resolveText(node.text_key, node.text)
-
-    -- Helper function to translate choices
-    local function translateChoices(choices)
-        local translated = {}
-        for _, choice in ipairs(choices) do
-            local translated_choice = {}
-            for k, v in pairs(choice) do
-                translated_choice[k] = v
-            end
-            -- Resolve text_key to text
-            translated_choice.text = resolveText(choice.text_key, choice.text)
-            table.insert(translated, translated_choice)
-        end
-        return translated
-    end
+    dialogue.current_speaker = resolveTextKey(node.speaker_key, node.speaker, "???")
+    dialogue.current_text = resolveTextKey(node.text_key, node.text)
 
     -- Setup choices (if any) - with conditional filtering
     if node.choices and #node.choices > 0 then

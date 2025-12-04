@@ -2,29 +2,9 @@
 -- Loot drop system (handles random item generation from loot tables)
 -- Pure logic - receives loot table data via dependency injection
 
+local probability = require "engine.utils.probability"
+
 local loot = {}
-
--- Roll random loot from weighted table
--- @param loot_table: { { item = "item_type", weight = 33, quantity = 1 }, ... }
--- @return item_type, quantity (or nil, 0 if no drop)
-local function rollLoot(loot_table)
-    local total_weight = 0
-    for _, entry in ipairs(loot_table) do
-        total_weight = total_weight + entry.weight
-    end
-
-    local roll = math.random() * total_weight
-    local cumulative = 0
-
-    for _, entry in ipairs(loot_table) do
-        cumulative = cumulative + entry.weight
-        if roll <= cumulative then
-            return entry.item, entry.quantity or 1
-        end
-    end
-
-    return nil, 0
-end
 
 -- Get loot drop for an enemy
 -- @param enemy_type: string (e.g., "red_slime", "bandit")
@@ -53,8 +33,8 @@ function loot.getLoot(enemy_type, enemy_config, loot_tables_data)
         return nil, 0  -- No drop
     end
 
-    -- Roll for item
-    return rollLoot(loot_table.items)
+    -- Roll for item (uses probability utility)
+    return probability.weightedRandomEntry(loot_table.items)
 end
 
 return loot

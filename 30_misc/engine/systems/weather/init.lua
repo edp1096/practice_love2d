@@ -1,6 +1,8 @@
 -- engine/systems/weather/init.lua
 -- Dynamic weather system with random pool and script control
 
+local probability = require "engine.utils.probability"
+
 local weather = {}
 
 -- Dependencies (lazy loaded)
@@ -55,28 +57,9 @@ local function parseWeatherPool(pool_string)
   return pool
 end
 
--- Roll random weather from pool
+-- Roll random weather from pool (uses probability utility)
 local function rollWeather(pool)
-  if not pool then return "clear" end
-
-  -- Calculate total weight
-  local total = 0
-  for _, weight in pairs(pool) do
-    total = total + weight
-  end
-
-  -- Roll
-  local roll = math.random() * total
-  local cumulative = 0
-
-  for weather_type, weight in pairs(pool) do
-    cumulative = cumulative + weight
-    if roll <= cumulative then
-      return weather_type
-    end
-  end
-
-  return "clear"  -- Fallback
+  return probability.weightedRandomKey(pool, "clear")
 end
 
 -- Load weather effect module

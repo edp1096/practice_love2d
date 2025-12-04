@@ -2,6 +2,7 @@
 -- Wrapper for input_mapper with backward compatibility
 
 local constants = require "engine.core.constants"
+local utils = require "engine.utils.util"
 
 local input = {}
 
@@ -41,33 +42,6 @@ local function getActionMapping(action_name)
     return nil
 end
 
--- Deep merge helper function
-local function deepMerge(default, custom)
-    local result = {}
-
-    -- Copy default
-    for k, v in pairs(default) do
-        if type(v) == "table" then
-            result[k] = deepMerge(v, {})
-        else
-            result[k] = v
-        end
-    end
-
-    -- Override with custom
-    if custom then
-        for k, v in pairs(custom) do
-            if type(v) == "table" and type(result[k]) == "table" then
-                result[k] = deepMerge(result[k], v)
-            else
-                result[k] = v
-            end
-        end
-    end
-
-    return result
-end
-
 -- Initialize input system
 function input:init(input_config)
     -- Load default config from engine
@@ -75,7 +49,9 @@ function input:init(input_config)
 
     -- Merge custom config with defaults (custom overrides default)
     if input_config then
-        self.input_config = deepMerge(default_config, input_config)
+        -- Deep copy default first, then merge custom on top
+        self.input_config = utils:DeepCopy(default_config)
+        utils:DeepMerge(self.input_config, input_config)
     else
         print("Warning: No game input config provided, using engine defaults")
         self.input_config = default_config
