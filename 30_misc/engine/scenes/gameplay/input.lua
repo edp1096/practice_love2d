@@ -165,8 +165,6 @@ function input_handler.keypressed(self, key)
                 sound:playSFX("item", "pickup")
             end
         end
-    elseif input:wasPressed("manual_save", "keyboard", key) then
-        self:saveGame()
     else
         debug:handleInput(key, {
             player = self.player,

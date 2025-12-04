@@ -2,9 +2,6 @@
 -- NEXT button widget for advancing dialogue/cutscenes
 
 local BaseButton = require "engine.ui.widgets.button.base"
-local input = require "engine.core.input"
-local text_ui = require "engine.utils.text"
-local button_icons = require "engine.utils.button_icons"
 local coords = require "engine.core.coords"
 
 local NextButton = setmetatable({}, { __index = BaseButton })
@@ -104,56 +101,8 @@ function NextButton:draw()
     love.graphics.setLineWidth(2)
     love.graphics.rectangle("line", self.x, self.y, self.width, self.height, 8, 8)
 
-    -- Draw text with shortcut hint (only for physical gamepad, not keyboard/virtual gamepad)
-    local virtual_gamepad = input.virtual_gamepad
-    local is_virtual_active = virtual_gamepad and virtual_gamepad.enabled
-
-    -- Calculate text metrics
-    local label_width = self.font:getWidth(self.label)
-    local text_height = self.font:getHeight()
-    local text_y = self.y + (self.height - text_height) / 2
-
-    -- Show button prompt only for physical gamepad (not keyboard or virtual gamepad)
-    if input.joystick and not is_virtual_active then
-        local spacing = 8  -- Space between label and icon
-
-        -- Calculate total width for centering
-        local total_width
-        if input.gamepad_type == "playstation" then
-            -- PlayStation: label + spacing + icon (16px)
-            total_width = label_width + spacing + 16
-        else
-            -- Xbox: label + spacing + "[A]" text
-            local button_prompt = input:getPrompt("menu_select") or "A"
-            local prompt_text = string.format("[%s]", button_prompt)
-            local prompt_width = self.font:getWidth(prompt_text)
-            total_width = label_width + spacing + prompt_width
-        end
-
-        -- Center the entire content (label + icon)
-        local start_x = self.x + (self.width - total_width) / 2
-
-        -- Draw label
-        text_ui:draw(self.label, start_x, text_y, self.text_color, self.font)
-
-        -- Draw button icon/text
-        local icon_x = start_x + label_width + spacing
-        local icon_y = text_y + text_height / 2
-
-        if input.gamepad_type == "playstation" then
-            -- Draw PlayStation cross icon (centered at icon_x + 8)
-            button_icons:drawPlayStation(icon_x + 8, icon_y, "cross", 16)
-        else
-            -- Draw Xbox text "[A]"
-            local button_prompt = input:getPrompt("menu_select") or "A"
-            local prompt_text = string.format("[%s]", button_prompt)
-            text_ui:draw(prompt_text, icon_x, text_y, self.text_color, self.font)
-        end
-    else
-        -- No gamepad - just draw label centered
-        local text_x = self.x + (self.width - label_width) / 2
-        text_ui:draw(self.label, text_x, text_y, self.text_color, self.font)
-    end
+    -- Draw label with gamepad prompt
+    self:drawLabelWithPrompt("menu_select", "cross")
 
     -- Reset
     love.graphics.setColor(1, 1, 1, 1)

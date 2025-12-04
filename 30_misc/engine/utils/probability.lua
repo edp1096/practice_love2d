@@ -59,18 +59,4 @@ function probability.weightedRandomEntry(entries)
     return nil, 0, nil
 end
 
--- Roll a percentage chance
--- @param percent: 0-100 chance
--- @return boolean
-function probability.rollPercent(percent)
-    return math.random() * 100 <= percent
-end
-
--- Roll with a fractional chance
--- @param chance: 0.0-1.0 chance
--- @return boolean
-function probability.rollChance(chance)
-    return math.random() <= chance
-end
-
 return probability

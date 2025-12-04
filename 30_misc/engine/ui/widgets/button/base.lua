@@ -3,6 +3,8 @@
 
 local coords = require "engine.core.coords"
 local text_ui = require "engine.utils.text"
+local input = require "engine.core.input"
+local button_icons = require "engine.utils.button_icons"
 
 local BaseButton = {}
 BaseButton.__index = BaseButton
@@ -216,6 +218,55 @@ function BaseButton:reset()
     self.is_pressed = false
     self.is_hovered = false
     self.touch_id = nil
+end
+
+-- Draw label with optional gamepad prompt
+-- @param action: input action name (e.g., "menu_back", "menu_select")
+-- @param ps_icon: PlayStation icon name (e.g., "circle", "cross")
+function BaseButton:drawLabelWithPrompt(action, ps_icon)
+    local virtual_gamepad = input.virtual_gamepad
+    local is_virtual_active = virtual_gamepad and virtual_gamepad.enabled
+
+    local label_width = self.font:getWidth(self.label)
+    local text_height = self.font:getHeight()
+    local text_y = self.y + (self.height - text_height) / 2
+
+    -- Show button prompt only for physical gamepad (not keyboard or virtual gamepad)
+    if input.joystick and not is_virtual_active then
+        local spacing = 8
+
+        -- Calculate total width for centering
+        local total_width
+        if input.gamepad_type == "playstation" then
+            total_width = label_width + spacing + 16  -- icon is 16px
+        else
+            local button_prompt = input:getPrompt(action) or "?"
+            local prompt_text = string.format("[%s]", button_prompt)
+            local prompt_width = self.font:getWidth(prompt_text)
+            total_width = label_width + spacing + prompt_width
+        end
+
+        local start_x = self.x + (self.width - total_width) / 2
+
+        -- Draw label
+        text_ui:draw(self.label, start_x, text_y, self.text_color, self.font)
+
+        -- Draw button icon/text
+        local icon_x = start_x + label_width + spacing
+        local icon_y = text_y + text_height / 2
+
+        if input.gamepad_type == "playstation" then
+            button_icons:drawPlayStation(icon_x + 8, icon_y, ps_icon, 16)
+        else
+            local button_prompt = input:getPrompt(action) or "?"
+            local prompt_text = string.format("[%s]", button_prompt)
+            text_ui:draw(prompt_text, icon_x, text_y, self.text_color, self.font)
+        end
+    else
+        -- No gamepad - just draw label centered
+        local text_x = self.x + (self.width - label_width) / 2
+        text_ui:draw(self.label, text_x, text_y, self.text_color, self.font)
+    end
 end
 
 return BaseButton
