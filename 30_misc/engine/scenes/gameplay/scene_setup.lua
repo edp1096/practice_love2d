@@ -140,9 +140,8 @@ function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_sl
 
     -- Check if we should use checkpoint data (for "Restart from Here")
     local persistence = require "engine.core.persistence"
-    if use_checkpoint and persistence:hasCheckpoint() then
-        local checkpoint = persistence:getCheckpoint()
-
+    local checkpoint = use_checkpoint and persistence:hasCheckpoint() and persistence:getCheckpoint()
+    if checkpoint then
         -- Restore world state from checkpoint
         scene.picked_items = {}
         scene.killed_enemies = {}
