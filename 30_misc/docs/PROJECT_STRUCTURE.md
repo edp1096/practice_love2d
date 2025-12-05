@@ -253,6 +253,16 @@ Vehicles (in "Vehicles" layer):
   type = "horse"         ← Vehicle type from vehicles.lua
   ride_speed = 500       ← Speed when mounted (optional override)
 
+Vehicle Types (in vehicles.lua):
+  horse, donkey, boat    ← ride_effect = "animated" (animation frames)
+  bicycle, kickboard     ← ride_effect = "animated" (pedaling/kick animation)
+  scooter                ← ride_effect = "vibration" (engine vibration)
+
+Vibration Config (for scooter-type vehicles):
+  vibration_intensity = 0.5   ← Pixels of shake
+  vibration_speed_idle = 60   ← Idle RPM frequency (Hz)
+  vibration_speed_move = 120  ← Moving RPM frequency (Hz)
+
 Parallax (in "Parallax" objectgroup):
   Type = "parallax"
   image = "assets/images/parallax/layer1_sky.png"

@@ -15,6 +15,11 @@ function render.draw(player)
         draw_y = draw_y + player.topdown_jump_height
     end
 
+    -- Apply ride vibration offset (scooter micro-vibration when moving)
+    if player.ride_vibration_offset and player.ride_vibration_offset ~= 0 then
+        draw_y = draw_y + player.ride_vibration_offset
+    end
+
     -- NOTE: Stair movement is now handled by adjusting velocity in moveEntity()
     -- No visual offset needed - the collider actually moves diagonally on stairs
 
@@ -184,6 +189,9 @@ local function drawHandOverlay(player)
     local draw_y = player.y + player.hit_shake_y
     if player.game_mode == "topdown" and player.topdown_is_jumping then
         draw_y = draw_y + player.topdown_jump_height
+    end
+    if player.ride_vibration_offset and player.ride_vibration_offset ~= 0 then
+        draw_y = draw_y + player.ride_vibration_offset
     end
 
     love.graphics.setColor(1, 1, 1, 1)

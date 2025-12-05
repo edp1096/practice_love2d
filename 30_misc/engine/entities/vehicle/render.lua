@@ -8,6 +8,11 @@ function render.draw(vehicle)
     local base_w, base_h = vehicle.width, vehicle.height
     local direction = vehicle.direction or "down"
 
+    -- Apply vibration offset when boarded and moving
+    if vehicle.vibration_offset and vehicle.vibration_offset ~= 0 then
+        y = y + vehicle.vibration_offset
+    end
+
     -- Adjust dimensions based on direction
     -- Left/Right: side view (wide, short) - 64x40
     -- Up/Down: front/back view (narrow, same height) - 40x40

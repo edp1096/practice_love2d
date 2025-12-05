@@ -71,6 +71,7 @@ function player:new(x, y, config)
     instance.is_boarded = false
     instance.boarded_vehicle = nil
     instance.original_speed = nil
+    instance.ride_vibration_offset = 0  -- Scooter vibration effect
 
     return instance
 end

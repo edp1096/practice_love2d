@@ -94,6 +94,67 @@ local function handleDirectionFromInput(player, cam)
     end
 end
 
+-- Handle riding state (separate idle/move animations with ride effects)
+local function handleRidingState(player, dt, move_x, move_y)
+    local vx, vy = 0, 0
+    local movement_input = math.abs(move_x) > 0.01 or math.abs(move_y) > 0.01
+
+    -- Get ride speed from boarded vehicle
+    local ride_speed = player.speed  -- Already set by boardVehicle()
+
+    -- Calculate velocity and update direction
+    if movement_input then
+        vx = move_x * ride_speed
+        vy = move_y * ride_speed
+
+        -- Update direction based on movement
+        local abs_x = math.abs(move_x)
+        local abs_y = math.abs(move_y)
+        if abs_x > abs_y then
+            player.direction = move_x > 0 and "right" or "left"
+        else
+            player.direction = move_y > 0 and "down" or "up"
+        end
+    end
+
+    -- Get ride effect from vehicle config
+    local vehicle = player.boarded_vehicle
+    local ride_effect = vehicle and vehicle.ride_effect or "animated"
+
+    -- Select animation: ride_move when moving, ride_idle when stopped
+    local anim_type = movement_input and "ride_move_" or "ride_idle_"
+    local anim_key = anim_type .. player.direction
+
+    if player.animations[anim_key] then
+        player.anim = player.animations[anim_key]
+
+        -- Apply ride effect
+        if ride_effect == "vibration" then
+            -- Vibration: don't update animation (fixed frame), always vibrate (engine)
+            -- Higher RPM when moving = higher frequency vibration
+            local intensity = vehicle.vibration_intensity or 1
+            local speed = movement_input
+                and (vehicle.vibration_speed_move or 120)
+                or (vehicle.vibration_speed_idle or 60)
+            local offset = math.sin(love.timer.getTime() * speed) * intensity
+            player.ride_vibration_offset = offset
+            vehicle.vibration_offset = offset  -- Apply to vehicle too
+        else
+            -- Animated: update animation frames normally
+            player.anim:update(dt)
+            player.ride_vibration_offset = 0
+            if vehicle then vehicle.vibration_offset = 0 end
+        end
+    else
+        -- Fallback to idle if ride animation not defined
+        player.anim = player.animations["idle_" .. player.direction]
+        player.ride_vibration_offset = 0
+    end
+
+    player.state = "riding"
+    return vx, vy, movement_input
+end
+
 -- Process movement input and update animation
 local function handleMovementInput(player, dt)
     local vx, vy = 0, 0
@@ -103,6 +164,11 @@ local function handleMovementInput(player, dt)
     -- Check for movement input (keyboard or gamepad)
     -- is_walk_input: true if CTRL held (keyboard) or stick magnitude < 0.5 (gamepad)
     local move_x, move_y, is_walk_input = input:getMovement()
+
+    -- Handle riding state separately (static pose)
+    if player.is_boarded then
+        return handleRidingState(player, dt, move_x, move_y)
+    end
 
     -- In platformer mode, ignore vertical input (W/S keys used for jump/crouch)
     if player.game_mode == "platformer" then
@@ -430,6 +496,22 @@ function animation.initialize(player, sprite_sheet, sprite_width, sprite_height)
         player.animations.jump_move_down = createAnimation(player.grid, frames.jump_move_down, durations.jump_move or 0.12)
         player.animations.jump_move_left = createAnimation(player.grid, frames.jump_move_left, durations.jump_move or 0.12)
         player.animations.jump_move_right = createAnimation(player.grid, frames.jump_move_right, durations.jump_move or 0.12)
+    end
+
+    -- Ride idle animations (optional - static pose when stopped on vehicle)
+    if frames.ride_idle_up then
+        player.animations.ride_idle_up = createAnimation(player.grid, frames.ride_idle_up, durations.ride_idle or 0.15)
+        player.animations.ride_idle_down = createAnimation(player.grid, frames.ride_idle_down, durations.ride_idle or 0.15)
+        player.animations.ride_idle_left = createAnimation(player.grid, frames.ride_idle_left, durations.ride_idle or 0.15)
+        player.animations.ride_idle_right = createAnimation(player.grid, frames.ride_idle_right, durations.ride_idle or 0.15)
+    end
+
+    -- Ride move animations (optional - moving on vehicle)
+    if frames.ride_move_up then
+        player.animations.ride_move_up = createAnimation(player.grid, frames.ride_move_up, durations.ride_move or 0.1)
+        player.animations.ride_move_down = createAnimation(player.grid, frames.ride_move_down, durations.ride_move or 0.1)
+        player.animations.ride_move_left = createAnimation(player.grid, frames.ride_move_left, durations.ride_move or 0.1)
+        player.animations.ride_move_right = createAnimation(player.grid, frames.ride_move_right, durations.ride_move or 0.1)
     end
 
     player.anim = player.animations.idle_right

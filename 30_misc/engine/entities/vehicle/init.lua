@@ -39,6 +39,12 @@ function vehicle:new(x, y, vehicle_type, map_id, config)
     instance.ride_speed = config.ride_speed or 400
     instance.interaction_range = config.interaction_range or 60
 
+    -- Ride effect (animated or vibration)
+    instance.ride_effect = config.ride_effect or "animated"
+    instance.vibration_intensity = config.vibration_intensity or 1
+    instance.vibration_speed_idle = config.vibration_speed_idle or config.vibration_speed or 60
+    instance.vibration_speed_move = config.vibration_speed_move or config.vibration_speed or 120
+
     -- Color box rendering (prototype - no sprites)
     instance.color = config.color or {0.6, 0.4, 0.2, 1}
     instance.width = config.width or 64

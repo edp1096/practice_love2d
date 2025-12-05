@@ -181,6 +181,9 @@ entity_types.weapon_effects = {
 entity_types.vehicles = {
     horse = vehicles.horse,
     donkey = vehicles.donkey,
+    bicycle = vehicles.bicycle,
+    kickboard = vehicles.kickboard,
+    scooter = vehicles.scooter,
     boat = vehicles.boat,
 }
 

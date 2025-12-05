@@ -85,6 +85,19 @@ player_config.animations = {
     attack_up       = { "5-8", 11 },
     attack_left     = { "1-4", 12 },
     attack_right    = { "5-8", 12 },
+
+    -- Riding poses (static or animated)
+    -- TODO: Update frame indices when ride sprite is added to sheet
+    -- Idle pose (standing still on vehicle)
+    ride_idle_up    = { "5-8", 1 },  -- placeholder: uses idle_up frame 1
+    ride_idle_down  = { "1-4", 1 },  -- placeholder: uses idle_down frame 1
+    ride_idle_left  = { "1-4", 2 },  -- placeholder: uses idle_left frame 1
+    ride_idle_right = { "5-8", 2 },  -- placeholder: uses idle_right frame 1
+    -- Move pose (moving on vehicle)
+    ride_move_up    = { "5-6", 9 },  -- placeholder: uses idle_up frames
+    ride_move_down  = { "1-2", 9 },  -- placeholder: uses idle_down frames
+    ride_move_left  = { "1-2", 10 },  -- placeholder: uses idle_left frames
+    ride_move_right = { "5-6", 10 },  -- placeholder: uses idle_right frames
   },
   durations = {
     idle = 0.15,
@@ -93,6 +106,8 @@ player_config.animations = {
     jump = 0.15,
     jump_move = 0.12,
     attack = 0.08,
+    ride_idle = 0.15,  -- static pose
+    ride_move = 0.3,   -- moving on vehicle
   },
 }
 

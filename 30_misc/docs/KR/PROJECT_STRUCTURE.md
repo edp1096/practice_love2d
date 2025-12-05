@@ -253,6 +253,16 @@ Vehicles ("Vehicles" 레이어):
   type = "horse"         ← vehicles.lua의 탈것 타입
   ride_speed = 500       ← 탑승 시 속도 (선택적 오버라이드)
 
+탈것 타입 (vehicles.lua):
+  horse, donkey, boat    ← ride_effect = "animated" (애니메이션 프레임)
+  bicycle, kickboard     ← ride_effect = "animated" (페달링/킥 애니메이션)
+  scooter                ← ride_effect = "vibration" (엔진 진동)
+
+진동 설정 (스쿠터 타입):
+  vibration_intensity = 0.5   ← 흔들림 픽셀
+  vibration_speed_idle = 60   ← 아이들링 RPM 주파수 (Hz)
+  vibration_speed_move = 120  ← 주행 RPM 주파수 (Hz)
+
 Parallax ("Parallax" objectgroup):
   Type = "parallax"
   image = "assets/images/parallax/layer1_sky.png"

@@ -9,8 +9,8 @@ return {
   height = 24,
   tilewidth = 32,
   tileheight = 32,
-  nextlayerid = 13,
-  nextobjectid = 56,
+  nextlayerid = 14,
+  nextobjectid = 57,
   properties = {
     ["ambient"] = "day",
     ["bgm"] = "level1",
@@ -577,6 +577,35 @@ return {
             ["id"] = "townsperson_01",
             ["type"] = "villager_02"
           }
+        }
+      }
+    },
+    {
+      type = "objectgroup",
+      draworder = "topdown",
+      id = 13,
+      name = "Vehicles",
+      class = "",
+      visible = true,
+      opacity = 1,
+      offsetx = 0,
+      offsety = 0,
+      parallaxx = 1,
+      parallaxy = 1,
+      properties = {},
+      objects = {
+        {
+          id = 56,
+          name = "",
+          type = "scooter",
+          shape = "rectangle",
+          x = 560,
+          y = 192,
+          width = 52,
+          height = 32,
+          rotation = 0,
+          visible = true,
+          properties = {}
         }
       }
     },
