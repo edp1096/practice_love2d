@@ -11,7 +11,7 @@ local vehicles = {}
 -- Horse - fast land movement
 vehicles.horse = {
     name = "Horse",
-    ride_speed = 500,           -- Speed when boarded (default player: 260)
+    ride_speed = 230,           -- Speed when boarded (default player: 260)
     interaction_range = 60,     -- Range to interact with vehicle
 
     -- Color box rendering (prototype - no sprites yet)
@@ -30,7 +30,7 @@ vehicles.horse = {
 -- Donkey - slower but more stable
 vehicles.donkey = {
     name = "Donkey",
-    ride_speed = 350,
+    ride_speed = 220,
     interaction_range = 60,
 
     color = {0.5, 0.5, 0.5, 1}, -- Gray
@@ -46,7 +46,7 @@ vehicles.donkey = {
 -- Bicycle - pedaling animation
 vehicles.bicycle = {
     name = "Bicycle",
-    ride_speed = 400,
+    ride_speed = 200,
     interaction_range = 50,
 
     color = {0.2, 0.2, 0.8, 1}, -- Blue
@@ -62,7 +62,7 @@ vehicles.bicycle = {
 -- Kickboard - kick animation
 vehicles.kickboard = {
     name = "Kickboard",
-    ride_speed = 320,
+    ride_speed = 220,
     interaction_range = 40,
 
     color = {0.8, 0.2, 0.2, 1}, -- Red
@@ -78,7 +78,7 @@ vehicles.kickboard = {
 -- Scooter - vibration effect
 vehicles.scooter = {
     name = "Scooter",
-    ride_speed = 450,
+    ride_speed = 300,
     interaction_range = 50,
 
     color = {0.5, 0.15, 0.15, 1}, -- Maroon (적갈색)
