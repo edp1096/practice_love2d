@@ -1,17 +1,12 @@
 -- engine/core/persistence.lua
 -- Global persistence storage for scene transitions
 -- Extensible system: register new systems with registerSystem()
+-- Now delegates entity state to entity_registry
 
 local utils = require "engine.utils.util"
+local entity_registry = require "engine.core.entity_registry"
 
 local persistence = {
-    -- Core persistence data (world state)
-    killed_enemies = {},
-    picked_items = {},
-    transformed_npcs = {},
-    destroyed_props = {},
-    session_map_states = {},
-
     -- Current game state
     current_save_slot = 1,
     current_map_path = nil,
@@ -26,7 +21,8 @@ local persistence = {
     checkpoint = nil,
 }
 
--- Tables that need to be persisted
+-- Legacy: Tables that were persisted (now handled by entity_registry)
+-- Kept for backward compatibility with existing save files
 local PERSISTENCE_TABLES = {
     "killed_enemies",
     "picked_items",
@@ -53,9 +49,12 @@ function persistence:saveFromScene(scene)
     local helpers = require "engine.utils.helpers"
     helpers.syncPersistenceData(scene)
 
-    -- Copy core world state
-    for _, table_name in ipairs(PERSISTENCE_TABLES) do
-        self[table_name] = utils:ShallowCopy(scene[table_name] or {})
+    -- Sync to entity_registry (single source of truth)
+    entity_registry:syncFromWorld(scene.world)
+
+    -- Copy session_map_states to entity_registry
+    for k, v in pairs(scene.session_map_states or {}) do
+        entity_registry.session_map_states[k] = v
     end
 
     self.current_save_slot = scene.current_save_slot
@@ -74,10 +73,8 @@ end
 function persistence:loadToScene(scene)
     if not scene then return end
 
-    -- Copy core world state
-    for _, table_name in ipairs(PERSISTENCE_TABLES) do
-        scene[table_name] = utils:ShallowCopy(self[table_name] or {})
-    end
+    -- Load from entity_registry (single source of truth)
+    entity_registry:loadToScene(scene)
 end
 
 -- Get saved data for a registered system (for scene_setup to build persistence_save_data)
@@ -87,20 +84,16 @@ end
 
 -- Check if we have saved persistence data
 function persistence:hasData()
-    return next(self.killed_enemies) ~= nil or
-           next(self.picked_items) ~= nil or
-           next(self.transformed_npcs) ~= nil or
-           next(self.destroyed_props) ~= nil or
+    return next(entity_registry.killed_enemies) ~= nil or
+           next(entity_registry.picked_items) ~= nil or
+           next(entity_registry.transformed_npcs) ~= nil or
+           next(entity_registry.destroyed_props) ~= nil or
            next(self.systems_data) ~= nil
 end
 
 -- Clear all persistence data (for new game)
 function persistence:clear()
-    self.killed_enemies = {}
-    self.picked_items = {}
-    self.transformed_npcs = {}
-    self.destroyed_props = {}
-    self.session_map_states = {}
+    entity_registry:clear()
     self.current_save_slot = 1
     self.current_map_path = nil
     self.systems_data = {}
@@ -120,6 +113,9 @@ function persistence:saveCheckpoint(scene)
     local helpers = require "engine.utils.helpers"
     helpers.syncPersistenceData(scene)
 
+    -- Sync to entity_registry
+    entity_registry:syncFromWorld(scene.world)
+
     self.checkpoint = {
         -- Map info
         map_path = scene.current_map_path,
@@ -127,16 +123,15 @@ function persistence:saveCheckpoint(scene)
         spawn_y = scene.map_entry_y,
         save_slot = scene.current_save_slot,
 
+        -- Entity state from registry
+        killed_enemies = utils:ShallowCopy(entity_registry.killed_enemies),
+        picked_items = utils:ShallowCopy(entity_registry.picked_items),
+        transformed_npcs = utils:ShallowCopy(entity_registry.transformed_npcs),
+        destroyed_props = utils:ShallowCopy(entity_registry.destroyed_props),
+
         -- Systems data
         systems_data = {},
     }
-
-    -- Copy world state (excluding session_map_states for checkpoint)
-    for _, table_name in ipairs(PERSISTENCE_TABLES) do
-        if table_name ~= "session_map_states" then
-            self.checkpoint[table_name] = utils:ShallowCopy(scene[table_name] or {})
-        end
-    end
 
     -- Save all registered systems
     for name, system in pairs(self.registered_systems) do
@@ -208,34 +203,42 @@ persistence:registerSystem("shop", function(scene)
     return shop_system:serialize()
 end, nil)
 
--- Vehicle system (vehicle state across level transitions)
+-- Vehicle system (boarded state for transitions)
+-- Note: entity_registry handles all vehicle positions now
 persistence:registerSystem("vehicle", function(scene)
     local vehicle_data = {
         is_boarded = scene.player and scene.player.is_boarded or false,
-        boarded_type = nil,
-        vehicles = {}
+        boarded_map_id = nil,
     }
 
-    -- Save boarded vehicle type
+    -- Save boarded vehicle map_id
     if scene.player and scene.player.is_boarded and scene.player.boarded_vehicle then
-        vehicle_data.boarded_type = scene.player.boarded_vehicle.type
+        vehicle_data.boarded_map_id = scene.player.boarded_vehicle.map_id
     end
 
-    -- Save all vehicles in current world
+    -- Sync current world vehicles to registry
     if scene.world and scene.world.vehicles then
+        local map_name = scene.world.map and scene.world.map.properties
+                         and scene.world.map.properties.name or "unknown"
         for _, vehicle in ipairs(scene.world.vehicles) do
-            table.insert(vehicle_data.vehicles, {
-                x = vehicle.x,
-                y = vehicle.y,
-                type = vehicle.type,
-                map_id = vehicle.map_id,
-                direction = vehicle.direction,
-                is_boarded = vehicle.is_boarded
-            })
+            if vehicle.map_id and not vehicle.is_boarded then
+                entity_registry:updateVehiclePosition(
+                    vehicle.map_id,
+                    map_name,
+                    vehicle.x,
+                    vehicle.y,
+                    vehicle.direction
+                )
+            end
         end
     end
 
     return vehicle_data
+end, nil)
+
+-- Entity registry system (exports all entity state for save/load)
+persistence:registerSystem("entity_registry", function(scene)
+    return entity_registry:export()
 end, nil)
 
 return persistence

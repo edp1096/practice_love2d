@@ -597,7 +597,7 @@ return {
         {
           id = 56,
           name = "",
-          type = "scooter",
+          type = "scooter2",
           shape = "rectangle",
           x = 560,
           y = 192,

@@ -9,36 +9,44 @@ local dialogue = require "engine.ui.dialogue"
 local quest_system = require "engine.core.quest"
 local level_system = require "engine.core.level"
 local shop_system = require "engine.systems.shop"
+local entity_registry = require "engine.core.entity_registry"
 local helpers = require "engine.utils.helpers"
 
--- Collect vehicle state data for saving
+-- Collect vehicle boarded state for saving
 local function collectVehicleData(scene)
     local vehicle_data = {
         is_boarded = scene.player.is_boarded or false,
-        boarded_type = nil,
-        vehicles = {}  -- All vehicles in current map (position, type, state)
+        boarded_map_id = nil,  -- map_id of boarded vehicle (for restore)
     }
 
-    -- Save boarded vehicle type
+    -- Save boarded vehicle map_id
     if scene.player.is_boarded and scene.player.boarded_vehicle then
-        vehicle_data.boarded_type = scene.player.boarded_vehicle.type
-    end
-
-    -- Save all vehicles in current world
-    if scene.world and scene.world.vehicles then
-        for _, vehicle in ipairs(scene.world.vehicles) do
-            table.insert(vehicle_data.vehicles, {
-                x = vehicle.x,
-                y = vehicle.y,
-                type = vehicle.type,
-                map_id = vehicle.map_id,
-                direction = vehicle.direction,
-                is_boarded = vehicle.is_boarded
-            })
-        end
+        vehicle_data.boarded_map_id = scene.player.boarded_vehicle.map_id
     end
 
     return vehicle_data
+end
+
+-- Sync vehicle positions to entity_registry before saving
+local function syncVehicleRegistryBeforeSave(scene)
+    if not scene.world or not scene.world.vehicles then
+        return
+    end
+
+    local map_name = scene.world.map and scene.world.map.properties
+                     and scene.world.map.properties.name or "unknown"
+
+    for _, vehicle in ipairs(scene.world.vehicles) do
+        if vehicle.map_id and not vehicle.is_boarded then
+            entity_registry:updateVehiclePosition(
+                vehicle.map_id,
+                map_name,
+                vehicle.x,
+                vehicle.y,
+                vehicle.direction
+            )
+        end
+    end
 end
 
 -- Save current game state to slot
@@ -48,8 +56,13 @@ function save_manager.saveGame(scene, slot)
     -- Sync persistence data from world (world may have updates that scene doesn't have)
     helpers.syncPersistenceData(scene)
 
-    -- Save killed_enemies (permanent deaths - respawn=false enemies)
-    -- respawn=true enemies will respawn on load (not in killed_enemies)
+    -- Sync vehicle positions to registry before saving
+    syncVehicleRegistryBeforeSave(scene)
+
+    -- Sync from world to entity_registry
+    entity_registry:syncFromWorld(scene.world)
+
+    -- Save using entity_registry (Single Source of Truth)
     local save_data = {
         hp = scene.player.health,
         max_hp = scene.player.max_health,
@@ -57,15 +70,12 @@ function save_manager.saveGame(scene, slot)
         x = scene.player.x,
         y = scene.player.y,
         inventory = scene.inventory and scene.inventory:save() or nil,
-        picked_items = scene.picked_items or {},
-        killed_enemies = scene.killed_enemies or {},  -- Permanent deaths only
-        destroyed_props = scene.destroyed_props or {},  -- Permanent prop destroys only
-        transformed_npcs = scene.transformed_npcs or {},
         dialogue_choices = dialogue:exportChoiceHistory(),
         quest_states = quest_system:exportStates(),
         level_data = level_system:serialize(),
         shop_data = shop_system:serialize(),
         vehicle_data = collectVehicleData(scene),
+        entity_registry = entity_registry:export(),  -- Single Source of Truth for all entity state
     }
 
     local success = save_sys:saveGame(slot, save_data)

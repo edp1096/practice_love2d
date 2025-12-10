@@ -183,7 +183,8 @@ entity_types.vehicles = {
     donkey = vehicles.donkey,
     bicycle = vehicles.bicycle,
     kickboard = vehicles.kickboard,
-    scooter = vehicles.scooter,
+    scooter1 = vehicles.scooter1,
+    scooter2 = vehicles.scooter2,
     boat = vehicles.boat,
 }
 

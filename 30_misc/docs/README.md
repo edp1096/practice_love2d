@@ -95,6 +95,22 @@ A LÖVE2D game engine with clean **Engine/Game separation** architecture.
 
 **Debug:** F2 shows stair polygons (orange) with direction arrows, F4 shows "Stair: X.X" offset.
 
+### Vehicle System
+**Rideable vehicles** - horses, bicycles, scooters, etc.
+
+**Tiled Setup:**
+1. Create "Vehicles" layer (Object Layer)
+2. Add object, set `type = "scooter1"` (from vehicles.lua)
+
+**Game Mode Behavior:**
+- **Topdown:** foot_collider handles wall collision
+- **Platformer:** ground_collider handles ground collision
+  - On board: player collider → sensor (gravity disabled)
+  - Vehicle-sized ground_collider handles physics
+  - On dismount: player collider restored
+
+**Controls:** F key to mount/dismount
+
 ---
 
 ## Creating Content
@@ -315,4 +331,4 @@ Open: `http://localhost:8080`
 
 **Framework:** LÖVE 11.5 + Lua 5.1
 **Architecture:** Engine/Game Separation + Data-Driven
-**Last Updated:** 2025-12-03
+**Last Updated:** 2025-12-10

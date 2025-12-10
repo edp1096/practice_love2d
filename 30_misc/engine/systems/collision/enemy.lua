@@ -17,10 +17,14 @@ function enemy_collision.create(enemy, physicsWorld, game_mode)
 
     local bounds = enemy:getColliderBounds()
 
+    -- Convert center to top-left (newBSGRectangleCollider expects top-left)
+    local left = bounds.x - bounds.width / 2
+    local top = bounds.y - bounds.height / 2
+
     -- Main collider (combat, physics)
     enemy.collider = helpers.createBSGCollider(
         physicsWorld,
-        bounds.x, bounds.y,
+        left, top,
         bounds.width, bounds.height,
         8, constants.COLLISION_CLASSES.ENEMY, enemy
     )
@@ -30,7 +34,7 @@ function enemy_collision.create(enemy, physicsWorld, game_mode)
         local entity_type = enemy.is_humanoid and "humanoid" or "slime"
         enemy.foot_collider = helpers.createFootCollider(
             physicsWorld,
-            bounds.x, bounds.y,
+            bounds.x, bounds.y,  -- createFootCollider expects center coordinates
             enemy.collider_width, enemy.collider_height,
             entity_type, constants.COLLISION_CLASSES.ENEMY_FOOT, enemy
         )

@@ -281,6 +281,6 @@
   </object>
  </objectgroup>
  <objectgroup id="14" name="Vehicles">
-  <object id="100" name="TestHorse" type="horse" x="768" y="800" width="64" height="40"/>
+  <object id="100" name="TestHorse" type="scooter1" x="768" y="800" width="64" height="40"/>
  </objectgroup>
 </map>

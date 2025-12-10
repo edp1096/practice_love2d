@@ -223,4 +223,33 @@ function utils:calculateDistance(x1, y1, x2, y2)
     return distance, dx, dy
 end
 
+-- Scan directory recursively for files matching extension
+-- Works with both filesystem and .love archive
+-- @param base_path: starting directory (e.g., "assets/maps")
+-- @param extension: file extension to match (e.g., ".lua")
+-- @return: array of file paths
+function utils:scanFiles(base_path, extension)
+    local files = {}
+    local items = love.filesystem.getDirectoryItems(base_path)
+
+    for _, item in ipairs(items) do
+        local item_path = base_path .. "/" .. item
+        local info = love.filesystem.getInfo(item_path)
+
+        if info then
+            if info.type == "directory" then
+                -- Recurse into subdirectory
+                local sub_files = self:scanFiles(item_path, extension)
+                for _, f in ipairs(sub_files) do
+                    table.insert(files, f)
+                end
+            elseif info.type == "file" and item:match(extension .. "$") then
+                table.insert(files, item_path)
+            end
+        end
+    end
+
+    return files
+end
+
 return utils

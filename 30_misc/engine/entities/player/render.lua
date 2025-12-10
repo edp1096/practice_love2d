@@ -24,42 +24,48 @@ function render.draw(player)
     -- No visual offset needed - the collider actually moves diagonally on stairs
 
     -- Shadow (stays on ground in platformer mode with dynamic scaling)
-    -- Shadow at character feet (center + half collider height)
-    local shadow_y = player.y + (player.collider_height / 2)
-    local shadow_scale = 1.0
-    local shadow_alpha = 0.4
+    -- Skip player shadow when boarded (vehicle has its own shadow)
+    if not player.is_boarded then
+        -- Shadow at character feet (center + half collider height)
+        -- Use original dimensions if stored (while boarded, collider_width is vehicle size)
+        local shadow_collider_width = player.original_collider_width or player.collider_width
+        local shadow_collider_height = player.original_collider_height or player.collider_height
+        local shadow_y = player.y + (shadow_collider_height / 2)
+        local shadow_scale = 1.0
+        local shadow_alpha = 0.4
 
-    -- Handle topdown jump shadow scaling
-    if player.game_mode == "topdown" and player.topdown_is_jumping then
-        -- Scale shadow based on jump height (gets smaller when higher)
-        -- topdown_jump_height is negative, so use abs() for scaling
-        local height = math.abs(player.topdown_jump_height)
-        shadow_scale = math.max(0.3, 1.0 - (height / 100))
-        shadow_alpha = math.max(0.1, 0.4 - (height / 125))
-    elseif player.game_mode == "platformer" and player.ground_y then
-        -- In platformer mode, shadow stays at ground level
-        -- ground_y is the Y coordinate of the ground surface from raycast
-        -- We want shadow ON the ground, not below it
-        shadow_y = player.ground_y
+        -- Handle topdown jump shadow scaling
+        if player.game_mode == "topdown" and player.topdown_is_jumping then
+            -- Scale shadow based on jump height (gets smaller when higher)
+            -- topdown_jump_height is negative, so use abs() for scaling
+            local height = math.abs(player.topdown_jump_height)
+            shadow_scale = math.max(0.3, 1.0 - (height / 100))
+            shadow_alpha = math.max(0.1, 0.4 - (height / 125))
+        elseif player.game_mode == "platformer" and player.ground_y then
+            -- In platformer mode, shadow stays at ground level
+            -- ground_y is the Y coordinate of the ground surface from raycast
+            -- We want shadow ON the ground, not below it
+            shadow_y = player.ground_y
 
-        -- Calculate height difference (distance from player's feet to ground)
-        -- Player's feet are at: center + half collider height
-        local player_feet_y = player.y + (player.collider_height / 2)
-        local height_diff = player.ground_y - player_feet_y
+            -- Calculate height difference (distance from player's feet to ground)
+            -- Player's feet are at: center + half collider height
+            local player_feet_y = player.y + (shadow_collider_height / 2)
+            local height_diff = player.ground_y - player_feet_y
 
-        -- Scale shadow based on height (gets smaller when higher)
-        -- At height 0: scale = 1.0, at height 200: scale = 0.3
-        shadow_scale = math.max(0.3, 1.0 - (height_diff / 300))
+            -- Scale shadow based on height (gets smaller when higher)
+            -- At height 0: scale = 1.0, at height 200: scale = 0.3
+            shadow_scale = math.max(0.3, 1.0 - (height_diff / 300))
 
-        -- Fade shadow based on height (gets more transparent when higher)
-        shadow_alpha = math.max(0.1, 0.4 - (height_diff / 500))
+            -- Fade shadow based on height (gets more transparent when higher)
+            shadow_alpha = math.max(0.1, 0.4 - (height_diff / 500))
+        end
+
+        love.graphics.setColor(0, 0, 0, shadow_alpha)
+        local shadow_width = shadow_collider_width * 0.625 * shadow_scale
+        local shadow_height = shadow_collider_width * 0.175 * shadow_scale
+        love.graphics.ellipse("fill", draw_x, shadow_y, shadow_width, shadow_height)
+        love.graphics.setColor(1, 1, 1, 1)
     end
-
-    love.graphics.setColor(0, 0, 0, shadow_alpha)
-    local shadow_width = player.collider_width * 0.625 * shadow_scale
-    local shadow_height = player.collider_width * 0.175 * shadow_scale
-    love.graphics.ellipse("fill", draw_x, shadow_y, shadow_width, shadow_height)
-    love.graphics.setColor(1, 1, 1, 1)
 
     -- Parry shield
     if player.parry_active then

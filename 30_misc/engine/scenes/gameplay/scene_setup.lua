@@ -10,6 +10,7 @@ local camera = require "vendor.hump.camera"
 local camera_sys = require "engine.core.camera"
 local display = require "engine.core.display"
 local save_sys = require "engine.core.save"
+local entity_registry = require "engine.core.entity_registry"
 local inventory_class = require "engine.systems.inventory"
 local item_class = require "engine.entities.item"
 local enemy_class = require "engine.entities.enemy"
@@ -142,31 +143,39 @@ function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_sl
     local persistence = require "engine.core.persistence"
     local checkpoint = use_checkpoint and persistence:hasCheckpoint() and persistence:getCheckpoint()
     if checkpoint then
-        -- Restore world state from checkpoint
-        scene.picked_items = {}
-        scene.killed_enemies = {}
-        scene.transformed_npcs = {}
-        scene.destroyed_props = {}
-        for k, v in pairs(checkpoint.killed_enemies or {}) do scene.killed_enemies[k] = v end
-        for k, v in pairs(checkpoint.picked_items or {}) do scene.picked_items[k] = v end
-        for k, v in pairs(checkpoint.transformed_npcs or {}) do scene.transformed_npcs[k] = v end
-        for k, v in pairs(checkpoint.destroyed_props or {}) do scene.destroyed_props[k] = v end
-        scene.session_map_states = {}
+        -- Restore entity_registry from checkpoint
+        entity_registry.killed_enemies = {}
+        entity_registry.picked_items = {}
+        entity_registry.transformed_npcs = {}
+        entity_registry.destroyed_props = {}
+        for k, v in pairs(checkpoint.killed_enemies or {}) do entity_registry.killed_enemies[k] = v end
+        for k, v in pairs(checkpoint.picked_items or {}) do entity_registry.picked_items[k] = v end
+        for k, v in pairs(checkpoint.transformed_npcs or {}) do entity_registry.transformed_npcs[k] = v end
+        for k, v in pairs(checkpoint.destroyed_props or {}) do entity_registry.destroyed_props[k] = v end
+        entity_registry.session_map_states = {}
+
+        -- Restore vehicle data from checkpoint
+        local entity_registry_data = checkpoint.systems_data.entity_registry or {}
+        if entity_registry_data.vehicles then
+            entity_registry.vehicles = entity_registry_data.vehicles
+            entity_registry.vehicles_initialized = entity_registry_data.vehicles_initialized or false
+        end
+
+        -- Load to scene
+        entity_registry:loadToScene(scene)
 
         -- Create save_data from checkpoint
         local player_data = checkpoint.systems_data.player or {}
+        local vehicle_data = checkpoint.systems_data.vehicle or {}
         local checkpoint_save_data = {
             hp = player_data.health,
             max_hp = player_data.max_health,
             inventory = checkpoint.systems_data.inventory,
-            picked_items = scene.picked_items,
-            killed_enemies = scene.killed_enemies,
-            transformed_npcs = scene.transformed_npcs,
-            destroyed_props = scene.destroyed_props,
             quest_states = checkpoint.systems_data.quest,
             dialogue_choices = checkpoint.systems_data.dialogue,
             level_data = checkpoint.systems_data.level,
             shop_data = checkpoint.systems_data.shop,
+            vehicle_data = vehicle_data,
         }
 
         scene_setup.initializeFromSaveOrNew(scene, checkpoint_save_data, false, mapPath, spawn_x, spawn_y, save_slot)
@@ -174,31 +183,31 @@ function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_sl
     -- Check if we should use persistence data from global storage (e.g., after cutscene)
     elseif use_persistence and persistence:hasData() then
         -- Restore persistence from global storage (after cutscene transition)
+        -- entity_registry already has the data from persistence:saveFromScene
         persistence:loadToScene(scene)
-        scene.session_map_states = {}
-        for k, v in pairs(persistence.session_map_states or {}) do
-            scene.session_map_states[k] = v
+
+        -- Restore vehicle data from persistence
+        local entity_registry_data = persistence:getSystemData("entity_registry") or {}
+        if entity_registry_data.vehicles then
+            entity_registry.vehicles = entity_registry_data.vehicles
+            entity_registry.vehicles_initialized = entity_registry_data.vehicles_initialized or false
         end
 
         -- Create fake save_data from persistence (not from file)
         -- This preserves current game state instead of loading from save file
         local player_data = persistence:getSystemData("player") or {}
+        local vehicle_data = persistence:getSystemData("vehicle") or {}
         local persistence_save_data = {
             hp = player_data.health,
             max_hp = player_data.max_health,
-            map = persistence.current_map_path,  -- For vehicle restoration (same map check)
+            map = persistence.current_map_path,
             inventory = persistence:getSystemData("inventory"),
-            -- These come from persistence:loadToScene already
-            picked_items = scene.picked_items,
-            killed_enemies = scene.killed_enemies,
-            transformed_npcs = scene.transformed_npcs,
-            destroyed_props = scene.destroyed_props,
             -- Quest/dialogue state from persistence (not save file)
             quest_states = persistence:getSystemData("quest"),
             dialogue_choices = persistence:getSystemData("dialogue"),
             level_data = persistence:getSystemData("level"),
             shop_data = persistence:getSystemData("shop"),
-            vehicle_data = persistence:getSystemData("vehicle"),
+            vehicle_data = vehicle_data,
         }
 
         scene_setup.initializeFromSaveOrNew(scene, persistence_save_data, is_new_game, mapPath, spawn_x, spawn_y, save_slot)
@@ -209,15 +218,31 @@ function scene_setup.enter(scene, from_scene, mapPath, spawn_x, spawn_y, save_sl
             save_data = save_sys:loadGame(save_slot)
         end
 
-        -- Initialize persistence lists (for non-respawning items/enemies/props)
-        scene.picked_items = (save_data and save_data.picked_items) or {}
-        scene.killed_enemies = (save_data and save_data.killed_enemies) or {}
-        scene.transformed_npcs = (save_data and save_data.transformed_npcs) or {}
-        scene.destroyed_props = (save_data and save_data.destroyed_props) or {}
+        -- Initialize entity_registry
+        if is_new_game then
+            -- New game: Clear and initialize from maps
+            entity_registry:clear()
+            entity_registry:initializeVehiclesFromMaps()
+        elseif save_data and save_data.entity_registry then
+            -- Load game: Import from save data (new format)
+            entity_registry:import(save_data.entity_registry)
+        elseif save_data then
+            -- Load game: Backward compatibility with old save format
+            entity_registry.killed_enemies = save_data.killed_enemies or {}
+            entity_registry.picked_items = save_data.picked_items or {}
+            entity_registry.transformed_npcs = save_data.transformed_npcs or {}
+            entity_registry.destroyed_props = save_data.destroyed_props or {}
+            if save_data.vehicle_registry then
+                entity_registry.vehicles = save_data.vehicle_registry.vehicles or {}
+                entity_registry.vehicles_initialized = save_data.vehicle_registry.initialized or false
+            end
+        else
+            -- No save data and not new game (shouldn't happen, but handle gracefully)
+            entity_registry:clear()
+        end
 
-        -- Session-based map states (preserved when entering persist_state=true maps like indoor)
-        -- Structure: { [map_name] = { killed_enemies = {...}, picked_items = {...}, destroyed_props = {...} } }
-        scene.session_map_states = {}
+        -- Load to scene
+        entity_registry:loadToScene(scene)
 
         scene_setup.initializeFromSaveOrNew(scene, save_data, is_new_game, mapPath, spawn_x, spawn_y, save_slot)
     end
@@ -253,10 +278,8 @@ function scene_setup.initializeFromSaveOrNew(scene, save_data, is_new_game, mapP
     scene_setup.createWorld(scene, mapPath)
     scene_setup.createPlayer(scene, spawn_x, spawn_y, save_data)
 
-    -- Restore vehicles from save data (after player is created)
-    -- is_same_map: check if save data's map matches current map
-    local is_same_map = save_data and save_data.map == mapPath
-    scene_setup.restoreVehicles(scene, save_data, is_same_map)
+    -- Restore boarded vehicle state from save data (after player is created)
+    scene_setup.restoreVehicles(scene, save_data)
 
     -- Initialize systems
     scene_setup.initSystems(scene)
@@ -318,6 +341,7 @@ end
 
 -- Create world
 function scene_setup.createWorld(scene, mapPath)
+    -- world:new now reads from entity_registry directly
     scene.world = world:new(mapPath, {
         enemy = enemy_class,
         npc = npc_class,
@@ -326,7 +350,7 @@ function scene_setup.createWorld(scene, mapPath)
         prop = prop_class,
         vehicle = vehicle_class,
         loot_tables = scene.loot_tables
-    }, scene.picked_items, scene.killed_enemies, scene.transformed_npcs, scene.destroyed_props)
+    })
 end
 
 -- Create player
@@ -356,46 +380,24 @@ function scene_setup.createPlayer(scene, spawn_x, spawn_y, save_data)
     scene.world:addEntity(scene.player)
 end
 
--- Restore vehicles from save data
--- is_same_map: true if loading same map (restore all vehicles), false if different map (only boarded)
-function scene_setup.restoreVehicles(scene, save_data, is_same_map)
+-- Restore boarded vehicle from save data
+-- Vehicle positions are handled by vehicle_registry in loaders
+function scene_setup.restoreVehicles(scene, save_data)
     if not save_data or not save_data.vehicle_data then
         return
     end
 
     local vehicle_data = save_data.vehicle_data
 
-    -- Case 1: Same map (save/load) - restore all vehicles at their saved positions
-    if is_same_map and vehicle_data.vehicles and #vehicle_data.vehicles > 0 then
-        -- Destroy colliders of vehicles loaded from map before clearing
+    -- Only restore boarded state - positions are handled by vehicle_registry
+    if vehicle_data.is_boarded and vehicle_data.boarded_map_id then
+        -- Find the vehicle by map_id and board it
         for _, vehicle in ipairs(scene.world.vehicles) do
-            if vehicle.collider and not vehicle.collider:isDestroyed() then
-                vehicle.collider:destroy()
-            end
-            if vehicle.foot_collider and not vehicle.foot_collider:isDestroyed() then
-                vehicle.foot_collider:destroy()
+            if vehicle.map_id == vehicle_data.boarded_map_id then
+                scene.player:boardVehicle(vehicle)
+                break
             end
         end
-        -- Clear any vehicles loaded from map (we'll restore from save)
-        scene.world.vehicles = {}
-
-        -- Restore each vehicle
-        for _, v_data in ipairs(vehicle_data.vehicles) do
-            local new_vehicle = vehicle_class:new(v_data.x, v_data.y, v_data.type, v_data.map_id)
-            new_vehicle.direction = v_data.direction or "down"
-            scene.world:addVehicle(new_vehicle)
-
-            -- If this vehicle was being ridden, reboard
-            if v_data.is_boarded and vehicle_data.is_boarded then
-                scene.player:boardVehicle(new_vehicle)
-            end
-        end
-    -- Case 2: Different map (level transition) - only bring boarded vehicle
-    elseif vehicle_data.is_boarded and vehicle_data.boarded_type then
-        -- Create vehicle at player position and board player
-        local new_vehicle = vehicle_class:new(scene.player.x, scene.player.y, vehicle_data.boarded_type)
-        scene.world:addVehicle(new_vehicle)
-        scene.player:boardVehicle(new_vehicle)
     end
 end
 
@@ -580,11 +582,17 @@ end
 
 -- Switch to a new map
 function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
-    -- Save boarded vehicle type BEFORE destroying world (to recreate in new map)
+    -- Get destination map name for registry update
+    local dest_map_data = love.filesystem.load(new_map_path)()
+    local dest_map_name = dest_map_data and dest_map_data.properties and dest_map_data.properties.name or "unknown"
+
+    -- Save boarded vehicle info BEFORE destroying world
+    local boarded_vehicle_map_id = nil
     local boarded_vehicle_type = nil
     if scene.player.is_boarded and scene.player.boarded_vehicle then
+        boarded_vehicle_map_id = scene.player.boarded_vehicle.map_id
         boarded_vehicle_type = scene.player.boarded_vehicle.type
-        -- Disembark temporarily (vehicle will be recreated in new map)
+        -- Disembark temporarily (vehicle will move with player to new map)
         scene.player:disembark()
     end
 
@@ -600,54 +608,39 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
     local current_persist_state = current_map_props and current_map_props.persist_state
 
     -- Check DESTINATION map's persist_state (where we're going TO)
-    local dest_map_data = love.filesystem.load(new_map_path)()
     local dest_persist_state = dest_map_data and dest_map_data.properties and dest_map_data.properties.persist_state
 
-    -- Save current map's vehicle states before leaving
-    -- NOTE: Skip if player was boarded (that vehicle travels with player, not saved to this map)
-    if current_map_name and scene.world and scene.world.vehicles and not boarded_vehicle_type then
-        scene.session_vehicle_states = scene.session_vehicle_states or {}
-        scene.session_vehicle_states[current_map_name] = {}
+    -- Update entity_registry for all non-boarded vehicles in current map
+    -- (they stay where they are)
+    if scene.world and scene.world.vehicles then
         for _, vehicle in ipairs(scene.world.vehicles) do
-            table.insert(scene.session_vehicle_states[current_map_name], {
-                x = vehicle.x,
-                y = vehicle.y,
-                type = vehicle.type,
-                map_id = vehicle.map_id,
-                direction = vehicle.direction,
-            })
+            if vehicle.map_id and not vehicle.is_boarded then
+                entity_registry:updateVehiclePosition(
+                    vehicle.map_id,
+                    current_map_name,
+                    vehicle.x,
+                    vehicle.y,
+                    vehicle.direction
+                )
+            end
         end
+    end
+
+    -- Update boarded vehicle to move to destination map
+    if boarded_vehicle_map_id then
+        entity_registry:updateVehiclePosition(
+            boarded_vehicle_map_id,
+            dest_map_name,
+            spawn_x,
+            spawn_y,
+            scene.player.direction or "down"
+        )
     end
 
     if dest_persist_state then
         -- Entering persist_state=true map (indoor): save current map's session state
         if current_map_name then
-            local session_state = scene.session_map_states[current_map_name] or {
-                killed_enemies = {},
-                picked_items = {},
-                destroyed_props = {}
-            }
-
-            -- Merge ALL killed enemies for this map (regardless of respawn setting)
-            for map_id, _ in pairs(scene.world.session_killed_enemies or {}) do
-                if map_id:find("^" .. current_map_name .. "_") then
-                    session_state.killed_enemies[map_id] = true
-                end
-            end
-            -- Merge ALL picked items for this map (regardless of respawn setting)
-            for map_id, _ in pairs(scene.world.session_picked_items or {}) do
-                if map_id:find("^" .. current_map_name .. "_") then
-                    session_state.picked_items[map_id] = true
-                end
-            end
-            -- Merge ALL destroyed props for this map (regardless of respawn setting)
-            for map_id, _ in pairs(scene.world.session_destroyed_props or {}) do
-                if map_id:find("^" .. current_map_name .. "_") then
-                    session_state.destroyed_props[map_id] = true
-                end
-            end
-
-            scene.session_map_states[current_map_name] = session_state
+            entity_registry:saveSessionState(current_map_name, scene.world)
         end
         -- Don't clear - preserve session states when entering indoor
     elseif current_persist_state then
@@ -656,9 +649,13 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
     else
         -- Leaving persist_state=false map to persist_state=false map (outdoor → outdoor)
         -- Clear session states only - respawn=true enemies will respawn
-        -- NOTE: Do NOT clear scene.killed_enemies - it contains permanent deaths (respawn=false)
-        -- NOTE: Do NOT clear session_vehicle_states - vehicles should persist across outdoor maps
-        scene.session_map_states = {}
+        -- NOTE: Do NOT clear entity_registry.killed_enemies - it contains permanent deaths (respawn=false)
+        entity_registry:clearSessionStates()
+    end
+
+    -- Sync from scene to entity_registry (for session_map_states)
+    for k, v in pairs(scene.session_map_states or {}) do
+        entity_registry.session_map_states[k] = v
     end
 
     -- Clean up old colliders BEFORE destroying world
@@ -680,30 +677,11 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
         quest_system:onLocationVisited(location_id)
     end
 
-    -- Prepare merged persistence data (permanent + session)
-    local merged_killed = {}
-    local merged_picked = {}
-    local merged_destroyed_props = {}
+    -- Sync from scene to entity_registry before creating new world
+    entity_registry:syncFromWorld(scene.world)
 
-    -- Copy permanent data (respawn=false enemies, picked items, destroyed props)
-    for k, v in pairs(scene.killed_enemies) do merged_killed[k] = v end
-    for k, v in pairs(scene.picked_items) do merged_picked[k] = v end
-    for k, v in pairs(scene.destroyed_props or {}) do merged_destroyed_props[k] = v end
-
-    -- Merge session data (respawn=true enemies killed during indoor visits)
-    for map_name, state in pairs(scene.session_map_states) do
-        for map_id, _ in pairs(state.killed_enemies or {}) do
-            merged_killed[map_id] = true
-        end
-        for map_id, _ in pairs(state.picked_items or {}) do
-            merged_picked[map_id] = true
-        end
-        for map_id, _ in pairs(state.destroyed_props or {}) do
-            merged_destroyed_props[map_id] = true
-        end
-    end
-
-    -- Create world with injected entity classes and merged persistence data
+    -- Create world with injected entity classes
+    -- world:new reads merged persistence data from entity_registry directly
     scene.world = world:new(new_map_path, {
         enemy = enemy_class,
         npc = npc_class,
@@ -712,8 +690,7 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
         prop = prop_class,
         vehicle = vehicle_class,
         loot_tables = scene.loot_tables,
-        skip_vehicle_loading = (boarded_vehicle_type ~= nil)  -- Skip if player was on vehicle
-    }, merged_picked, merged_killed, scene.transformed_npcs, merged_destroyed_props)
+    })
 
     -- Reinitialize weather for new map
     weather.camera = scene.cam
@@ -733,31 +710,13 @@ function scene_setup.switchMap(scene, new_map_path, spawn_x, spawn_y)
 
     scene.world:addEntity(scene.player)
 
-    -- Recreate vehicle if player was on vehicle during map transition
-    if boarded_vehicle_type and vehicle_class then
-        local new_vehicle = vehicle_class:new(spawn_x, spawn_y, boarded_vehicle_type)
-        scene.world:addVehicle(new_vehicle)
-        scene.player:boardVehicle(new_vehicle)
-    end
-
-    -- Restore vehicles from session state (for vehicles left in this map during previous visit)
-    -- Only restore if player is NOT boarding a vehicle (to avoid duplicate vehicles)
-    local new_map_name = scene.world.map.properties and scene.world.map.properties.name
-    if not boarded_vehicle_type and new_map_name and scene.session_vehicle_states and scene.session_vehicle_states[new_map_name] then
-        -- Clear map-loaded vehicles (they'll be replaced by session state)
-        for _, vehicle in ipairs(scene.world.vehicles or {}) do
-            if vehicle.collider then vehicle.collider:destroy() end
-            if vehicle.foot_collider then vehicle.foot_collider:destroy() end
-        end
-        scene.world.vehicles = {}
-
-        -- Restore vehicles from session state
-        for _, saved_vehicle in ipairs(scene.session_vehicle_states[new_map_name]) do
-            if vehicle_class then
-                local restored_vehicle = vehicle_class:new(saved_vehicle.x, saved_vehicle.y, saved_vehicle.type)
-                restored_vehicle.map_id = saved_vehicle.map_id
-                restored_vehicle.direction = saved_vehicle.direction or "down"
-                scene.world:addVehicle(restored_vehicle)
+    -- Re-board vehicle if player was on vehicle during map transition
+    -- The vehicle is already loaded from registry by world:new -> loadVehicles
+    if boarded_vehicle_map_id then
+        for _, vehicle in ipairs(scene.world.vehicles) do
+            if vehicle.map_id == boarded_vehicle_map_id then
+                scene.player:boardVehicle(vehicle)
+                break
             end
         end
     end

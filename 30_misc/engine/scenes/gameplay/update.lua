@@ -13,6 +13,7 @@ local lighting = require "engine.systems.lighting"
 local weather = require "engine.systems.weather"
 local persistence = require "engine.core.persistence"
 local shop_ui = require "engine.ui.screens.shop"
+local entity_registry = require "engine.core.entity_registry"
 
 local update = {}
 
@@ -302,6 +303,21 @@ function update.checkTransitions(self, scaled_dt)
                 -- Skip intro, treat as normal portal
                 self:switchMap(transition.target_map, transition.spawn_x, transition.spawn_y)
             else
+                -- Update boarded vehicle to destination map BEFORE saving persistence
+                -- (so cutscene transition preserves correct vehicle location)
+                if self.player.is_boarded and self.player.boarded_vehicle then
+                    local dest_map_data = love.filesystem.load(transition.target_map)()
+                    local dest_map_name = dest_map_data and dest_map_data.properties
+                                          and dest_map_data.properties.name or "unknown"
+                    entity_registry:updateVehiclePosition(
+                        self.player.boarded_vehicle.map_id,
+                        dest_map_name,
+                        transition.spawn_x,
+                        transition.spawn_y,
+                        self.player.direction or "down"
+                    )
+                end
+
                 -- Save persistence data before cutscene (will be restored after cutscene)
                 persistence:saveFromScene(self)
 

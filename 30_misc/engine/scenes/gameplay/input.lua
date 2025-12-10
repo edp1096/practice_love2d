@@ -10,8 +10,25 @@ local quest_system = require "engine.core.quest"
 local coords = require "engine.core.coords"
 local display = require "engine.core.display"
 local shop_ui = require "engine.ui.screens.shop"
+local entity_registry = require "engine.core.entity_registry"
 
 local input_handler = {}
+
+-- Helper: Update vehicle registry when player disembarks
+local function updateVehicleRegistryOnDisembark(scene, vehicle)
+    if not vehicle or not vehicle.map_id then return end
+
+    local map_name = scene.world and scene.world.map and scene.world.map.properties
+                     and scene.world.map.properties.name or "unknown"
+
+    entity_registry:updateVehiclePosition(
+        vehicle.map_id,
+        map_name,
+        vehicle.x,
+        vehicle.y,
+        vehicle.direction
+    )
+end
 
 -- Check if on mobile OS
 local is_mobile = (love.system.getOS() == "Android" or love.system.getOS() == "iOS")
@@ -171,7 +188,9 @@ function input_handler.keypressed(self, key)
 
         -- Board/Disembark vehicle (lowest priority - only if no other interaction available)
         if self.player.is_boarded then
+            local vehicle = self.player.boarded_vehicle
             self.player:disembark()
+            updateVehicleRegistryOnDisembark(self, vehicle)
             sound:playSFX("ui", "select")
             return
         end
@@ -418,7 +437,9 @@ function input_handler.gamepadpressed(self, joystick, button)
 
         -- Board/Disembark vehicle (lower priority than NPC/SavePoint/Item)
         if self.player.is_boarded then
+            local vehicle = self.player.boarded_vehicle
             self.player:disembark()
+            updateVehicleRegistryOnDisembark(self, vehicle)
             sound:playSFX("ui", "select")
             return
         end

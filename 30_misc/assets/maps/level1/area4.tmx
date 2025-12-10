@@ -146,7 +146,7 @@
   </object>
  </objectgroup>
  <objectgroup id="13" name="Vehicles">
-  <object id="56" type="scooter" x="560" y="192" width="52" height="32"/>
+  <object id="56" type="scooter2" x="560" y="192" width="52" height="32"/>
  </objectgroup>
  <objectgroup id="7" name="SavePoints">
   <object id="25" x="256" y="192" width="32" height="32">

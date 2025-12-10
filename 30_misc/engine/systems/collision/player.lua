@@ -12,10 +12,14 @@ function player_collision.create(player, physicsWorld)
         return  -- Already has colliders
     end
 
+    -- Convert center to top-left (newBSGRectangleCollider expects top-left)
+    local left = player.x - player.collider_width / 2
+    local top = player.y - player.collider_height / 2
+
     -- Main collider (combat, platformer physics)
     player.collider = helpers.createBSGCollider(
         physicsWorld,
-        player.x, player.y,
+        left, top,
         player.collider_width, player.collider_height,
         10, constants.COLLISION_CLASSES.PLAYER, nil
     )

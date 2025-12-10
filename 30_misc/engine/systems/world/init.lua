@@ -6,6 +6,7 @@ local windfield = require "vendor.windfield"
 local effects = require "engine.systems.effects"
 local game_mode = require "engine.systems.game_mode"
 local collision = require "engine.systems.collision"
+local entity_registry = require "engine.core.entity_registry"
 
 local loaders = require "engine.systems.world.loaders"
 local entities = require "engine.systems.world.entities"
@@ -23,7 +24,7 @@ world.prop_class = nil
 world.vehicle_class = nil
 world.loot_tables = nil
 
-function world:new(map_path, entity_classes, picked_items, killed_enemies, transformed_npcs, destroyed_props)
+function world:new(map_path, entity_classes)
     local instance = setmetatable({}, world)
 
     -- Store injected entity classes (fallback to class-level if not provided)
@@ -37,15 +38,18 @@ function world:new(map_path, entity_classes, picked_items, killed_enemies, trans
     instance.loot_tables = entity_classes.loot_tables or self.loot_tables
     instance.skip_vehicle_loading = entity_classes.skip_vehicle_loading or false
 
-    -- Store persistence lists
-    instance.picked_items = picked_items or {}
-    instance.transformed_npcs = transformed_npcs or {}
+    -- Get merged persistence data from entity_registry
+    local merged = entity_registry:getMergedData()
+
+    -- Store persistence lists (references for loaders)
+    instance.picked_items = merged.picked_items
+    instance.transformed_npcs = entity_registry.transformed_npcs
 
     -- Separate permanent killed enemies from loading data:
     -- - killed_enemies: NEW permanent kills in THIS world (respawn=false enemies killed here)
     -- - killed_for_loading: merged data passed for enemy spawn check (permanent + session)
     instance.killed_enemies = {}
-    instance.killed_for_loading = killed_enemies or {}
+    instance.killed_for_loading = merged.killed_enemies
 
     -- Session-only tracking: ALL killed enemies and picked items (regardless of respawn setting)
     -- Preserved when entering persist_state=true maps (e.g., indoor), cleared otherwise
@@ -56,7 +60,7 @@ function world:new(map_path, entity_classes, picked_items, killed_enemies, trans
     -- - destroyed_props: NEW permanent destroys in THIS world (respawn=false props destroyed here)
     -- - destroyed_for_loading: merged data passed for prop spawn check
     instance.destroyed_props = {}
-    instance.destroyed_for_loading = destroyed_props or {}
+    instance.destroyed_for_loading = merged.destroyed_props
     instance.session_destroyed_props = {}
 
     local map_info = love.filesystem.getInfo(map_path)

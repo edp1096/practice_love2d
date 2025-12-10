@@ -103,8 +103,10 @@ entities/
 ├── item/                 - 아이템 시스템
 ├── world_item/           - 드롭 아이템 (리스폰 제어)
 ├── vehicle/              - 탈것 시스템 (탑승/하차)
-│   ├── init.lua          - Vehicle 엔티티 클래스
+│   ├── init.lua          - Vehicle 엔티티 클래스 (ground_collider 포함)
 │   └── render.lua        - 그리기
+│   # Platformer: ground_collider가 바닥 충돌 담당
+│   # Topdown: foot_collider가 벽 충돌 담당
 └── healing_point/        - 체력 회복
 ```
 
@@ -371,5 +373,5 @@ end, nil)
 
 ---
 
-**최종 업데이트:** 2025-12-05
+**최종 업데이트:** 2025-12-10
 **프레임워크:** LÖVE 11.5 + Lua 5.1

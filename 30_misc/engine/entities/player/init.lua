@@ -114,9 +114,15 @@ function player:jump()
         -- Platformer: Physics-based jump
         local grounded = self.is_grounded or self.was_grounded
 
-        if self.can_jump and grounded and self.collider then
+        -- Use ground_collider when boarded on vehicle
+        local physics_collider = self.collider
+        if self.is_boarded and self.boarded_vehicle and self.boarded_vehicle.ground_collider then
+            physics_collider = self.boarded_vehicle.ground_collider
+        end
+
+        if self.can_jump and grounded and physics_collider then
             local input_vx = (self.last_input_x or 0) * self.speed
-            self.collider:setLinearVelocity(input_vx, -self.jump_power)
+            physics_collider:setLinearVelocity(input_vx, -self.jump_power)
             self.is_jumping = true
             self.can_jump = false
             return true
@@ -182,6 +188,7 @@ function player:boardVehicle(vehicle)
     -- Tell vehicle it's being ridden
     vehicle:boardPlayer(self)
 
+
     return true
 end
 
@@ -195,6 +202,7 @@ function player:disembark()
         self.speed = self.original_speed
         self.original_speed = nil
     end
+
 
     -- Clear vehicle state
     self.is_boarded = false

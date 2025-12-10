@@ -1092,7 +1092,7 @@ return {
         {
           id = 100,
           name = "TestHorse",
-          type = "horse",
+          type = "scooter1",
           shape = "rectangle",
           x = 768,
           y = 800,

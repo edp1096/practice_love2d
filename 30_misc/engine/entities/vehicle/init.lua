@@ -45,7 +45,37 @@ function vehicle:new(x, y, vehicle_type, map_id, config)
     instance.vibration_speed_idle = config.vibration_speed_idle or config.vibration_speed or 60
     instance.vibration_speed_move = config.vibration_speed_move or config.vibration_speed or 120
 
-    -- Color box rendering (prototype - no sprites)
+    -- Sprite configuration
+    instance.sprite_config = config.sprite
+    instance.sprite_sheet = nil
+    instance.sprite_quads = nil
+
+    if config.sprite then
+        local success, sheet = pcall(love.graphics.newImage, config.sprite.sheet)
+        if success then
+            instance.sprite_sheet = sheet
+            instance.sprite_sheet:setFilter("nearest", "nearest")
+
+            -- Create quads for each direction
+            local fw = config.sprite.frame_width
+            local fh = config.sprite.frame_height
+            local sw = sheet:getWidth()
+            local sh = sheet:getHeight()
+
+            instance.sprite_quads = {}
+            for dir, col in pairs(config.sprite.frames) do
+                instance.sprite_quads[dir] = love.graphics.newQuad(
+                    (col - 1) * fw, 0, fw, fh, sw, sh
+                )
+            end
+
+            instance.sprite_scale = config.sprite.scale or 2
+        else
+            print("[Vehicle] Failed to load sprite: " .. config.sprite.sheet)
+        end
+    end
+
+    -- Color box rendering (fallback if no sprite)
     instance.color = config.color or {0.6, 0.4, 0.2, 1}
     instance.width = config.width or 64
     instance.height = config.height or 40
@@ -87,6 +117,24 @@ function vehicle:update(dt, player_x, player_y)
             local foot_y = self.y + self.collider_height * 0.35
             self.foot_collider:setPosition(self.x, foot_y)
         end
+        -- Platformer: ground_collider handles physics, player follows
+        if self.ground_collider and not self.ground_collider:isDestroyed() then
+            -- Get ground collider position (this is where physics simulation put it)
+            local gx, gy = self.ground_collider:getPosition()
+
+            -- Player follows ground_collider position (offset up by VEHICLE_Y_OFFSET)
+            self.rider.x = gx
+            self.rider.y = gy - VEHICLE_Y_OFFSET
+
+            -- Update player's sensor collider position too
+            if self.rider.collider and not self.rider.collider:isDestroyed() then
+                self.rider.collider:setPosition(gx, gy - VEHICLE_Y_OFFSET)
+            end
+
+            -- Vehicle follows
+            self.x = gx
+            self.y = gy
+        end
 
         self.can_interact = false
         return
@@ -115,6 +163,45 @@ function vehicle:boardPlayer(player)
         self.foot_collider:setSensor(true)
     end
 
+    -- Platformer: Disable player collider physics, use vehicle for ground detection
+    if self.world and self.world.game_mode == "platformer" and player.collider then
+        -- Make player collider a sensor and disable gravity
+        player.collider:setSensor(true)
+        player.collider:setGravityScale(0)
+        player.collider:setLinearVelocity(0, 0)
+
+        local physicsWorld = player.collider.world
+        if physicsWorld then
+            local w = self.collider_width
+            local h = self.collider_height
+            local ground_left = self.x - w / 2
+            local ground_top = self.y - h / 2
+
+            local helpers = require "engine.systems.collision.helpers"
+            local constants = require "engine.core.constants"
+
+            -- Full vehicle-sized collider for ground detection
+            self.ground_collider = helpers.createBSGCollider(
+                physicsWorld,
+                ground_left, ground_top,
+                w, h,
+                8, constants.COLLISION_CLASSES.PLAYER, nil
+            )
+            self.ground_collider:setType("dynamic")
+            self.ground_collider:setFriction(0)
+
+            -- Ground detection via PreSolve
+            self.ground_collider:setPreSolve(function(collider_1, collider_2, contact)
+                local nx, ny = contact:getNormal()
+                if math.abs(ny) > 0.7 and ny < 0 then
+                    player.is_grounded = true
+                    player.can_jump = true
+                    player.is_jumping = false
+                end
+            end)
+        end
+    end
+
     return true
 end
 
@@ -124,6 +211,16 @@ function vehicle:disembarkPlayer()
     local rider = self.rider
     self.is_boarded = false
     self.rider = nil
+
+    -- Platformer: Destroy ground collider and restore player collider
+    if self.ground_collider and not self.ground_collider:isDestroyed() then
+        self.ground_collider:destroy()
+        self.ground_collider = nil
+    end
+    if rider and rider.collider and not rider.collider:isDestroyed() then
+        rider.collider:setSensor(false)
+        rider.collider:setGravityScale(1)  -- Restore gravity
+    end
 
     -- Re-enable collisions after disembark (except in platformer where vehicle is always sensor)
     local is_platformer = self.world and self.world.game_mode == "platformer"

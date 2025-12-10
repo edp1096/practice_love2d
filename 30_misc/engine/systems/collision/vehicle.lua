@@ -11,7 +11,7 @@ function vehicle_collision.create(vehicle, physicsWorld, game_mode)
     local x, y = vehicle.x, vehicle.y
     local w, h = vehicle.collider_width, vehicle.collider_height
 
-    -- Calculate bounds (center-based)
+    -- Convert center to top-left (newBSGRectangleCollider expects top-left)
     local left = x - w / 2
     local top = y - h / 2
 
@@ -24,11 +24,11 @@ function vehicle_collision.create(vehicle, physicsWorld, game_mode)
     )
     vehicle.collider:setType("static")
 
-    -- Topdown mode: Add foot collider
+    -- Topdown mode: Add foot collider (bottom 30% of main collider)
     if game_mode == "topdown" then
         local offsets = constants.COLLIDER_OFFSETS
         local foot_height = h * offsets.VEHICLE_FOOT_HEIGHT
-        local foot_top = top + h * (1 - offsets.VEHICLE_FOOT_HEIGHT)
+        local foot_top = top + h - foot_height  -- Bottom edge of main collider
 
         vehicle.foot_collider = helpers.createBSGCollider(
             physicsWorld,
@@ -39,7 +39,8 @@ function vehicle_collision.create(vehicle, physicsWorld, game_mode)
         vehicle.foot_collider:setType("static")
     end
 
-    -- Platformer: Make vehicle a sensor
+    -- Platformer mode: Set collider as sensor (interaction only, no physics blocking)
+    -- Vehicle shouldn't block player/enemy movement in platformer
     if game_mode == "platformer" then
         vehicle.collider:setSensor(true)
     end

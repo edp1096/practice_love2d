@@ -1,17 +1,54 @@
 -- engine/entities/vehicle/render.lua
--- Vehicle rendering: colored box prototype (sprites later)
+-- Vehicle rendering: sprite-based with colored box fallback
 
 local render = {}
 
 function render.draw(vehicle)
     local x, y = vehicle.x, vehicle.y
-    local base_w, base_h = vehicle.width, vehicle.height
     local direction = vehicle.direction or "down"
 
     -- Apply vibration offset when boarded and moving
     if vehicle.vibration_offset and vehicle.vibration_offset ~= 0 then
         y = y + vehicle.vibration_offset
     end
+
+    -- If sprite available, use sprite rendering
+    if vehicle.sprite_sheet and vehicle.sprite_quads and vehicle.sprite_quads[direction] then
+        render.drawSprite(vehicle, x, y, direction)
+    else
+        render.drawColorBox(vehicle, x, y, direction)
+    end
+end
+
+function render.drawSprite(vehicle, x, y, direction)
+    local quad = vehicle.sprite_quads[direction]
+    local scale = vehicle.sprite_scale or 2
+    local fw = vehicle.sprite_config.frame_width
+    local fh = vehicle.sprite_config.frame_height
+
+    -- Calculate scaled dimensions for shadow
+    local scaled_w = fw * scale
+    local scaled_h = fh * scale
+
+    -- Shadow (at bottom of vehicle)
+    local shadow_y = y + scaled_h / 2 - 8
+    love.graphics.setColor(0, 0, 0, 0.4)
+    love.graphics.ellipse("fill", x, shadow_y, scaled_w * 0.3, scaled_h * 0.15)
+
+    -- Draw sprite centered at (x, y)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(
+        vehicle.sprite_sheet,
+        quad,
+        x, y,
+        0,
+        scale, scale,
+        fw / 2, fh / 2  -- Origin at center
+    )
+end
+
+function render.drawColorBox(vehicle, x, y, direction)
+    local base_w, base_h = vehicle.width, vehicle.height
 
     -- Adjust dimensions based on direction
     -- Left/Right: side view (wide, short) - 64x40

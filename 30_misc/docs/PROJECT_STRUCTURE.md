@@ -103,8 +103,10 @@ entities/
 ├── item/                 - Item system
 ├── world_item/           - Dropped items (respawn control)
 ├── vehicle/              - Vehicle system (mount/dismount)
-│   ├── init.lua          - Vehicle entity class
+│   ├── init.lua          - Vehicle entity class (ground_collider)
 │   └── render.lua        - Drawing
+│   # Platformer: ground_collider handles ground collision
+│   # Topdown: foot_collider handles wall collision
 └── healing_point/        - Health restoration
 ```
 
@@ -371,5 +373,5 @@ end, nil)
 
 ---
 
-**Last Updated:** 2025-12-05
+**Last Updated:** 2025-12-10
 **Framework:** LÖVE 11.5 + Lua 5.1

@@ -95,6 +95,22 @@
 
 **디버그:** F2로 계단 polygon 표시 (오렌지색) + 방향 화살표, F4로 "Stair: X.X" 오프셋 표시.
 
+### 탈것 시스템
+**탑승/하차 가능한 이동 수단** - 말, 자전거, 스쿠터 등.
+
+**Tiled 설정:**
+1. "Vehicles" 레이어 생성 (Object Layer)
+2. 오브젝트 추가, `type = "scooter1"` (vehicles.lua의 타입)
+
+**게임 모드별 동작:**
+- **Topdown:** foot_collider가 벽 충돌 담당
+- **Platformer:** ground_collider가 바닥 충돌 담당
+  - 탑승 시 플레이어 collider → 센서 (중력 비활성화)
+  - 탈것 크기의 ground_collider가 물리 담당
+  - 하차 시 플레이어 collider 복원
+
+**조작:** F키로 탑승/하차
+
 ---
 
 ## 콘텐츠 생성
@@ -315,4 +331,4 @@ cd web_build && lua server.lua 8080
 
 **프레임워크:** LÖVE 11.5 + Lua 5.1
 **아키텍처:** Engine/Game 분리 + 데이터 기반
-**최종 업데이트:** 2025-12-03
+**최종 업데이트:** 2025-12-10

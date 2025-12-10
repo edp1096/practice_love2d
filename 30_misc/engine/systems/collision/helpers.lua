@@ -6,6 +6,7 @@ local constants = require "engine.core.constants"
 local helpers = {}
 
 -- Create a BSG rectangle collider with common settings
+-- x, y: top-left coordinates (newBSGRectangleCollider expects top-left)
 -- Returns the created collider
 function helpers.createBSGCollider(physicsWorld, x, y, w, h, radius, collisionClass, entity)
     local collider = physicsWorld:newBSGRectangleCollider(x, y, w, h, radius)
@@ -54,16 +55,20 @@ function helpers.getFootDimensions(collider_height, entity_type)
 end
 
 -- Create a foot collider for topdown mode
+-- x, y: entity center coordinates
+-- width, height: main collider dimensions
 -- entity_type: "player", "humanoid", "slime", "npc"
 -- Returns the created foot collider
 function helpers.createFootCollider(physicsWorld, x, y, width, height, entity_type, collisionClass, entity)
     local foot_height, y_offset = helpers.getFootDimensions(height, entity_type)
 
+    -- Convert center to top-left (newBSGRectangleCollider expects top-left)
+    local left = x - width / 2
+    local top = y + y_offset - foot_height / 2
+
     local collider = physicsWorld:newBSGRectangleCollider(
-        x,
-        y + y_offset,
-        width,
-        foot_height,
+        left, top,
+        width, foot_height,
         5  -- Standard smaller corner radius for foot colliders
     )
     collider:setFixedRotation(true)

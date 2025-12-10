@@ -75,23 +75,71 @@ vehicles.kickboard = {
     ride_effect = "animated",   -- Kick animation
 }
 
--- Scooter - vibration effect
-vehicles.scooter = {
-    name = "Scooter",
+-- Scooter base config (shared properties)
+-- Sprite: 72x48, no padding, full coverage
+local scooter_base = {
     ride_speed = 300,
     interaction_range = 50,
+    width = 72,
+    height = 48,
+    collider_width = 72,   -- Same as sprite (no padding)
+    collider_height = 48,  -- Same as sprite (no padding)
+    ride_effect = "vibration",
+    vibration_intensity = 0.5,
+    vibration_speed_idle = 60,
+    vibration_speed_move = 120,
+}
 
-    color = {0.5, 0.15, 0.15, 1}, -- Maroon (적갈색)
-    width = 52,
-    height = 32,
+-- Scooter 1 (cyan/teal)
+vehicles.scooter1 = {
+    name = "Scooter",
+    ride_speed = scooter_base.ride_speed,
+    interaction_range = scooter_base.interaction_range,
 
-    collider_width = 36,
-    collider_height = 24,
+    sprite = {
+        sheet = "assets/images/sprites/vehicles/scooter1.png",
+        frame_width = 72,
+        frame_height = 48,
+        scale = 1,
+        frames = { down = 1, left = 2, right = 3, up = 4 },
+    },
 
-    ride_effect = "vibration",  -- Fixed frame + micro-vibration
-    vibration_intensity = 0.5,  -- Pixels of vibration (subtle engine vibration)
-    vibration_speed_idle = 60,  -- Idle RPM vibration frequency
-    vibration_speed_move = 120, -- Moving RPM vibration frequency (higher)
+    color = {0.3, 0.8, 0.8, 1}, -- Cyan (fallback)
+    width = scooter_base.width,
+    height = scooter_base.height,
+    collider_width = scooter_base.collider_width,
+    collider_height = scooter_base.collider_height,
+
+    ride_effect = scooter_base.ride_effect,
+    vibration_intensity = scooter_base.vibration_intensity,
+    vibration_speed_idle = scooter_base.vibration_speed_idle,
+    vibration_speed_move = scooter_base.vibration_speed_move,
+}
+
+-- Scooter 2 (dark/black)
+vehicles.scooter2 = {
+    name = "Scooter",
+    ride_speed = scooter_base.ride_speed,
+    interaction_range = scooter_base.interaction_range,
+
+    sprite = {
+        sheet = "assets/images/sprites/vehicles/scooter2.png",
+        frame_width = 72,
+        frame_height = 48,
+        scale = 1,
+        frames = { down = 1, left = 2, right = 3, up = 4 },
+    },
+
+    color = {0.2, 0.2, 0.2, 1}, -- Dark gray (fallback)
+    width = scooter_base.width,
+    height = scooter_base.height,
+    collider_width = scooter_base.collider_width,
+    collider_height = scooter_base.collider_height,
+
+    ride_effect = scooter_base.ride_effect,
+    vibration_intensity = scooter_base.vibration_intensity,
+    vibration_speed_idle = scooter_base.vibration_speed_idle,
+    vibration_speed_move = scooter_base.vibration_speed_move,
 }
 
 -- Boat - water travel (for future use)

@@ -122,28 +122,34 @@ function entities.moveEntity(self, entity, vx, vy, dt)
 
     -- In platformer mode, only set horizontal velocity (gravity handles vertical)
     if entity.game_mode == "platformer" then
-        local current_vx, current_vy = entity.collider:getLinearVelocity()
+        -- When boarded on vehicle, use vehicle's ground_collider for physics
+        local physics_collider = entity.collider
+        if entity.is_boarded and entity.boarded_vehicle and entity.boarded_vehicle.ground_collider then
+            physics_collider = entity.boarded_vehicle.ground_collider
+        end
+
+        local current_vx, current_vy = physics_collider:getLinearVelocity()
 
         -- Dodge: direct velocity setting for responsive dodge movement (ignores gravity temporarily)
         if entity.dodge_active then
-            entity.collider:setLinearVelocity(vx, current_vy)
+            physics_collider:setLinearVelocity(vx, current_vy)
         -- Air control: use smoother velocity change when in air
         elseif not entity.is_grounded then
             -- Apply horizontal force instead of directly setting velocity for better air control
             local target_vx = vx
-            local force_x = (target_vx - current_vx) * entity.collider:getMass() * 15 -- Air control multiplier
-            entity.collider:applyLinearImpulse(force_x * dt, 0)
+            local force_x = (target_vx - current_vx) * physics_collider:getMass() * 15 -- Air control multiplier
+            physics_collider:applyLinearImpulse(force_x * dt, 0)
 
             -- Clamp horizontal velocity to prevent excessive speed
-            local new_vx, new_vy = entity.collider:getLinearVelocity()
+            local new_vx, new_vy = physics_collider:getLinearVelocity()
             local max_air_speed = entity.speed * 1.2  -- Allow slightly faster air movement
             if math.abs(new_vx) > max_air_speed then
                 local sign = new_vx >= 0 and 1 or -1
-                entity.collider:setLinearVelocity(sign * max_air_speed, new_vy)
+                physics_collider:setLinearVelocity(sign * max_air_speed, new_vy)
             end
         else
             -- Ground control: direct velocity setting for responsive ground movement
-            entity.collider:setLinearVelocity(vx, current_vy)
+            physics_collider:setLinearVelocity(vx, current_vy)
         end
     else
         -- Topdown mode: use foot_collider for wall collision
