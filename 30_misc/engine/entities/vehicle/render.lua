@@ -1,7 +1,12 @@
 -- engine/entities/vehicle/render.lua
 -- Vehicle rendering: sprite-based with colored box fallback
 
+local constants = require "engine.core.constants"
+
 local render = {}
+
+-- Local references to constants for performance
+local SHADOW = constants.SHADOW
 
 function render.draw(vehicle)
     local x, y = vehicle.x, vehicle.y
@@ -32,8 +37,8 @@ function render.drawSprite(vehicle, x, y, direction)
 
     -- Shadow (at bottom of vehicle)
     local shadow_y = y + scaled_h / 2 - 8
-    love.graphics.setColor(0, 0, 0, 0.4)
-    love.graphics.ellipse("fill", x, shadow_y, scaled_w * 0.3, scaled_h * 0.15)
+    love.graphics.setColor(0, 0, 0, SHADOW.ALPHA)
+    love.graphics.ellipse("fill", x, shadow_y, scaled_w * SHADOW.VEHICLE_SPRITE_WIDTH_RATIO, scaled_h * SHADOW.VEHICLE_SPRITE_HEIGHT_RATIO)
 
     -- Draw sprite centered at (x, y)
     love.graphics.setColor(1, 1, 1, 1)
@@ -62,8 +67,8 @@ function render.drawColorBox(vehicle, x, y, direction)
 
     -- Shadow (at bottom of vehicle)
     local shadow_y = y + h / 2 - 4
-    love.graphics.setColor(0, 0, 0, 0.4)
-    love.graphics.ellipse("fill", x, shadow_y, w * 0.4, h * 0.2)
+    love.graphics.setColor(0, 0, 0, SHADOW.ALPHA)
+    love.graphics.ellipse("fill", x, shadow_y, w * SHADOW.VEHICLE_COLORBOX_WIDTH_RATIO, h * SHADOW.VEHICLE_COLORBOX_HEIGHT_RATIO)
 
     -- Vehicle body (colored box with rounded corners effect)
     local r, g, b, a = unpack(vehicle.color)

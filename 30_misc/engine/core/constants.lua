@@ -182,4 +182,50 @@ constants.ENEMY_STATES = {
     DEAD = "dead",
 }
 
+-- Shadow Rendering (shared across player, enemy, vehicle)
+constants.SHADOW = {
+    -- Common ratios
+    WIDTH_RATIO = 0.625,       -- shadow_width = collider_width * 0.625
+    HEIGHT_RATIO = 0.175,      -- shadow_height = collider_width * 0.175
+    ALPHA = 0.4,               -- Default shadow transparency
+    MIN_SCALE = 0.3,           -- Minimum shadow scale during jump
+    MIN_ALPHA = 0.1,           -- Minimum shadow alpha during jump
+
+    -- Topdown jump scaling
+    TOPDOWN_SCALE_DIVISOR = 100,   -- shadow_scale = 1.0 - (height / 100)
+    TOPDOWN_ALPHA_DIVISOR = 125,   -- shadow_alpha = 0.4 - (height / 125)
+
+    -- Platformer scaling
+    PLATFORMER_SCALE_DIVISOR = 300,  -- shadow_scale = 1.0 - (height / 300)
+    PLATFORMER_ALPHA_DIVISOR = 500,  -- shadow_alpha = 0.4 - (height / 500)
+
+    -- Vehicle-specific (colorbox fallback)
+    VEHICLE_COLORBOX_WIDTH_RATIO = 0.4,
+    VEHICLE_COLORBOX_HEIGHT_RATIO = 0.2,
+
+    -- Vehicle sprite
+    VEHICLE_SPRITE_WIDTH_RATIO = 0.3,
+    VEHICLE_SPRITE_HEIGHT_RATIO = 0.15,
+}
+
+-- Hit Flash Effect
+constants.HIT_FLASH = {
+    DURATION = 0.15,           -- Enemy hit flash duration
+    PLAYER_DURATION = 0.2,     -- Player hit flash duration
+    INTENSITY = 0.7,           -- Flash intensity multiplier
+}
+
+-- Parry Visual Effects
+constants.PARRY_VISUAL = {
+    SHIELD_PULSE_SPEED = 10,   -- Shield alpha oscillation speed
+    SHIELD_ALPHA_MIN = 0.3,
+    SHIELD_ALPHA_RANGE = 0.2,
+    SHIELD_RADIUS_RATIO = 0.8, -- shield_radius = collider_width * 0.8
+}
+
+-- Invincibility Blink
+constants.BLINK = {
+    INTERVAL = 0.1,            -- Blink cycle duration
+}
+
 return constants

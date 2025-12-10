@@ -5,7 +5,6 @@ local container = {}
 
 local display = require "engine.core.display"
 local coords = require "engine.core.coords"
-local sound = require "engine.core.sound"
 local fonts = require "engine.utils.fonts"
 local shapes = require "engine.utils.shapes"
 local input = require "engine.core.input"
@@ -13,17 +12,14 @@ local colors = require "engine.utils.colors"
 local scene_control = require "engine.core.scene_control"
 local ui_constants = require "engine.ui.constants"
 local locale = require "engine.core.locale"
+local sound_utils = require "engine.utils.sound_utils"
 
 -- Sub-screens
 local inventory_screen = require "engine.ui.screens.inventory"
 local questlog_screen = require "engine.ui.screens.questlog"
 
--- Safe sound wrapper
-local function play_sound(category, name)
-    if sound and sound.playSFX then
-        pcall(function() sound:playSFX(category, name) end)
-    end
-end
+-- Alias for sound utility
+local play_sound = sound_utils.play
 
 function container:enter(previous, player_inventory, player, quest_system, initial_tab)
     self.previous_scene = previous

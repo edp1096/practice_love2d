@@ -5,22 +5,23 @@ local display = require "engine.core.display"
 local coords = require "engine.core.coords"
 local input = require "engine.core.input"
 local state = require "engine.ui.screens.shop.state"
+local config = require "engine.ui.screens.shop.config"
 
--- Layout constants (must match init.lua)
-local PANEL_WIDTH = 320
-local PANEL_HEIGHT = 300
-local DLG_WIDTH = 220
-local DLG_HEIGHT = 120
-local TAB_WIDTH = 70
-local TAB_HEIGHT = 24
-local TAB_GAP = 8
-local ITEM_HEIGHT = 26
-local LIST_PADDING = 15
-local ARROW_WIDTH = 30
-local ARROW_HEIGHT = 24
-local BTN_WIDTH = 70
-local BTN_HEIGHT = 22
-local BTN_GAP = 20
+-- Local references for performance
+local PANEL_WIDTH = config.PANEL_WIDTH
+local PANEL_HEIGHT = config.PANEL_HEIGHT
+local DLG_WIDTH = config.DLG_WIDTH
+local DLG_HEIGHT = config.DLG_HEIGHT
+local TAB_WIDTH = config.TAB_WIDTH
+local TAB_HEIGHT = config.TAB_HEIGHT
+local TAB_GAP = config.TAB_GAP
+local ITEM_HEIGHT = config.ITEM_HEIGHT
+local LIST_PADDING = config.LIST_PADDING
+local ARROW_WIDTH = config.ARROW_WIDTH
+local ARROW_HEIGHT = config.ARROW_HEIGHT
+local BTN_WIDTH = config.BTN_WIDTH
+local BTN_HEIGHT = config.BTN_HEIGHT
+local BTN_GAP = config.BTN_GAP
 
 local shop_input = {}
 

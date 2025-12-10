@@ -4,23 +4,19 @@
 local shop_ui = {}
 
 local display = require "engine.core.display"
-local sound = require "engine.core.sound"
 local input = require "engine.core.input"
 local ui_constants = require "engine.ui.constants"
 local shop_system = require "engine.systems.shop"
 local locale = require "engine.core.locale"
+local sound_utils = require "engine.utils.sound_utils"
 
 -- Import modular components
 local state = require "engine.ui.screens.shop.state"
 local shop_input = require "engine.ui.screens.shop.input"
 local shop_render = require "engine.ui.screens.shop.render"
 
--- Safe sound wrapper
-local function play_sound(category, name)
-    if sound and sound.playSFX then
-        pcall(function() sound:playSFX(category, name) end)
-    end
-end
+-- Alias for sound utility
+local play_sound = sound_utils.play
 
 -- Overlay state
 shop_ui.is_open = false

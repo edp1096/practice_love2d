@@ -2,8 +2,15 @@
 -- Rendering: draw player sprite, weapon, effects
 
 local debug = require "engine.core.debug"
+local constants = require "engine.core.constants"
 
 local render = {}
+
+-- Local references to constants for performance
+local SHADOW = constants.SHADOW
+local HIT_FLASH = constants.HIT_FLASH
+local PARRY_VISUAL = constants.PARRY_VISUAL
+local BLINK = constants.BLINK
 
 function render.draw(player)
     local draw_x = player.x + player.hit_shake_x
@@ -39,39 +46,35 @@ function render.draw(player)
             -- Scale shadow based on jump height (gets smaller when higher)
             -- topdown_jump_height is negative, so use abs() for scaling
             local height = math.abs(player.topdown_jump_height)
-            shadow_scale = math.max(0.3, 1.0 - (height / 100))
-            shadow_alpha = math.max(0.1, 0.4 - (height / 125))
+            shadow_scale = math.max(SHADOW.MIN_SCALE, 1.0 - (height / SHADOW.TOPDOWN_SCALE_DIVISOR))
+            shadow_alpha = math.max(SHADOW.MIN_ALPHA, SHADOW.ALPHA - (height / SHADOW.TOPDOWN_ALPHA_DIVISOR))
         elseif player.game_mode == "platformer" and player.ground_y then
             -- In platformer mode, shadow stays at ground level
-            -- ground_y is the Y coordinate of the ground surface from raycast
-            -- We want shadow ON the ground, not below it
             shadow_y = player.ground_y
 
             -- Calculate height difference (distance from player's feet to ground)
-            -- Player's feet are at: center + half collider height
             local player_feet_y = player.y + (shadow_collider_height / 2)
             local height_diff = player.ground_y - player_feet_y
 
             -- Scale shadow based on height (gets smaller when higher)
-            -- At height 0: scale = 1.0, at height 200: scale = 0.3
-            shadow_scale = math.max(0.3, 1.0 - (height_diff / 300))
+            shadow_scale = math.max(SHADOW.MIN_SCALE, 1.0 - (height_diff / SHADOW.PLATFORMER_SCALE_DIVISOR))
 
             -- Fade shadow based on height (gets more transparent when higher)
-            shadow_alpha = math.max(0.1, 0.4 - (height_diff / 500))
+            shadow_alpha = math.max(SHADOW.MIN_ALPHA, SHADOW.ALPHA - (height_diff / SHADOW.PLATFORMER_ALPHA_DIVISOR))
         end
 
         love.graphics.setColor(0, 0, 0, shadow_alpha)
-        local shadow_width = shadow_collider_width * 0.625 * shadow_scale
-        local shadow_height = shadow_collider_width * 0.175 * shadow_scale
+        local shadow_width = shadow_collider_width * SHADOW.WIDTH_RATIO * shadow_scale
+        local shadow_height = shadow_collider_width * SHADOW.HEIGHT_RATIO * shadow_scale
         love.graphics.ellipse("fill", draw_x, shadow_y, shadow_width, shadow_height)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
     -- Parry shield
     if player.parry_active then
-        local shield_alpha = 0.3 + 0.2 * math.sin(love.timer.getTime() * 10)
+        local shield_alpha = PARRY_VISUAL.SHIELD_ALPHA_MIN + PARRY_VISUAL.SHIELD_ALPHA_RANGE * math.sin(love.timer.getTime() * PARRY_VISUAL.SHIELD_PULSE_SPEED)
         love.graphics.setColor(0.3, 0.6, 1, shield_alpha)
-        local shield_radius = player.collider_width * 0.8
+        local shield_radius = player.collider_width * PARRY_VISUAL.SHIELD_RADIUS_RATIO
         love.graphics.circle("fill", draw_x, draw_y, shield_radius)
         love.graphics.setColor(0.5, 0.8, 1, 0.6)
         love.graphics.setLineWidth(3)
@@ -82,7 +85,7 @@ function render.draw(player)
     -- Blink during invincibility
     local should_draw = true
     if player.invincible_timer > 0 or player.dodge_invincible_timer > 0 then
-        local blink_cycle = math.floor(love.timer.getTime() / 0.1)
+        local blink_cycle = math.floor(love.timer.getTime() / BLINK.INTERVAL)
         should_draw = (blink_cycle % 2 == 0)
     end
 
@@ -138,9 +141,9 @@ function render.draw(player)
 
         -- Hit flash
         if player.hit_flash_timer > 0 then
-            local flash_intensity = player.hit_flash_timer / 0.2
+            local flash_intensity = player.hit_flash_timer / HIT_FLASH.PLAYER_DURATION
             love.graphics.setBlendMode("add")
-            love.graphics.setColor(1, 1, 1, flash_intensity * 0.7)
+            love.graphics.setColor(1, 1, 1, flash_intensity * HIT_FLASH.INTENSITY)
             player.anim:draw(player.spriteSheet, draw_x, draw_y, nil, player.sprite_scale, player.sprite_scale, player.sprite_origin_x, player.sprite_origin_y)
             love.graphics.setBlendMode("alpha")
             love.graphics.setColor(1, 1, 1, 1)

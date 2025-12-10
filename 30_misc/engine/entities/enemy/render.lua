@@ -7,6 +7,11 @@ local constants = require "engine.core.constants"
 
 local render = {}
 
+-- Local references to constants for performance
+local SHADOW = constants.SHADOW
+local HIT_FLASH = constants.HIT_FLASH
+local COLLIDER_OFFSETS = constants.COLLIDER_OFFSETS
+
 -- Color swap shader (shared across all enemies)
 local color_swap_shader = nil
 
@@ -76,9 +81,9 @@ function render.draw(enemy)
             -- Use foot_collider bottom edge for shadow
             local foot_height
             if enemy.is_humanoid then
-                foot_height = enemy.collider_height * 0.125
+                foot_height = enemy.collider_height * COLLIDER_OFFSETS.HUMANOID_FOOT_HEIGHT
             else
-                foot_height = enemy.collider_height * 0.6
+                foot_height = enemy.collider_height * COLLIDER_OFFSETS.SLIME_FOOT_HEIGHT
             end
             shadow_x = enemy.foot_collider:getX()
             shadow_y = enemy.foot_collider:getY() + foot_height / 2 - 2
@@ -88,9 +93,9 @@ function render.draw(enemy)
             shadow_y = collider_center_y + (enemy.collider_height / 2) - 2
         end
 
-        local shadow_width = enemy.collider_width * 0.625
-        local shadow_height = enemy.collider_width * 0.175
-        love.graphics.setColor(0, 0, 0, 0.4)
+        local shadow_width = enemy.collider_width * SHADOW.WIDTH_RATIO
+        local shadow_height = enemy.collider_width * SHADOW.HEIGHT_RATIO
+        love.graphics.setColor(0, 0, 0, SHADOW.ALPHA)
         love.graphics.ellipse("fill", shadow_x, shadow_y, shadow_width, shadow_height)
         love.graphics.setColor(1, 1, 1, 1)
     end
@@ -139,9 +144,9 @@ function render.draw(enemy)
 
     -- Hit flash
     if enemy.state == constants.ENEMY_STATES.HIT and enemy.hit_flash_timer > 0 then
-        local flash_intensity = enemy.hit_flash_timer / 0.15
+        local flash_intensity = enemy.hit_flash_timer / HIT_FLASH.DURATION
         love.graphics.setBlendMode("add")
-        love.graphics.setColor(1, 1, 1, flash_intensity * 0.7)
+        love.graphics.setColor(1, 1, 1, flash_intensity * HIT_FLASH.INTENSITY)
         enemy.anim:draw(
             enemy.spriteSheet,
             sprite_draw_x,

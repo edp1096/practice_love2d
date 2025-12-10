@@ -4,7 +4,6 @@
 local inventory = {}
 
 local display = require "engine.core.display"
-local sound = require "engine.core.sound"
 local slot_renderer = require "engine.ui.screens.inventory.inventory_renderer"
 local input_handler = require "engine.ui.screens.inventory.input"
 local fonts = require "engine.utils.fonts"
@@ -16,13 +15,10 @@ local colors = require "engine.utils.colors"
 local ui_constants = require "engine.ui.constants"
 local coords = require "engine.core.coords"
 local locale = require "engine.core.locale"
+local sound_utils = require "engine.utils.sound_utils"
 
--- Safe sound wrapper
-local function play_sound(category, name)
-    if sound and sound.playSFX then
-        pcall(function() sound:playSFX(category, name) end)
-    end
-end
+-- Alias for sound utility
+local play_sound = sound_utils.play
 
 function inventory:enter(previous, player_inventory, player)
     self.previous_scene = previous

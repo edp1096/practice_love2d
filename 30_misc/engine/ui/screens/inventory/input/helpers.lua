@@ -5,7 +5,7 @@ local helpers = {}
 
 local coords = require "engine.core.coords"
 local display = require "engine.core.display"
-local sound = require "engine.core.sound"
+local sound_utils = require "engine.utils.sound_utils"
 local slot_renderer = require "engine.ui.screens.inventory.inventory_renderer"
 
 -- Equipment slot layout (2x4 grid)
@@ -30,12 +30,8 @@ function helpers.getEquipmentSlotName(cursor_x, cursor_y)
     return nil
 end
 
--- Safe sound wrapper
-function helpers.play_sound(category, name)
-    if sound and sound.playSFX then
-        pcall(function() sound:playSFX(category, name) end)
-    end
-end
+-- Use shared sound utility
+helpers.play_sound = sound_utils.play
 
 -- Handle click/touch on UI elements
 function helpers.handleClick(self, x, y)
