@@ -61,7 +61,9 @@ systems/
 ├── world/                - Physics & map
 │   ├── init.lua          - World coordinator
 │   ├── loaders.lua       - Map loading + entity factory
-│   ├── entities.lua      - Entity management + persistence
+│   ├── entities.lua      - Entity management
+│   ├── transform.lua     - NPC↔Enemy transformation
+│   ├── stairs.lua        - Stair system (topdown)
 │   └── rendering.lua     - Y-sorted rendering
 │
 ├── effects/              - Visual effects (particles, screen)
@@ -118,7 +120,9 @@ scenes/
 ├── cutscene.lua          - Cutscene/intro
 └── gameplay/             - Main gameplay (modular)
     ├── init.lua          - Coordinator
-    ├── scene_setup.lua   - Initialization
+    ├── scene_setup.lua   - Initialization coordinator
+    ├── initializers.lua  - Individual init functions
+    ├── map_switch.lua    - Map transition logic
     ├── save_manager.lua  - Save/load
     ├── update.lua        - Game loop
     ├── render.lua        - Drawing
@@ -372,5 +376,5 @@ end, nil)
 
 ---
 
-**Last Updated:** 2025-12-10
+**Last Updated:** 2025-12-11
 **Framework:** LÖVE 11.5 + Lua 5.1

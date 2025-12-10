@@ -1,8 +1,9 @@
 -- engine/ui/dialogue/init.lua
 -- Advanced dialogue system with choice support
--- Modular architecture: delegates to core.lua, render.lua, helpers.lua
+-- Modular architecture: delegates to core.lua, tree.lua, typewriter.lua, render.lua, helpers.lua
 
 local core = require "engine.ui.dialogue.core"
+local tree = require "engine.ui.dialogue.tree"
 local render = require "engine.ui.dialogue.render"
 local helpers = require "engine.ui.dialogue.helpers"
 
@@ -41,23 +42,23 @@ end
 -- ============================================================================
 
 function dialogue:showTreeById(dialogue_id, npc_id, npc_obj)
-    core.showTreeById(self, dialogue_id, npc_id, npc_obj)
+    tree:showTreeById(self, dialogue_id, npc_id, npc_obj)
 end
 
 function dialogue:showTree(dialogue_tree)
-    core.showTree(self, dialogue_tree)
+    tree:showTree(self, dialogue_tree)
 end
 
 function dialogue:advanceTree()
-    core:advanceTree(self)
+    tree:advanceTree(self)
 end
 
 function dialogue:selectChoice(choice_index)
-    core:selectChoice(self, choice_index)
+    tree:selectChoice(self, choice_index)
 end
 
 function dialogue:moveChoiceSelection(direction)
-    core:moveChoiceSelection(self, direction)
+    tree:moveChoiceSelection(self, direction)
 end
 
 -- ============================================================================

@@ -61,7 +61,9 @@ systems/
 ├── world/                - 물리 & 맵
 │   ├── init.lua          - 월드 코디네이터
 │   ├── loaders.lua       - 맵 로딩 + 엔티티 팩토리
-│   ├── entities.lua      - 엔티티 관리 + 영속성
+│   ├── entities.lua      - 엔티티 관리
+│   ├── transform.lua     - NPC↔Enemy 변환
+│   ├── stairs.lua        - 계단 시스템 (topdown)
 │   └── rendering.lua     - Y축 정렬 렌더링
 │
 ├── effects/              - 시각 효과 (파티클, 화면)
@@ -118,7 +120,9 @@ scenes/
 ├── cutscene.lua          - 컷씬/인트로
 └── gameplay/             - 메인 게임플레이 (모듈형)
     ├── init.lua          - 코디네이터
-    ├── scene_setup.lua   - 초기화
+    ├── scene_setup.lua   - 초기화 코디네이터
+    ├── initializers.lua  - 개별 초기화 함수
+    ├── map_switch.lua    - 맵 전환 로직
     ├── save_manager.lua  - 저장/로드
     ├── update.lua        - 게임 루프
     ├── render.lua        - 그리기
@@ -372,5 +376,5 @@ end, nil)
 
 ---
 
-**최종 업데이트:** 2025-12-10
+**최종 업데이트:** 2025-12-11
 **프레임워크:** LÖVE 11.5 + Lua 5.1
