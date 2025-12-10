@@ -139,11 +139,11 @@ ui/
 │   ├── questlog/         - Quest log UI (modular)
 │   └── settings/         - Settings (modular)
 │
-├── dialogue/             - Dialogue system (modular)
-│   ├── init.lua          - Main API
-│   ├── core.lua          - Core logic (tree, state, input)
-│   ├── render.lua        - Rendering
-│   └── helpers.lua       - Helpers
+├── dialogue/             - Dialogue system (custom, typewriter effect)
+│   ├── init.lua          - Main API (facade)
+│   ├── core.lua          - Core logic (tree, state, typewriter)
+│   ├── render.lua        - Rendering (box, choices)
+│   └── helpers.lua       - Input, flags, history
 │
 └── widgets/              - Reusable widgets
     └── button/           - Skip/Next buttons
@@ -284,8 +284,7 @@ vendor/
 ├── anim8/                - Sprite animation
 ├── hump/                 - Utilities (camera, timer, vector)
 ├── sti/                  - Tiled map loader
-├── windfield/            - Box2D wrapper
-└── talkies/              - Dialogue system
+└── windfield/            - Box2D wrapper
 ```
 
 ---

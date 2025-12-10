@@ -187,6 +187,9 @@ function quest_interactions.showQuestTurnInDialogue(scene, quest_info, npc_name)
         return
     end
 
+    -- Ensure rewards is a table (may be nil if quest has no rewards)
+    rewards = rewards or {}
+
     -- Resolve translated texts
     local title = resolveText(quest_info.def.title_key, quest_info.def.title)
     local description = resolveText(quest_info.def.description_key, quest_info.def.description)

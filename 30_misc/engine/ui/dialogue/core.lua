@@ -1,13 +1,16 @@
--- engine/ui/dialogue/init.lua
+-- engine/ui/dialogue/core.lua
 -- Core dialogue system logic: initialization, tree system, node management
 
-local Talkies = require "vendor.talkies"
+local utf8 = require "utf8"
 local skip_button_widget = require "engine.ui.widgets.button.skip"
 local next_button_widget = require "engine.ui.widgets.button.next"
 local colors = require "engine.utils.colors"
 local locale = require "engine.core.locale"
 
 local core = {}
+
+-- Module-level font storage (replaces Talkies.font)
+core.font = nil
 
 -- ============================================================================
 -- HELPER FUNCTIONS
@@ -124,17 +127,9 @@ end
 -- ============================================================================
 
 function core:initialize(dialogue, display_module)
-    -- Configure Talkies
-    Talkies.backgroundColor = colors.for_dialogue_bg
-    Talkies.messageBorderColor = colors.for_dialogue_text  -- Border color
-    Talkies.thickness = 2  -- Border thickness (match our custom dialogues)
-    Talkies.rounding = 4  -- Rounded corners (match our custom dialogues)
-    Talkies.textSpeed = "fast"
-    Talkies.indicatorCharacter = "█"  -- Filled box cursor
-
-    -- Set fixed font size (will be scaled by virtual coordinates)
+    -- Set dialogue font (will be scaled by virtual coordinates)
     -- Use locale font for Korean support
-    Talkies.font = locale:getFont("option") or love.graphics.newFont(18)
+    core.font = locale:getFont("option") or love.graphics.newFont(18)
 
     -- Create SKIP button for mobile (rightmost)
     dialogue.skip_button = skip_button_widget:new({
@@ -183,6 +178,7 @@ function core:initialize(dialogue, display_module)
     dialogue.current_page_index = 0
     dialogue.total_pages = 0
     dialogue.showing_paged_text = false
+    dialogue.showing_single_text = false
 
     -- Selected choices tracking (for grey-out effect) - PER DIALOGUE
     -- Format: { "{node_id}|{choice_text}" = true }
@@ -200,6 +196,14 @@ function core:initialize(dialogue, display_module)
 
     -- Track which choice was pressed (to prevent click-through)
     dialogue.pressed_choice_index = nil
+
+    -- Typewriter effect state
+    dialogue.typewriter_position = 0       -- Current character position
+    dialogue.typewriter_complete = true    -- Is typing finished?
+    dialogue.typewriter_speed = 0.03       -- Seconds per character (fast)
+    dialogue.typewriter_sound_interval = 3 -- Play sound every N characters
+    dialogue.typewriter_last_sound_pos = 0 -- Last position sound was played
+    dialogue.typing_sound = "dialogue_typing" -- Default typing sound (can be per-NPC)
 
     -- Quest system reference (injected from game) - preserve if already set
     if not dialogue.quest_system then
@@ -273,6 +277,10 @@ function core.showTree(dialogue, dialogue_tree)
 
     -- Store NPC ID for quest lookups (if provided)
     dialogue.current_npc_id = dialogue_tree.npc_id
+
+    -- Set typing sound from dialogue tree (per-NPC/voice support)
+    -- Format in dialogue tree: typing_sound = "dialogue_typing_female"
+    dialogue.typing_sound = dialogue_tree.typing_sound or "dialogue_typing"
 
     -- Load selected choices for this dialogue (instead of resetting)
     if dialogue.current_dialogue_id then
@@ -359,26 +367,36 @@ function core:showNode(dialogue, node_id)
         dialogue.current_page_index = 0
         dialogue.total_pages = #pages
         dialogue.showing_paged_text = true
+        dialogue.showing_single_text = false
 
-        -- Don't show Talkies, we'll render pages ourselves
-        Talkies.clearMessages()
+        -- Reset typewriter for paged mode
+        dialogue.typewriter_position = 0
+        dialogue.typewriter_complete = false
+        dialogue.typewriter_last_sound_pos = 0
     elseif node.choices and #node.choices > 0 then
-        -- Node has choices: skip Talkies, show custom dialogue box directly
+        -- Node has choices: show custom dialogue box directly
         dialogue.current_pages = nil
         dialogue.current_page_index = 0
         dialogue.total_pages = 0
         dialogue.showing_paged_text = false
-        Talkies.clearMessages()
-    else
-        -- Single text mode: use Talkies
-        dialogue.current_pages = nil
-        dialogue.current_page_index = 0
-        dialogue.total_pages = 0
-        dialogue.showing_paged_text = false
+        dialogue.showing_single_text = false
 
-        local speaker = resolveTextKey(node.speaker_key, node.speaker, "???")
-        local text = resolveTextKey(node.text_key, node.text)
-        Talkies.say(speaker, { text })
+        -- Reset typewriter for choices mode
+        dialogue.typewriter_position = 0
+        dialogue.typewriter_complete = false
+        dialogue.typewriter_last_sound_pos = 0
+    else
+        -- Single text mode (no choices, no pages): use custom typewriter
+        dialogue.current_pages = nil
+        dialogue.current_page_index = 0
+        dialogue.total_pages = 0
+        dialogue.showing_paged_text = false
+        dialogue.showing_single_text = true  -- Flag for single text mode
+
+        -- Reset typewriter for single text mode
+        dialogue.typewriter_position = 0
+        dialogue.typewriter_complete = false
+        dialogue.typewriter_last_sound_pos = 0
     end
 
     -- Store resolved speaker and text for rendering (choices mode needs it)
@@ -451,9 +469,21 @@ function core:advanceTree(dialogue)
 
     -- PAGED MODE: Handle page navigation
     if dialogue.showing_paged_text and dialogue.current_pages then
+        -- If typewriter is still typing, skip to end
+        if not dialogue.typewriter_complete then
+            dialogue.typewriter_complete = true
+            local current_text = dialogue.current_pages[dialogue.current_page_index + 1] or ""
+            dialogue.typewriter_position = utf8.len(current_text) or 0
+            return
+        end
+
         -- Advance to next page
         if dialogue.current_page_index < dialogue.total_pages - 1 then
             dialogue.current_page_index = dialogue.current_page_index + 1
+            -- Reset typewriter for new page
+            dialogue.typewriter_position = 0
+            dialogue.typewriter_complete = false
+            dialogue.typewriter_last_sound_pos = 0
             return
         else
             -- Last page reached - show choices or continue
@@ -478,18 +508,22 @@ function core:advanceTree(dialogue)
         end
     end
 
-    -- TALKIES MODE: Handle Talkies text
-    if Talkies.isOpen() and not Talkies.paused then
-        Talkies.onAction()
-        -- CRITICAL: Update button visibility after Talkies advances
-        local render = require "engine.ui.dialogue.render"
-        render:updateButtonVisibility(dialogue)
-
-        -- If Talkies is still open (more messages), wait for next click
-        if Talkies.isOpen() then
+    -- SINGLE TEXT MODE: Handle typewriter skip or advance
+    if dialogue.showing_single_text then
+        -- If typewriter is still typing, skip to end
+        if not dialogue.typewriter_complete then
+            dialogue.typewriter_complete = true
+            dialogue.typewriter_position = utf8.len(dialogue.current_text or "") or 0
             return
         end
-        -- Otherwise, continue to check for next node/choices (fall through)
+        -- Typewriter complete, advance to next node or end
+        dialogue.showing_single_text = false
+        if node.next then
+            self:showNode(dialogue, node.next)
+        else
+            self:clear(dialogue)
+        end
+        return
     end
 
     -- Check for pending choices (text was shown, now show choices)
@@ -501,8 +535,13 @@ function core:advanceTree(dialogue)
         return
     end
 
-    -- If node has choices, wait for player to select
+    -- If node has choices, handle typewriter skip or wait for selection
     if dialogue.current_choices and #dialogue.current_choices > 0 then
+        -- If typewriter is still typing, skip to end
+        if not dialogue.typewriter_complete then
+            dialogue.typewriter_complete = true
+            dialogue.typewriter_position = utf8.len(dialogue.current_text or "") or 0
+        end
         return
     end
 
@@ -561,8 +600,7 @@ function core:selectChoice(dialogue, choice_index)
 
     -- Navigate to next node
     if choice.next then
-        -- Clear current state completely before navigating
-        Talkies.clearMessages()
+        -- Clear current state before navigating
         dialogue.showing_paged_text = false
         dialogue.current_pages = nil
         dialogue.current_page_index = 0
@@ -578,6 +616,11 @@ end
 -- Navigate choice selection (keyboard/gamepad)
 function core:moveChoiceSelection(dialogue, direction)
     if not dialogue.tree_mode or not dialogue.current_choices then
+        return
+    end
+
+    -- Don't allow navigation while typewriter is active
+    if not dialogue.typewriter_complete then
         return
     end
 
@@ -599,22 +642,58 @@ end
 -- SIMPLE DIALOGUE METHODS (non-interactive)
 -- ============================================================================
 
-function core:showSimple(dialogue, npc_name, message)
+-- Show simple dialogue (single message)
+-- typing_sound: optional custom typing sound (e.g., "dialogue_typing_narrator")
+function core:showSimple(dialogue, npc_name, message, typing_sound)
     dialogue.forced_closed = false  -- Reset forced_closed (allowing dialogue to open)
     dialogue.tree_mode = false  -- Disable tree mode
     dialogue.current_choices = nil  -- No choices
-    Talkies.say(npc_name, { message })
+
+    -- Set typing sound (per-speaker support)
+    dialogue.typing_sound = typing_sound or "dialogue_typing"
+
+    -- Use paged mode with single page for custom typewriter
+    dialogue.current_pages = { message }
+    dialogue.current_page_index = 0
+    dialogue.total_pages = 1
+    dialogue.showing_paged_text = true
+    dialogue.showing_single_text = false
+    dialogue.current_speaker = npc_name or ""
+    dialogue.current_text = message
+
+    -- Reset typewriter
+    dialogue.typewriter_position = 0
+    dialogue.typewriter_complete = false
+    dialogue.typewriter_last_sound_pos = 0
 
     -- Update button visibility (event-based, not polling)
     local render = require "engine.ui.dialogue.render"
     render:updateButtonVisibility(dialogue)
 end
 
-function core:showMultiple(dialogue, npc_name, messages)
+-- Show multiple messages in sequence
+-- typing_sound: optional custom typing sound (e.g., "dialogue_typing_narrator")
+function core:showMultiple(dialogue, npc_name, messages, typing_sound)
     dialogue.forced_closed = false  -- Reset forced_closed (allowing dialogue to open)
     dialogue.tree_mode = false  -- Disable tree mode
     dialogue.current_choices = nil  -- No choices
-    Talkies.say(npc_name, messages)
+
+    -- Set typing sound (per-speaker support)
+    dialogue.typing_sound = typing_sound or "dialogue_typing"
+
+    -- Use paged mode for custom typewriter
+    dialogue.current_pages = messages
+    dialogue.current_page_index = 0
+    dialogue.total_pages = #messages
+    dialogue.showing_paged_text = true
+    dialogue.showing_single_text = false
+    dialogue.current_speaker = npc_name or ""
+    dialogue.current_text = messages[1] or ""
+
+    -- Reset typewriter
+    dialogue.typewriter_position = 0
+    dialogue.typewriter_complete = false
+    dialogue.typewriter_last_sound_pos = 0
 
     -- Update button visibility (event-based, not polling)
     local render = require "engine.ui.dialogue.render"
@@ -630,17 +709,42 @@ function core:isOpen(dialogue)
     if dialogue.forced_closed then
         return false
     end
-    -- Otherwise, check Talkies or tree mode
-    return Talkies.isOpen() or dialogue.tree_mode
+    -- Check: tree mode, paged text (simple/multiple), or single text
+    return dialogue.tree_mode or dialogue.showing_paged_text or dialogue.showing_single_text
 end
 
 function core:update(dialogue, dt)
-    Talkies.update(dt)
-
-    -- CRITICAL: Poll dialogue state every frame to detect auto-close
-    -- (Talkies can close itself when all messages are consumed)
+    -- Update button visibility each frame
     local render = require "engine.ui.dialogue.render"
     render:updateButtonVisibility(dialogue)
+
+    -- Update typewriter effect (for paged text and choices mode)
+    if not dialogue.typewriter_complete then
+        local current_text = dialogue.current_text or ""
+        if dialogue.showing_paged_text and dialogue.current_pages then
+            current_text = dialogue.current_pages[dialogue.current_page_index + 1] or ""
+        end
+        local text_length = utf8.len(current_text) or 0
+        local prev_pos = math.floor(dialogue.typewriter_position)
+        dialogue.typewriter_position = dialogue.typewriter_position + (dt / dialogue.typewriter_speed)
+        local new_pos = math.floor(dialogue.typewriter_position)
+
+        -- Play typing sound at intervals (skip if typing_sound is "none" or "")
+        if new_pos > prev_pos and dialogue.typing_sound and dialogue.typing_sound ~= "" and dialogue.typing_sound ~= "none" then
+            local sound_pos = math.floor(new_pos / dialogue.typewriter_sound_interval)
+            local last_sound_pos = math.floor(dialogue.typewriter_last_sound_pos / dialogue.typewriter_sound_interval)
+            if sound_pos > last_sound_pos then
+                local sound_sys = require "engine.core.sound"
+                sound_sys:playSFX("ui", dialogue.typing_sound)
+                dialogue.typewriter_last_sound_pos = new_pos
+            end
+        end
+
+        if dialogue.typewriter_position >= text_length then
+            dialogue.typewriter_position = text_length
+            dialogue.typewriter_complete = true
+        end
+    end
 
     -- Update skip button (charge system)
     if dialogue.skip_button and dialogue.skip_button.visible then
@@ -693,17 +797,45 @@ function core:onAction(dialogue)
     if dialogue.tree_mode then
         -- Tree mode: handle choice selection or advance
         if dialogue.current_choices and #dialogue.current_choices > 0 then
+            -- If typewriter is still typing, skip to end first
+            if not dialogue.typewriter_complete then
+                dialogue.typewriter_complete = true
+                dialogue.typewriter_position = utf8.len(dialogue.current_text or "") or 0
+                return  -- Don't select yet, just show full text
+            end
             self:selectChoice(dialogue, dialogue.selected_choice_index)
         else
             -- No choices - advance tree
             self:advanceTree(dialogue)
         end
     else
-        -- Simple dialogue mode: advance Talkies and update button state
-        Talkies.onAction()
+        -- Simple dialogue mode (showSimple/showMultiple): handle paged text
+        if dialogue.showing_paged_text and dialogue.current_pages then
+            -- If typewriter is still typing, skip to end
+            if not dialogue.typewriter_complete then
+                dialogue.typewriter_complete = true
+                local current_text = dialogue.current_pages[dialogue.current_page_index + 1] or ""
+                dialogue.typewriter_position = utf8.len(current_text) or 0
+                return
+            end
 
-        -- CRITICAL: Update button visibility after advancing
-        -- If Talkies closed (no more messages), hide buttons
+            -- Advance to next page
+            if dialogue.current_page_index < dialogue.total_pages - 1 then
+                dialogue.current_page_index = dialogue.current_page_index + 1
+                -- Update current_text for typewriter
+                dialogue.current_text = dialogue.current_pages[dialogue.current_page_index + 1] or ""
+                -- Reset typewriter for new page
+                dialogue.typewriter_position = 0
+                dialogue.typewriter_complete = false
+                dialogue.typewriter_last_sound_pos = 0
+                return
+            else
+                -- Last page reached - close dialogue
+                self:clear(dialogue)
+            end
+        end
+
+        -- Update button visibility
         local render = require "engine.ui.dialogue.render"
         render:updateButtonVisibility(dialogue)
     end
@@ -726,21 +858,7 @@ function core:clear(dialogue)
     dialogue.current_page_index = 0
     dialogue.total_pages = 0
     dialogue.showing_paged_text = false
-
-    -- Clear Talkies message queue
-    Talkies.clearMessages()
-
-    -- Pop current dialog if exists (safe pop - max 10 times to avoid infinite loop)
-    local max_pops = 10
-    local count = 0
-    while Talkies.isOpen() and count < max_pops do
-        if Talkies.dialogs and Talkies.dialogs.pop then
-            Talkies.dialogs:pop()
-            count = count + 1
-        else
-            break
-        end
-    end
+    dialogue.showing_single_text = false
 
     -- Update button visibility (will hide since forced_closed is true)
     local render = require "engine.ui.dialogue.render"

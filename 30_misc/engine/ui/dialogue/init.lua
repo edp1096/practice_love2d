@@ -64,12 +64,14 @@ end
 -- SIMPLE DIALOGUE METHODS
 -- ============================================================================
 
-function dialogue:showSimple(npc_name, message)
-    core:showSimple(self, npc_name, message)
+-- typing_sound: optional, use "none" or "" to disable sound
+function dialogue:showSimple(npc_name, message, typing_sound)
+    core:showSimple(self, npc_name, message, typing_sound)
 end
 
-function dialogue:showMultiple(npc_name, messages)
-    core:showMultiple(self, npc_name, messages)
+-- typing_sound: optional, use "none" or "" to disable sound
+function dialogue:showMultiple(npc_name, messages, typing_sound)
+    core:showMultiple(self, npc_name, messages, typing_sound)
 end
 
 -- ============================================================================

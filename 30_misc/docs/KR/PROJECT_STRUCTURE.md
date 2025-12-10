@@ -139,11 +139,11 @@ ui/
 │   ├── questlog/         - 퀘스트 로그 UI (모듈형)
 │   └── settings/         - 설정 (모듈형)
 │
-├── dialogue/             - 대화 시스템 (모듈형)
-│   ├── init.lua          - 메인 API
-│   ├── core.lua          - 핵심 로직 (트리, 상태, 입력)
-│   ├── render.lua        - 렌더링
-│   └── helpers.lua       - 헬퍼
+├── dialogue/             - 대화 시스템 (자체 구현, 타자기 효과)
+│   ├── init.lua          - 메인 API (파사드)
+│   ├── core.lua          - 핵심 로직 (트리, 상태, 타자기)
+│   ├── render.lua        - 렌더링 (박스, 선택지)
+│   └── helpers.lua       - 입력, 플래그, 히스토리
 │
 └── widgets/              - 재사용 가능 위젯
     └── button/           - 스킵/다음 버튼
@@ -284,8 +284,7 @@ vendor/
 ├── anim8/                - 스프라이트 애니메이션
 ├── hump/                 - 유틸리티 (camera, timer, vector)
 ├── sti/                  - Tiled 맵 로더
-├── windfield/            - Box2D 래퍼
-└── talkies/              - 대화 시스템
+└── windfield/            - Box2D 래퍼
 ```
 
 ---

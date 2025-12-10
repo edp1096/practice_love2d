@@ -114,10 +114,10 @@ function locale:loadFonts()
         end
     end
 
-    -- Update Talkies font (dialogue system)
-    local Talkies = require "vendor.talkies"
+    -- Update dialogue fonts
     local option_font = self.fonts[self.current]["option"] or love.graphics.newFont(18)
-    Talkies.font = option_font
+    local dialogue_core = require "engine.ui.dialogue.core"
+    dialogue_core.font = option_font
 
     -- Update dialogue choice_font (for speaker name and choices)
     local dialogue = require "engine.ui.dialogue"

@@ -1,7 +1,7 @@
 -- engine/ui/dialogue/helpers.lua
 -- Dialogue helper functions: input, flags, history, actions
 
-local Talkies = require "vendor.talkies"
+local core = require "engine.ui.dialogue.core"
 local coords = require "engine.core.coords"
 
 local helpers = {}
@@ -27,7 +27,7 @@ function helpers:getChoiceAtPosition(dialogue, x, y)
 
     -- Calculate dialogue box dimensions
     local padding = 10
-    local font = Talkies.font or love.graphics.getFont()
+    local font = core.font or love.graphics.getFont()
     local extra_height = font:getHeight() * 1.5
     local boxH = vh * 0.4 - (2 * padding) + extra_height
     local boxY = vh - (boxH + padding)

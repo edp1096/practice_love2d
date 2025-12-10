@@ -97,7 +97,7 @@ function cutscene:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot, 
         messages = self.config.messages
     end
 
-    dialogue:showMultiple(speaker, messages)
+    dialogue:showMultiple(speaker, messages, "none")
 
     self.dialogue_finished = false
     self.transition_delay = 0

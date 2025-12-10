@@ -19,7 +19,7 @@ dprint("Running with LOVE " .. love_version .. " and " .. _VERSION)
 
 -- Now load other modules (they can safely use dprint)
 local display = require "engine.core.display"
-_G.screen = display -- Global for Talkies compatibility
+_G.screen = display -- Global reference for display system
 local utils = require "engine.utils.util"
 local scene_control = require "engine.core.scene_control"
 local input = require "engine.core.input"

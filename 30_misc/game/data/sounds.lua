@@ -47,7 +47,8 @@ return {
         ui = {
             save = { path = "assets/sound/ui/save.wav", volume = 0.8, pitch_variation = "none" },
             pause = { path = "assets/sound/ui/pause.wav", volume = 0.7, pitch_variation = "none" },
-            unpause = { path = "assets/sound/ui/unpause.wav", volume = 0.7, pitch_variation = "none" }
+            unpause = { path = "assets/sound/ui/unpause.wav", volume = 0.7, pitch_variation = "none" },
+            dialogue_typing = { path = "assets/sound/ui/dialogue_typing.wav", volume = 0.4, pitch_variation = "subtle" }
         },
 
         item = {
