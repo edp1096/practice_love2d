@@ -46,22 +46,30 @@ local function handleDialogueState(player, dt, dialogue_open)
     return true, 0, 0
 end
 
+-- Update facing_angle based on current direction
+local function updateFacingAngleFromDirection(player)
+    local angles = {
+        right = 0,
+        left = math.pi,
+        down = math.pi / 2,
+        up = -math.pi / 2
+    }
+    player.facing_angle = angles[player.direction] or 0
+end
+
 -- Determine facing direction from input/weapon state
 local function handleDirectionFromInput(player, cam)
     if debug:IsHandMarkingActive() then
         if love.keyboard.isDown('w') then
             player.direction = 'up'
-            player.facing_angle = -math.pi / 2
         elseif love.keyboard.isDown('s') then
             player.direction = 'down'
-            player.facing_angle = math.pi / 2
         elseif love.keyboard.isDown('a') then
             player.direction = 'left'
-            player.facing_angle = math.pi
         elseif love.keyboard.isDown('d') then
             player.direction = 'right'
-            player.facing_angle = 0
         end
+        updateFacingAngleFromDirection(player)
     elseif player.weapon_drawn or player.parry_active then
         -- Use aim direction from input system (gamepad right stick or mouse)
         local raw_angle = input:getAimDirection(player.x, player.y, cam)
@@ -70,27 +78,25 @@ local function handleDirectionFromInput(player, cam)
         if player.game_mode == "platformer" then
             if raw_angle > -math.pi / 2 and raw_angle <= math.pi / 2 then
                 player.direction = "right"
-                player.facing_angle = 0
             else
                 player.direction = "left"
-                player.facing_angle = math.pi
             end
         else
             -- Topdown mode: 4-directional aiming
             if raw_angle > -math.pi / 4 and raw_angle <= math.pi / 4 then
                 player.direction = "right"
-                player.facing_angle = 0
             elseif raw_angle > math.pi / 4 and raw_angle <= 3 * math.pi / 4 then
                 player.direction = "down"
-                player.facing_angle = math.pi / 2
             elseif raw_angle > 3 * math.pi / 4 or raw_angle <= -3 * math.pi / 4 then
                 player.direction = "left"
-                player.facing_angle = math.pi
             else
                 player.direction = "up"
-                player.facing_angle = -math.pi / 2
             end
         end
+        updateFacingAngleFromDirection(player)
+    else
+        -- No weapon: just sync facing_angle with current direction
+        updateFacingAngleFromDirection(player)
     end
 end
 
@@ -260,15 +266,7 @@ local function handleMovementInput(player, dt)
 
         if not player.weapon_drawn and move_direction then
             player.direction = move_direction
-            if player.direction == "right" then
-                player.facing_angle = 0
-            elseif player.direction == "left" then
-                player.facing_angle = math.pi
-            elseif player.direction == "down" then
-                player.facing_angle = math.pi / 2
-            elseif player.direction == "up" then
-                player.facing_angle = -math.pi / 2
-            end
+            updateFacingAngleFromDirection(player)
         end
 
         if is_moving then
