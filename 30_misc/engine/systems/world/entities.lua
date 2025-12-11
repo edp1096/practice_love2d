@@ -139,6 +139,7 @@ function entities.moveEntity(self, entity, vx, vy, dt)
                 physics_collider:setLinearVelocity(sign * max_air_speed, new_vy)
             end
         else
+            -- Grounded: friction handles slope sliding via PreSolve callback
             physics_collider:setLinearVelocity(vx, current_vy)
         end
     else

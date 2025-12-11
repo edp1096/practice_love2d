@@ -190,13 +190,29 @@ function vehicle:boardPlayer(player)
             self.ground_collider:setType("dynamic")
             self.ground_collider:setFriction(0)
 
-            -- Ground detection via PreSolve
+            -- Ground detection via PreSolve (with dynamic friction for slopes)
             self.ground_collider:setPreSolve(function(collider_1, collider_2, contact)
                 local nx, ny = contact:getNormal()
                 if math.abs(ny) > 0.7 and ny < 0 then
                     player.is_grounded = true
                     player.can_jump = true
-                    player.is_jumping = false
+                    -- Only clear is_jumping when actually landing (falling down)
+                    local _, vy = self.ground_collider:getLinearVelocity()
+                    if vy > 50 then
+                        player.is_jumping = false
+                    end
+
+                    -- Dynamic friction for slope (same as player)
+                    local vx, _ = self.ground_collider:getLinearVelocity()
+                    if math.abs(vx) > 10 then
+                        contact:setFriction(0.0)
+                    else
+                        contact:setFriction(10.0)
+                    end
+
+                    -- Store contact surface Y for shadow rendering
+                    local foot_y = player.y + player.collider_height / 2
+                    player.contact_surface_y = foot_y
                 end
             end)
         end

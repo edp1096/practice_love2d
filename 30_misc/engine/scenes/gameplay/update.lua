@@ -116,20 +116,35 @@ end
 function update.updateGroundDetection(self)
     if self.player.game_mode ~= "platformer" then return end
 
+    -- When boarded, use vehicle's ground_collider for physics
+    local is_boarded = self.player.is_boarded and self.player.boarded_vehicle
+    local physics_collider = is_boarded and self.player.boarded_vehicle.ground_collider or self.player.collider
+
+    -- Use vehicle dimensions when boarded
+    local half_height, half_width
+    if is_boarded then
+        half_height = self.player.boarded_vehicle.collider_height / 2
+        half_width = self.player.boarded_vehicle.collider_width / 2
+    else
+        half_height = self.player.collider_height / 2
+        half_width = self.player.collider_width / 2
+    end
+
     local px, py = self.player.x, self.player.y
-    local half_height = self.player.collider_height / 2
-    local half_width = self.player.collider_width / 2
 
     -- Short raycast to detect ground for grounded status (backup for PreSolve)
     local GROUND_CHECK_DISTANCE = 3  -- pixels below feet
     local is_near_ground = false
     local nearest_ground_y = nil
+    local ground_normal_x = 0  -- Track ground normal for slope detection
 
     -- Cast 3 short rays to check if player is on ground
+    -- When boarded, raycast from vehicle bottom (player.y + VEHICLE_Y_OFFSET)
+    local raycast_y = is_boarded and (py + 24 + half_height) or (py + half_height)
     local ray_points = {
-        { x = px - half_width + 5, y = py + half_height },
-        { x = px, y = py + half_height },
-        { x = px + half_width - 5, y = py + half_height }
+        { x = px - half_width + 5, y = raycast_y },
+        { x = px, y = raycast_y },
+        { x = px + half_width - 5, y = raycast_y }
     }
 
     for _, point in ipairs(ray_points) do
@@ -142,6 +157,7 @@ function update.updateGroundDetection(self)
                     is_near_ground = true
                     if not nearest_ground_y or y < nearest_ground_y then
                         nearest_ground_y = y
+                        ground_normal_x = xn  -- Store normal X for slope detection
                     end
                     return 0
                 end
@@ -151,55 +167,69 @@ function update.updateGroundDetection(self)
     end
 
     -- Backup grounded detection using raycast (fixes PreSolve not firing when sleeping)
-    if is_near_ground then
-        local _, vy = self.player.collider:getLinearVelocity()
+    if is_near_ground and physics_collider and not physics_collider:isDestroyed() then
+        local _, vy = physics_collider:getLinearVelocity()
         -- Only set grounded if not moving up significantly
         if vy >= -10 then
             self.player.is_grounded = true
             self.player.can_jump = true
-            self.player.is_jumping = false
+            -- Only clear is_jumping when actually landing (falling down, not jumping up)
+            -- vy > 50 means falling down fast enough to be considered landing
+            if vy > 50 then
+                self.player.is_jumping = false
+            end
             if nearest_ground_y then
                 self.player.contact_surface_y = nearest_ground_y
             end
+            -- Detect slope: normal X != 0 means slope
+            self.player.on_slope = math.abs(ground_normal_x) > 0.1
         end
-    end
-
-    -- If player is grounded (from PreSolve or raycast), use contact surface for shadow
-    if self.player.is_grounded and self.player.contact_surface_y then
-        self.player.ground_y = self.player.contact_surface_y
     else
-        -- Player is in air - use longer raycast to find ground below for shadow
-        local ray_length = constants.PLAYER.RAYCAST_LENGTH
-        local closest_ground_y = nil
-
-        for _, point in ipairs(ray_points) do
-            self.world.physicsWorld.box2d_world:rayCast(
-                point.x, point.y,
-                point.x, point.y + ray_length,
-                function(fixture, x, y, xn, yn, fraction)
-                    local collider = fixture:getUserData()
-                    if collider and (collider.collision_class == constants.COLLISION_CLASSES.WALL or
-                                     collider.collision_class == constants.COLLISION_CLASSES.ENEMY or
-                                     collider.collision_class == constants.COLLISION_CLASSES.NPC) then
-                        if not closest_ground_y or y < closest_ground_y then
-                            closest_ground_y = y
-                        end
-                        return 0
-                    end
-                    return 1
-                end
-            )
-        end
-
-        if closest_ground_y then
-            self.player.ground_y = closest_ground_y
-        else
-            -- No ground detected, default to player's feet
-            if not self.player.ground_y then
-                self.player.ground_y = py + half_height
-            end
-        end
+        self.player.on_slope = false
     end
+
+    -- Ground Y for shadow: use CENTER raycast only (not left/right)
+    -- This ensures shadow follows the ground directly below player center
+    -- Using multiple rays causes shadow to jump when some rays hit slopes and others hit flat ground
+    local ray_length = constants.PLAYER.RAYCAST_LENGTH
+    local closest_ground_y = nil
+
+    -- Only use center ray (index 2) for shadow ground detection
+    local center_point = ray_points[2]
+    self.world.physicsWorld.box2d_world:rayCast(
+        center_point.x, center_point.y,
+        center_point.x, center_point.y + ray_length,
+        function(fixture, x, y, xn, yn, fraction)
+            local collider = fixture:getUserData()
+            if collider and (collider.collision_class == constants.COLLISION_CLASSES.WALL or
+                             collider.collision_class == constants.COLLISION_CLASSES.ENEMY or
+                             collider.collision_class == constants.COLLISION_CLASSES.NPC) then
+                if not closest_ground_y or y < closest_ground_y then
+                    closest_ground_y = y
+                end
+                return 0
+            end
+            return 1
+        end
+    )
+
+    -- Feet Y position: player feet or vehicle bottom
+    local feet_y = is_boarded and raycast_y or (py + half_height)
+
+    -- Ground Y for shadow rendering:
+    -- - When grounded: shadow at feet
+    -- - When jumping/falling: shadow tracks ground below via raycast
+    if is_near_ground or self.player.is_grounded then
+        -- On ground: shadow at feet
+        self.player.ground_y = feet_y
+    elseif closest_ground_y then
+        -- In air (jumping or falling): shadow follows ground below
+        self.player.ground_y = closest_ground_y
+    else
+        -- No ground detected: fallback to feet
+        self.player.ground_y = feet_y
+    end
+
 end
 
 -- Handle weapon collision detection
@@ -528,6 +558,9 @@ function update.update(self, dt)
         return
     end
 
+    -- Detect slope BEFORE moveEntity so on_slope flag is available
+    update.updateGroundDetection(self)
+
     self.world:moveEntity(self.player, vx, vy, scaled_dt)
     self.world:updateEnemies(scaled_dt, self.player.x, self.player.y)
     self.world:updateNPCs(scaled_dt, self.player.x, self.player.y)
@@ -581,7 +614,6 @@ function update.update(self, dt)
         end
     end
 
-    update.updateGroundDetection(self)
     update.handleWeaponCollisions(self)
     update.updateCamera(self)
 

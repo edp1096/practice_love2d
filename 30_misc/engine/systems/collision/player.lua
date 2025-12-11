@@ -39,7 +39,7 @@ function player_collision.create(player, physicsWorld)
     player.collider:setPreSolve(function(collider_1, collider_2, contact)
         if player.game_mode == "platformer" then
             local nx, ny = contact:getNormal()
-            local _, vy = player.collider:getLinearVelocity()
+            local vx, vy = player.collider:getLinearVelocity()
 
             -- Check if normal is mostly vertical (player on top or bottom of object)
             if math.abs(ny) > 0.7 then
@@ -49,13 +49,26 @@ function player_collision.create(player, physicsWorld)
                 if ny < 0 or (ny > 0 and vy >= -10) then
                     player.is_grounded = true
                     player.can_jump = true
-                    player.is_jumping = false
+                    -- Only clear is_jumping when actually landing (falling down)
+                    -- vy > 50 means falling fast enough to be considered landing
+                    if vy > 50 then
+                        player.is_jumping = false
+                    end
+
+                    -- Dynamic friction based on input (Mystic Melee technique)
+                    -- High friction when idle = no sliding on slopes
+                    -- Low friction when moving = smooth movement
+                    local dominated_by_horizontal = math.abs(vx) > 10
+                    if dominated_by_horizontal then
+                        contact:setFriction(0.0)  -- Low friction for movement
+                    else
+                        contact:setFriction(10.0)  -- High friction to stop sliding
+                    end
 
                     -- Store contact surface Y position for shadow rendering
-                    local points = {contact:getPositions()}
-                    if #points >= 2 then
-                        player.contact_surface_y = points[2]
-                    end
+                    -- Use player's foot position for more stable ground_y on slopes
+                    local foot_y = player.y + player.collider_height / 2
+                    player.contact_surface_y = foot_y
                 end
             end
         end

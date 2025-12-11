@@ -35,10 +35,28 @@ function render.drawSprite(vehicle, x, y, direction)
     local scaled_w = fw * scale
     local scaled_h = fh * scale
 
-    -- Shadow (at bottom of vehicle)
-    local shadow_y = y + scaled_h / 2 - 8
-    love.graphics.setColor(0, 0, 0, SHADOW.ALPHA)
-    love.graphics.ellipse("fill", x, shadow_y, scaled_w * SHADOW.VEHICLE_SPRITE_WIDTH_RATIO, scaled_h * SHADOW.VEHICLE_SPRITE_HEIGHT_RATIO)
+    -- Shadow positioning (platformer: use ground_y when jumping)
+    -- Vehicle sprite has no padding, so shadow at exact bottom of sprite
+    local foot_y = y + scaled_h / 2
+    local shadow_y = foot_y
+    local shadow_scale = 1.0
+    local shadow_alpha = SHADOW.ALPHA
+
+    -- Check if rider is jumping (platformer mode)
+    local rider = vehicle.rider
+    if rider and rider.game_mode == "platformer" and rider.is_jumping and rider.ground_y then
+        shadow_y = rider.ground_y
+        local height_diff = shadow_y - foot_y
+        if height_diff > 0 then
+            shadow_scale = math.max(SHADOW.MIN_SCALE, 1.0 - (height_diff / SHADOW.PLATFORMER_SCALE_DIVISOR))
+            shadow_alpha = math.max(SHADOW.MIN_ALPHA, SHADOW.ALPHA - (height_diff / SHADOW.PLATFORMER_ALPHA_DIVISOR))
+        else
+            shadow_y = foot_y
+        end
+    end
+
+    love.graphics.setColor(0, 0, 0, shadow_alpha)
+    love.graphics.ellipse("fill", x, shadow_y, scaled_w * SHADOW.VEHICLE_SPRITE_WIDTH_RATIO * shadow_scale, scaled_h * SHADOW.VEHICLE_SPRITE_HEIGHT_RATIO * shadow_scale)
 
     -- Draw sprite centered at (x, y)
     love.graphics.setColor(1, 1, 1, 1)
@@ -65,10 +83,28 @@ function render.drawColorBox(vehicle, x, y, direction)
         w, h = base_h, base_h  -- 40x40 (front/back view, width shrinks)
     end
 
-    -- Shadow (at bottom of vehicle)
-    local shadow_y = y + h / 2 - 4
-    love.graphics.setColor(0, 0, 0, SHADOW.ALPHA)
-    love.graphics.ellipse("fill", x, shadow_y, w * SHADOW.VEHICLE_COLORBOX_WIDTH_RATIO, h * SHADOW.VEHICLE_COLORBOX_HEIGHT_RATIO)
+    -- Shadow positioning (platformer: use ground_y when jumping)
+    -- ColorBox has no padding, so shadow at exact bottom
+    local foot_y = y + h / 2
+    local shadow_y = foot_y
+    local shadow_scale = 1.0
+    local shadow_alpha = SHADOW.ALPHA
+
+    -- Check if rider is jumping (platformer mode)
+    local rider = vehicle.rider
+    if rider and rider.game_mode == "platformer" and rider.is_jumping and rider.ground_y then
+        shadow_y = rider.ground_y
+        local height_diff = shadow_y - foot_y
+        if height_diff > 0 then
+            shadow_scale = math.max(SHADOW.MIN_SCALE, 1.0 - (height_diff / SHADOW.PLATFORMER_SCALE_DIVISOR))
+            shadow_alpha = math.max(SHADOW.MIN_ALPHA, SHADOW.ALPHA - (height_diff / SHADOW.PLATFORMER_ALPHA_DIVISOR))
+        else
+            shadow_y = foot_y
+        end
+    end
+
+    love.graphics.setColor(0, 0, 0, shadow_alpha)
+    love.graphics.ellipse("fill", x, shadow_y, w * SHADOW.VEHICLE_COLORBOX_WIDTH_RATIO * shadow_scale, h * SHADOW.VEHICLE_COLORBOX_HEIGHT_RATIO * shadow_scale)
 
     -- Vehicle body (colored box with rounded corners effect)
     local r, g, b, a = unpack(vehicle.color)

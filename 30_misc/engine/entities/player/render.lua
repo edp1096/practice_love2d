@@ -48,19 +48,35 @@ function render.draw(player)
             local height = math.abs(player.topdown_jump_height)
             shadow_scale = math.max(SHADOW.MIN_SCALE, 1.0 - (height / SHADOW.TOPDOWN_SCALE_DIVISOR))
             shadow_alpha = math.max(SHADOW.MIN_ALPHA, SHADOW.ALPHA - (height / SHADOW.TOPDOWN_ALPHA_DIVISOR))
-        elseif player.game_mode == "platformer" and player.ground_y then
-            -- In platformer mode, shadow stays at ground level
-            shadow_y = player.ground_y
+        elseif player.game_mode == "platformer" then
+            -- Get accurate foot position from collider
+            local foot_y
+            if player.collider and not player.collider:isDestroyed() then
+                foot_y = player.collider:getY() + (shadow_collider_height / 2)
+            else
+                foot_y = player.y + (shadow_collider_height / 2)
+            end
 
-            -- Calculate height difference (distance from player's feet to ground)
-            local player_feet_y = player.y + (shadow_collider_height / 2)
-            local height_diff = player.ground_y - player_feet_y
-
-            -- Scale shadow based on height (gets smaller when higher)
-            shadow_scale = math.max(SHADOW.MIN_SCALE, 1.0 - (height_diff / SHADOW.PLATFORMER_SCALE_DIVISOR))
-
-            -- Fade shadow based on height (gets more transparent when higher)
-            shadow_alpha = math.max(SHADOW.MIN_ALPHA, SHADOW.ALPHA - (height_diff / SHADOW.PLATFORMER_ALPHA_DIVISOR))
+            -- Use is_jumping flag which persists through entire jump/fall cycle
+            -- is_jumping is set true on jump start, false on landing (PreSolve)
+            -- This is more stable than is_grounded which flickers on slopes
+            if player.is_jumping and player.ground_y then
+                -- In air (jumping or falling): shadow at last ground position
+                shadow_y = player.ground_y
+                local height_diff = shadow_y - foot_y
+                if height_diff > 0 then
+                    shadow_scale = math.max(SHADOW.MIN_SCALE, 1.0 - (height_diff / SHADOW.PLATFORMER_SCALE_DIVISOR))
+                    shadow_alpha = math.max(SHADOW.MIN_ALPHA, SHADOW.ALPHA - (height_diff / SHADOW.PLATFORMER_ALPHA_DIVISOR))
+                else
+                    -- Player below ground_y (shouldn't happen normally)
+                    shadow_y = foot_y
+                end
+            else
+                -- On ground: shadow follows feet exactly
+                shadow_y = foot_y
+                shadow_scale = 1.0
+                shadow_alpha = SHADOW.ALPHA
+            end
         end
 
         love.graphics.setColor(0, 0, 0, shadow_alpha)

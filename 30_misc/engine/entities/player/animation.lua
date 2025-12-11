@@ -287,8 +287,9 @@ local function handleMovementInput(player, dt)
             local final_move_type = is_backpedaling and "walk" or move_type
 
             -- Check if player is jumping (topdown or platformer)
+            -- Use is_jumping flag for platformer (more stable than is_grounded on slopes)
             local is_jumping = (player.game_mode == "topdown" and player.topdown_is_jumping)
-                or (player.game_mode == "platformer" and not player.is_grounded)
+                or (player.game_mode == "platformer" and player.is_jumping)
 
             -- Check for jump animation (moving jump)
             local anim_key
@@ -315,8 +316,9 @@ local function handleMovementInput(player, dt)
             player.state = final_move_type == "run" and "running" or "walking"
         else
             -- Check if player is jumping (topdown or platformer)
+            -- Use is_jumping flag for platformer (more stable than is_grounded on slopes)
             local is_jumping = (player.game_mode == "topdown" and player.topdown_is_jumping)
-                or (player.game_mode == "platformer" and not player.is_grounded)
+                or (player.game_mode == "platformer" and player.is_jumping)
 
             -- Check for jump animation (standing jump)
             local anim_key
