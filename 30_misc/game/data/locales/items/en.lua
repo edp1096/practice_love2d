@@ -50,6 +50,12 @@ return {
             mystic_staff = {
                 name = "Mystic Staff",
                 description = "A powerful mystic staff"
+            },
+
+            -- Quest items
+            delivery_package = {
+                name = "Delivery Package",
+                description = "A package to be delivered. Handle with care!"
             }
         },
 

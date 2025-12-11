@@ -130,7 +130,7 @@ function input_handler.keypressed(self, key)
                 return
             end
 
-            -- Regular NPC dialogue
+            -- Regular NPC dialogue (pickup is handled via quest accept dialogue)
             local interaction_data = npc:interact()
             if interaction_data.type == "tree" then
                 -- New: dialogue tree system (pass NPC object for transformations)
@@ -357,7 +357,7 @@ function input_handler.gamepadpressed(self, joystick, button)
 
         -- NPC interaction
         if npc then
-            
+
             self:processDeliveryQuests(npc.id)
 
             -- Check for completable quests
@@ -379,7 +379,7 @@ function input_handler.gamepadpressed(self, joystick, button)
                 return
             end
 
-            -- Regular NPC dialogue
+            -- Regular NPC dialogue (pickup is handled via quest accept dialogue)
             local interaction_data = npc:interact()
             if interaction_data.type == "tree" then
                 -- New: dialogue tree system (pass NPC object for transformations)

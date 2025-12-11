@@ -188,6 +188,46 @@ Tile Object 2: gid=152, group="teddybear1"
 Collider: type="collider", group="teddybear1", movable=true, breakable=true, hp=30
 ```
 
+### Add Quest
+Add to `game/data/quests.lua`:
+```lua
+quests.my_quest = {
+  id = "my_quest",
+  title_key = "quests.my_quest.title",
+  description_key = "quests.my_quest.description",
+  objectives = {
+    { type = "kill", target = "slime", count = 5, description_key = "quests.my_quest.obj_1" },
+    { type = "collect", target = "small_potion", count = 2, description_key = "quests.my_quest.obj_2" },
+  },
+  giver_npc = "villager_01",
+  receiver_npc = "villager_01",  -- Optional: different NPC for turn-in
+  rewards = { gold = 100, exp = 50, items = { "small_potion" } },
+  prerequisites = { "tutorial_talk" }  -- Optional: required quests
+}
+```
+
+**Objective Types:**
+| Type | Description | Item Removed |
+|------|-------------|--------------|
+| `kill` | Defeat enemies | - |
+| `collect` | Gather items | ❌ No (player keeps) |
+| `deliver` | Give item to NPC | ✅ Yes |
+| `pickup` | Receive item from NPC | - |
+| `talk` | Talk to NPC | - |
+| `explore` | Visit location | - |
+
+**A→B Delivery Quest (pickup then deliver):**
+```lua
+quests.package_delivery = {
+  objectives = {
+    { type = "pickup", target = "package", count = 1, npc = "npc_a" },
+    { type = "deliver", target = "package", count = 1, npc = "npc_b" },
+  },
+  giver_npc = "npc_a",
+  receiver_npc = "npc_b",
+}
+```
+
 ### Add Dialogue
 **Simple:** Set NPC property `dlg = "Hello!"`
 
@@ -326,9 +366,3 @@ cd web_build && lua server.lua 8080
 ```
 
 Open: `http://localhost:8080`
-
----
-
-**Framework:** LÖVE 11.5 + Lua 5.1
-**Architecture:** Engine/Game Separation + Data-Driven
-**Last Updated:** 2025-12-10

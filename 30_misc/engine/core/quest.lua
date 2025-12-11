@@ -18,7 +18,8 @@ quest.TYPE = {
     COLLECT = "collect",
     TALK = "talk",
     EXPLORE = "explore",
-    DELIVER = "deliver"
+    DELIVER = "deliver",
+    PICKUP = "pickup"  -- Receive item from NPC
 }
 
 function quest:init()
@@ -162,11 +163,12 @@ function quest:accept(quest_id)
     local state = self.quest_states[quest_id]
     state.state = self.STATE.ACTIVE
 
-    -- Check current inventory for collect/deliver quests
+    -- Check current inventory for collect quests
     -- If player already has the items, count them towards progress
+    -- NOTE: DELIVER type should NOT auto-complete on accept - item must be delivered to NPC
     if self.inventory then
         for obj_idx, obj in ipairs(def.objectives) do
-            if obj.type == self.TYPE.COLLECT or obj.type == self.TYPE.DELIVER then
+            if obj.type == self.TYPE.COLLECT then
                 local current_count = self.inventory:getItemCountByType(obj.target)
                 if current_count > 0 then
                     -- Update progress with current inventory count
@@ -177,6 +179,15 @@ function quest:accept(quest_id)
                     if progress.current >= progress.target then
                         progress.completed = true
                     end
+                end
+            -- Handle pickup objectives: if giver_npc == pickup npc, give item immediately
+            elseif obj.type == self.TYPE.PICKUP and obj.npc == def.giver_npc then
+                local count = obj.count or 1
+                local success = self.inventory:addItem(obj.target, count)
+                if success then
+                    local progress = state.objectives[obj_idx]
+                    progress.current = count
+                    progress.completed = true
                 end
             end
         end
@@ -323,6 +334,22 @@ function quest:onItemDelivered(item_type, npc_id)
     end
 end
 
+-- Track item pickup from NPC
+function quest:onItemPickedUp(item_type, npc_id)
+    for quest_id, def in pairs(self.quest_registry) do
+        local state = self.quest_states[quest_id]
+        if state and state.state == self.STATE.ACTIVE then
+            for obj_idx, obj in ipairs(def.objectives) do
+                if obj.type == self.TYPE.PICKUP
+                   and obj.target == item_type
+                   and obj.npc == npc_id then
+                    self:updateProgress(quest_id, obj_idx, 1)
+                end
+            end
+        end
+    end
+end
+
 -- Get active delivery quest for NPC (returns quest_id, item_type, or nil)
 function quest:getActiveDeliveryQuest(npc_id)
     for quest_id, def in pairs(self.quest_registry) do
@@ -339,6 +366,24 @@ function quest:getActiveDeliveryQuest(npc_id)
         end
     end
     return nil, nil
+end
+
+-- Get active pickup quest for NPC (returns quest_id, item_type, count, or nil)
+function quest:getActivePickupQuest(npc_id)
+    for quest_id, def in pairs(self.quest_registry) do
+        local state = self.quest_states[quest_id]
+        if state and state.state == self.STATE.ACTIVE then
+            for obj_idx, obj in ipairs(def.objectives) do
+                if obj.type == self.TYPE.PICKUP and obj.npc == npc_id then
+                    -- Check if this objective is not yet completed
+                    if not state.objectives[obj_idx].completed then
+                        return quest_id, obj.target, obj.count or 1
+                    end
+                end
+            end
+        end
+    end
+    return nil, nil, nil
 end
 
 -- Turn in quest (claim rewards)

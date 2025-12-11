@@ -72,7 +72,16 @@ dialogues.villager_01_greeting = {
             },
             speaker_key = "dialogue.common.speaker_villager",
             choices = {
-                { text_key = "dialogue.villager_01.choice_tell_slimes", next = "slimes" },
+                {
+                    text_key = "dialogue.villager_01.choice_tell_slimes",
+                    next = "slimes",
+                    -- Only show if quest is still available (not already accepted)
+                    condition = {
+                        type = "quest_state_is",
+                        quest_id = "slime_menace",
+                        state = "available"
+                    }
+                },
                 { text_key = "dialogue.villager_01.choice_interesting_story", next = "main_menu" }
             }
         },
@@ -87,6 +96,12 @@ dialogues.villager_01_greeting = {
                     actions = {
                         { type = "accept_quest", quest_id = "slime_menace" },
                         { type = "give_item", item_id = "staff", count = 1 }
+                    },
+                    -- Only show if quest is still available (not already accepted)
+                    condition = {
+                        type = "quest_state_is",
+                        quest_id = "slime_menace",
+                        state = "available"
                     }
                 },
                 { text_key = "dialogue.villager_01.choice_think_about_it", next = "main_menu" },

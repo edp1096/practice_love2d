@@ -16,8 +16,8 @@ return {
                 title = "아이템 수집 테스트",
                 description = "수집 시스템을 테스트하기 위해 체력 물약을 모으세요.",
                 obj_1 = "체력 물약 2개 수집",
-                dialogue_offer = "사실, 연구를 위해 슬라임 핵이 필요해요. 3개를 모아주실 수 있나요?",
-                dialogue_accept = "좋아요! 슬라임 핵 3개를 모으면 가져다 주세요."
+                dialogue_offer = "이 근처에서 물약을 구할 수 있는지 확인해보고 싶어요. 체력 물약 2개를 모아올 수 있나요?",
+                dialogue_accept = "좋아요! 체력 물약 2개를 모으면 보여주세요."
             },
 
             explore_test = {
@@ -30,10 +30,10 @@ return {
 
             deliver_test = {
                 title = "배달 테스트",
-                description = "배달 시스템을 테스트하기 위해 작은 물약을 배달하세요.",
-                obj_1 = "마을 주민에게 작은 물약 배달",
-                dialogue_offer = "누군가에게 작은 체력 물약을 배달해야 해요. 도와주실 수 있나요?",
-                dialogue_accept = "완벽해요! 준비되면 이 물약을 상인에게 가져다 주세요."
+                description = "배달 시스템을 테스트하기 위해 작은 물약을 상점 주인에게 배달하세요.",
+                obj_1 = "상인에게 작은 물약 배달",
+                dialogue_offer = "상점 주인에게 작은 체력 물약을 배달해야 해요. 도와주실 수 있나요?",
+                dialogue_accept = "완벽해요! 준비되면 물약을 상점 주인에게 가져다 주세요."
             },
 
             -- Combat Quests
@@ -88,6 +88,15 @@ return {
                 title = "중요한 편지",
                 description = "마을 원로로부터 학자에게 중요한 편지를 배달하세요.",
                 obj_1 = "학자에게 편지 배달"
+            },
+
+            package_delivery = {
+                title = "소포 배달",
+                description = "마을 주민의 소포를 다른 지역 주민에게 배달하세요.",
+                obj_1 = "마을 주민에게서 소포 받기",
+                obj_2 = "마을 주민에게 소포 배달",
+                dialogue_offer = "저기요, 이 소포를 4구역에 있는 사람에게 배달해 주실 수 있나요? 제가 직접 가기엔 너무 멀어서요.",
+                dialogue_accept = "감사합니다! 여기 소포예요. 조심히 배달해 주세요!"
             },
 
             -- Multi-Objective Quests

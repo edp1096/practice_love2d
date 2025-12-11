@@ -50,6 +50,12 @@ return {
             mystic_staff = {
                 name = "신비한 지팡이",
                 description = "강력한 신비한 지팡이"
+            },
+
+            -- Quest items
+            delivery_package = {
+                name = "배달 소포",
+                description = "배달해야 할 소포입니다. 조심히 다뤄주세요!"
             }
         },
 

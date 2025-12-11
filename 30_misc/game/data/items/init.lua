@@ -19,4 +19,7 @@ items.staff = require "game.data.items.weapons.staff"
 items.magic_staff = require "game.data.items.weapons.magic_staff"
 items.mystic_staff = require "game.data.items.weapons.mystic_staff"
 
+-- Quest items
+items.delivery_package = require "game.data.items.quest.delivery_package"
+
 return items

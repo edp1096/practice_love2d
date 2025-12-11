@@ -117,12 +117,12 @@ quests.deliver_test = {
             type = "deliver",
             target = "small_potion",
             count = 1,
-            npc = "passerby_01",
+            npc = "merchant_01",  -- Shop NPC (shop1)
             description_key = "quests.deliver_test.obj_1"
         }
     },
     giver_npc = "passerby_01",
-    receiver_npc = "passerby_01",
+    receiver_npc = "merchant_01",  -- Reward from merchant
     rewards = {
         gold = 40,
         exp = 15
@@ -317,6 +317,41 @@ quests.letter_delivery = {
     rewards = {
         gold = 120,
         exp = 60
+    }
+}
+
+-- A->B Delivery Quest (pickup from NPC A, deliver to NPC B)
+quests.package_delivery = {
+    id = "package_delivery",
+    title_key = "quests.package_delivery.title",
+    description_key = "quests.package_delivery.description",
+    objectives = {
+        {
+            type = "pickup",
+            target = "delivery_package",
+            count = 1,
+            npc = "passerby_01",  -- NPC A (area1)
+            description_key = "quests.package_delivery.obj_1"
+        },
+        {
+            type = "deliver",
+            target = "delivery_package",
+            count = 1,
+            npc = "townsperson_01",  -- NPC B (area4)
+            description_key = "quests.package_delivery.obj_2"
+        }
+    },
+    giver_npc = "passerby_01",      -- Quest giver (area1)
+    receiver_npc = "townsperson_01", -- Reward giver (area4)
+    rewards = {
+        gold = 80,
+        exp = 40
+    },
+    prerequisites = { "slime_menace" },  -- Available after slime_menace completed
+    dialogue = {
+        offer_text_key = "quests.package_delivery.dialogue_offer",
+        accept_text_key = "quests.package_delivery.dialogue_accept",
+        decline_response = "main_menu"
     }
 }
 

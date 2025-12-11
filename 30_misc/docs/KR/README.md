@@ -188,6 +188,46 @@ Tile Object 2: gid=152, group="teddybear1"
 Collider: type="collider", group="teddybear1", movable=true, breakable=true, hp=30
 ```
 
+### 퀘스트 추가
+`game/data/quests.lua`에 추가:
+```lua
+quests.my_quest = {
+  id = "my_quest",
+  title_key = "quests.my_quest.title",
+  description_key = "quests.my_quest.description",
+  objectives = {
+    { type = "kill", target = "slime", count = 5, description_key = "quests.my_quest.obj_1" },
+    { type = "collect", target = "small_potion", count = 2, description_key = "quests.my_quest.obj_2" },
+  },
+  giver_npc = "villager_01",
+  receiver_npc = "villager_01",  -- 선택: 다른 NPC에게 완료 보고
+  rewards = { gold = 100, exp = 50, items = { "small_potion" } },
+  prerequisites = { "tutorial_talk" }  -- 선택: 선행 퀘스트
+}
+```
+
+**목표 타입:**
+| 타입 | 설명 | 아이템 제거 |
+|------|------|------------|
+| `kill` | 적 처치 | - |
+| `collect` | 아이템 수집 | ❌ 아니오 (플레이어 소유) |
+| `deliver` | NPC에게 전달 | ✅ 예 |
+| `pickup` | NPC에게서 수령 | - |
+| `talk` | NPC와 대화 | - |
+| `explore` | 장소 방문 | - |
+
+**A→B 배달 퀘스트 (pickup 후 deliver):**
+```lua
+quests.package_delivery = {
+  objectives = {
+    { type = "pickup", target = "package", count = 1, npc = "npc_a" },
+    { type = "deliver", target = "package", count = 1, npc = "npc_b" },
+  },
+  giver_npc = "npc_a",
+  receiver_npc = "npc_b",
+}
+```
+
 ### 대화 추가
 **간단:** NPC 프로퍼티 `dlg = "안녕!"`
 
@@ -326,9 +366,3 @@ cd web_build && lua server.lua 8080
 ```
 
 열기: `http://localhost:8080`
-
----
-
-**프레임워크:** LÖVE 11.5 + Lua 5.1
-**아키텍처:** Engine/Game 분리 + 데이터 기반
-**최종 업데이트:** 2025-12-10

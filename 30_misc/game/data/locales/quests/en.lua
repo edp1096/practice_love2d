@@ -16,8 +16,8 @@ return {
                 title = "Item Collection Test",
                 description = "Collect health potions to test the collection system.",
                 obj_1 = "Collect 2 Health Potions",
-                dialogue_offer = "Actually, I need some slime cores for research. Could you collect 3 of them?",
-                dialogue_accept = "Great! Bring me 3 slime cores when you have them."
+                dialogue_offer = "I want to check if you can find potions around here. Can you collect 2 health potions?",
+                dialogue_accept = "Great! Show me when you have 2 health potions."
             },
 
             explore_test = {
@@ -30,10 +30,10 @@ return {
 
             deliver_test = {
                 title = "Delivery Test",
-                description = "Deliver a small potion to test the delivery system.",
-                obj_1 = "Deliver Small Potion to Villager",
-                dialogue_offer = "I need a small health potion delivered to someone. Can you help?",
-                dialogue_accept = "Perfect! Take this potion to the merchant when you're ready."
+                description = "Deliver a small potion to the merchant to test the delivery system.",
+                obj_1 = "Deliver Small Potion to Merchant",
+                dialogue_offer = "I need a small health potion delivered to the merchant. Can you help?",
+                dialogue_accept = "Perfect! Take the potion to the merchant at the shop when you're ready."
             },
 
             -- Combat Quests
@@ -88,6 +88,15 @@ return {
                 title = "Important Letter",
                 description = "Deliver an important letter from the village elder to the scholar.",
                 obj_1 = "Deliver the letter to the Scholar"
+            },
+
+            package_delivery = {
+                title = "Package Delivery",
+                description = "Deliver a villager's package to someone in another area.",
+                obj_1 = "Pick up the package from the Villager",
+                obj_2 = "Deliver the package to the Townsperson",
+                dialogue_offer = "Hey, could you deliver this package to someone in Area 4? It's too far for me to go myself.",
+                dialogue_accept = "Thank you! Here's the package. Please deliver it safely!"
             },
 
             -- Multi-Objective Quests

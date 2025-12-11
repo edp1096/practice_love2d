@@ -207,6 +207,10 @@ function gameplay:processDeliveryQuests(npc_id)
     quest_interactions.processDeliveryQuests(self, npc_id)
 end
 
+function gameplay:processPickupQuests(npc_id)
+    return quest_interactions.processPickupQuests(self, npc_id)
+end
+
 function gameplay:showQuestTurnInDialogue(quest_info, npc_name)
     quest_interactions.showQuestTurnInDialogue(self, quest_info, npc_name)
 end

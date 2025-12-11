@@ -178,6 +178,25 @@ function quest_interactions.processDeliveryQuests(scene, npc_id)
     end
 end
 
+-- Helper: Process pickup quests when talking to NPC
+-- Returns true if pickup occurred (to show dialogue), false otherwise
+function quest_interactions.processPickupQuests(scene, npc_id)
+    local pickup_quest_id, item_type, count = quest_system:getActivePickupQuest(npc_id)
+
+    if pickup_quest_id and item_type then
+        -- Add item to inventory
+        local success = scene.inventory:addItem(item_type, count)
+
+        if success then
+            -- Track pickup progress
+            quest_system:onItemPickedUp(item_type, npc_id)
+            return true, item_type, count
+        end
+    end
+
+    return false, nil, nil
+end
+
 -- Helper: Show quest turn-in dialogue
 function quest_interactions.showQuestTurnInDialogue(scene, quest_info, npc_name)
     -- Turn in quest and get rewards (gold/exp handled by quest_system callback)
