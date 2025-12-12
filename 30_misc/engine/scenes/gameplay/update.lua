@@ -207,9 +207,8 @@ function update.updateGroundDetection(self)
                 if not closest_ground_y or y < closest_ground_y then
                     closest_ground_y = y
                 end
-                return 0
             end
-            return 1
+            return 1  -- Continue checking all hits to find the topmost surface
         end
     )
 
