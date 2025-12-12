@@ -11,6 +11,8 @@ local coords = require "engine.core.coords"
 local display = require "engine.core.display"
 local shop_ui = require "engine.ui.screens.shop"
 local entity_registry = require "engine.core.entity_registry"
+local vehicle_summon = require "engine.systems.vehicle_summon"
+local vehicle_select = require "engine.ui.screens.vehicle_select"
 
 local input_handler = {}
 
@@ -35,6 +37,12 @@ local is_mobile = (love.system.getOS() == "Android" or love.system.getOS() == "i
 
 -- Keyboard input handler
 function input_handler.keypressed(self, key)
+    -- Vehicle select takes priority when open
+    if vehicle_select:isOpen() then
+        vehicle_select:keypressed(key)
+        return
+    end
+
     -- Shop takes priority when open
     if shop_ui:isOpen() then
         shop_ui:keypressed(key)
@@ -201,6 +209,24 @@ function input_handler.keypressed(self, key)
             sound:playSFX("ui", "select")
             return
         end
+    elseif input:wasPressed("summon_vehicle", "keyboard", key) then
+        -- V key: Open vehicle selection UI
+        if self.player.is_boarded then
+            -- Can't open while riding
+            return
+        end
+
+        -- Check if vehicle select is already open
+        if vehicle_select:isOpen() then
+            vehicle_select:close()
+            return
+        end
+
+        -- Open vehicle selection UI (handles allow_summon check internally)
+        local success, err = vehicle_select:open(self.world, self.player)
+        if not success then
+            -- No vehicles owned or summoning disabled - silent fail
+        end
     else
         debug:handleInput(key, {
             player = self.player,
@@ -214,6 +240,12 @@ end
 -- Mouse input handler
 function input_handler.mousepressed(self, x, y, button)
     if is_mobile then return end
+
+    -- Vehicle select takes priority when open
+    if vehicle_select:isOpen() then
+        vehicle_select:mousepressed(x, y, button)
+        return
+    end
 
     -- Shop takes priority when open
     if shop_ui:isOpen() then
@@ -238,6 +270,12 @@ end
 function input_handler.mousemoved(self, x, y, dx, dy)
     if is_mobile then return end
 
+    -- Vehicle select takes priority when open
+    if vehicle_select:isOpen() then
+        vehicle_select:mousemoved(x, y)
+        return
+    end
+
     -- Shop takes priority when open
     if shop_ui:isOpen() then
         shop_ui:mousemoved(x, y)
@@ -250,6 +288,12 @@ end
 
 -- Mouse wheel handler
 function input_handler.wheelmoved(self, x, y)
+    -- Vehicle select takes priority when open
+    if vehicle_select:isOpen() then
+        vehicle_select:wheelmoved(x, y)
+        return
+    end
+
     -- Shop takes priority when open
     if shop_ui:isOpen() then
         shop_ui:wheelmoved(x, y)
@@ -270,6 +314,12 @@ end
 
 -- Gamepad input handler
 function input_handler.gamepadpressed(self, joystick, button)
+    -- Vehicle select takes priority when open
+    if vehicle_select:isOpen() then
+        vehicle_select:gamepadpressed(joystick, button)
+        return
+    end
+
     -- Shop takes priority when open
     if shop_ui:isOpen() then
         shop_ui:gamepadpressed(joystick, button)
@@ -504,6 +554,25 @@ function input_handler.gamepadpressed(self, joystick, button)
 
     elseif action == "toggle_questlog" then
                 scene_control.push("container", self.inventory, self.player, quest_system, "questlog")
+
+    elseif action == "summon_vehicle" then
+        -- L3: Open vehicle selection UI
+        if self.player.is_boarded then
+            -- Can't open while riding
+            return
+        end
+
+        -- Check if vehicle select is already open
+        if vehicle_select:isOpen() then
+            vehicle_select:close()
+            return
+        end
+
+        -- Open vehicle selection UI (handles allow_summon check internally)
+        local success, err = vehicle_select:open(self.world, self.player)
+        if not success then
+            -- No vehicles owned or summoning disabled - silent fail
+        end
     end
 end
 
@@ -568,6 +637,12 @@ end
 
 -- Touch input handler
 function input_handler.touchpressed(self, id, x, y, dx, dy, pressure)
+    -- Vehicle select takes priority when open
+    if vehicle_select:isOpen() then
+        vehicle_select:touchpressed(id, x, y, dx, dy, pressure)
+        return true
+    end
+
     -- Shop takes priority when open
     if shop_ui:isOpen() then
         shop_ui:touchpressed(id, x, y, dx, dy, pressure)
@@ -617,6 +692,12 @@ function input_handler.checkQuickslotTouch(self, touch_x, touch_y)
 end
 
 function input_handler.touchreleased(self, id, x, y, dx, dy, pressure)
+    -- Vehicle select takes priority when open
+    if vehicle_select:isOpen() then
+        vehicle_select:touchreleased(id, x, y, dx, dy, pressure)
+        return true
+    end
+
     -- Shop takes priority when open
     if shop_ui:isOpen() then
         shop_ui:touchreleased(id, x, y, dx, dy, pressure)
@@ -633,6 +714,12 @@ function input_handler.touchreleased(self, id, x, y, dx, dy, pressure)
 end
 
 function input_handler.touchmoved(self, id, x, y, dx, dy, pressure)
+    -- Vehicle select takes priority when open
+    if vehicle_select:isOpen() then
+        vehicle_select:touchmoved(id, x, y, dx, dy, pressure)
+        return
+    end
+
     -- Shop takes priority when open
     if shop_ui:isOpen() then
         shop_ui:touchmoved(id, x, y, dx, dy, pressure)

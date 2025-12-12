@@ -252,6 +252,15 @@ function helpers:executeAction(dialogue, action)
         if dialogue.inventory then
             dialogue.inventory:addItem(action.item_id, action.count or 1)
         end
+    elseif action.type == "unlock_vehicle" then
+        -- Unlock/give a vehicle to player's owned vehicles
+        if action.vehicle_type then
+            local entity_registry = require "engine.core.entity_registry"
+            local success = entity_registry:unlockVehicle(action.vehicle_type)
+            if success then
+                -- Could trigger notification here (e.g., "You received a Horse!")
+            end
+        end
     elseif action.type == "open_shop" then
         -- Open shop UI
         dialogue.pending_shop_id = action.shop_id

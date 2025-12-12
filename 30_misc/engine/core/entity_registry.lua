@@ -7,6 +7,12 @@ local entity_registry = {
     vehicles = {},
     vehicles_initialized = false,
 
+    -- Owned vehicles (unlocked/purchased): { "horse", "scooter1", ... }
+    owned_vehicles = {},
+
+    -- Currently summoned vehicle: { type, map, x, y, direction } or nil
+    summoned_vehicle = nil,
+
     -- Killed enemies (permanent deaths only, respawn=false)
     -- { [map_id] = true }
     killed_enemies = {},
@@ -156,6 +162,86 @@ function entity_registry:initializeVehiclesFromMaps()
 end
 
 -- ===========================================
+-- Owned vehicle management (unlocked/purchased)
+-- ===========================================
+
+-- Unlock/add a vehicle to owned list
+function entity_registry:unlockVehicle(vehicle_type)
+    if not vehicle_type then return false end
+
+    -- Check if already owned
+    for _, v in ipairs(self.owned_vehicles) do
+        if v == vehicle_type then
+            return false  -- Already owned
+        end
+    end
+
+    table.insert(self.owned_vehicles, vehicle_type)
+    return true
+end
+
+-- Check if player owns a vehicle type
+function entity_registry:hasVehicle(vehicle_type)
+    for _, v in ipairs(self.owned_vehicles) do
+        if v == vehicle_type then
+            return true
+        end
+    end
+    return false
+end
+
+-- Get all owned vehicle types
+function entity_registry:getOwnedVehicles()
+    return self.owned_vehicles
+end
+
+-- ===========================================
+-- Summoned vehicle management
+-- ===========================================
+
+-- Set summoned vehicle state
+function entity_registry:setSummonedVehicle(data)
+    if data then
+        self.summoned_vehicle = {
+            type = data.type,
+            map = data.map,
+            x = data.x,
+            y = data.y,
+            direction = data.direction or "down",
+        }
+    else
+        self.summoned_vehicle = nil
+    end
+end
+
+-- Get summoned vehicle state
+function entity_registry:getSummonedVehicle()
+    return self.summoned_vehicle
+end
+
+-- Clear summoned vehicle (dismiss)
+function entity_registry:clearSummonedVehicle()
+    self.summoned_vehicle = nil
+end
+
+-- Check if a vehicle is currently summoned
+function entity_registry:hasSummonedVehicle()
+    return self.summoned_vehicle ~= nil
+end
+
+-- Update summoned vehicle position
+function entity_registry:updateSummonedVehiclePosition(map, x, y, direction)
+    if self.summoned_vehicle then
+        self.summoned_vehicle.map = map
+        self.summoned_vehicle.x = x
+        self.summoned_vehicle.y = y
+        if direction then
+            self.summoned_vehicle.direction = direction
+        end
+    end
+end
+
+-- ===========================================
 -- Session state management
 -- ===========================================
 
@@ -235,6 +321,8 @@ end
 function entity_registry:clear()
     self.vehicles = {}
     self.vehicles_initialized = false
+    self.owned_vehicles = {}
+    self.summoned_vehicle = nil
     self.killed_enemies = {}
     self.picked_items = {}
     self.transformed_npcs = {}
@@ -247,6 +335,8 @@ function entity_registry:export()
     return {
         vehicles = self.vehicles,
         vehicles_initialized = self.vehicles_initialized,
+        owned_vehicles = self.owned_vehicles,
+        summoned_vehicle = self.summoned_vehicle,
         killed_enemies = self.killed_enemies,
         picked_items = self.picked_items,
         transformed_npcs = self.transformed_npcs,
@@ -261,6 +351,8 @@ function entity_registry:import(data)
 
     self.vehicles = data.vehicles or {}
     self.vehicles_initialized = data.vehicles_initialized or false
+    self.owned_vehicles = data.owned_vehicles or {}
+    self.summoned_vehicle = data.summoned_vehicle  -- nil if not present
     self.killed_enemies = data.killed_enemies or {}
     self.picked_items = data.picked_items or {}
     self.transformed_npcs = data.transformed_npcs or {}

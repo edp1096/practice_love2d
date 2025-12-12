@@ -71,11 +71,14 @@ systems/
 ├── parallax/             - 패럴랙스 배경
 ├── weather/              - 날씨 시스템 (비, 눈, 안개, 폭풍)
 │
-└── hud/                  - 인게임 HUD
-    ├── status.lua        - 체력 바, 쿨다운
-    ├── minimap.lua       - 미니맵 (패럴랙스 포함!)
-    ├── quickslots.lua    - 퀵슬롯 벨트
-    └── quest_tracker.lua - 퀘스트 HUD (3개 활성 퀘스트)
+├── hud/                  - 인게임 HUD
+│   ├── status.lua        - 체력 바, 쿨다운
+│   ├── minimap.lua       - 미니맵 (패럴랙스 포함!)
+│   ├── quickslots.lua    - 퀵슬롯 벨트
+│   ├── quest_tracker.lua - 퀘스트 HUD (3개 활성 퀘스트)
+│   └── vehicles.lua      - 소유 탈것 HUD
+│
+└── vehicle_summon.lua    - 탈것 소환/소멸 시스템
 ```
 
 ### 엔티티 (`engine/entities/`)
@@ -138,9 +141,11 @@ ui/
 │   ├── container.lua     - 탭 컨테이너 (인벤토리 + 퀘스트 로그)
 │   ├── newgame.lua       - 새 게임 슬롯
 │   ├── saveslot.lua      - 저장 화면
+│   ├── vehicle_select.lua - 탈것 선택 UI (소환/소멸)
 │   ├── load/             - 로드 화면 (모듈형)
 │   ├── inventory/        - 인벤토리 UI (모듈형)
 │   ├── questlog/         - 퀘스트 로그 UI (모듈형)
+│   ├── shop/             - 상점 UI (모듈형)
 │   └── settings/         - 설정 (모듈형)
 │
 ├── dialogue/             - 대화 시스템 (자체 구현, 타자기 효과)

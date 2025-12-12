@@ -147,4 +147,33 @@ return {
         idle_row_right = 5,
         idle_row_up = 4,
     },
+
+    -- Vehicle dealer (unlock_vehicle demo)
+    vehicle_dealer = {
+        name = "Dealer",
+        sprite_sheet = "assets/images/sprites/npcs/npc-merchant_01-sheet.png",
+        dialogue_id = "vehicle_dealer_greeting",  -- References game/data/dialogues.lua
+        interaction_range = 80,
+
+        sprite_width = 48,
+        sprite_height = 48,
+        sprite_scale = 2,
+        character_width = 16,
+        character_height = 32,
+
+        collider_offset_x = 0,
+        collider_offset_y = 0,
+
+        sprite_origin_x = 24,
+        sprite_origin_y = 24,
+
+        idle_down = "1-4",
+        idle_left = "1-4",
+        idle_right = "5-8",
+        idle_up = "5-8",
+        idle_row_down = 1,
+        idle_row_left = 2,
+        idle_row_right = 2,
+        idle_row_up = 1,
+    },
 }

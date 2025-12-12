@@ -229,6 +229,7 @@
   </object>
   <object id="51" x="672" y="726.75" width="64" height="22.75" rotation="180">
    <properties>
+    <property name="allow_vehicle" type="bool" value="false"/>
     <property name="spawn_x" type="float" value="230"/>
     <property name="spawn_y" type="float" value="270"/>
     <property name="target_map" value="assets/maps/level1/home1.lua"/>
@@ -245,6 +246,7 @@
   </object>
   <object id="86" x="320" y="727" width="64" height="22.75" rotation="180">
    <properties>
+    <property name="allow_vehicle" type="bool" value="false"/>
     <property name="spawn_x" type="float" value="230"/>
     <property name="spawn_y" type="float" value="270"/>
     <property name="target_map" value="assets/maps/level1/shop1.lua"/>

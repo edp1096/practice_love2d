@@ -240,6 +240,12 @@ function loaders.loadTransitions(self)
                     end
                 end
 
+                -- allow_vehicle: defaults to true if not specified
+                local allow_vehicle = true
+                if obj.properties.allow_vehicle == false then
+                    allow_vehicle = false
+                end
+
                 table.insert(self.transitions, {
                     x = min_x,
                     y = min_y,
@@ -249,7 +255,8 @@ function loaders.loadTransitions(self)
                     target_map = obj.properties.target_map,
                     spawn_x = obj.properties.spawn_x or 100,
                     spawn_y = obj.properties.spawn_y or 100,
-                    intro_id = obj.properties.intro_id
+                    intro_id = obj.properties.intro_id,
+                    allow_vehicle = allow_vehicle
                 })
             end
         end
@@ -649,7 +656,7 @@ function loaders.loadVehicles(self)
     -- Get current map name
     local map_name = self.map.properties and self.map.properties.name or "unknown"
 
-    -- Get all vehicles that are currently in this map
+    -- Get all vehicles that are currently in this map (map-placed vehicles)
     local vehicles_for_map = entity_registry:getVehiclesForMap(map_name)
 
     for map_id, vehicle_data in pairs(vehicles_for_map) do
@@ -662,6 +669,26 @@ function loaders.loadVehicles(self)
         )
         new_vehicle.direction = vehicle_data.direction or "down"
         new_vehicle.world = self
+
+        -- Create colliders
+        collision.createVehicleCollider(new_vehicle, self.physicsWorld, self.game_mode)
+
+        table.insert(self.vehicles, new_vehicle)
+    end
+
+    -- Load summoned vehicle if it exists in this map (owned vehicles)
+    local summoned = entity_registry:getSummonedVehicle()
+    if summoned and summoned.map == map_name then
+        local summoned_id = "summoned_" .. summoned.type
+        local new_vehicle = self.vehicle_class:new(
+            summoned.x,
+            summoned.y,
+            summoned.type,
+            summoned_id
+        )
+        new_vehicle.direction = summoned.direction or "down"
+        new_vehicle.world = self
+        new_vehicle.is_summoned = true  -- Mark as summoned (owned) vehicle
 
         -- Create colliders
         collision.createVehicleCollider(new_vehicle, self.physicsWorld, self.game_mode)

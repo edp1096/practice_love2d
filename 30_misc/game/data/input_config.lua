@@ -80,6 +80,10 @@ return {
         use_selected_quickslot = {
             keyboard = { "r" },  -- R key for using selected quickslot
             gamepad = "dpup"     -- D-pad Up - use currently selected quickslot
+        },
+        summon_vehicle = {
+            keyboard = { "v" },  -- V key for vehicle summon/dismiss toggle
+            gamepad = "leftstick"  -- L3 (left stick click) for vehicle summon
         }
     },
 

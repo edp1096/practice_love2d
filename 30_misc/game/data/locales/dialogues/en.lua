@@ -115,6 +115,16 @@ return {
                 hostile = "Perhaps TOO perceptive. I can't let you leave now!",
             },
 
+            -- Vehicle Dealer
+            vehicle_dealer = {
+                greeting = "Hey there! I run the vehicle rental shop around here.",
+                offer = "Need a ride? I've got a special promotion going on.",
+                choice_free_scooter = "Free scooter? Sure!",
+                choice_no_thanks = "No thanks.",
+                give_scooter = "Here you go! Press V to summon it anytime.",
+                farewell = "Come back if you change your mind!",
+            },
+
             -- Common/Shared
             common = {
                 speaker_villager = "Villager",
@@ -123,6 +133,7 @@ return {
                 speaker_guard = "Guard",
                 speaker_bandit = "Bandit",
                 speaker_deceiver = "Deceiver",
+                speaker_dealer = "Dealer",
                 speaker_unknown = "???",
             },
         }

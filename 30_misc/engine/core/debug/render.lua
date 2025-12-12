@@ -91,6 +91,20 @@ function render.drawInfo(debug_state, display, player, current_save_slot, effect
             text_ui:draw("Stair: " .. (player.on_stair.hill_direction or "?"), 10, y_offset, {1, 0.5, 0, 1})
             y_offset = y_offset + 20
         end
+
+        -- Show owned vehicles
+        local entity_registry = require "engine.core.entity_registry"
+        local owned = entity_registry:getOwnedVehicles()
+        if #owned > 0 then
+            text_ui:draw("Vehicles: " .. table.concat(owned, ", "), 10, y_offset, {0.5, 1, 0.5, 1})
+            y_offset = y_offset + 20
+        end
+
+        -- Show boarded vehicle
+        if player.is_boarded and player.boarded_vehicle then
+            text_ui:draw("Riding: " .. (player.boarded_vehicle.type or "?"), 10, y_offset, {0.5, 1, 1, 1})
+            y_offset = y_offset + 20
+        end
     end
 
     -- F5: Screen info

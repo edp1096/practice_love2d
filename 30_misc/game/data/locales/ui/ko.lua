@@ -198,5 +198,20 @@ return {
             save = "저장",
             pickup = "줍기",
         },
+
+        -- Vehicle UI
+        vehicle = {
+            title = "탈것",
+            active = "[소환됨]",
+            hint_select = "선택",
+            hint_close = "닫기",
+            summoned = "소환 완료",
+            dismissed = "소환 해제",
+            on_cooldown = "재사용 대기 중",
+            not_enough_gold = "골드 부족",
+            -- Vehicle types
+            scooter1 = "스쿠터",
+            horse = "말",
+        },
     }
 }

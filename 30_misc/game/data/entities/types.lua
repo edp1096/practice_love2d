@@ -60,6 +60,7 @@ entity_types.npcs = {
     villager_01 = humans.common.villager_01,
     villager_02 = humans.common.villager_02,
     elder = humans.common.elder,
+    vehicle_dealer = humans.common.vehicle_dealer,
 
     -- Erratic (unpredictable behavior: Enemy → NPC or NPC → Enemy)
     surrendered_bandit = humans.erratic.npcs.surrendered_bandit,

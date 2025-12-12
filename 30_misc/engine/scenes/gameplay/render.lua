@@ -16,8 +16,10 @@ local text_ui = require "engine.utils.text"
 local weather = require "engine.systems.weather"
 local quest_system = require "engine.core.quest"
 local quest_tracker = require "engine.systems.hud.quest_tracker"
+local vehicles_hud = require "engine.systems.hud.vehicles"
 local level_system = require "engine.core.level"
 local shop_ui = require "engine.ui.screens.shop"
+local vehicle_select = require "engine.ui.screens.vehicle_select"
 
 local render = {}
 
@@ -160,6 +162,9 @@ function render.draw(self)
     -- Draw quest tracker (top-right, shows active quests)
     quest_tracker:draw(quest_system, vw, vh, 3)
 
+    -- Draw owned vehicles indicator (bottom-left)
+    vehicles_hud:draw()
+
     -- Draw minimap (check game config and map properties)
     if self.minimap and self:shouldShowMinimap() then
         self.minimap:draw(vw, vh, self.player, self.world.enemies, self.world.npcs)
@@ -172,6 +177,13 @@ function render.draw(self)
     if shop_ui:isOpen() then
         display:Detach()  -- Shop manages its own display transform
         shop_ui:draw()
+        display:Attach()  -- Re-attach for remaining UI
+    end
+
+    -- Draw vehicle select UI overlay
+    if vehicle_select:isOpen() then
+        display:Detach()  -- Vehicle select manages its own display transform
+        vehicle_select:draw()
         display:Attach()  -- Re-attach for remaining UI
     end
 

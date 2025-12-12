@@ -840,6 +840,22 @@ return {
             ["id"] = "passerby_01",
             ["type"] = "villager_01"
           }
+        },
+        {
+          id = 100,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 750,
+          y = 800,
+          width = 32,
+          height = 32,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["id"] = "vehicle_dealer_01",
+            ["type"] = "vehicle_dealer"
+          }
         }
       }
     },
@@ -905,6 +921,7 @@ return {
           rotation = 180,
           visible = true,
           properties = {
+            ["allow_vehicle"] = false,
             ["spawn_x"] = 230,
             ["spawn_y"] = 270,
             ["target_map"] = "assets/maps/level1/home1.lua",
@@ -941,6 +958,7 @@ return {
           rotation = 180,
           visible = true,
           properties = {
+            ["allow_vehicle"] = false,
             ["spawn_x"] = 230,
             ["spawn_y"] = 270,
             ["target_map"] = "assets/maps/level1/shop1.lua",

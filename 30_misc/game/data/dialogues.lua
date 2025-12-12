@@ -307,6 +307,46 @@ dialogues.surrendered_bandit = {
     }
 }
 
+-- Vehicle Dealer (unlock_vehicle action demo)
+dialogues.vehicle_dealer_greeting = {
+    start_node = "start",
+    nodes = {
+        start = {
+            text_key = "dialogue.vehicle_dealer.greeting",
+            text = "Hey there! I run the vehicle rental shop around here.",
+            speaker_key = "dialogue.common.speaker_dealer",
+            speaker = "Dealer",
+            next = "main_menu"
+        },
+
+        main_menu = {
+            text_key = "dialogue.vehicle_dealer.offer",
+            text = "Need a ride? I've got a special promotion going on.",
+            speaker_key = "dialogue.common.speaker_dealer",
+            speaker = "Dealer",
+            choices = {
+                { text_key = "dialogue.vehicle_dealer.choice_free_scooter", text = "Free scooter? Sure!", next = "give_scooter" },
+                { text_key = "dialogue.vehicle_dealer.choice_no_thanks", text = "No thanks.", next = "end" }
+            }
+        },
+
+        give_scooter = {
+            text_key = "dialogue.vehicle_dealer.give_scooter",
+            text = "Here you go! Press V to summon it anytime.",
+            speaker_key = "dialogue.common.speaker_dealer",
+            speaker = "Dealer",
+            action = { type = "unlock_vehicle", vehicle_type = "scooter1" }
+        },
+
+        ["end"] = {
+            text_key = "dialogue.vehicle_dealer.farewell",
+            text = "Come back if you change your mind!",
+            speaker_key = "dialogue.common.speaker_dealer",
+            speaker = "Dealer"
+        }
+    }
+}
+
 -- Deceiver (NPC → Enemy transformation demo)
 dialogues.deceiver_greeting = {
     start_node = "start",

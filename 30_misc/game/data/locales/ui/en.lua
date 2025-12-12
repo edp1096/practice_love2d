@@ -198,5 +198,20 @@ return {
             save = "Save",
             pickup = "Pick up",
         },
+
+        -- Vehicle UI
+        vehicle = {
+            title = "Vehicles",
+            active = "[Active]",
+            hint_select = "Select",
+            hint_close = "Close",
+            summoned = "Summoned",
+            dismissed = "Dismissed",
+            on_cooldown = "On cooldown",
+            not_enough_gold = "Not enough gold",
+            -- Vehicle types
+            scooter1 = "Scooter",
+            horse = "Horse",
+        },
     }
 }

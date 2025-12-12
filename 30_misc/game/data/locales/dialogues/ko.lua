@@ -115,6 +115,16 @@ return {
                 hostile = "너무 빠른 게 문제야. 이제 보내줄 수 없겠어!",
             },
 
+            -- Vehicle Dealer
+            vehicle_dealer = {
+                greeting = "안녕하세요! 탈것 대여점을 운영하고 있어요.",
+                offer = "탈것이 필요하세요? 지금 특별 이벤트 중이에요.",
+                choice_free_scooter = "무료 스쿠터? 좋아요!",
+                choice_no_thanks = "괜찮아요.",
+                give_scooter = "여기요! V키를 누르면 언제든 소환할 수 있어요.",
+                farewell = "마음 바뀌시면 다시 오세요!",
+            },
+
             -- Common/Shared
             common = {
                 speaker_villager = "마을 주민",
@@ -123,6 +133,7 @@ return {
                 speaker_guard = "경비병",
                 speaker_bandit = "산적",
                 speaker_deceiver = "사기꾼",
+                speaker_dealer = "딜러",
                 speaker_unknown = "???",
             },
         }

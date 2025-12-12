@@ -85,6 +85,10 @@ function setup.configure()
     item_class.type_registry = item_types
     vehicle_class.type_registry = entity_types.vehicles
 
+    -- Initialize vehicle summon system
+    local vehicle_summon = require "engine.systems.vehicle_summon"
+    vehicle_summon:init(entity_types.vehicles.settings, vehicle_class)
+
     -- Inject game start defaults
     constants.GAME_START.DEFAULT_MAP = start_config.map
     constants.GAME_START.DEFAULT_SPAWN_X = start_config.spawn_x

@@ -14,6 +14,8 @@ local weather = require "engine.systems.weather"
 local persistence = require "engine.core.persistence"
 local shop_ui = require "engine.ui.screens.shop"
 local entity_registry = require "engine.core.entity_registry"
+local vehicle_summon = require "engine.systems.vehicle_summon"
+local vehicle_select = require "engine.ui.screens.vehicle_select"
 
 local update = {}
 
@@ -329,6 +331,55 @@ function update.checkTransitions(self, scaled_dt)
     )
 
     if transition then
+        -- Handle vehicle restriction (allow_vehicle = false)
+        if transition.allow_vehicle == false and self.player.is_boarded then
+            local vehicle = self.player.boarded_vehicle
+            local current_map_name = self.world.map.properties and self.world.map.properties.name or "unknown"
+
+            -- Disembark first
+            self.player:disembark()
+
+            -- Move vehicle away from portal entrance (so it doesn't block exit)
+            if vehicle then
+                local push_distance = 80
+                local dir = vehicle.direction or "down"
+
+                -- Push vehicle in opposite direction of portal (based on vehicle facing)
+                local push_x, push_y = 0, 0
+                if dir == "up" then push_y = push_distance
+                elseif dir == "down" then push_y = -push_distance
+                elseif dir == "left" then push_x = push_distance
+                elseif dir == "right" then push_x = -push_distance
+                end
+
+                vehicle.x = vehicle.x + push_x
+                vehicle.y = vehicle.y + push_y
+
+                -- Update collider position
+                if vehicle.collider then
+                    vehicle.collider:setPosition(vehicle.x, vehicle.y)
+                end
+
+                -- Update registry
+                if vehicle.is_summoned then
+                    entity_registry:updateSummonedVehiclePosition(
+                        current_map_name,
+                        vehicle.x,
+                        vehicle.y,
+                        vehicle.direction
+                    )
+                else
+                    entity_registry:updateVehiclePosition(
+                        vehicle.map_id,
+                        current_map_name,
+                        vehicle.x,
+                        vehicle.y,
+                        vehicle.direction
+                    )
+                end
+            end
+        end
+
         if transition.transition_type == "gameclear" then
             scene_control.switch("ending")
         elseif transition.transition_type == "intro" then
@@ -460,6 +511,7 @@ function update.update(self, dt)
     effects.screen:update(dt)
     lighting:update(dt)
     weather:update(dt)
+    vehicle_summon:update(dt)
 
     -- Sync gamepad skip button state to dialogue (same as cutscene)
     if dialogue.skip_button and self.skip_button_held then
@@ -479,6 +531,11 @@ function update.update(self, dt)
     -- Update shop UI if open
     if shop_ui:isOpen() then
         shop_ui:update(dt)
+    end
+
+    -- Update vehicle select UI if open
+    if vehicle_select:isOpen() then
+        vehicle_select:update(dt)
     end
 
     -- Reset skip button state when dialogue is closed
@@ -537,10 +594,11 @@ function update.update(self, dt)
 
     local is_dialogue_open = dialogue:isOpen()
     local is_shop_open = shop_ui:isOpen()
+    local is_vehicle_select_open = vehicle_select:isOpen()
 
-    -- Hide/show virtual gamepad based on dialogue/shop state
+    -- Hide/show virtual gamepad based on dialogue/shop/vehicle_select state
     if input.virtual_gamepad then
-        if is_dialogue_open or is_shop_open then
+        if is_dialogue_open or is_shop_open or is_vehicle_select_open then
             input.virtual_gamepad:hide()
         else
             input.virtual_gamepad:show()

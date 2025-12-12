@@ -16,7 +16,8 @@ local function resolveTextKey(key, fallback, default)
     if not key then return fallback or default end
 
     local translated = locale:t(key)
-    if translated ~= key then
+    -- translated가 nil이 아니고, key와 다르면 번역 성공
+    if translated and translated ~= key then
         return translated
     end
     return fallback or default

@@ -159,4 +159,26 @@ vehicles.boat = {
     water_only = true,          -- Can only be used on water
 }
 
+-- ===========================================
+-- Vehicle System Settings (per-game configuration)
+-- ===========================================
+vehicles.settings = {
+    -- Enable/disable vehicle summoning feature
+    -- Set to false for games where vehicles are map-fixed only
+    allow_summon = true,
+
+    -- Cooldown between summons (seconds)
+    summon_cooldown = 3,
+
+    -- Only allow one summoned vehicle at a time
+    one_summon_only = true,
+
+    -- Auto-dismiss summoned vehicle when entering indoor maps (allow_vehicle=false)
+    -- If false, vehicle stays at last outdoor position
+    auto_dismiss_on_indoor = false,
+
+    -- Summon cost (gold) - 0 for free
+    summon_cost = 0,
+}
+
 return vehicles
