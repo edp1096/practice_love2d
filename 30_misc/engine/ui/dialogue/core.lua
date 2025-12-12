@@ -329,7 +329,13 @@ function core:handleInput(dialogue, source, ...)
     elseif source == "mouse" then
         local x, y = ...
         if not helpers:touchPressed(dialogue, 0, x, y) then
-            if not (dialogue.tree_mode and dialogue.current_choices and #dialogue.current_choices > 0) then
+            if dialogue.tree_mode and dialogue.current_choices and #dialogue.current_choices > 0 then
+                -- Choices exist: only allow click to skip typewriter (not select)
+                if not dialogue.typewriter_complete then
+                    self:onAction(dialogue)
+                end
+                -- After typewriter complete, clicks outside choice buttons are ignored
+            else
                 self:onAction(dialogue)
             end
         end
@@ -344,7 +350,13 @@ function core:handleInput(dialogue, source, ...)
         if helpers:touchPressed(dialogue, id, x, y) then
             return true
         end
-        if not (dialogue.tree_mode and dialogue.current_choices and #dialogue.current_choices > 0) then
+        if dialogue.tree_mode and dialogue.current_choices and #dialogue.current_choices > 0 then
+            -- Choices exist: only allow touch to skip typewriter (not select)
+            if not dialogue.typewriter_complete then
+                self:onAction(dialogue)
+            end
+            -- After typewriter complete, touches outside choice buttons are ignored
+        else
             self:onAction(dialogue)
         end
         return true
