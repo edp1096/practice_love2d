@@ -213,6 +213,14 @@ function update.updateGroundDetection(self)
         end
     )
 
+    -- Store raycast debug data (F2 visualization)
+    self.player._debug_raycast = {
+        start_x = center_point.x,
+        start_y = center_point.y,
+        end_y = center_point.y + ray_length,
+        hit_y = closest_ground_y
+    }
+
     -- Feet Y position: player feet or vehicle bottom
     local feet_y = is_boarded and raycast_y or (py + half_height)
 

@@ -243,6 +243,10 @@ function debug:drawStairsInfo(world, player, vh)
     render.drawStairsInfo(self, world, player, vh)
 end
 
+function debug:drawRaycast(player)
+    render.drawRaycast(self, player)
+end
+
 function debug:IsHandMarkingActive()
     return self.hand_marking_active
 end

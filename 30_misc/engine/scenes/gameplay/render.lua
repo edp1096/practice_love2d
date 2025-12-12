@@ -57,7 +57,10 @@ function render.draw(self)
         self.world:drawHealingPointsDebug()
     end
     effects:draw()
-    if debug.enabled then self.world:drawDebug() end
+    if debug.enabled then
+        self.world:drawDebug()
+        debug:drawRaycast(self.player)
+    end
 
     self.cam:detach()
 

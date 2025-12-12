@@ -199,4 +199,43 @@ function render.drawStairsInfo(debug_state, world, player, vh)
         12, vh - 80, {0.8, 0.4, 0, 0.8})
 end
 
+-- Draw raycast debug visualization (F2, inside camera transform)
+function render.drawRaycast(debug_state, player)
+    if not debug_state.show_colliders then return end
+    if not player or not player._debug_raycast then return end
+
+    local rc = player._debug_raycast
+    love.graphics.setLineWidth(2)
+
+    -- Draw raycast line (yellow)
+    love.graphics.setColor(1, 1, 0, 0.8)
+    love.graphics.line(rc.start_x, rc.start_y, rc.start_x, rc.end_y)
+
+    -- Start point (small yellow circle)
+    love.graphics.circle("fill", rc.start_x, rc.start_y, 3)
+
+    -- Hit point or end point
+    if rc.hit_y then
+        -- Hit detected (red circle)
+        love.graphics.setColor(1, 0, 0, 1)
+        love.graphics.circle("fill", rc.start_x, rc.hit_y, 5)
+        -- Hit Y value label
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.print(string.format("%.0f", rc.hit_y), rc.start_x + 8, rc.hit_y - 8)
+    else
+        -- No hit (gray circle at end)
+        love.graphics.setColor(0.5, 0.5, 0.5, 0.5)
+        love.graphics.circle("fill", rc.start_x, rc.end_y, 3)
+    end
+
+    -- Draw shadow position (green circle at ground_y)
+    if player.ground_y then
+        love.graphics.setColor(0, 1, 0, 0.8)
+        love.graphics.circle("line", player.x, player.ground_y, 8)
+    end
+
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setLineWidth(1)
+end
+
 return render
