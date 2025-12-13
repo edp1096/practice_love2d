@@ -64,6 +64,15 @@ virtual_gamepad.menu_button = {
     radius = 45
 }
 
+virtual_gamepad.vehicle_button = {
+    x = 0,
+    y = 0,
+    pressed = false,
+    label = "V",
+    radius = 35,
+    action = "summon_vehicle"
+}
+
 -- D-pad direction state
 virtual_gamepad.dpad_direction = {
     up = false,
@@ -156,6 +165,10 @@ function virtual_gamepad:calculatePositions()
     -- Place menu button on left side with some margin
     self.menu_button.x = vw - 280  -- Moved more left (was 250)
     self.menu_button.y = 55  -- Moved down (was 40)
+
+    -- Vehicle button (left of menu button)
+    self.vehicle_button.x = self.menu_button.x - 100
+    self.vehicle_button.y = self.menu_button.y
 end
 
 function virtual_gamepad:resize(w, h)
@@ -264,6 +277,11 @@ function virtual_gamepad:isInVirtualPadArea(x, y)
         return true
     end
 
+    -- Check vehicle button
+    if touch.isInButton(vx, vy, self.vehicle_button, self) then
+        return true
+    end
+
     return false
 end
 
@@ -281,6 +299,7 @@ function virtual_gamepad:hasActiveTouches()
         if touch_data.type == "dpad" or
             touch_data.type == "button" or
             touch_data.type == "menu" or
+            touch_data.type == "vehicle" or
             touch_data.type == "aim_stick" then
             return true
         end
@@ -309,6 +328,7 @@ function virtual_gamepad:hide()
         button.pressed = false
     end
     self.menu_button.pressed = false
+    self.vehicle_button.pressed = false
 end
 
 return virtual_gamepad

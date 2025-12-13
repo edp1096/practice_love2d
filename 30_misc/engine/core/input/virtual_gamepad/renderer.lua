@@ -26,6 +26,9 @@ function renderer.draw(vgp)
 
     -- Draw menu button
     renderer.drawMenuButton(vgp)
+
+    -- Draw vehicle button
+    renderer.drawVehicleButton(vgp)
 end
 
 function renderer.drawDPad(vgp)
@@ -221,6 +224,40 @@ function renderer.drawMenuButton(vgp)
     local icon_size = radius * 1.2  -- Icon size relative to button radius
     local icon_color = colors:withAlpha(colors.WHITE, vgp.alpha * 2)
     button_icons:drawHamburger(px, py, icon_size, icon_color)
+
+    love.graphics.setLineWidth(1)
+    colors:reset()
+end
+
+function renderer.drawVehicleButton(vgp)
+    local button = vgp.vehicle_button
+    local px, py = vgp:toPhysical(button.x, button.y)
+    local scale = vgp.draw_scale or 1
+    local radius = button.radius * scale
+
+    -- Button circle
+    if button.pressed then
+        colors:apply(colors.MEDIUM_BLUE, vgp.alpha * 1.5)
+    else
+        colors:apply(colors.for_gamepad_bg, vgp.alpha)
+    end
+    love.graphics.circle("fill", px, py, radius)
+
+    -- Button outline
+    if button.pressed then
+        colors:apply(colors.SKY_BLUE, vgp.alpha * 2)
+    else
+        colors:apply(colors.for_gamepad_border, vgp.alpha * 1.5)
+    end
+    love.graphics.setLineWidth(3 * scale)
+    love.graphics.circle("line", px, py, radius)
+
+    -- Vehicle icon (simple car shape or V letter)
+    local icon_color = colors:withAlpha(colors.WHITE, vgp.alpha * 2)
+    local font = love.graphics.getFont()
+    local text_w = font:getWidth(button.label)
+    local text_h = font:getHeight()
+    text_ui:draw(button.label, px - text_w / 2, py - text_h / 2, icon_color)
 
     love.graphics.setLineWidth(1)
     colors:reset()

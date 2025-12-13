@@ -49,6 +49,15 @@ function touch.handlePress(id, x, y, vgp)
         return true
     end
 
+    -- Check vehicle button
+    if touch.isInButton(vx, vy, vgp.vehicle_button, vgp) then
+        vgp.vehicle_button.pressed = true
+        vgp.touches[id].type = "vehicle"
+        touch.triggerVehiclePress(vgp)
+        touch.resetAimStick(vgp)
+        return true
+    end
+
     -- Check aim stick
     if touch.isInAimStick(vx, vy, vgp) then
         vgp.touches[id].type = "aim_stick"
@@ -86,6 +95,11 @@ function touch.handleRelease(id, x, y, vgp)
         return true
     elseif touch_data.type == "menu" then
         vgp.menu_button.pressed = false
+        vgp.touches[id] = nil
+        vgp.mouse_aim_block_time = vgp.MOUSE_AIM_BLOCK_DURATION
+        return true
+    elseif touch_data.type == "vehicle" then
+        vgp.vehicle_button.pressed = false
         vgp.touches[id] = nil
         vgp.mouse_aim_block_time = vgp.MOUSE_AIM_BLOCK_DURATION
         return true
@@ -314,6 +328,14 @@ function touch.triggerMenuPress(vgp)
     -- Trigger pause menu
     if scene_control.current and scene_control.current.gamepadpressed then
         scene_control.current:gamepadpressed(nil, "start")
+    end
+end
+
+-- Trigger vehicle button press (L3 equivalent)
+function touch.triggerVehiclePress(vgp)
+    -- Trigger vehicle selection UI (leftstick = L3)
+    if scene_control.current and scene_control.current.gamepadpressed then
+        scene_control.current:gamepadpressed(nil, "leftstick")
     end
 end
 
