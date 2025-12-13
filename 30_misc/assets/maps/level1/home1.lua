@@ -9,8 +9,8 @@ return {
   height = 14,
   tilewidth = 32,
   tileheight = 32,
-  nextlayerid = 9,
-  nextobjectid = 51,
+  nextlayerid = 10,
+  nextobjectid = 52,
   properties = {
     ["game_mode"] = "topdown",
     ["name"] = "home1",
@@ -519,6 +519,38 @@ return {
             ["movable"] = true,
             ["respawn"] = true,
             ["type"] = "collider"
+          }
+        }
+      }
+    },
+    {
+      type = "objectgroup",
+      draworder = "topdown",
+      id = 9,
+      name = "NPCs",
+      class = "",
+      visible = true,
+      opacity = 1,
+      offsetx = 0,
+      offsety = 0,
+      parallaxx = 1,
+      parallaxy = 1,
+      properties = {},
+      objects = {
+        {
+          id = 51,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 288,
+          y = 256,
+          width = 32,
+          height = 32,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["id"] = "passerby_01",
+            ["type"] = "villager_01"
           }
         }
       }

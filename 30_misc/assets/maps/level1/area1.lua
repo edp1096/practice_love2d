@@ -10,7 +10,7 @@ return {
   tilewidth = 32,
   tileheight = 32,
   nextlayerid = 15,
-  nextobjectid = 101,
+  nextobjectid = 102,
   properties = {
     ["ambient"] = "day",
     ["game_mode"] = "topdown",
@@ -826,27 +826,11 @@ return {
       properties = {},
       objects = {
         {
-          id = 42,
+          id = 101,
           name = "",
           type = "",
           shape = "rectangle",
-          x = 672,
-          y = 800,
-          width = 32,
-          height = 32,
-          rotation = 0,
-          visible = true,
-          properties = {
-            ["id"] = "passerby_01",
-            ["type"] = "villager_01"
-          }
-        },
-        {
-          id = 100,
-          name = "",
-          type = "",
-          shape = "rectangle",
-          x = 750,
+          x = 704,
           y = 800,
           width = 32,
           height = 32,
@@ -1112,8 +1096,8 @@ return {
           name = "TestHorse",
           type = "scooter1",
           shape = "rectangle",
-          x = 768,
-          y = 800,
+          x = 704,
+          y = 512,
           width = 64,
           height = 40,
           rotation = 0,
