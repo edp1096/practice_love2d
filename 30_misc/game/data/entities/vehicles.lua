@@ -25,6 +25,14 @@ vehicles.horse = {
 
     -- Ride effect
     ride_effect = "animated",   -- Play ride animation frames
+
+    -- Custom sounds (optional - uses defaults if not specified)
+    -- sounds = {
+    --     summon = "assets/sound/vehicle/horse_neigh.wav",
+    --     board = "assets/sound/vehicle/horse_mount.wav",
+    --     dismount = "assets/sound/vehicle/horse_dismount.wav",
+    --     engine_loop = "assets/sound/vehicle/horse_gallop.wav",
+    -- },
 }
 
 -- Donkey - slower but more stable
@@ -114,6 +122,14 @@ vehicles.scooter1 = {
     vibration_intensity = scooter_base.vibration_intensity,
     vibration_speed_idle = scooter_base.vibration_speed_idle,
     vibration_speed_move = scooter_base.vibration_speed_move,
+
+    -- Custom sounds for scooter (engine sounds)
+    -- sounds = {
+    --     summon = "assets/sound/vehicle/scooter_start.wav",
+    --     board = "assets/sound/vehicle/scooter_board.wav",
+    --     dismount = "assets/sound/vehicle/scooter_off.wav",
+    --     engine_loop = "assets/sound/vehicle/scooter_engine.wav",
+    -- },
 }
 
 -- Scooter 2 (dark/black)

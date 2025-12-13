@@ -4,6 +4,7 @@
 
 local entity_registry = require "engine.core.entity_registry"
 local collision = require "engine.systems.collision"
+local vehicle_sound = require "engine.entities.vehicle.sound"
 
 local vehicle_summon = {
     -- Settings (injected from game config)
@@ -127,6 +128,9 @@ function vehicle_summon:summon(vehicle_type, world, player)
         y = spawn_y,
         direction = new_vehicle.direction,
     })
+
+    -- Play summon sound
+    vehicle_sound.playSummon(new_vehicle)
 
     -- Start cooldown
     self.cooldown = self.settings.summon_cooldown or 3

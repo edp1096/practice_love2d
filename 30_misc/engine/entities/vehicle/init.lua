@@ -5,6 +5,7 @@
 local prompt = require "engine.systems.prompt"
 local render = require "engine.entities.vehicle.render"
 local text_ui = require "engine.utils.text"
+local vehicle_sound = require "engine.entities.vehicle.sound"
 
 local vehicle = {}
 vehicle.__index = vehicle
@@ -136,6 +137,16 @@ function vehicle:update(dt, player_x, player_y)
             self.y = gy
         end
 
+        -- Update engine sound based on movement
+        local is_moving = false
+        if self.rider.vx and self.rider.vy then
+            is_moving = math.abs(self.rider.vx) > 10 or math.abs(self.rider.vy) > 10
+        elseif self.ground_collider and not self.ground_collider:isDestroyed() then
+            local vx, vy = self.ground_collider:getLinearVelocity()
+            is_moving = math.abs(vx) > 10 or math.abs(vy) > 10
+        end
+        vehicle_sound.update(self, is_moving)
+
         self.can_interact = false
         return
     end
@@ -154,6 +165,9 @@ function vehicle:boardPlayer(player)
     self.is_boarded = true
     self.rider = player
     self.can_interact = false
+
+    -- Play board sound
+    vehicle_sound.playBoard(self)
 
     -- Disable collisions while boarded (set to sensor)
     if self.collider and not self.collider:isDestroyed() then
@@ -223,6 +237,10 @@ end
 
 function vehicle:disembarkPlayer()
     if not self.is_boarded then return nil end
+
+    -- Stop engine and play dismount sound
+    vehicle_sound.stopEngine()
+    vehicle_sound.playDismount(self)
 
     local rider = self.rider
     self.is_boarded = false
