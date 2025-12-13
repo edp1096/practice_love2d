@@ -48,8 +48,14 @@ local function saveVehiclePositions(scene, current_map_name)
 end
 
 -- Update boarded vehicle to destination map
-local function updateBoardedVehiclePosition(boarded_vehicle_map_id, dest_map_name, spawn_x, spawn_y, direction)
-    if boarded_vehicle_map_id then
+local function updateBoardedVehiclePosition(boarded_vehicle_map_id, is_summoned, dest_map_name, spawn_x, spawn_y, direction)
+    if not boarded_vehicle_map_id then return end
+
+    if is_summoned then
+        -- Summoned vehicle uses separate registry
+        entity_registry:updateSummonedVehiclePosition(dest_map_name, spawn_x, spawn_y, direction or "down")
+    else
+        -- Field vehicle uses regular vehicle registry
         entity_registry:updateVehiclePosition(
             boarded_vehicle_map_id,
             dest_map_name,
@@ -176,8 +182,10 @@ function map_switch.switchMap(scene, new_map_path, spawn_x, spawn_y, setupLighti
 
     -- Save boarded vehicle info BEFORE destroying world
     local boarded_vehicle_map_id = nil
+    local boarded_vehicle_is_summoned = false
     if scene.player.is_boarded and scene.player.boarded_vehicle then
         boarded_vehicle_map_id = scene.player.boarded_vehicle.map_id
+        boarded_vehicle_is_summoned = scene.player.boarded_vehicle.is_summoned or false
         scene.player:disembark()
     end
 
@@ -194,7 +202,7 @@ function map_switch.switchMap(scene, new_map_path, spawn_x, spawn_y, setupLighti
     saveVehiclePositions(scene, current_map_name)
 
     -- Update boarded vehicle to destination map
-    updateBoardedVehiclePosition(boarded_vehicle_map_id, dest_map_name, spawn_x, spawn_y, scene.player.direction)
+    updateBoardedVehiclePosition(boarded_vehicle_map_id, boarded_vehicle_is_summoned, dest_map_name, spawn_x, spawn_y, scene.player.direction)
 
     -- Handle session states based on map transition type
     handleSessionStates(current_map_name, current_persist_state, dest_persist_state, scene.world)

@@ -17,11 +17,13 @@ local function collectVehicleData(scene)
     local vehicle_data = {
         is_boarded = scene.player.is_boarded or false,
         boarded_map_id = nil,  -- map_id of boarded vehicle (for restore)
+        boarded_is_summoned = false,  -- whether boarded vehicle is summoned
     }
 
-    -- Save boarded vehicle map_id
+    -- Save boarded vehicle map_id and summoned state
     if scene.player.is_boarded and scene.player.boarded_vehicle then
         vehicle_data.boarded_map_id = scene.player.boarded_vehicle.map_id
+        vehicle_data.boarded_is_summoned = scene.player.boarded_vehicle.is_summoned or false
     end
 
     return vehicle_data
@@ -37,14 +39,25 @@ local function syncVehicleRegistryBeforeSave(scene)
                      and scene.world.map.properties.name or "unknown"
 
     for _, vehicle in ipairs(scene.world.vehicles) do
-        if vehicle.map_id and not vehicle.is_boarded then
-            entity_registry:updateVehiclePosition(
-                vehicle.map_id,
-                map_name,
-                vehicle.x,
-                vehicle.y,
-                vehicle.direction
-            )
+        if vehicle.map_id then
+            if vehicle.is_summoned then
+                -- Summoned vehicle uses separate registry
+                entity_registry:updateSummonedVehiclePosition(
+                    map_name,
+                    vehicle.x,
+                    vehicle.y,
+                    vehicle.direction
+                )
+            elseif not vehicle.is_boarded then
+                -- Field vehicle uses regular vehicle registry
+                entity_registry:updateVehiclePosition(
+                    vehicle.map_id,
+                    map_name,
+                    vehicle.x,
+                    vehicle.y,
+                    vehicle.direction
+                )
+            end
         end
     end
 end

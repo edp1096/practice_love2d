@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="2025.11.21" orientation="orthogonal" renderorder="right-down" width="25" height="24" tilewidth="32" tileheight="32" infinite="0" nextlayerid="14" nextobjectid="57">
+<map version="1.10" tiledversion="2025.11.21" orientation="orthogonal" renderorder="right-down" width="25" height="24" tilewidth="32" tileheight="32" infinite="0" nextlayerid="14" nextobjectid="58">
  <editorsettings>
   <export target="area4.lua" format="lua"/>
  </editorsettings>
@@ -141,12 +141,18 @@
   <object id="20" x="608" y="384" width="32" height="32">
    <properties>
     <property name="id" value="townsperson_01"/>
-    <property name="type" value="villager"/>
+    <property name="type" value="villager_02"/>
+   </properties>
+  </object>
+  <object id="57" x="192" y="448" width="32" height="32">
+   <properties>
+    <property name="id" value="vehicle_dealer_01"/>
+    <property name="type" value="vehicle_dealer"/>
    </properties>
   </object>
  </objectgroup>
  <objectgroup id="13" name="Vehicles">
-  <object id="56" type="scooter2" x="560" y="192" width="52" height="32"/>
+  <object id="56" type="scooter2" x="96" y="480" width="52" height="32"/>
  </objectgroup>
  <objectgroup id="7" name="SavePoints">
   <object id="25" x="256" y="192" width="32" height="32">

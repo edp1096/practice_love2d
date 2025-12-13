@@ -33,6 +33,7 @@ A LÖVE2D game engine with clean **Engine/Game separation** architecture.
 - **Right Click / X** - Parry (perfect timing = slow-motion)
 - **Shift / C** - Dodge
 - **F** - Interact (NPCs, Save Points, Items)
+- **V** - Vehicle Selection UI (summon/dismiss)
 - **I / J** - Inventory / Quest Log
 - **Q / E** - Switch tabs
 - **Q** - Use item (gameplay)
@@ -52,6 +53,7 @@ A LÖVE2D game engine with clean **Engine/Game separation** architecture.
 - **LT / L2** - Previous item
 - **RB / R1** - Next tab / Dodge
 - **RT / R2** - Inventory / Quest Log
+- **L3** - Vehicle Selection UI (summon/dismiss)
 - **Start** - Pause
 
 **Debug (if `APP_CONFIG.is_debug = true`):**
@@ -98,9 +100,18 @@ A LÖVE2D game engine with clean **Engine/Game separation** architecture.
 ### Vehicle System
 **Rideable vehicles** - horses, bicycles, scooters, etc.
 
-**Tiled Setup:**
+**Two Types:**
+1. **Map Vehicles** - Placed in Tiled, mount/dismount at location
+2. **Owned Vehicles** - Acquired from NPC dialogue, summon/dismiss anywhere
+
+**Map Vehicle Setup (Tiled):**
 1. Create "Vehicles" layer (Object Layer)
 2. Add object, set `type = "scooter1"` (from vehicles.lua)
+
+**Owned Vehicle:**
+- Acquire via `unlock_vehicle` action in NPC dialogue
+- **V key** or **L3** opens Vehicle Selection UI
+- Select to summon/dismiss
 
 **Game Mode Behavior:**
 - **Topdown:** foot_collider handles wall collision
@@ -109,7 +120,9 @@ A LÖVE2D game engine with clean **Engine/Game separation** architecture.
   - Vehicle-sized ground_collider handles physics
   - On dismount: player collider restored
 
-**Controls:** F key to mount/dismount
+**Controls:**
+- **F** - Mount/dismount (nearby vehicles)
+- **V / L3** - Vehicle Selection UI (summon/dismiss owned)
 
 ---
 

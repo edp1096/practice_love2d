@@ -824,24 +824,7 @@ return {
       parallaxx = 1,
       parallaxy = 1,
       properties = {},
-      objects = {
-        {
-          id = 101,
-          name = "",
-          type = "",
-          shape = "rectangle",
-          x = 704,
-          y = 800,
-          width = 32,
-          height = 32,
-          rotation = 0,
-          visible = true,
-          properties = {
-            ["id"] = "vehicle_dealer_01",
-            ["type"] = "vehicle_dealer"
-          }
-        }
-      }
+      objects = {}
     },
     {
       type = "objectgroup",

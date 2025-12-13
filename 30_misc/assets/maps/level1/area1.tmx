@@ -202,14 +202,7 @@
    </properties>
   </object>
  </objectgroup>
- <objectgroup id="6" name="NPCs">
-  <object id="101" x="704" y="800" width="32" height="32">
-   <properties>
-    <property name="id" value="vehicle_dealer_01"/>
-    <property name="type" value="vehicle_dealer"/>
-   </properties>
-  </object>
- </objectgroup>
+ <objectgroup id="6" name="NPCs"/>
  <objectgroup id="4" name="Portals">
   <object id="38" x="960" y="416" width="224" height="32" rotation="90">
    <properties>
