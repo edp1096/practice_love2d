@@ -7,6 +7,7 @@ local MenuSceneBase = {}
 local scene_control = require "engine.core.scene_control"
 local display = require "engine.core.display"
 local sound = require "engine.core.sound"
+local vehicle_sound = require "engine.entities.vehicle.sound"
 local input = require "engine.core.input"
 local ui_helpers = require "engine.ui.menu.helpers"
 local debug = require "engine.core.debug"
@@ -41,6 +42,9 @@ function MenuSceneBase:create(config)
         self.selected = 1
         self.mouse_over = 0
         self.previous_mouse_over = 0
+
+        -- Stop vehicle sounds in menu scenes
+        vehicle_sound.stopEngine()
 
         -- Setup UI
         local vw, vh = display:GetVirtualDimensions()

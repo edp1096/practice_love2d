@@ -120,13 +120,13 @@ local function reinitializePlayer(scene, spawn_x, spawn_y)
     scene.world:addEntity(scene.player)
 end
 
--- Re-board vehicle after map transition
+-- Re-board vehicle after map transition (silent to skip sound)
 local function reboardVehicle(scene, boarded_vehicle_map_id)
     if not boarded_vehicle_map_id then return end
 
     for _, vehicle in ipairs(scene.world.vehicles) do
         if vehicle.map_id == boarded_vehicle_map_id then
-            scene.player:boardVehicle(vehicle)
+            scene.player:boardVehicle(vehicle, true)  -- silent = true
             break
         end
     end

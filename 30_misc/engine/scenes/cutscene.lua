@@ -11,12 +11,16 @@ local scene_control = require "engine.core.scene_control"
 local display = require "engine.core.display"
 local dialogue = require "engine.ui.dialogue"
 local sound = require "engine.core.sound"
+local vehicle_sound = require "engine.entities.vehicle.sound"
 local fonts = require "engine.utils.fonts"
 local debug = require "engine.core.debug"
 local input = require "engine.core.input"
 local locale = require "engine.core.locale"
 
 function cutscene:enter(previous, intro_id, target_map, spawn_x, spawn_y, slot, is_new_game)
+
+    -- Stop vehicle sounds during cutscene
+    vehicle_sound.stopEngine()
 
     -- Hide virtual gamepad during intro/cutscene
     if input.virtual_gamepad then

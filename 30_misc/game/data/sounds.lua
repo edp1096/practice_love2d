@@ -76,12 +76,6 @@ return {
             slime_death = { path = "assets/sound/enemy/slime_death.wav", volume = 0.8, pitch_variation = "wide" },
             slime_stunned = { path = "assets/sound/enemy/slime_stunned.wav", volume = 0.6, pitch_variation = "none" },
             enemy_detect = { path = "assets/sound/enemy/detect.wav", volume = 0.5, pitch_variation = "subtle" }
-        },
-
-        vehicle = {
-            summon = { path = "assets/sound/vehicle/summon.wav", volume = 0.7, pitch_variation = "subtle" },
-            board = { path = "assets/sound/vehicle/board.wav", volume = 0.6, pitch_variation = "subtle" },
-            dismount = { path = "assets/sound/vehicle/dismount.wav", volume = 0.5, pitch_variation = "subtle" }
         }
     },
 
@@ -92,9 +86,6 @@ return {
         enemy = {
             slime_move = { path = "assets/sound/enemy/slime_move.wav", size = 3, volume = 0.2, pitch_variation = "normal" }
         },
-        vehicle = {
-            engine_loop = { path = "assets/sound/vehicle/engine_loop.wav", size = 1, volume = 0.4, pitch_variation = "none" }
-        }
     },
 
     -- Enemy type sound mappings (maps enemy_type to sound names)
@@ -116,5 +107,16 @@ return {
         --     death = "goblin_death",
         --     stunned = "goblin_stunned"
         -- }
+    },
+
+    -- Vehicle sounds (managed by engine/entities/vehicle/sound.lua)
+    -- NOT played via sound:playSFX - vehicle module handles looping/state transitions
+    vehicle = {
+        summon = { path = "assets/sound/vehicle/summon.wav", volume = 0.7 },
+        board = { path = "assets/sound/vehicle/board.wav", volume = 0.6 },
+        dismount = { path = "assets/sound/vehicle/dismount.wav", volume = 0.5 },
+        engine_idle = { path = "assets/sound/vehicle/engine_idle.wav", volume = 0.4 },
+        engine_start = { path = "assets/sound/vehicle/engine_start.wav", volume = 0.6 },
+        engine_drive = { path = "assets/sound/vehicle/engine_drive.wav", volume = 0.5 }
     }
 }

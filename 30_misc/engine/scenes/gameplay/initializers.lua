@@ -163,7 +163,7 @@ function initializers.restoreVehicles(scene, save_data)
     if vehicle_data.is_boarded and vehicle_data.boarded_map_id then
         for _, vehicle in ipairs(scene.world.vehicles) do
             if vehicle.map_id == vehicle_data.boarded_map_id then
-                scene.player:boardVehicle(vehicle)
+                scene.player:boardVehicle(vehicle, true)  -- silent = true (loading)
                 break
             end
         end

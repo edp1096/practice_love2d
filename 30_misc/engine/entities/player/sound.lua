@@ -18,7 +18,13 @@ end
 function player_sound.update(dt, player)
     if not player then return end
 
-    if player.state == "walking" and not player.dodge_active then
+    -- No footstep when boarded (vehicle engine sound handles this)
+    if player.is_boarded then
+        player_sound.footstep_timer = 0
+        return
+    end
+
+    if (player.state == "walking" or player.state == "running") and not player.dodge_active then
         player_sound.footstep_timer = player_sound.footstep_timer + dt
 
         if player_sound.footstep_timer >= player_sound.footstep_interval then

@@ -139,13 +139,16 @@ function vehicle:update(dt, player_x, player_y)
 
         -- Update engine sound based on movement
         local is_moving = false
-        if self.rider.vx and self.rider.vy then
-            is_moving = math.abs(self.rider.vx) > 10 or math.abs(self.rider.vy) > 10
-        elseif self.ground_collider and not self.ground_collider:isDestroyed() then
+        -- Platformer: use ground_collider velocity
+        if self.ground_collider and not self.ground_collider:isDestroyed() then
             local vx, vy = self.ground_collider:getLinearVelocity()
             is_moving = math.abs(vx) > 10 or math.abs(vy) > 10
+        -- Topdown: use foot_collider velocity (player movement uses foot_collider)
+        elseif self.rider.foot_collider and not self.rider.foot_collider:isDestroyed() then
+            local vx, vy = self.rider.foot_collider:getLinearVelocity()
+            is_moving = math.abs(vx) > 10 or math.abs(vy) > 10
         end
-        vehicle_sound.update(self, is_moving)
+        vehicle_sound.update(self, is_moving, dt)
 
         self.can_interact = false
         return
@@ -159,15 +162,17 @@ function vehicle:update(dt, player_x, player_y)
     self.can_interact = (distance < self.interaction_range)
 end
 
-function vehicle:boardPlayer(player)
+function vehicle:boardPlayer(player, silent)
     if self.is_boarded then return false end
 
     self.is_boarded = true
     self.rider = player
     self.can_interact = false
 
-    -- Play board sound
-    vehicle_sound.playBoard(self)
+    -- Play board sound (skip on map transition re-board)
+    if not silent then
+        vehicle_sound.playBoard(self)
+    end
 
     -- Disable collisions while boarded (set to sensor)
     if self.collider and not self.collider:isDestroyed() then

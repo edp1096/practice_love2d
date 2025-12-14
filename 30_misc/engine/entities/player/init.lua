@@ -172,7 +172,8 @@ function player:applyEquipmentStats(stats) return combat.applyEquipmentStats(sel
 function player:removeEquipmentStats(stats) return combat.removeEquipmentStats(self, stats) end
 
 -- Vehicle system (boarding)
-function player:boardVehicle(vehicle)
+-- silent: skip sound (used for re-boarding after map transition)
+function player:boardVehicle(vehicle, silent)
     if self.is_boarded or not vehicle then return false end
 
     -- Store original speed
@@ -186,8 +187,7 @@ function player:boardVehicle(vehicle)
     self.boarded_vehicle = vehicle
 
     -- Tell vehicle it's being ridden
-    vehicle:boardPlayer(self)
-
+    vehicle:boardPlayer(self, silent)
 
     return true
 end
