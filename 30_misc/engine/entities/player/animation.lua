@@ -7,6 +7,26 @@ local input = require "engine.core.input"
 
 local animation = {}
 
+-- Opposite direction lookup (for backpedaling detection)
+local OPPOSITE_DIRS = {
+    up = "down", down = "up",
+    left = "right", right = "left"
+}
+
+-- Check if player is currently jumping (works in both game modes)
+local function isJumping(player)
+    return (player.game_mode == "topdown" and player.topdown_is_jumping)
+        or (player.game_mode == "platformer" and player.is_jumping)
+end
+
+-- Check if player is moving opposite to facing direction while weapon drawn
+local function isBackpedaling(player, move_direction)
+    if player.weapon_drawn and move_direction then
+        return OPPOSITE_DIRS[player.direction] == move_direction
+    end
+    return false
+end
+
 -- Get weapon position with jump and stair offset applied
 local function getWeaponPosition(player)
     local weapon_x = player.x
@@ -200,14 +220,7 @@ local function handleMovementInput(player, dt)
                     move_direction = move_x > 0 and "right" or "left"
                 end
 
-                -- Check for backpedaling (moving opposite to facing while weapon drawn)
-                local is_backpedaling = false
-                if player.weapon_drawn and move_direction then
-                    local opposite_dirs = { left = "right", right = "left" }
-                    if opposite_dirs[player.direction] == move_direction then
-                        is_backpedaling = true
-                    end
-                end
+                local is_backpedaling = isBackpedaling(player, move_direction)
 
                 -- Use walk_speed if walking, backpedaling, or walk_speed is defined
                 local current_speed = player.speed
@@ -241,17 +254,7 @@ local function handleMovementInput(player, dt)
                     move_direction = move_y > 0 and "down" or "up"
                 end
 
-                -- Check for backpedaling (moving opposite to facing while weapon drawn)
-                local is_backpedaling = false
-                if player.weapon_drawn and move_direction then
-                    local opposite_dirs = {
-                        up = "down", down = "up",
-                        left = "right", right = "left"
-                    }
-                    if opposite_dirs[player.direction] == move_direction then
-                        is_backpedaling = true
-                    end
-                end
+                local is_backpedaling = isBackpedaling(player, move_direction)
 
                 -- Use walk_speed if walking, backpedaling, or walk_speed is defined
                 local current_speed = player.speed
@@ -270,26 +273,12 @@ local function handleMovementInput(player, dt)
         end
 
         if is_moving then
-            -- Check for backpedaling (moving opposite to facing direction while weapon drawn)
-            local is_backpedaling = false
-            if player.weapon_drawn and move_direction then
-                -- Compare movement direction with facing direction
-                local opposite_dirs = {
-                    up = "down", down = "up",
-                    left = "right", right = "left"
-                }
-                if opposite_dirs[player.direction] == move_direction then
-                    is_backpedaling = true
-                end
-            end
+            local is_backpedaling = isBackpedaling(player, move_direction)
 
             -- Force walk animation when backpedaling
             local final_move_type = is_backpedaling and "walk" or move_type
 
-            -- Check if player is jumping (topdown or platformer)
-            -- Use is_jumping flag for platformer (more stable than is_grounded on slopes)
-            local is_jumping = (player.game_mode == "topdown" and player.topdown_is_jumping)
-                or (player.game_mode == "platformer" and player.is_jumping)
+            local is_jumping = isJumping(player)
 
             -- Check for jump animation (moving jump)
             local anim_key
@@ -315,10 +304,7 @@ local function handleMovementInput(player, dt)
             player.anim:update(dt)
             player.state = final_move_type == "run" and "running" or "walking"
         else
-            -- Check if player is jumping (topdown or platformer)
-            -- Use is_jumping flag for platformer (more stable than is_grounded on slopes)
-            local is_jumping = (player.game_mode == "topdown" and player.topdown_is_jumping)
-                or (player.game_mode == "platformer" and player.is_jumping)
+            local is_jumping = isJumping(player)
 
             -- Check for jump animation (standing jump)
             local anim_key

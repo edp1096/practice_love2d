@@ -3,6 +3,7 @@
 
 local constants = require "engine.core.constants"
 local text_ui = require "engine.utils.text"
+local sound = require "engine.core.sound"
 
 local healing_point = {}
 healing_point.__index = healing_point
@@ -79,7 +80,6 @@ function healing_point:healPlayer(player)
         self.cooldown = self.cooldown_max
 
         -- Play heal sound
-        local sound = require("engine.core.sound")
         if sound.playEffect then
             sound:playEffect("heal")
         end

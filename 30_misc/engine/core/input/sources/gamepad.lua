@@ -25,7 +25,7 @@ function physical_gamepad_input:new(joystick, settings, input_config)
         leftx = { value = 0, was_positive = false, was_negative = false },
         lefty = { value = 0, was_positive = false, was_negative = false }
     }
-    instance.axis_threshold = 0.5 -- Threshold for axis to register as button press
+    instance.axis_threshold = constants.INPUT.MENU_AXIS_THRESHOLD
 
     return instance
 end
@@ -65,7 +65,7 @@ function physical_gamepad_input:applyDeadzone(value)
 end
 
 -- Walk threshold: below this magnitude = walk, above = run
-physical_gamepad_input.WALK_THRESHOLD = 0.75
+physical_gamepad_input.WALK_THRESHOLD = constants.INPUT.WALK_THRESHOLD
 
 function physical_gamepad_input:getMovement()
     if not self:isAvailable() then

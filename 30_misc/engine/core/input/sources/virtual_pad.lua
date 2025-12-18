@@ -21,7 +21,7 @@ function virtual_gamepad_input:isAvailable()
 end
 
 -- Walk threshold: below this magnitude = walk, above = run
-virtual_gamepad_input.WALK_THRESHOLD = 0.75
+virtual_gamepad_input.WALK_THRESHOLD = constants.INPUT.WALK_THRESHOLD
 
 function virtual_gamepad_input:getMovement()
     if not self:isAvailable() then

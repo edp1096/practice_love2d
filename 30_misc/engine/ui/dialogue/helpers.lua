@@ -366,7 +366,7 @@ function helpers:evaluateCondition(condition, context)
             end
 
             local dialogue_id = condition.dialogue_id or context.dialogue_id
-            return self:getFlag(dialogue, dialogue_id, condition.flag, false) == true
+            return self:getFlag(dialogue, dialogue_id, condition.flag, false)
 
         elseif cond_type == "flag_equals" then
             -- Check if a dialogue flag equals a specific value

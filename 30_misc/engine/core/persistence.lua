@@ -216,12 +216,14 @@ persistence:registerSystem("vehicle", function(scene)
         vehicle_data.boarded_map_id = scene.player.boarded_vehicle.map_id
     end
 
-    -- Sync current world vehicles to registry
+    -- Sync current world vehicles to registry (skip boarded vehicle)
     if scene.world and scene.world.vehicles then
         local map_name = scene.world.map and scene.world.map.properties
                          and scene.world.map.properties.name or "unknown"
+        local boarded_map_id = vehicle_data.boarded_map_id
         for _, vehicle in ipairs(scene.world.vehicles) do
-            if vehicle.map_id and not vehicle.is_boarded then
+            -- Skip boarded vehicle - its position was already updated to destination
+            if vehicle.map_id and vehicle.map_id ~= boarded_map_id then
                 entity_registry:updateVehiclePosition(
                     vehicle.map_id,
                     map_name,

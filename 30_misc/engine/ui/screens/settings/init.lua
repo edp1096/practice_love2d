@@ -8,6 +8,9 @@ local display = require "engine.core.display"
 local input = require "engine.core.input"
 local fonts = require "engine.utils.fonts"
 local convert = require "engine.utils.convert"
+local locale = require "engine.core.locale"
+local utils = require "engine.utils.util"
+local sound = require "engine.core.sound"
 
 -- Import modules
 local options_module = require "engine.ui.screens.settings.options"
@@ -30,7 +33,6 @@ function settings:enter(previous, ...)
     end
 
     -- Use locale-aware fonts (updated when language changes)
-    local locale = require "engine.core.locale"
     self.titleFont = locale:getFont("title") or fonts.title
     self.labelFont = locale:getFont("option") or fonts.option
     self.valueFont = locale:getFont("option") or fonts.option
@@ -116,9 +118,6 @@ function settings:leave()
     -- Save settings when leaving settings screen
     -- Note: Resolution is already saved when changed in options.lua
     -- Here we just save sound/input settings
-    local utils = require "engine.utils.util"
-    local sound = require "engine.core.sound"
-
     -- Don't pass resolution_override - use already-set APP_CONFIG values
     utils:SaveConfig(APP_CONFIG, sound.settings, input.settings, nil)
 end

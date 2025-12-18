@@ -2,6 +2,8 @@
 -- Item action system (handles item usage logic based on data)
 -- Pure logic - receives item data via dependency injection
 
+local sound = require "engine.core.sound"
+
 local item_actions = {}
 
 -- Check if player can use an item
@@ -52,7 +54,6 @@ function item_actions.use(item_data, player)
 
         elseif effect.type == "play_sound" then
             -- Play sound effect
-            local sound = require("engine.core.sound")
             if sound and sound.playSFX then
                 pcall(function()
                     sound:playSFX(effect.category, effect.name)

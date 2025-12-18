@@ -24,10 +24,19 @@ constants.INPUT = {
     GAMEPAD_DEADZONE = 0.15,
     STICK_THRESHOLD = 0.01,
     AIM_STICK_THRESHOLD = 0.1,
+    WALK_THRESHOLD = 0.75,        -- Stick magnitude below this = walk instead of run
+    MENU_AXIS_THRESHOLD = 0.5,    -- Axis threshold for menu navigation
 
     -- Button repeat system
     REPEAT_DELAY = 0.3,
     REPEAT_INTERVAL = 0.1,
+}
+
+-- Sound System (Android optimization)
+constants.SOUND = {
+    MAX_ACTIVE_SOURCES = 32,      -- Limit concurrent sounds for Android
+    CLEANUP_INTERVAL = 1.0,       -- Cleanup timer interval (seconds)
+    MEMORY_CHECK_INTERVAL = 5.0,  -- Memory stats check interval (seconds)
 }
 
 -- Vibration/Haptic Feedback (duration in seconds, strength 0.0-1.0)

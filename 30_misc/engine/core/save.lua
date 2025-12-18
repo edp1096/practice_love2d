@@ -318,7 +318,7 @@ function save:hasViewedIntro(intro_id)
     if not self.current_save then return false end
     if not self.current_save.viewed_intros then return false end
 
-    return self.current_save.viewed_intros[intro_id] == true
+    return self.current_save.viewed_intros[intro_id] or false
 end
 
 function save:printStatus()

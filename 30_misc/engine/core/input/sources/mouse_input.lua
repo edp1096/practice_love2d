@@ -3,6 +3,7 @@
 
 local base_input = require "engine.core.input.sources.base_input"
 local coords = require "engine.core.coords"
+local display = require "engine.core.display"
 
 local mouse_input = {}
 setmetatable(mouse_input, { __index = base_input })
@@ -36,7 +37,6 @@ function mouse_input:getAimDirection(player_x, player_y, cam)
     local screen_player_x, screen_player_y = coords:worldToCamera(player_x, player_y, cam)
 
     -- Calculate square aim area using actual screen height
-    local display = require "engine.core.display"
     local aim_area_size = display.screen_wh.h -- Actual screen pixel height
     local half_area = aim_area_size / 2
 

@@ -1,6 +1,8 @@
 -- systems/sound.lua
 -- Optimized for Android with memory tracking and automatic cleanup
 
+local constants = require "engine.core.constants"
+
 local sound = {}
 
 sound.settings = {
@@ -20,14 +22,14 @@ sound.sound_data = nil  -- Store injected sound data
 
 -- Active source tracking for memory management
 sound.active_sources = {}
-sound.max_active_sources = 32 -- Limit for Android
-sound.cleanup_interval = 1.0  -- Cleanup every 1 second
+sound.max_active_sources = constants.SOUND.MAX_ACTIVE_SOURCES
+sound.cleanup_interval = constants.SOUND.CLEANUP_INTERVAL
 sound.cleanup_timer = 0
 
 -- Memory monitoring (Android optimization)
 sound.memory_stats = {
     last_check = 0,
-    check_interval = 5.0,
+    check_interval = constants.SOUND.MEMORY_CHECK_INTERVAL,
     peak_memory = 0,
     warnings = 0
 }
