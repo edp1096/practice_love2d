@@ -107,7 +107,7 @@ server:listen(5)
 server:settimeout(0.1)
 
 print("=========================================")
-print("Static File Server for LÖVE2D Web Build")
+print("Static File Server for LOVE2D Web Build")
 print("=========================================")
 print("Server running at http://localhost:" .. port)
 print("Press Ctrl+C to stop")

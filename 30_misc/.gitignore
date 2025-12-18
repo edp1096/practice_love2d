@@ -1,4 +1,5 @@
 /compile
+/compile_web
 /dist
 config.ini
 icon.ico
