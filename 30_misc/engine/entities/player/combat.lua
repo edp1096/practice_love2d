@@ -60,6 +60,13 @@ function combat.initialize(player, cfg)
     player.dodge_evade_cooldown = 0
     player.dodge_evade_cooldown_duration = cfg.dodge_evade_cooldown or 1.5
 
+    -- Combo system
+    player.combo_count = 0           -- Current combo hit (0 = not attacking)
+    player.combo_timer = 0           -- Time since last attack ended
+    player.combo_input_buffered = false  -- Next attack queued during cancel window
+    player.combo_invincible_timer = 0    -- Combo-specific invincibility
+    player.recovery_timer = 0            -- Post-attack recovery (no move/attack)
+
     -- Initialize player sounds
     player_sound.initialize()
 end
@@ -75,10 +82,60 @@ function combat.updateTimers(player, dt)
             player.parry_timer = 0
             player.state = "idle"
         end
+        -- Reset combo state when weapon unequipped
+        player.combo_count = 0
+        player.combo_timer = 0
+        player.combo_input_buffered = false
     end
 
     if player.attack_cooldown > 0 then
         player.attack_cooldown = player.attack_cooldown - dt
+    end
+
+    -- Check if attack just ended (weapon finished but player still in attacking state)
+    if player.state == "attacking" and player.weapon and not player.weapon.is_attacking then
+        -- Get current combo's recovery time
+        local combo_config = player.config and player.config.combo
+        local attack_config = nil
+        if combo_config and combo_config.attacks then
+            attack_config = combo_config.attacks[player.combo_count]
+        end
+        local recovery = attack_config and attack_config.recovery or 0
+
+        if recovery > 0 then
+            player.recovery_timer = recovery
+            player.state = "recovering"
+        else
+            player.state = "idle"
+        end
+    end
+
+    -- Combo timer: reset combo if too much time passes after attack ends
+    if player.combo_count > 0 and player.state ~= "attacking" then
+        player.combo_timer = player.combo_timer + dt
+        local combo_config = player.config and player.config.combo
+        local reset_delay = combo_config and combo_config.reset_delay or 1.0
+        if player.combo_timer >= reset_delay then
+            player.combo_count = 0
+            player.combo_timer = 0
+        end
+    end
+
+    -- Combo invincibility timer
+    if player.combo_invincible_timer > 0 then
+        player.combo_invincible_timer = player.combo_invincible_timer - dt
+    end
+
+    -- Recovery timer (post-attack stagger)
+    if player.recovery_timer > 0 then
+        player.recovery_timer = player.recovery_timer - dt
+        if player.recovery_timer <= 0 then
+            player.recovery_timer = 0
+            -- Ensure state is idle after recovery
+            if player.state == "recovering" then
+                player.state = "idle"
+            end
+        end
     end
 
     if player.parry_cooldown > 0 then
@@ -166,9 +223,48 @@ function combat.updateTimers(player, dt)
     player_sound.update(dt, player)
 end
 
+-- Helper: Get current combo attack config
+local function getComboAttackConfig(player, combo_index)
+    local combo_config = player.config and player.config.combo
+    if not combo_config or not combo_config.attacks then
+        -- Default single attack config
+        return {
+            anim_suffix = "",
+            damage_mult = 1.0,
+            hit_start = 0.3,
+            hit_end = 0.7,
+            duration = 0.3,
+            hitstun = 0.2,
+            can_cancel = false,
+            invincible = false,
+        }
+    end
+    return combo_config.attacks[combo_index] or combo_config.attacks[1]
+end
+
+-- Helper: Get max combo count
+local function getMaxComboCount(player)
+    local combo_config = player.config and player.config.combo
+    if not combo_config or not combo_config.attacks then
+        return 1
+    end
+    local count = 0
+    for k, _ in pairs(combo_config.attacks) do
+        if type(k) == "number" and k > count then
+            count = k
+        end
+    end
+    return count
+end
+
 function combat.attack(player)
     -- Cannot attack without a weapon
     if not player.weapon then
+        return false
+    end
+
+    -- Cannot attack during recovery
+    if player.recovery_timer > 0 then
         return false
     end
 
@@ -176,11 +272,38 @@ function combat.attack(player)
         return false
     end
 
+    -- Get combo config
+    local combo_config = player.config and player.config.combo
+    local combo_window = combo_config and combo_config.window or 0.6
+    local max_combo = getMaxComboCount(player)
+
+    -- Check if currently attacking
     if player.state == "attacking" then
+        -- Check if we can buffer next combo input
+        local current_attack = getComboAttackConfig(player, player.combo_count)
+        if current_attack.can_cancel and player.combo_count < max_combo then
+            local progress = player.weapon.attack_progress or 0
+            local cancel_start = current_attack.cancel_window and current_attack.cancel_window[1] or 0.5
+            local cancel_end = current_attack.cancel_window and current_attack.cancel_window[2] or 0.9
+
+            if progress >= cancel_start and progress <= cancel_end then
+                player.combo_input_buffered = true
+            end
+        end
         return false
     end
 
-    if player.attack_cooldown > 0 then
+    -- Check if we're continuing a combo or starting fresh
+    local next_combo = 1
+    if player.combo_count > 0 and player.combo_timer < combo_window then
+        next_combo = math.min(player.combo_count + 1, max_combo)
+    else
+        -- Combo window expired, reset to first attack
+        player.combo_count = 0
+    end
+
+    -- Regular cooldown check for first attack
+    if next_combo == 1 and player.attack_cooldown > 0 then
         return false
     end
 
@@ -195,12 +318,34 @@ function combat.attack(player)
 
     player.last_action_time = 0
 
-    if player.weapon:startAttack() then
-        player.state = "attacking"
-        player.attack_cooldown = player.attack_cooldown_max
+    -- Get attack config for this combo hit
+    local attack_config = getComboAttackConfig(player, next_combo)
 
-        -- Haptic feedback for attack
-        local v = constants.VIBRATION.ATTACK; input:vibrate(v.duration, v.left, v.right)
+    -- Start attack with combo info
+    if player.weapon:startAttack(next_combo, attack_config) then
+        player.state = "attacking"
+        player.combo_count = next_combo
+        player.combo_timer = 0
+        player.combo_input_buffered = false
+
+        -- Set cooldown based on attack duration
+        player.attack_cooldown = attack_config.duration or player.attack_cooldown_max
+
+        -- Apply combo invincibility if configured
+        if attack_config.invincible then
+            local inv_window = attack_config.invincible_window
+            if inv_window then
+                local duration = attack_config.duration or 0.3
+                player.combo_invincible_timer = (inv_window[2] - inv_window[1]) * duration
+            else
+                player.combo_invincible_timer = attack_config.duration or 0.3
+            end
+        end
+
+        -- Haptic feedback for attack (stronger for later combo hits)
+        local v = constants.VIBRATION.ATTACK
+        local intensity = 1.0 + (next_combo - 1) * 0.2  -- 20% stronger per combo
+        input:vibrate(v.duration, v.left * intensity, v.right * intensity)
 
         -- Play attack sound
         player_sound.playAttack()
@@ -209,6 +354,27 @@ function combat.attack(player)
     end
 
     return false
+end
+
+-- Called when attack animation finishes (from weapon or animation system)
+function combat.onAttackEnd(player)
+    -- Check for buffered combo input
+    if player.combo_input_buffered then
+        player.combo_input_buffered = false
+        -- Small delay before next attack starts
+        player.combo_timer = 0
+        -- Trigger next attack immediately
+        return combat.attack(player)
+    end
+    return false
+end
+
+-- Get current combo attack config (for external use)
+function combat.getCurrentAttackConfig(player)
+    if player.combo_count == 0 then
+        return nil
+    end
+    return getComboAttackConfig(player, player.combo_count)
 end
 
 function combat.startParry(player)
@@ -374,6 +540,11 @@ function combat.takeDamage(player, damage, shake_callback)
         return false, false, false
     end
 
+    -- Combo invincibility check
+    if player.combo_invincible_timer > 0 then
+        return false, false, false
+    end
+
     if player.invincible_timer > 0 then
         return false, false, false
     end
@@ -421,6 +592,14 @@ end
 
 function combat.isEvading(player)
     return player.evade_active
+end
+
+function combat.isComboInvincible(player)
+    return player.combo_invincible_timer > 0
+end
+
+function combat.isRecovering(player)
+    return player.recovery_timer > 0
 end
 
 -- Equipment System

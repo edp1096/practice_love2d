@@ -35,6 +35,41 @@ player_config.combat = {
   hit_shake_intensity = 6,
 }
 
+-- Combo system configuration
+-- Each attack can define: damage multiplier, hit timing, duration, hitstun, canceling, invincibility
+player_config.combo = {
+  window = 0.2,        -- Time window to input next combo (seconds)
+  reset_delay = 0.6,   -- Time after last attack before combo resets
+
+  -- Per-attack settings (indexed by combo count: 1, 2, 3...)
+  attacks = {
+    [1] = {
+      anim_suffix = "",        -- Uses "attack_down", "attack_up", etc.
+      damage_mult = 1.0,       -- Base damage multiplier
+      hit_start = 0.3,         -- Hit detection start (0~1 of duration)
+      hit_end = 0.7,           -- Hit detection end
+      duration = 0.3,          -- Attack duration (seconds)
+      hitstun = 0.2,           -- Enemy stagger duration on hit
+      can_cancel = true,       -- Can cancel into next combo
+      cancel_window = { 0.5, 0.9 },  -- Cancel input window (0~1)
+      invincible = false,      -- No invincibility on 1st hit
+      recovery = 0,            -- No recovery (can cancel)
+    },
+    [2] = {
+      anim_suffix = "_2",      -- Uses "attack_2_down", "attack_2_up", etc.
+      damage_mult = 1.3,       -- 30% more damage
+      hit_start = 0.2,         -- Faster hit timing
+      hit_end = 0.6,
+      duration = 0.35,         -- Slightly longer
+      hitstun = 0.3,           -- Longer stagger
+      can_cancel = false,      -- Final hit, no cancel
+      invincible = true,       -- Invincible during 2nd hit
+      invincible_window = { 0.1, 0.5 },  -- Invincible frames
+      recovery = 0.25,         -- Post-attack recovery (no move/attack)
+    },
+  },
+}
+
 -- Sprite configuration
 player_config.sprite = {
   sheet = "assets/images/player/player-sheet.png",
@@ -86,6 +121,12 @@ player_config.animations = {
     attack_left     = { "1-4", 12 },
     attack_right    = { "5-8", 12 },
 
+    -- Combo attack 2 (uses rows 13-14)
+    attack_2_down   = { "1-4", 13 },
+    attack_2_up     = { "5-8", 13 },
+    attack_2_left   = { "1-4", 14 },
+    attack_2_right  = { "5-8", 14 },
+
     -- Riding poses (static or animated)
     -- TODO: Update frame indices when ride sprite is added to sheet
     -- Idle pose (standing still on vehicle)
@@ -106,6 +147,7 @@ player_config.animations = {
     jump = 0.15,
     jump_move = 0.12,
     attack = 0.08,
+    attack_2 = 0.09,   -- 2nd combo attack (slightly slower)
     ride_idle = 0.15,  -- static pose
     ride_move = 0.3,   -- moving on vehicle
   },

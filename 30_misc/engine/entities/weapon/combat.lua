@@ -5,7 +5,7 @@ local effects = require "engine.systems.effects"
 
 local combat = {}
 
-function combat.startAttack(weapon)
+function combat.startAttack(weapon, combo_index, attack_config)
     if weapon.is_attacking then
         return false
     end
@@ -14,6 +14,10 @@ function combat.startAttack(weapon)
     weapon.attack_progress = 0
     weapon.has_hit = false
     weapon.hit_enemies = {}
+
+    -- Store combo info
+    weapon.combo_index = combo_index or 1
+    weapon.combo_config = attack_config or nil
 
     -- Calculate attack direction (used for both slash effect and trail)
     local dir_x = math.cos(weapon.angle)
@@ -70,6 +74,8 @@ function combat.endAttack(weapon)
     weapon.hit_enemies = {}
     weapon.slash_active = false
     weapon.slash_anim = nil
+    weapon.combo_index = 0
+    weapon.combo_config = nil
 end
 
 function combat.canDealDamage(weapon)
@@ -77,8 +83,17 @@ function combat.canDealDamage(weapon)
         return false
     end
 
-    return weapon.attack_progress >= weapon.config.hit_start and
-        weapon.attack_progress <= weapon.config.hit_end
+    -- Use combo config if available, otherwise fall back to weapon config
+    local hit_start = weapon.config.hit_start
+    local hit_end = weapon.config.hit_end
+
+    if weapon.combo_config then
+        hit_start = weapon.combo_config.hit_start or hit_start
+        hit_end = weapon.combo_config.hit_end or hit_end
+    end
+
+    return weapon.attack_progress >= hit_start and
+        weapon.attack_progress <= hit_end
 end
 
 function combat.getHitbox(weapon)
@@ -155,7 +170,22 @@ function combat.checkHitProp(weapon, prop)
 end
 
 function combat.getDamage(weapon)
-    return weapon.config.damage
+    local base_damage = weapon.config.damage
+
+    -- Apply combo damage multiplier
+    if weapon.combo_config and weapon.combo_config.damage_mult then
+        return math.floor(base_damage * weapon.combo_config.damage_mult)
+    end
+
+    return base_damage
+end
+
+-- Get hitstun duration for current combo attack
+function combat.getHitstun(weapon)
+    if weapon.combo_config and weapon.combo_config.hitstun then
+        return weapon.combo_config.hitstun
+    end
+    return 0.2  -- Default hitstun
 end
 
 function combat.getKnockback(weapon)

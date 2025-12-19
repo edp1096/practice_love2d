@@ -76,6 +76,35 @@ A LÖVE2D game engine with clean **Engine/Game separation** architecture.
 - **Topdown** (level1): Free 2D movement, no gravity
 - **Platformer** (level2): Horizontal + jump, gravity
 
+### Combo System
+**Chain attacks for increased damage and effects.**
+
+**Usage:**
+- Attack within the combo window to chain → 1st hit → 2nd hit
+- Each hit can have different damage, timing, invincibility, recovery
+
+**Configuration (`game/data/player.lua`):**
+```lua
+player_config.combo = {
+  window = 0.2,      -- Time to input next combo (seconds)
+  reset_delay = 0.6, -- Time before combo resets
+  attacks = {
+    [1] = { damage_mult = 1.0, can_cancel = true, recovery = 0 },
+    [2] = { damage_mult = 1.3, invincible = true, recovery = 0.25 },
+  }
+}
+```
+
+**Per-attack settings:**
+| Field | Description |
+|-------|-------------|
+| `damage_mult` | Damage multiplier |
+| `hit_start/hit_end` | Hitbox active window (0~1) |
+| `duration` | Attack duration |
+| `can_cancel` | Can cancel into next combo |
+| `invincible` | Invincibility frames |
+| `recovery` | Post-attack stagger (no move/attack) |
+
 ### Map Properties
 - **`move_mode`**: `"walk"` for indoor maps (slower speed, walk animation)
 

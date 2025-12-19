@@ -76,6 +76,35 @@
 - **Topdown** (level1): 자유 2D 이동, 중력 없음
 - **Platformer** (level2): 수평 + 점프, 중력 활성화
 
+### 콤보 시스템
+**연속 공격으로 데미지와 효과 증가.**
+
+**사용법:**
+- 콤보 윈도우 내에 공격 입력으로 연결 → 1타 → 2타
+- 각 타수별로 다른 데미지, 타이밍, 무적, 경직 설정 가능
+
+**설정 (`game/data/player.lua`):**
+```lua
+player_config.combo = {
+  window = 0.2,      -- 다음 콤보 입력 시간 (초)
+  reset_delay = 0.6, -- 콤보 리셋 시간
+  attacks = {
+    [1] = { damage_mult = 1.0, can_cancel = true, recovery = 0 },
+    [2] = { damage_mult = 1.3, invincible = true, recovery = 0.25 },
+  }
+}
+```
+
+**타수별 설정:**
+| 필드 | 설명 |
+|------|------|
+| `damage_mult` | 데미지 배율 |
+| `hit_start/hit_end` | 히트박스 활성 구간 (0~1) |
+| `duration` | 공격 지속 시간 |
+| `can_cancel` | 다음 콤보로 캔슬 가능 |
+| `invincible` | 무적 프레임 |
+| `recovery` | 공격 후 경직 (이동/공격 불가) |
+
 ### 맵 속성
 - **`move_mode`**: `"walk"` 설정 시 실내맵용 (느린 속도, 걷기 애니메이션)
 

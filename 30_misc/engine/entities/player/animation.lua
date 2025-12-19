@@ -328,6 +328,18 @@ local function handleMovementInput(player, dt)
     return vx, vy, movement_input
 end
 
+-- Get combo animation suffix
+local function getComboAnimSuffix(player)
+    if player.combo_count <= 1 then
+        return ""
+    end
+    local combo_config = player.config and player.config.combo
+    if combo_config and combo_config.attacks and combo_config.attacks[player.combo_count] then
+        return combo_config.attacks[player.combo_count].anim_suffix or ""
+    end
+    return "_" .. player.combo_count
+end
+
 -- Handle special states (dodge, attack, parry, debug)
 local function handleSpecialStates(player, dt, movement_input)
     local vx, vy = 0, 0
@@ -339,7 +351,16 @@ local function handleSpecialStates(player, dt, movement_input)
         player.anim = player.animations[move_type .. "_" .. player.direction]
         player.anim:update(dt * 2)
     elseif player.state == "attacking" then
-        player.anim = player.animations["attack_" .. player.direction]
+        -- Get combo animation suffix (e.g., "", "_2", "_3")
+        local suffix = getComboAnimSuffix(player)
+        local anim_key = "attack" .. suffix .. "_" .. player.direction
+
+        -- Fall back to base attack animation if combo animation doesn't exist
+        if not player.animations[anim_key] then
+            anim_key = "attack_" .. player.direction
+        end
+
+        player.anim = player.animations[anim_key]
         if not debug:IsHandMarkingActive() then
             player.anim:update(dt)
         end
@@ -468,6 +489,22 @@ function animation.initialize(player, sprite_sheet, sprite_width, sprite_height)
     player.animations.attack_left = createAnimation(player.grid, frames.attack_left, durations.attack)
     player.animations.attack_right = createAnimation(player.grid, frames.attack_right, durations.attack)
 
+    -- Combo attack 2 animations (optional)
+    if frames.attack_2_down then
+        player.animations.attack_2_down = createAnimation(player.grid, frames.attack_2_down, durations.attack_2 or durations.attack)
+        player.animations.attack_2_up = createAnimation(player.grid, frames.attack_2_up, durations.attack_2 or durations.attack)
+        player.animations.attack_2_left = createAnimation(player.grid, frames.attack_2_left, durations.attack_2 or durations.attack)
+        player.animations.attack_2_right = createAnimation(player.grid, frames.attack_2_right, durations.attack_2 or durations.attack)
+    end
+
+    -- Combo attack 3 animations (optional)
+    if frames.attack_3_down then
+        player.animations.attack_3_down = createAnimation(player.grid, frames.attack_3_down, durations.attack_3 or durations.attack)
+        player.animations.attack_3_up = createAnimation(player.grid, frames.attack_3_up, durations.attack_3 or durations.attack)
+        player.animations.attack_3_left = createAnimation(player.grid, frames.attack_3_left, durations.attack_3 or durations.attack)
+        player.animations.attack_3_right = createAnimation(player.grid, frames.attack_3_right, durations.attack_3 or durations.attack)
+    end
+
     -- Jump animations (optional - standing jump)
     if frames.jump_up then
         player.animations.jump_up = createAnimation(player.grid, frames.jump_up, durations.jump or 0.15)
@@ -518,9 +555,13 @@ function animation.update(player, dt, cam, dialogue_open)
     -- Determine facing direction from input/weapon state
     handleDirectionFromInput(player, cam)
 
-    -- Reset attacking state if weapon finished
-    if player.state == "attacking" and player.weapon and not player.weapon.is_attacking then
-        player.state = "idle"
+    -- NOTE: Attack end and recovery state handled by combat.updateTimers()
+
+    -- Handle recovery state (no movement allowed)
+    if player.state == "recovering" then
+        player.anim = player.animations["idle_" .. player.direction]
+        player.anim:update(dt)
+        return 0, 0  -- No movement during recovery
     end
 
     -- Process movement input (or get velocity from special states)

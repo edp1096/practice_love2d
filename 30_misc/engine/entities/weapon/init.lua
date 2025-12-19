@@ -106,6 +106,10 @@ function weapon:new(weapon_type, owner_scale)
     instance.has_hit = false
     instance.hit_enemies = {}
 
+    -- Combo state
+    instance.combo_index = 0
+    instance.combo_config = nil
+
     -- Sheath particles
     instance.sheath_particles = render.createSheathParticleSystem(self.effects_config)
 
@@ -148,9 +152,15 @@ function weapon:update(dt, owner_x, owner_y, owner_angle, direction, anim_name, 
     self.debug_hand_y = hand_y
 
     if self.is_attacking then
+        -- Get attack duration (combo config overrides weapon config)
+        local attack_duration = self.config.attack_duration
+        if self.combo_config and self.combo_config.duration then
+            attack_duration = self.combo_config.duration
+        end
+
         -- Update attack animation
         if not hand_marking_mode then
-            self.attack_progress = self.attack_progress + dt / self.config.attack_duration
+            self.attack_progress = self.attack_progress + dt / attack_duration
         end
 
         if self.attack_progress >= 1 then
@@ -248,8 +258,8 @@ function weapon:emitSheathParticles()
     self.sheath_particles:emit(80)
 end
 
-function weapon:startAttack()
-    return combat.startAttack(self)
+function weapon:startAttack(combo_index, attack_config)
+    return combat.startAttack(self, combo_index, attack_config)
 end
 
 function weapon:canDealDamage()
@@ -274,6 +284,14 @@ end
 
 function weapon:getKnockback()
     return combat.getKnockback(self)
+end
+
+function weapon:getHitstun()
+    return combat.getHitstun(self)
+end
+
+function weapon:getComboIndex()
+    return self.combo_index or 0
 end
 
 function weapon:draw(debug_mode)

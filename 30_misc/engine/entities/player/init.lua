@@ -154,6 +154,12 @@ function player:isDodgeInvincible() return combat.isDodgeInvincible(self) end
 
 function player:isEvading() return combat.isEvading(self) end
 
+function player:isComboInvincible() return combat.isComboInvincible(self) end
+
+function player:isRecovering() return combat.isRecovering(self) end
+
+function player:getCurrentAttackConfig() return combat.getCurrentAttackConfig(self) end
+
 function player:draw() render.draw(self) end
 
 function player:drawWeapon() render.drawWeapon(self) end
