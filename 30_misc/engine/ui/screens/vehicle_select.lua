@@ -94,9 +94,9 @@ function vehicle_select:update(dt)
         self.joystick_cooldown = self.joystick_cooldown - dt
     end
 
-    -- Handle gamepad joystick input
-    if input:hasGamepad() and self.joystick_cooldown <= 0 then
-        local ly = input:getAxis("lefty")
+    -- Handle physical gamepad joystick input (USB gamepad on Android, etc.)
+    if input.joystick and self.joystick_cooldown <= 0 then
+        local ly = input.joystick:getGamepadAxis("lefty") or 0
         if ly < -0.5 then
             self:moveSelection(-1)
             self.joystick_cooldown = self.joystick_repeat_delay
@@ -377,15 +377,71 @@ function vehicle_select:wheelmoved(x, y)
 end
 
 function vehicle_select:touchpressed(id, x, y, dx, dy, pressure)
-    self:mousepressed(x, y, 1)
+    -- Convert physical touch coordinates to virtual coordinates
+    local vx, vy = display:ToVirtualCoords(x, y)
+    local vw, vh = display:GetVirtualDimensions()
+    local panel_x = (vw - PANEL_WIDTH) / 2
+    local panel_y = (vh - PANEL_HEIGHT) / 2
+
+    -- Close button
+    local close_x = panel_x + PANEL_WIDTH - self.close_button_size - self.close_button_padding
+    local close_y = panel_y + self.close_button_padding
+    if vx >= close_x and vx <= close_x + self.close_button_size and
+       vy >= close_y and vy <= close_y + self.close_button_size then
+        self:close()
+        return true
+    end
+
+    -- Check item touch
+    local list_y = panel_y + 50
+    for i = 1, math.min(MAX_VISIBLE, #self.vehicles - self.scroll_offset) do
+        local idx = i + self.scroll_offset
+        local item_y = list_y + (i - 1) * ITEM_HEIGHT
+
+        if vx >= panel_x + LIST_PADDING and vx <= panel_x + PANEL_WIDTH - LIST_PADDING and
+           vy >= item_y and vy <= item_y + ITEM_HEIGHT then
+            self.selected_index = idx
+            self:selectVehicle()
+            return true
+        end
+    end
+
+    return true  -- Consume touch when UI is open
 end
 
 function vehicle_select:touchmoved(id, x, y, dx, dy, pressure)
-    self:mousemoved(x, y)
+    -- Convert physical touch coordinates to virtual coordinates
+    local vx, vy = display:ToVirtualCoords(x, y)
+    local vw, vh = display:GetVirtualDimensions()
+    local panel_x = (vw - PANEL_WIDTH) / 2
+    local panel_y = (vh - PANEL_HEIGHT) / 2
+
+    -- Check close button hover
+    local close_x = panel_x + PANEL_WIDTH - self.close_button_size - self.close_button_padding
+    local close_y = panel_y + self.close_button_padding
+    self.close_button_hovered = vx >= close_x and vx <= close_x + self.close_button_size and
+                                vy >= close_y and vy <= close_y + self.close_button_size
+
+    -- Check item hover
+    local list_y = panel_y + 50
+    self.hovered_index = nil
+
+    for i = 1, math.min(MAX_VISIBLE, #self.vehicles - self.scroll_offset) do
+        local idx = i + self.scroll_offset
+        local item_y = list_y + (i - 1) * ITEM_HEIGHT
+
+        if vx >= panel_x + LIST_PADDING and vx <= panel_x + PANEL_WIDTH - LIST_PADDING and
+           vy >= item_y and vy <= item_y + ITEM_HEIGHT then
+            self.hovered_index = idx
+            break
+        end
+    end
+
+    return true
 end
 
 function vehicle_select:touchreleased(id, x, y, dx, dy, pressure)
-    -- Handle as mousepressed for simplicity
+    return true  -- Consume touch release
 end
 
 return vehicle_select
