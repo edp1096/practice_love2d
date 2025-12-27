@@ -25,7 +25,7 @@ local outline_shader = nil
 local function initialize_shader()
     if not color_swap_shader then
         local shader_code = [[
-            extern vec3 target_color;
+            uniform vec3 target_color;
 
             vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
             {
@@ -46,8 +46,8 @@ local function initialize_shader()
 
     if not outline_shader then
         local outline_code = [[
-            extern vec3 outline_color;
-            extern vec2 stepSize;
+            uniform vec3 outline_color;
+            uniform vec2 stepSize;
 
             vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
             {
@@ -437,13 +437,12 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
     colors:apply(self.bg_color)
     love.graphics.rectangle("fill", x, y, display_size, display_size)
 
-    -- Use stencil to clip minimap area
-    local function stencilFunc()
-        love.graphics.rectangle("fill", x, y, display_size, display_size)
-    end
+    -- Use stencil to clip minimap area (LÖVE 12.0 API - setStencilState)
+    love.graphics.setStencilState("replace", "always", 1)
+    love.graphics.rectangle("fill", x, y, display_size, display_size)
+    love.graphics.setStencilState()
 
-    love.graphics.stencil(stencilFunc, "replace", 1)
-    love.graphics.setStencilTest("greater", 0)
+    love.graphics.setStencilState("keep", "greater", 0)
 
     -- Draw static minimap (walls, portals, etc.) with offset
     colors:apply(colors.WHITE, 0.75)
@@ -468,8 +467,8 @@ function minimap:draw(screen_width, screen_height, player, enemies, npcs)
     drawMinimapEnemies(self, x, y, canvas_offset_x, canvas_offset_y, enemies)
     drawMinimapPlayer(self, x, y, center_x, center_y, player)
 
-    -- Disable stencil test
-    love.graphics.setStencilTest()
+    -- Disable stencil state
+    love.graphics.setStencilState()
 
     -- Draw border
     colors:apply(self.border_color)

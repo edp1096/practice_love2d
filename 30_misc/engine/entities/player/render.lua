@@ -202,12 +202,12 @@ local function drawHandOverlay(player)
     local hand_y = weapon.debug_hand_y
     local hand_radius = 2 * player.sprite_scale  -- 2px base, scaled
 
-    -- Set stencil: draw only in hand area
-    love.graphics.stencil(function()
-        love.graphics.circle("fill", hand_x, hand_y, hand_radius)
-    end, "replace", 1)
+    -- Set stencil: draw only in hand area (LÖVE 12.0)
+    love.graphics.setStencilState("replace", "always", 1)
+    love.graphics.circle("fill", hand_x, hand_y, hand_radius)
+    love.graphics.setStencilState()
 
-    love.graphics.setStencilTest("greater", 0)
+    love.graphics.setStencilState("keep", "greater", 0)
 
     -- Redraw player sprite (only hand area will be visible)
     local draw_x = player.x + player.hit_shake_x
@@ -222,7 +222,7 @@ local function drawHandOverlay(player)
     love.graphics.setColor(1, 1, 1, 1)
     player.anim:draw(player.spriteSheet, draw_x, draw_y, nil, player.sprite_scale, player.sprite_scale, player.sprite_origin_x, player.sprite_origin_y)
 
-    love.graphics.setStencilTest()
+    love.graphics.setStencilState()
 end
 
 function render.drawAll(player)

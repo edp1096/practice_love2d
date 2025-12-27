@@ -192,10 +192,10 @@ function World:draw(alpha)
 
     local bodies = self.box2d_world:getBodies()
     for _, body in ipairs(bodies) do
-        local fixtures = body:getFixtures()
-        for _, fixture in ipairs(fixtures) do
-            -- Get collision class from fixture's user data
-            local collider = fixture:getUserData()
+        local shapes = body:getShapes()
+        for _, shape in ipairs(shapes) do
+            -- Get collision class from shape's user data
+            local collider = shape:getUserData()
             local draw_color = {1, 0, 0}  -- Default red
             if collider and collider.collision_class then
                 local cc = self.collision_classes[collider.collision_class]
@@ -204,17 +204,17 @@ function World:draw(alpha)
                 end
             end
             love.graphics.setColor(draw_color[1], draw_color[2], draw_color[3], alpha)
-            if fixture:getShape():type() == 'PolygonShape' then
-                love.graphics.polygon('line', body:getWorldPoints(fixture:getShape():getPoints()))
-            elseif fixture:getShape():type() == 'EdgeShape' or fixture:getShape():type() == 'ChainShape' then
-                local points = { body:getWorldPoints(fixture:getShape():getPoints()) }
+            if shape:type() == 'PolygonShape' then
+                love.graphics.polygon('line', body:getWorldPoints(shape:getPoints()))
+            elseif shape:type() == 'EdgeShape' or shape:type() == 'ChainShape' then
+                local points = { body:getWorldPoints(shape:getPoints()) }
                 for i = 1, #points, 2 do
                     if i < #points - 2 then love.graphics.line(points[i], points[i + 1], points[i + 2], points[i + 3]) end
                 end
-            elseif fixture:getShape():type() == 'CircleShape' then
+            elseif shape:type() == 'CircleShape' then
                 local body_x, body_y = body:getPosition()
-                local shape_x, shape_y = fixture:getShape():getPoint()
-                local r = fixture:getShape():getRadius()
+                local shape_x, shape_y = shape:getPoint()
+                local r = shape:getRadius()
                 love.graphics.circle('line', body_x + shape_x, body_y + shape_y, r, 360)
             end
         end
@@ -325,9 +325,9 @@ end
 function World:collisionEventsClear()
     local bodies = self.box2d_world:getBodies()
     for _, body in ipairs(bodies) do
-        local fixtures = body:getFixtures()
-        if fixtures and fixtures[1] then
-            local collider = fixtures[1]:getUserData()
+        local shapes = body:getShapes()
+        if shapes and shapes[1] then
+            local collider = shapes[1]:getUserData()
             if collider and collider.collisionEventsClear then
                 collider:collisionEventsClear()
             end
@@ -667,13 +667,13 @@ function World:newChainCollider(vertices, loop, settings)
     return self.wf.Collider.new(self, 'Chain', vertices, loop, settings)
 end
 
-function World:_queryBoundingBox(x1, y1, x2, y2)
+function World:_queryShapesInArea(x1, y1, x2, y2)
     local colliders = {}
-    local callback = function(fixture)
-        if not fixture:isSensor() then table.insert(colliders, fixture:getUserData()) end
+    local callback = function(shape)
+        if not shape:isSensor() then table.insert(colliders, shape:getUserData()) end
         return true
     end
-    self.box2d_world:queryBoundingBox(x1, y1, x2, y2, callback)
+    self.box2d_world:queryShapesInArea(x1, y1, x2, y2, callback)
     return colliders
 end
 
@@ -707,12 +707,12 @@ function World:queryCircleArea(x, y, radius, collision_class_names)
     if not collision_class_names then collision_class_names = { 'All' } end
     if self.query_debug_drawing_enabled then table.insert(self.query_debug_draw, { type = 'circle', x = x, y = y, r = radius, frames = self.draw_query_for_n_frames }) end
 
-    local colliders = self:_queryBoundingBox(x - radius, y - radius, x + radius, y + radius)
+    local colliders = self:_queryShapesInArea(x - radius, y - radius, x + radius, y + radius)
     local outs = {}
     for _, collider in ipairs(colliders) do
         if self:collisionClassInCollisionClassesList(collider.collision_class, collision_class_names) then
-            for _, fixture in ipairs(collider.body:getFixtures()) do
-                if self.wf.Math.polygon.getCircleIntersection(x, y, radius, { collider.body:getWorldPoints(fixture:getShape():getPoints()) }) then
+            for _, shape in ipairs(collider.body:getShapes()) do
+                if self.wf.Math.polygon.getCircleIntersection(x, y, radius, { collider.body:getWorldPoints(shape:getPoints()) }) then
                     table.insert(outs, collider)
                     break
                 end
@@ -726,12 +726,12 @@ function World:queryRectangleArea(x, y, w, h, collision_class_names)
     if not collision_class_names then collision_class_names = { 'All' } end
     if self.query_debug_drawing_enabled then table.insert(self.query_debug_draw, { type = 'rectangle', x = x, y = y, w = w, h = h, frames = self.draw_query_for_n_frames }) end
 
-    local colliders = self:_queryBoundingBox(x, y, x + w, y + h)
+    local colliders = self:_queryShapesInArea(x, y, x + w, y + h)
     local outs = {}
     for _, collider in ipairs(colliders) do
         if self:collisionClassInCollisionClassesList(collider.collision_class, collision_class_names) then
-            for _, fixture in ipairs(collider.body:getFixtures()) do
-                if self.wf.Math.polygon.isPolygonInside({ x, y, x + w, y, x + w, y + h, x, y + h }, { collider.body:getWorldPoints(fixture:getShape():getPoints()) }) then
+            for _, shape in ipairs(collider.body:getShapes()) do
+                if self.wf.Math.polygon.isPolygonInside({ x, y, x + w, y, x + w, y + h, x, y + h }, { collider.body:getWorldPoints(shape:getPoints()) }) then
                     table.insert(outs, collider)
                     break
                 end
@@ -751,12 +751,12 @@ function World:queryPolygonArea(vertices, collision_class_names)
         local d = self.wf.Math.line.getLength(cx, cy, vertices[i], vertices[i + 1])
         if d > d_max then d_max = d end
     end
-    local colliders = self:_queryBoundingBox(cx - d_max, cy - d_max, cx + d_max, cy + d_max)
+    local colliders = self:_queryShapesInArea(cx - d_max, cy - d_max, cx + d_max, cy + d_max)
     local outs = {}
     for _, collider in ipairs(colliders) do
         if self:collisionClassInCollisionClassesList(collider.collision_class, collision_class_names) then
-            for _, fixture in ipairs(collider.body:getFixtures()) do
-                if self.wf.Math.polygon.isPolygonInside(vertices, { collider.body:getWorldPoints(fixture:getShape():getPoints()) }) then
+            for _, shape in ipairs(collider.body:getShapes()) do
+                if self.wf.Math.polygon.isPolygonInside(vertices, { collider.body:getWorldPoints(shape:getPoints()) }) then
                     table.insert(outs, collider)
                     break
                 end
@@ -803,9 +803,9 @@ end
 function World:destroy()
     local bodies = self.box2d_world:getBodies()
     for _, body in ipairs(bodies) do
-        local fixtures = body:getFixtures()
-        if fixtures and fixtures[1] then
-            local collider = fixtures[1]:getUserData()
+        local shapes = body:getShapes()
+        if shapes and shapes[1] then
+            local collider = shapes[1]:getUserData()
             if collider and collider.destroy then
                 collider:destroy()
             end
@@ -852,21 +852,21 @@ function Collider.new(world, collider_type, ...)
     if self.type == 'Circle' then
         self.collision_class = (args[4] and args[4].collision_class) or 'Default'
         self.body = love.physics.newBody(self.world.box2d_world, args[1], args[2], (args[4] and args[4].body_type) or 'dynamic')
-        shape = love.physics.newCircleShape(args[3])
+        shape = love.physics.newCircleShape(self.body, args[3])
     elseif self.type == 'Rectangle' then
         self.collision_class = (args[5] and args[5].collision_class) or 'Default'
         self.body = love.physics.newBody(self.world.box2d_world, args[1] + args[3] / 2, args[2] + args[4] / 2, (args[5] and args[5].body_type) or 'dynamic')
-        shape = love.physics.newRectangleShape(args[3], args[4])
+        shape = love.physics.newRectangleShape(self.body, args[3], args[4])
     elseif self.type == 'BSGRectangle' then
         self.collision_class = (args[6] and args[6].collision_class) or 'Default'
         self.body = love.physics.newBody(self.world.box2d_world, args[1] + args[3] / 2, args[2] + args[4] / 2, (args[6] and args[6].body_type) or 'dynamic')
         local w, h, s = args[3], args[4], args[5]
-        shape = love.physics.newPolygonShape({
+        shape = love.physics.newPolygonShape(self.body,
             -w / 2, -h / 2 + s, -w / 2 + s, -h / 2,
             w / 2 - s, -h / 2, w / 2, -h / 2 + s,
             w / 2, h / 2 - s, w / 2 - s, h / 2,
             -w / 2 + s, h / 2, -w / 2, h / 2 - s
-        })
+        )
     elseif self.type == 'Polygon' then
         self.collision_class = (args[2] and args[2].collision_class) or 'Default'
         local body_type = (args[2] and args[2].body_type) or 'dynamic'
@@ -915,20 +915,21 @@ function Collider.new(world, collider_type, ...)
                     triangle = reversePolygonVertices(triangle)
                 end
 
-                local success, tri_shape = pcall(love.physics.newPolygonShape, unpack(triangle))
+                local success, tri_shape = pcall(love.physics.newPolygonShape, self.body, unpack(triangle))
                 if success then
                     created_count = created_count + 1
                     self.shapes['main_' .. created_count] = tri_shape
 
-                    local tri_fixture = love.physics.newFixture(self.body, tri_shape)
+                    -- Shape is already attached to body in LÖVE 12.0
                     if self.world.masks[self.collision_class] then
-                        tri_fixture:setCategory(unpack(self.world.masks[self.collision_class].categories))
-                        tri_fixture:setMask(unpack(self.world.masks[self.collision_class].masks))
+                        tri_shape:setCategory(unpack(self.world.masks[self.collision_class].categories))
+                        tri_shape:setMask(unpack(self.world.masks[self.collision_class].masks))
                     end
-                    tri_fixture:setUserData(self)
-                    self.fixtures['main_' .. created_count] = tri_fixture
+                    tri_shape:setUserData(self)
+                    self.fixtures['main_' .. created_count] = tri_shape  -- Store shape as fixture
 
-                    local tri_sensor = love.physics.newFixture(self.body, tri_shape)
+                    -- Create sensor shape (separate shape on same body)
+                    local tri_sensor = love.physics.newPolygonShape(self.body, unpack(triangle))
                     tri_sensor:setSensor(true)
                     tri_sensor:setUserData(self)
                     self.sensors['main_' .. created_count] = tri_sensor
@@ -950,7 +951,7 @@ function Collider.new(world, collider_type, ...)
             shape = self.shapes['main_1']
             fixture = self.fixtures['main_1']
         else
-            local success, poly_shape = pcall(love.physics.newPolygonShape, unpack(relative_vertices))
+            local success, poly_shape = pcall(love.physics.newPolygonShape, self.body, unpack(relative_vertices))
             if not success then
                 error("Failed to create polygon shape: " .. tostring(poly_shape))
             end
@@ -959,31 +960,45 @@ function Collider.new(world, collider_type, ...)
     elseif self.type == 'Line' then
         self.collision_class = (args[5] and args[5].collision_class) or 'Default'
         self.body = love.physics.newBody(self.world.box2d_world, 0, 0, (args[5] and args[5].body_type) or 'dynamic')
-        shape = love.physics.newEdgeShape(args[1], args[2], args[3], args[4])
+        shape = love.physics.newEdgeShape(self.body, args[1], args[2], args[3], args[4])
     elseif self.type == 'Chain' then
         self.collision_class = (args[3] and args[3].collision_class) or 'Default'
         self.body = love.physics.newBody(self.world.box2d_world, 0, 0, (args[3] and args[3].body_type) or 'dynamic')
-        shape = love.physics.newChainShape(args[1], unpack(args[2]))
+        shape = love.physics.newChainShape(self.body, args[1], unpack(args[2]))
     end
 
     if not fixture then
-        fixture = love.physics.newFixture(self.body, shape)
+        -- Shape is already attached to body in LÖVE 12.0
         if self.world.masks[self.collision_class] then
-            fixture:setCategory(unpack(self.world.masks[self.collision_class].categories))
-            fixture:setMask(unpack(self.world.masks[self.collision_class].masks))
+            shape:setCategory(unpack(self.world.masks[self.collision_class].categories))
+            shape:setMask(unpack(self.world.masks[self.collision_class].masks))
         end
-        fixture:setUserData(self)
-        local sensor = love.physics.newFixture(self.body, shape)
-        sensor:setSensor(true)
-        sensor:setUserData(self)
+        shape:setUserData(self)
+
+        -- Create sensor shape (must clone the shape geometry)
+        local sensor
+        if self.type == 'Circle' then
+            sensor = love.physics.newCircleShape(self.body, args[3])
+        elseif self.type == 'Rectangle' then
+            sensor = love.physics.newRectangleShape(self.body, args[3], args[4])
+        elseif self.type == 'Line' then
+            sensor = love.physics.newEdgeShape(self.body, args[1], args[2], args[3], args[4])
+        elseif self.type == 'Chain' then
+            sensor = love.physics.newChainShape(self.body, args[1], unpack(args[2]))
+        end
+        if sensor then
+            sensor:setSensor(true)
+            sensor:setUserData(self)
+        end
 
         self.shapes['main'] = shape
-        self.fixtures['main'] = fixture
+        self.fixtures['main'] = shape  -- Store shape as fixture for compatibility
         self.sensors['main'] = sensor
+        fixture = shape
     end
 
     self.shape = shape
-    self.fixture = fixture
+    self.fixture = fixture or shape
 
     self.preSolve = function() end
     self.postSolve = function() end
@@ -1140,8 +1155,10 @@ function Collider:destroy()
         self.shapes[name] = nil
         self.fixtures[name]:setUserData(nil)
         self.fixtures[name] = nil
-        self.sensors[name]:setUserData(nil)
-        self.sensors[name] = nil
+        if self.sensors[name] then
+            self.sensors[name]:setUserData(nil)
+            self.sensors[name] = nil
+        end
     end
     self.body:destroy()
     self.body = nil

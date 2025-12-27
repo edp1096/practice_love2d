@@ -5,8 +5,8 @@ local shaders = {}
 
 -- Flash effect shader (full screen color overlay with fade)
 shaders.flash_code = [[
-    extern vec3 flash_color;
-    extern float intensity;
+    uniform vec3 flash_color;
+    uniform float intensity;
 
     vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
     {
@@ -21,9 +21,9 @@ shaders.flash_code = [[
 
 -- Vignette effect shader (darkens edges)
 shaders.vignette_code = [[
-    extern vec3 vignette_color;
-    extern float intensity;
-    extern float radius;  // 0.0-1.0, how much of screen is affected
+    uniform vec3 vignette_color;
+    uniform float intensity;
+    uniform float radius;  // 0.0-1.0, how much of screen is affected
 
     vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
     {
@@ -45,8 +45,8 @@ shaders.vignette_code = [[
 
 -- Color overlay shader (simple tint)
 shaders.overlay_code = [[
-    extern vec3 overlay_color;
-    extern float intensity;
+    uniform vec3 overlay_color;
+    uniform float intensity;
 
     vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
     {

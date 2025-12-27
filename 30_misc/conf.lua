@@ -47,6 +47,21 @@ function love.conf(t)
     t.identity = "hello_love2d" -- Save directory
     -- t.version = "11.5"
     t.console = false
+    t.highdpi = true  -- LÖVE 12.0: moved from t.window.highdpi
+
+    -- LÖVE 12.0: Renderer selection (Vulkan has vsync issues on Windows/Linux)
+    -- Desktop: Prefer OpenGL over Vulkan (Vulkan vsync broken)
+    -- Mobile: Use default (OpenGL ES on Android, Metal on iOS)
+    t.graphics = t.graphics or {}
+    if love.system.getOS() == "Windows" or love.system.getOS() == "Linux" then
+        -- t.graphics.renderers = {"opengl", "vulkan"}  -- OpenGL first, Vulkan fallback
+        t.graphics.renderers = {"opengl"}  -- OpenGL first, Vulkan fallback
+    elseif love.system.getOS() == "OS X" or love.system.getOS() == "iOS" then
+        t.graphics.renderers = {"metal", "opengl"}   -- Metal first (OpenGL deprecated)
+    else
+        -- Android, unknown platforms: use default order
+        t.graphics.renderers = nil
+    end
 
     t.window.title = "Hello Love2D"
     t.window.icon = nil
@@ -55,8 +70,7 @@ function love.conf(t)
     t.window.borderless = false
     t.window.fullscreen = false
     t.window.fullscreentype = "desktop"
-    t.window.display = 1
-    t.window.highdpi = false
+    t.window.displayindex = 1
     t.window.usedpiscale = true
     t.window.depth = nil
     t.window.stencil = nil
@@ -65,13 +79,14 @@ function love.conf(t)
     t.window.width = 0
     t.window.height = 0
     t.window.resizable = false
-    t.window.vsync = 1
+    t.window.vsync = 0
     if not is_mobile then
         -- Desktop: use config
         t.window.width = APP_CONFIG.width
         t.window.height = APP_CONFIG.height
         t.window.resizable = APP_CONFIG.resizable
-        t.window.vsync = APP_CONFIG.vsync and 1 or 0
+        -- LÖVE 12.0: Use regular vsync (1) instead of adaptive (-1) for stable frame timing
+        t.window.vsync = 1
         t.window.minwidth = APP_CONFIG.min_width
         t.window.minheight = APP_CONFIG.min_height
     end

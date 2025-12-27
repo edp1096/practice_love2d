@@ -53,6 +53,10 @@ function love.load()
         coords = coords,
         menu = menu
     })
+
+    -- LÖVE 12.0: Log renderer info (Vulkan has vsync issues, using OpenGL)
+    local renderer = love.graphics.getRendererInfo()
+    dprint(string.format("Graphics Renderer: %s", renderer))
 end
 
 function love.update(dt) lifecycle:update(dt) end

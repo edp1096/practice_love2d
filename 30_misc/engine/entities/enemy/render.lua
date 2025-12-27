@@ -21,7 +21,7 @@ local attack_indicator_font = nil
 function render.initialize_shader()
     if not color_swap_shader then
         local shader_code = [[
-            extern vec3 target_color;
+            uniform vec3 target_color;
 
             vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
             {

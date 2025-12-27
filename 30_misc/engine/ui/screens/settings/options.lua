@@ -39,8 +39,8 @@ function options:buildOptions(is_mobile, monitor_count)
     -- Helper to add option with translated name
     local function addOption(key, opt_type)
         table.insert(option_list, {
-            key = key,  -- Internal key for handlers
-            name = locale:t("settings." .. key),  -- Translated display name
+            key = key,                           -- Internal key for handlers
+            name = locale:t("settings." .. key), -- Translated display name
             type = opt_type
         })
     end
@@ -137,7 +137,7 @@ end
 -- Get option value string for display
 function options:getOptionValue(state, index)
     local option = state.options[index]
-    local key = option.key or option.name  -- Support both key (new) and name (legacy)
+    local key = option.key or option.name -- Support both key (new) and name (legacy)
 
     -- Helper for On/Off display
     local function onOff(value)
@@ -145,11 +145,13 @@ function options:getOptionValue(state, index)
     end
 
     if key == "resolution" then
-        return state.resolutions and state.resolutions[state.current_resolution_index] and state.resolutions[state.current_resolution_index].name or "N/A"
+        return state.resolutions and state.resolutions[state.current_resolution_index] and
+            state.resolutions[state.current_resolution_index].name or "N/A"
     elseif key == "fullscreen" then
         return onOff(APP_CONFIG.fullscreen)
     elseif key == "monitor" then
-        return state.monitors and state.monitors[state.current_monitor_index] and state.monitors[state.current_monitor_index].name or "N/A"
+        return state.monitors and state.monitors[state.current_monitor_index] and
+            state.monitors[state.current_monitor_index].name or "N/A"
     elseif key == "master_volume" then
         return string.format("%.0f%%", self.volume_levels[state.current_master_volume_index] * 100)
     elseif key == "bgm_volume" then
@@ -220,10 +222,17 @@ local option_handlers = {
         if not APP_CONFIG.fullscreen then
             -- Windowed mode: apply resolution immediately
             APP_CONFIG.width, APP_CONFIG.height = res.w, res.h
-            love.window.updateMode(res.w, res.h, {
+
+            local windowModeFlags = {
                 resizable = APP_CONFIG.resizable,
-                display = state.current_monitor_index
-            })
+                display = state.current_monitor_index, -- 11.5
+            }
+            if love._version >= "12.0" then
+                windowModeFlags.displayindex = state.current_monitor_index
+                windowModeFlags.display = nil
+            end
+
+            love.window.updateMode(res.w, res.h, windowModeFlags)
             display:CalculateScale()
             if state.resize then state:resize(res.w, res.h) end
         else
@@ -255,21 +264,50 @@ local option_handlers = {
         state.current_monitor_index = cycleIndex(state.current_monitor_index, state.monitors, direction)
 
         APP_CONFIG.monitor = state.current_monitor_index
-        display.window.display = state.current_monitor_index
+        if love._version >= "12.0" then
+            APP_CONFIG.displayindex = state.current_monitor_index
+            display.window.displayindex = state.current_monitor_index  -- LÖVE 12.0: display → displayindex
+        else
+            APP_CONFIG.display = state.current_monitor_index
+            display.window.display = state.current_monitor_index
+        end
 
         if APP_CONFIG.fullscreen then
             display:DisableFullScreen()
             display:EnableFullScreen()
         else
+            -- Preserve original windowed resolution (DPI scaling might change actual window size)
+            local original_w = APP_CONFIG.windowed_width or APP_CONFIG.width
+            local original_h = APP_CONFIG.windowed_height or APP_CONFIG.height
+
+            -- Get target monitor dimensions
             local dx, dy = love.window.getDesktopDimensions(state.current_monitor_index)
-            local x = dx / 2 - APP_CONFIG.width / 2
-            local y = dy / 2 - APP_CONFIG.height / 2
+
+            -- Calculate center position for target monitor
+            local x = dx / 2 - original_w / 2
+            local y = dy / 2 - original_h / 2
+
+            -- Update window mode with version-specific displayindex field
+            local windowModeFlags = {
+                resizable = APP_CONFIG.resizable,
+            }
+            if love._version >= "12.0" then
+                windowModeFlags.displayindex = state.current_monitor_index
+            else
+                windowModeFlags.display = state.current_monitor_index
+            end
+
+            love.window.updateMode(original_w, original_h, windowModeFlags)
+
+            -- Set position on already-switched monitor (don't pass displayindex again)
+            love.window.setPosition(x, y)
+
+            -- Restore original logical resolution (don't let DPI scaling change config)
+            APP_CONFIG.width = original_w
+            APP_CONFIG.height = original_h
+
             display.window.x = x
             display.window.y = y
-            love.window.updateMode(APP_CONFIG.width, APP_CONFIG.height, {
-                resizable = APP_CONFIG.resizable,
-                display = state.current_monitor_index
-            })
         end
 
         display:CalculateScale()
@@ -363,7 +401,7 @@ local option_handlers = {
 -- Change option value
 function options:changeOption(state, direction)
     local option = state.options[state.selected]
-    local key = option.key or option.name  -- Support both key (new) and name (legacy)
+    local key = option.key or option.name -- Support both key (new) and name (legacy)
     local handler = option_handlers[key]
 
     if handler then

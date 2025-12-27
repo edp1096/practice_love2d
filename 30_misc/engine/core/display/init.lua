@@ -33,7 +33,7 @@ local display = {
         borderless = false,
         centered = true,
         monitor = 1,
-        highdpi = false,
+        -- LÖVE 12.0: highdpi moved to top-level t.highdpi in conf.lua
         minwidth = 640,
         minheight = 360,
         x = 0,
@@ -54,13 +54,15 @@ local display = {
 }
 
 -- Helper: Call love.window.updateMode with proper display field
--- LÖVE API expects 'display' field, but we use 'monitor' internally
 local function updateMode(w, h, window_table)
     local flags = {}
     for k, v in pairs(window_table) do flags[k] = v end
 
-    -- Map our 'monitor' field to LÖVE's 'display' field
-    flags.display = flags.monitor
+    if love._version >= "12.0" then
+        flags.displayindex = flags.monitor
+    else
+        flags.display = flags.monitor
+    end
     flags.monitor = nil
 
     return pcall(love.window.updateMode, w, h, flags)
