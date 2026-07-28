@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="32" height="18" tilewidth="32" tileheight="32" infinite="0" nextlayerid="3" nextobjectid="12">
+ <properties>
+  <property name="stage_id" value="stage.world_grove"/>
+  <property name="display_name" value="Quiet Grove"/>
+  <property name="mode" value="topdown"/>
+  <property name="camera_width" type="float" value="800"/>
+  <property name="camera_height" type="float" value="450"/>
+  <property name="background" value="#10231c"/>
+ </properties>
+ <tileset firstgid="1" name="world_tileset" tilewidth="32" tileheight="32" tilecount="486" columns="27">
+  <properties>
+   <property name="asset" value="image.world_tileset"/>
+  </properties>
+  <image source="../../assets/runtime/images/tilesets/tileset_area1.png" trans="ff00ff" width="864" height="576"/>
+ </tileset>
+ <layer id="1" name="Ground" width="32" height="18">
+  <data encoding="csv">
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,
+110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,
+110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,
+110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29
+  </data>
+ </layer>
+ <objectgroup id="2" name="Stage Objects">
+  <object id="1" name="player" class="spawn" x="96" y="288">
+   <properties>
+    <property name="actor" value="actor.hero"/>
+   </properties>
+   <point/>
+  </object>
+  <object id="2" name="enemy.slime.grove" class="spawn" x="530" y="288">
+   <properties>
+    <property name="actor" value="actor.slime"/>
+   </properties>
+   <point/>
+  </object>
+  <object id="3" name="west_entry" class="spawn_point" x="96" y="288"><point/></object>
+  <object id="4" name="north_boundary" class="wall" x="0" y="0" width="1024" height="32"/>
+  <object id="5" name="south_boundary" class="wall" x="0" y="544" width="1024" height="32"/>
+  <object id="6" name="west_north" class="wall" x="0" y="0" width="32" height="224"/>
+  <object id="7" name="west_south" class="wall" x="0" y="352" width="32" height="224"/>
+  <object id="8" name="east_boundary" class="wall" x="992" y="0" width="32" height="576"/>
+  <object id="9" name="grove_rocks" class="wall" x="690" y="150">
+   <polygon points="0,0 150,28 120,126 18,104"/>
+  </object>
+  <object id="10" name="grove_discovery" class="trigger" x="570" y="360" width="120" height="100">
+   <properties>
+    <property name="once" type="bool" value="true"/>
+    <property name="actions" value="[{&quot;type&quot;:&quot;emit&quot;,&quot;name&quot;:&quot;world.grove_discovered&quot;,&quot;data&quot;:{&quot;region&quot;:&quot;grove&quot;}}]"/>
+   </properties>
+  </object>
+  <object id="11" name="to_hub" class="portal" x="0" y="224" width="32" height="128">
+   <properties>
+    <property name="target_stage" value="stage.world_hub"/>
+    <property name="target_spawn" value="grove_return"/>
+   </properties>
+  </object>
+ </objectgroup>
+</map>

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="34" height="18" tilewidth="32" tileheight="32" infinite="0" nextlayerid="3" nextobjectid="15">
+ <properties>
+  <property name="stage_id" value="stage.world_hub"/>
+  <property name="display_name" value="World Hub"/>
+  <property name="mode" value="topdown"/>
+  <property name="camera_width" type="float" value="800"/>
+  <property name="camera_height" type="float" value="450"/>
+  <property name="background" value="#101a22"/>
+ </properties>
+ <tileset firstgid="1" name="world_tileset" tilewidth="32" tileheight="32" tilecount="486" columns="27">
+  <properties>
+   <property name="asset" value="image.world_tileset"/>
+  </properties>
+  <image source="../../assets/runtime/images/tilesets/tileset_area1.png" trans="ff00ff" width="864" height="576"/>
+ </tileset>
+ <layer id="1" name="Ground" width="34" height="18">
+  <data encoding="csv">
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,
+110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,
+110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,
+110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
+29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29
+  </data>
+ </layer>
+ <objectgroup id="2" name="Stage Objects">
+  <object id="1" name="player" class="spawn" x="120" y="288">
+   <properties>
+    <property name="actor" value="actor.hero"/>
+   </properties>
+   <point/>
+  </object>
+  <object id="2" name="enemy.slime.1" class="spawn" x="420" y="160">
+   <properties>
+    <property name="actor" value="actor.slime"/>
+   </properties>
+   <point/>
+  </object>
+  <object id="3" name="enemy.slime.2" class="spawn" x="760" y="430">
+   <properties>
+    <property name="actor" value="actor.slime"/>
+   </properties>
+   <point/>
+  </object>
+  <object id="4" name="default" class="spawn_point" x="120" y="288"><point/></object>
+  <object id="5" name="grove_return" class="spawn_point" x="980" y="288"><point/></object>
+  <object id="6" name="north_boundary" class="wall" x="0" y="0" width="1088" height="32"/>
+  <object id="7" name="south_boundary" class="wall" x="0" y="544" width="1088" height="32"/>
+  <object id="8" name="west_boundary" class="wall" x="0" y="0" width="32" height="576"/>
+  <object id="9" name="east_north" class="wall" x="1056" y="0" width="32" height="224"/>
+  <object id="10" name="east_south" class="wall" x="1056" y="352" width="32" height="224"/>
+  <object id="11" name="rotated_ruin" class="wall" x="470" y="170" width="170" height="42" rotation="15"/>
+  <object id="12" name="stone_garden" class="wall" x="610" y="380">
+   <polygon points="0,0 155,0 190,78 42,112"/>
+  </object>
+  <object id="13" name="healing_grove" class="trigger" x="260" y="218" width="108" height="136">
+   <properties>
+    <property name="cooldown" type="float" value="1"/>
+    <property name="actions" value="[{&quot;type&quot;:&quot;heal&quot;,&quot;amount&quot;:15}]"/>
+   </properties>
+  </object>
+  <object id="14" name="to_grove" class="portal" x="1056" y="224" width="32" height="128">
+   <properties>
+    <property name="target_stage" value="stage.world_grove"/>
+    <property name="target_spawn" value="west_entry"/>
+   </properties>
+  </object>
+ </objectgroup>
+</map>
