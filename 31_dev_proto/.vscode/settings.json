@@ -1,0 +1,19 @@
+{
+    "Lua.diagnostics.globals": [
+        "love",
+        "kernel32",
+    ],
+    "Lua.workspace.ignoreDir": [
+        ".vscode",
+        "dist",
+        "vendor/bit_op",
+        "compile",
+    ],
+    "Lua.diagnostics.disable": [
+        "duplicate-set-field",
+        "duplicate-doc-field"
+    ],
+    
+    "Lua.runtime.version": "LuaJIT",
+    // "Lua.runtime.version": "Lua 5.4",
+}

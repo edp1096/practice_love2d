@@ -1,0 +1,411 @@
+# LÖVE2D 게임 엔진 - 빠른 시작
+
+깔끔한 **Engine/Game 분리** 아키텍처를 가진 LÖVE2D 게임 엔진입니다.
+
+---
+
+## 철학
+
+### Engine
+- `engine/` - 재사용 가능한 시스템과 엔티티
+- Core: lifecycle, input, display, sound, save, camera, quest, inventory
+- Systems: world (물리), effects, lighting, parallax, HUD, collision
+- Entities: player, enemy, weapon, NPC, item, healing_point
+- UI: menu, dialogue, screens, widgets
+
+### Game
+- `game/data/` - 설정 파일 (player, quests, scenes, entities, sounds)
+- `game/scenes/` - 메뉴 씬, UI 화면들
+
+---
+
+## 빠른 시작
+
+### 설치
+1. LÖVE 11.5 설치: https://love2d.org/
+2. 실행: `love .`
+
+### 조작법
+**데스크톱:**
+- **WASD / 화살표** - 이동 / 점프
+- **마우스** - 조준
+- **좌클릭 / Z** - 공격
+- **우클릭 / X** - 패리 (완벽한 타이밍 = 슬로우 모션)
+- **Shift / C** - 회피
+- **F** - 상호작용 (NPC, 세이브 포인트, 아이템)
+- **I / J** - 인벤토리 / 퀘스트 로그
+- **Q / E** - 탭 전환
+- **Q** - 아이템 사용 (게임플레이)
+- **Tab** - 아이템 순환
+- **1-5** - 빠른 선택
+- **V** - 탈것 선택 UI (소환/소멸)
+- **ESC** - 일시정지 / 닫기
+- **F11** - 전체화면
+
+**게임패드 (Xbox / PlayStation):**
+- **좌 스틱 / D-Pad** - 이동
+- **우 스틱** - 조준 / 스크롤
+- **A / Cross (✕)** - 공격 / 상호작용
+- **B / Circle (○)** - 점프 / 스킵 / 닫기
+- **X / Square (□)** - 패리
+- **Y / Triangle (△)** - 상호작용
+- **LB / L1** - 이전 탭
+- **LT / L2** - 이전 아이템
+- **RB / R1** - 다음 탭 / 회피
+- **RT / R2** - 인벤토리 / 퀘스트 로그
+- **L3** - 탈것 선택 UI (소환/소멸)
+- **Start** - 일시정지
+
+**디버그 (`APP_CONFIG.is_debug = true`):**
+- **F1** - 디버그 모드 토글
+- **F2** - 콜라이더/그리드 | **F3** - FPS/효과 | **F4** - 플레이어 정보 | **F5** - 화면 정보
+- **F6** - 퀘스트 디버그 | **F7** - 핫 리로드 | **F8** - 효과 테스트
+- **F9** - 가상 마우스 | **F10** - 가상 게임패드 | **F11** - 전체화면
+
+---
+
+## 첫 단계
+
+1. **게임 시작**: `love .`
+2. **New Game** → 세이브 슬롯 생성
+3. **WASD**로 이동, **좌클릭**으로 공격
+4. **NPC 대화** (F키), **세이브** (빛나는 원)
+5. **인벤토리** (I), **퀘스트 로그** (J)
+
+### 게임 모드
+- **Topdown** (level1): 자유 2D 이동, 중력 없음
+- **Platformer** (level2): 수평 + 점프, 중력 활성화
+
+### 콤보 시스템
+**연속 공격으로 데미지와 효과 증가.**
+
+**사용법:**
+- 콤보 윈도우 내에 공격 입력으로 연결 → 1타 → 2타
+- 각 타수별로 다른 데미지, 타이밍, 무적, 경직 설정 가능
+
+**설정 (`game/data/player.lua`):**
+```lua
+player_config.combo = {
+  window = 0.2,      -- 다음 콤보 입력 시간 (초)
+  reset_delay = 0.6, -- 콤보 리셋 시간
+  attacks = {
+    [1] = { damage_mult = 1.0, can_cancel = true, recovery = 0 },
+    [2] = { damage_mult = 1.3, invincible = true, recovery = 0.25 },
+  }
+}
+```
+
+**타수별 설정:**
+| 필드 | 설명 |
+|------|------|
+| `damage_mult` | 데미지 배율 |
+| `hit_start/hit_end` | 히트박스 활성 구간 (0~1) |
+| `duration` | 공격 지속 시간 |
+| `can_cancel` | 다음 콤보로 캔슬 가능 |
+| `invincible` | 무적 프레임 |
+| `recovery` | 공격 후 경직 (이동/공격 불가) |
+
+### 맵 속성
+- **`move_mode`**: `"walk"` 설정 시 실내맵용 (느린 속도, 걷기 애니메이션)
+
+### 계단 (Topdown 전용)
+**시각적 고도 효과** - 계단 위에서 플레이어가 시각적으로 오르내림 (물리 변화 없음).
+
+**Tiled 설정:**
+1. "Stairs" 레이어 생성 (Object Layer)
+2. **polygon** 모양으로 대각선 계단 영역 그리기 (권장)
+3. polygon 모양에서 방향 자동 감지
+
+**hill_direction 값:**
+- **`left`**: 왼쪽 이동 = 오르막 (45° 대각선), 오른쪽 = 내리막
+- **`right`**: 오른쪽 이동 = 오르막 (45° 대각선), 왼쪽 = 내리막
+- **`up`**: 위로 이동 = 30% 느림 (좌우는 그대로)
+- **`down`**: 아래로 이동 = 30% 느림 (좌우는 그대로)
+
+**가드레일:** 플레이어는 계단 끝(위/아래)으로만 나갈 수 있음 (옆으로 나가기 불가).
+
+**디버그:** F2로 계단 polygon 표시 (오렌지색) + 방향 화살표, F4로 "Stair: X.X" 오프셋 표시.
+
+### 탈것 시스템
+**탑승/하차 가능한 이동 수단** - 말, 자전거, 스쿠터 등.
+
+**두 가지 방식:**
+1. **맵 배치 탈것** - Tiled에서 배치, 그 자리에서 탑승/하차
+2. **소유 탈것** - NPC 대화로 획득, 어디서든 소환/소멸 가능
+
+**맵 배치 (Tiled):**
+1. "Vehicles" 레이어 생성 (Object Layer)
+2. 오브젝트 추가, `type = "scooter1"` (vehicles.lua의 타입)
+
+**소유 탈것:**
+- NPC 대화에서 `unlock_vehicle` 액션으로 획득
+- **V키** 또는 **L3** 버튼으로 탈것 선택 UI 열기
+- 선택한 탈것 소환/소멸 토글
+- `allow_summon = false` 설정 시 소환 기능 비활성화
+
+**게임 모드별 동작:**
+- **Topdown:** foot_collider가 벽 충돌 담당
+- **Platformer:** ground_collider가 바닥 충돌 담당
+  - 탑승 시 플레이어 collider → 센서 (중력 비활성화)
+  - 탈것 크기의 ground_collider가 물리 담당
+  - 하차 시 플레이어 collider 복원
+
+**조작:**
+- **F키** - 탑승/하차 (근처 탈것)
+- **V키** - 탈것 선택 UI (소유 탈것 소환/소멸)
+
+---
+
+## 콘텐츠 생성
+
+### 적 추가
+1. 맵 열기: `assets/maps/level1/area1.tmx`
+2. "Enemies" 레이어에 오브젝트 추가, 타입 설정: `slime`
+3. 커스텀 프로퍼티 추가: `hp`, `dmg`, `spd`, `det_rng`
+4. Lua로 내보내기
+
+또는 `game/data/entities/types.lua`에 재사용 가능한 적 타입 추가.
+
+### 메뉴 추가
+1. `game/data/scenes.lua`에 추가:
+```lua
+scenes.mymenu = {
+  type = "menu",
+  title = "My Menu",
+  options = {"Play", "Quit"},
+  actions = {
+    ["Play"] = {action = "switch_scene", scene = "play"},
+    ["Quit"] = {action = "quit"}
+  },
+  back_action = {action = "quit"}
+}
+```
+
+2. `game/scenes/mymenu.lua` 생성:
+```lua
+local builder = require "engine.scenes.builder"
+local configs = require "game.data.scenes"
+return builder:build("mymenu", configs)
+```
+
+### 아이템 추가
+1. 아이콘: `assets/images/items/myitem.png`
+2. 타입: `engine/entities/item/types/myitem.lua`:
+```lua
+return {
+  name = "My Item",
+  description = "유용한 아이템",
+  icon = "assets/images/items/myitem.png",
+  consumable = true,
+  effect = function(player)
+    player.health = math.min(player.health + 50, player.max_health)
+  end
+}
+```
+
+### 맵 추가
+1. Tiled에서 생성: `assets/maps/level1/newarea.tmx`
+2. 프로퍼티 설정: `name`, `game_mode`, `bgm`, `ambient`
+3. 레이어 추가: Ground, Decos, Walls, Portals, Enemies, NPCs, Props
+4. Lua로 내보내기
+5. 이전 맵에서 포털 생성
+
+### Props 추가 (이동/파괴 가능한 오브젝트)
+**Tiled 설정:**
+1. "Props" 레이어 생성 (Object Layer)
+2. 타일 오브젝트를 추가하여 시각적 표현 (동일한 `group` 속성 공유)
+3. `type = "collider"`와 동일한 `group`을 가진 투명 사각형 추가
+
+**Collider 프로퍼티:**
+- `group` - 타일과 콜라이더 연결 (예: "crate1")
+- `type = "collider"` - 물리 콜라이더로 표시
+- `movable = true` - 플레이어가 밀 수 있음
+- `breakable = true` - 공격으로 파괴 가능
+- `hp = 10` - 체력 (breakable 전용)
+- `respawn = true` - 맵 전환 시 재생성 (기본값: false)
+
+**예시 (2타일 높이 곰인형):**
+```
+Tile Object 1: gid=136, group="teddybear1"
+Tile Object 2: gid=152, group="teddybear1"
+Collider: type="collider", group="teddybear1", movable=true, breakable=true, hp=30
+```
+
+### 퀘스트 추가
+`game/data/quests.lua`에 추가:
+```lua
+quests.my_quest = {
+  id = "my_quest",
+  title_key = "quests.my_quest.title",
+  description_key = "quests.my_quest.description",
+  objectives = {
+    { type = "kill", target = "slime", count = 5, description_key = "quests.my_quest.obj_1" },
+    { type = "collect", target = "small_potion", count = 2, description_key = "quests.my_quest.obj_2" },
+  },
+  giver_npc = "villager_01",
+  receiver_npc = "villager_01",  -- 선택: 다른 NPC에게 완료 보고
+  rewards = { gold = 100, exp = 50, items = { "small_potion" } },
+  prerequisites = { "tutorial_talk" }  -- 선택: 선행 퀘스트
+}
+```
+
+**목표 타입:**
+| 타입 | 설명 | 아이템 제거 |
+|------|------|------------|
+| `kill` | 적 처치 | - |
+| `collect` | 아이템 수집 | ❌ 아니오 (플레이어 소유) |
+| `deliver` | NPC에게 전달 | ✅ 예 |
+| `pickup` | NPC에게서 수령 | - |
+| `talk` | NPC와 대화 | - |
+| `explore` | 장소 방문 | - |
+
+**A→B 배달 퀘스트 (pickup 후 deliver):**
+```lua
+quests.package_delivery = {
+  objectives = {
+    { type = "pickup", target = "package", count = 1, npc = "npc_a" },
+    { type = "deliver", target = "package", count = 1, npc = "npc_b" },
+  },
+  giver_npc = "npc_a",
+  receiver_npc = "npc_b",
+}
+```
+
+### 대화 추가
+**간단:** NPC 프로퍼티 `dlg = "안녕!"`
+
+**트리 (선택지):** `game/data/dialogues.lua`에 생성:
+```lua
+dialogues.shopkeeper = {
+  start_node = "greeting",
+  nodes = {
+    greeting = {
+      text = "환영합니다!",
+      choices = {
+        { text = "상점", next = "shop" },
+        { text = "안녕", next = "end" }
+      }
+    }
+  }
+}
+```
+
+### 상점 추가
+1. `game/data/shops.lua`에 추가:
+```lua
+shops.general_store = {
+  name = "General Store",
+  name_key = "shops.general_store.name",  -- i18n 키
+  items = {
+    { type = "small_potion", price = 30, stock = 10 },
+    { type = "large_potion", price = 80, stock = 5 }
+  },
+  sell_rate = 0.5  -- 구매가의 50%
+}
+```
+
+2. 대화에서 `open_shop` 액션으로 상점 열기:
+```lua
+nodes = {
+  shop = {
+    text = "구경하세요!",
+    actions = { { type = "open_shop", shop_id = "general_store" } }
+  }
+}
+```
+
+**상점 UI 조작:**
+- **Tab / LB/RB** - Buy/Sell 탭 전환
+- **위/아래** - 아이템 선택
+- **Enter/A** - 수량 선택 다이얼로그
+- **좌/우** - 수량 조절 (±1)
+- **위/아래** - 수량 조절 (±10)
+- **ESC/B** - 닫기
+
+---
+
+## 다국어 지원 (i18n)
+
+### 번역 추가
+1. 로케일 파일 생성: `game/data/locales/xx.lua` (예: `ko.lua`, `ja.lua`)
+2. `game/setup.lua`에 추가:
+```lua
+available_locales = { "en", "ko", "ja" },
+default_locale = "en",
+font_scales = {
+    en = 1.0,
+    ko = 0.55,  -- 한글 폰트는 작게 조정 필요
+    ja = 0.8
+}
+```
+
+### 번역 키
+- **아이템:** `items.small_potion.name`, `items.small_potion.description`
+- **퀘스트:** `quests.quest_id.name`, `quests.quest_id.description`
+- **상점:** `shops.general_store.name`
+- **UI:** `inventory.title`, `quest.title`, `shop.buy`, `shop.sell`
+
+### 아이템 번역 예시
+1. `name_key`로 아이템 정의:
+```lua
+-- engine/entities/item/types/small_potion.lua
+return {
+    name = "Small Potion",
+    name_key = "items.small_potion.name",
+    description_key = "items.small_potion.description",
+    ...
+}
+```
+
+2. 번역 추가:
+```lua
+-- game/data/locales/ko.lua
+return {
+    items = {
+        small_potion = {
+            name = "소형 포션",
+            description = "체력을 30 회복합니다"
+        }
+    }
+}
+```
+
+---
+
+## 문서
+
+- **[CLAUDE.md](../CLAUDE.md)** - 완전한 API 레퍼런스 및 지침
+- **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - 상세 폴더 구조
+- **[DEVELOPMENT_JOURNAL.md](../DEVELOPMENT_JOURNAL.md)** - 현재 상태 요약
+
+---
+
+## 문제 해결
+
+### 게임 실행 안됨
+- LÖVE 버전 확인: `love --version` (11.5 필요)
+- 콘솔 에러 확인
+
+### 파일을 찾을 수 없음
+- require에는 점 사용: `require "engine.core.sound"`
+- 경로에는 슬래시 사용: `"assets/maps/level1/area1.lua"`
+
+### 맵 로드 안됨
+- Lua 포맷으로 내보내기 (`.lua`)
+- 필수 레이어 존재 확인 (Ground, Walls)
+- 맵 프로퍼티 확인: `game_mode`, `name`
+
+### 아이템/적 리스폰
+- Tiled 오브젝트 프로퍼티에 `respawn = false` 설정
+
+---
+
+## 웹 빌드
+
+```bash
+npm install -g love.js
+npm run build
+cd web_build && lua server.lua 8080
+```
+
+열기: `http://localhost:8080`

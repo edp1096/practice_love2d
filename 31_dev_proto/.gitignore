@@ -1,0 +1,10 @@
+/compile
+/compile_web
+/dist
+config.ini
+icon.ico
+
+.claude
+/*.md
+!/README.md
+/*handle anchor.xlsx
