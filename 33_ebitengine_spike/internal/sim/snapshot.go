@@ -161,6 +161,7 @@ func (s *Simulation) entitySnapshot(entity *entityRuntime) EntitySnapshot {
 		Grounded:           entity.grounded,
 		CoyoteTicks:        entity.coyoteTicks,
 		JumpBufferTicks:    entity.jumpBufferTicks,
+		Stats:              effectiveRPGStats(entity),
 		Platformer:         platformer,
 	}
 }

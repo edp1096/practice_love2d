@@ -2,6 +2,7 @@ package gamebuild
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"practice_love2d/33_ebitengine_spike/internal/content"
@@ -371,6 +372,97 @@ func validateActorSemantics(
 				"%s action.parry arc_degrees must be greater than 0 and at most 360",
 				id,
 			)
+		}
+	}
+	if stats, exists, err := optionalObject(
+		components["rpg.stats"],
+		id+".components.rpg.stats",
+	); err != nil {
+		return err
+	} else if exists {
+		path := id + ".components.rpg.stats"
+		if err := rejectUnknownKeys(
+			stats,
+			path,
+			"attack",
+			"defense",
+			"move_speed",
+		); err != nil {
+			return err
+		}
+		for _, name := range []string{"attack", "defense"} {
+			if stats[name] == nil {
+				continue
+			}
+			value, err := requiredNumber(stats[name], path+"."+name)
+			if err != nil {
+				return err
+			}
+			if value < 0 ||
+				math.Trunc(value) != value ||
+				value > float64(1<<31-1) {
+				return fmt.Errorf(
+					"%s.%s must be a non-negative portable integer",
+					path,
+					name,
+				)
+			}
+		}
+		if stats["move_speed"] != nil {
+			value, err := requiredPositiveNumberValue(
+				stats["move_speed"],
+				path+".move_speed",
+			)
+			if err != nil {
+				return err
+			}
+			if value > 16 {
+				return fmt.Errorf("%s.move_speed must be at most 16", path)
+			}
+		}
+	}
+	if equipment, exists, err := optionalObject(
+		components["rpg.equipment"],
+		id+".components.rpg.equipment",
+	); err != nil {
+		return err
+	} else if exists {
+		path := id + ".components.rpg.equipment"
+		if components["rpg.stats"] == nil {
+			return fmt.Errorf("%s requires rpg.stats", path)
+		}
+		if err := rejectUnknownKeys(
+			equipment,
+			path,
+			"loadout",
+			"slots",
+		); err != nil {
+			return err
+		}
+		if _, err := requiredString(
+			equipment["loadout"],
+			path+".loadout",
+		); err != nil {
+			return err
+		}
+		slots, err := requiredArray(equipment["slots"], path+".slots")
+		if err != nil {
+			return err
+		}
+		if len(slots) == 0 {
+			return fmt.Errorf("%s.slots must not be empty", path)
+		}
+		seen := make(map[string]struct{}, len(slots))
+		for index, raw := range slots {
+			slotPath := fmt.Sprintf("%s.slots[%d]", path, index)
+			slot, err := requiredString(raw, slotPath)
+			if err != nil {
+				return err
+			}
+			if _, duplicate := seen[slot]; duplicate {
+				return fmt.Errorf("%s duplicates slot %q", slotPath, slot)
+			}
+			seen[slot] = struct{}{}
 		}
 	}
 	if interaction, exists, err := optionalObject(

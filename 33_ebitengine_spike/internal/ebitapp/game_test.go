@@ -350,13 +350,14 @@ func TestLayoutShopClampsSelectionAndKeepsAuthoredOrder(
 		{ID: "a", Name: "Alpha"},
 		{ID: "b"},
 		{
-			ID:        "c",
-			Name:      longName,
-			Owned:     7,
-			CanBuy:    true,
-			BuyPrice:  25,
-			CanSell:   true,
-			SellPrice: 10,
+			ID:              "c",
+			Name:            longName,
+			ModifierSummary: strings.Repeat("M", 30),
+			Owned:           7,
+			CanBuy:          true,
+			BuyPrice:        25,
+			CanSell:         true,
+			SellPrice:       10,
 		},
 		{ID: "d", Name: "Delta"},
 		{},
@@ -386,7 +387,9 @@ func TestLayoutShopClampsSelectionAndKeepsAuthoredOrder(
 	first := layout.Offers[0]
 	if first.ID != "c" || first.Owned != 7 ||
 		!first.CanBuy || first.BuyPrice != 25 ||
-		!first.CanSell || first.SellPrice != 10 {
+		!first.CanSell || first.SellPrice != 10 ||
+		utf8.RuneCountInString(first.ModifierSummary) > 22 ||
+		!strings.HasSuffix(first.ModifierSummary, "…") {
 		t.Fatalf("shop offer facts were lost: %#v", first)
 	}
 	if utf8.RuneCountInString(first.Name) > maxShopOfferNameRunes ||
@@ -603,13 +606,15 @@ func TestInventoryDetailLabelsAndPanelFitScreen(t *testing.T) {
 	t.Parallel()
 
 	equipment := inventoryItemLayout{
-		Quantity:      1,
-		EquipmentSlot: "weapon",
-		Equipped:      true,
-		CanEquip:      true,
+		Quantity:        1,
+		EquipmentSlot:   "weapon",
+		ModifierSummary: "ATK +5",
+		Equipped:        true,
+		CanEquip:        true,
 	}
 	if kind := inventoryKindText(equipment); !strings.Contains(kind, inventoryEquipmentLabel) ||
 		!strings.Contains(kind, "weapon") ||
+		!strings.Contains(kind, "ATK +5") ||
 		!strings.Contains(kind, "장착 중") {
 		t.Fatalf("inventory kind = %q", kind)
 	}
@@ -636,7 +641,7 @@ func TestInventoryDetailLabelsAndPanelFitScreen(t *testing.T) {
 			ScreenHeight,
 		)
 	}
-	const hudBottom = 92
+	const hudBottom = 118
 	if inventoryPanelY < hudBottom {
 		t.Fatalf(
 			"inventory panel y=%d overlaps HUD bottom=%d",

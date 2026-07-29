@@ -127,6 +127,8 @@ func ValidateDefinition(
 			"action.combat_input": true,
 			"action.status":       true,
 			"action.chase_ai":     true,
+			"rpg.stats":           true,
+			"rpg.equipment":       true,
 			"rpg.interactable":    true,
 		}
 		for component := range components {
@@ -143,18 +145,25 @@ func ValidateDefinition(
 					"Ebitengine adapter does not apply the rpg.interactable.range default",
 				)
 			}
-			if interaction["condition"] != nil {
-				unsupported("interaction conditions are not executed")
+			if interaction["input"] != "interact" {
+				unsupported(fmt.Sprintf(
+					"interaction input %q is not executed",
+					interaction["input"],
+				))
 			}
-			for _, item := range anySlice(interaction["actions"]) {
-				action, _ := item.(map[string]any)
-				if action["type"] != "start_dialogue" {
-					unsupported(fmt.Sprintf(
-						"interaction action %q is not executed",
-						action["type"],
-					))
-				}
+			if interaction["prompt_key"] != nil {
+				unsupported("interaction prompt_key is not rendered")
 			}
+			reportRuleConditionCoverage(
+				interaction["condition"],
+				"interaction",
+				unsupported,
+			)
+			reportRuleActionCoverage(
+				interaction["actions"],
+				"interaction",
+				unsupported,
+			)
 		}
 		if combat, ok := components["action.combat"].(map[string]any); ok {
 			if combat["primary"] == nil {
@@ -232,25 +241,62 @@ func ValidateDefinition(
 			return DefinitionValidation{}, err
 		}
 		nodes := data["nodes"].(map[string]any)
-		if len(nodes) > 1 {
-			unsupported(
-				"dialogue branching and non-start nodes are not executed",
+		for nodeID, raw := range nodes {
+			node, _ := raw.(map[string]any)
+			scope := fmt.Sprintf("dialogue node %q", nodeID)
+			reportRuleActionCoverage(
+				node["actions"],
+				scope,
+				unsupported,
 			)
+			for _, rawChoice := range anySlice(node["choices"]) {
+				choice, _ := rawChoice.(map[string]any)
+				choiceID, _ := choice["id"].(string)
+				choiceScope := fmt.Sprintf(
+					"%s choice %q",
+					scope,
+					choiceID,
+				)
+				reportRuleConditionCoverage(
+					choice["condition"],
+					choiceScope,
+					unsupported,
+				)
+				reportRuleActionCoverage(
+					choice["actions"],
+					choiceScope,
+					unsupported,
+				)
+			}
 		}
-		unsupported(
-			"dialogue choices, conditions, and most actions are not executed",
-		)
 
 	case "quest":
 		if err := validateQuestSemantics(catalog, data, id); err != nil {
 			return DefinitionValidation{}, err
 		}
-		objectives := data["objectives"].([]any)
-		if len(objectives) > 1 {
-			unsupported("only the first supported objective is executed")
+		for index, raw := range anySlice(data["objectives"]) {
+			objective, _ := raw.(map[string]any)
+			if objective["event"] != "actor.killed" {
+				unsupported(fmt.Sprintf(
+					"quest objective %d event %q is not executed",
+					index,
+					objective["event"],
+				))
+			}
+			where, _ := objective["where"].(map[string]any)
+			if len(where) != 1 || where["actor_id"] == nil {
+				unsupported(fmt.Sprintf(
+					"quest objective %d filter is not executed",
+					index,
+				))
+			}
 		}
-		if _, exists := data["on_complete"]; exists {
-			unsupported("quest completion reward actions are not executed")
+		for _, field := range []string{"on_start", "on_complete"} {
+			reportRuleActionCoverage(
+				data[field],
+				"quest "+field,
+				unsupported,
+			)
 		}
 
 	case "locale":
@@ -315,7 +361,11 @@ func ValidateDefinition(
 		if err := validateItemSemantics(catalog, data, id); err != nil {
 			return DefinitionValidation{}, err
 		}
-		unsupported("item definitions are catalogued but not executed")
+		reportRuleActionCoverage(
+			data["effects"],
+			"item effect",
+			unsupported,
+		)
 
 	case "projectile":
 		if err := validateProjectileSemantics(catalog, data, id); err != nil {
@@ -337,7 +387,6 @@ func ValidateDefinition(
 		if err := validateShopSemantics(catalog, data, id); err != nil {
 			return DefinitionValidation{}, err
 		}
-		unsupported("shop definitions are catalogued but not executed")
 
 	case "status":
 		if err := validateStatusSemantics(catalog, data, id); err != nil {
@@ -381,4 +430,44 @@ func ValidateDefinition(
 		FullyApplied: fullyApplied,
 		Warnings:     resultWarnings,
 	}, nil
+}
+
+func reportRuleActionCoverage(
+	raw any,
+	scope string,
+	unsupported func(string),
+) {
+	capabilities := ContentRuleCapabilities()
+	for _, item := range anySlice(raw) {
+		action, _ := item.(map[string]any)
+		name, _ := action["type"].(string)
+		if !capabilities.SupportsAction(RuleActionType(name)) {
+			unsupported(fmt.Sprintf(
+				"%s action %q is not executed",
+				scope,
+				name,
+			))
+		}
+	}
+}
+
+func reportRuleConditionCoverage(
+	raw any,
+	scope string,
+	unsupported func(string),
+) {
+	if raw == nil {
+		return
+	}
+	condition, _ := raw.(map[string]any)
+	name, _ := condition["type"].(string)
+	if !ContentRuleCapabilities().SupportsCondition(
+		RuleConditionType(name),
+	) {
+		unsupported(fmt.Sprintf(
+			"%s conditions are not executed: type %q",
+			scope,
+			name,
+		))
+	}
 }

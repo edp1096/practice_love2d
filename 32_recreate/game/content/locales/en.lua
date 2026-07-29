@@ -101,6 +101,12 @@ return {
             "A balanced sword that adds 5 attack.",
         ["item.potion.name"] = "Potion",
         ["item.potion.description"] = "Restores 25 HP.",
+        ["item.leather_vest.name"] = "Leather Vest",
+        ["item.leather_vest.description"] =
+            "Light armor that adds 3 defense.",
+        ["item.traveler_boots.name"] = "Traveler Boots",
+        ["item.traveler_boots.description"] =
+            "An accessory that increases movement speed by 25%.",
         ["shop.village.name"] = "Village Supplies",
     },
 }

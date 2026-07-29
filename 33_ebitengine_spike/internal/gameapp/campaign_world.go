@@ -319,7 +319,7 @@ func (runtime *Runtime) publishPendingEquipmentRebuildLocked() error {
 }
 
 // mergeResetBuild preserves deliberate in-process immutable-config overrides
-// used by Maker/debug tooling while taking campaign-derived attack damage only
+// used by Maker/debug tooling while taking campaign-derived RPG stats only
 // from the fresh BuildForCampaign result.
 func mergeResetBuild(
 	fresh *gamebuild.Result,
@@ -335,29 +335,27 @@ func mergeResetBuild(
 		[]sim.EntityConfig(nil),
 		current.Config.Entities...,
 	)
-	freshDamage := make(map[string]int)
+	freshStats := make(map[string]*sim.RPGStatsConfig)
 	for _, entity := range fresh.Config.Entities {
-		if ability := entity.PrimaryAbility(); ability != nil {
-			freshDamage[entity.ID] = ability.Damage
+		if entity.Stats == nil {
+			freshStats[entity.ID] = nil
+			continue
 		}
+		stats := *entity.Stats
+		freshStats[entity.ID] = &stats
 	}
 	for index := range result.Config.Entities {
 		entity := &result.Config.Entities[index]
-		damage, exists := freshDamage[entity.ID]
-		if !exists || entity.PrimaryAbility() == nil {
+		stats, exists := freshStats[entity.ID]
+		if !exists {
 			continue
 		}
-		combat := *entity.Combat
-		combat.Abilities = append(
-			[]sim.AbilityConfig(nil),
-			entity.Combat.Abilities...,
-		)
-		combat.Bindings = append(
-			[]sim.AbilityBinding(nil),
-			entity.Combat.Bindings...,
-		)
-		entity.Combat = &combat
-		entity.PrimaryAbility().Damage = damage
+		if stats == nil {
+			entity.Stats = nil
+			continue
+		}
+		copy := *stats
+		entity.Stats = &copy
 	}
 	return &result
 }

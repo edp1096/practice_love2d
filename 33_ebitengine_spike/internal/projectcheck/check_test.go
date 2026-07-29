@@ -24,10 +24,10 @@ func TestValidateChecksEveryStageEntryAndLocaleDeterministically(
 		t.Fatal(err)
 	}
 	want := Report{
-		DefinitionCount:   54,
+		DefinitionCount:   56,
 		StageCount:        7,
 		EntryBuildCount:   22,
-		DerivedBuildCount: 44,
+		DerivedBuildCount: 110,
 		LocaleCount:       2,
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -58,9 +58,9 @@ func TestValidateChecksPristineMaximalAndDormantCampaignBuilds(
 		},
 	)
 	var pristineCalls int
-	var maximalCalls int
-	var dormantMaximalCalls int
-	var appliedMaximalCalls int
+	var equippedCalls int
+	var dormantEquippedCalls int
+	var appliedEquippedCalls int
 	deps := productionDependencies
 	deps.buildStageForCampaign = func(
 		catalog *content.Catalog,
@@ -78,6 +78,8 @@ func TestValidateChecksPristineMaximalAndDormantCampaignBuilds(
 			return result, derived, err
 		}
 		equipped := 0
+		attack, defense := 0, 0
+		moveSpeed := 0.0
 		for _, entry := range state.Equipment {
 			if entry.ItemID == "" {
 				continue
@@ -89,17 +91,34 @@ func TestValidateChecksPristineMaximalAndDormantCampaignBuilds(
 					entry.ItemID,
 				)
 			}
+			rule, exists := rules.Item(entry.ItemID)
+			if !exists || rule.Equipment == nil {
+				t.Fatalf("equipped item %q has no rule", entry.ItemID)
+			}
+			attack += int(rule.Equipment.AttackModifier)
+			defense += int(rule.Equipment.DefenseModifier)
+			moveSpeed += rule.Equipment.MoveSpeedModifier
 		}
-		switch equipped {
-		case 0:
+		if equipped == 0 {
 			pristineCalls++
-			if derived.AttackModifier != 0 {
+			if derived.AttackModifier != 0 ||
+				derived.DefenseModifier != 0 ||
+				derived.MoveSpeedModifier != 0 {
 				t.Fatalf("pristine derived stats = %#v", derived)
 			}
-		case 1:
-			maximalCalls++
-			if derived.AttackModifier != 5 {
-				t.Fatalf("maximal derived stats = %#v", derived)
+		} else {
+			equippedCalls++
+			if derived.AttackModifier != attack ||
+				derived.DefenseModifier != defense ||
+				derived.MoveSpeedModifier != moveSpeed {
+				t.Fatalf(
+					"equipment=%d derived stats=%#v, want %d/%d/%g",
+					equipped,
+					derived,
+					attack,
+					defense,
+					moveSpeed,
+				)
 			}
 			if options.StageID == "stage.platformer_room" {
 				if derived.AttackApplied ||
@@ -109,12 +128,10 @@ func TestValidateChecksPristineMaximalAndDormantCampaignBuilds(
 						derived,
 					)
 				}
-				dormantMaximalCalls++
+				dormantEquippedCalls++
 			} else if derived.AttackApplied {
-				appliedMaximalCalls++
+				appliedEquippedCalls++
 			}
-		default:
-			t.Fatalf("unexpected equipped item count %d", equipped)
 		}
 		return result, derived, nil
 	}
@@ -124,7 +141,7 @@ func TestValidateChecksPristineMaximalAndDormantCampaignBuilds(
 		t.Fatal(err)
 	}
 	if report.EntryBuildCount != 22 ||
-		report.DerivedBuildCount != 44 {
+		report.DerivedBuildCount != 110 {
 		t.Fatalf("report = %#v", report)
 	}
 	if pristineCalls != report.EntryBuildCount {
@@ -134,18 +151,18 @@ func TestValidateChecksPristineMaximalAndDormantCampaignBuilds(
 			report.EntryBuildCount,
 		)
 	}
-	if maximalCalls != report.EntryBuildCount {
+	if equippedCalls != report.DerivedBuildCount-report.EntryBuildCount {
 		t.Fatalf(
-			"maximal calls = %d, want %d",
-			maximalCalls,
-			report.EntryBuildCount,
+			"equipped calls = %d, want %d",
+			equippedCalls,
+			report.DerivedBuildCount-report.EntryBuildCount,
 		)
 	}
-	if dormantMaximalCalls == 0 {
-		t.Fatal("maximal loadout was not checked on a non-combat stage")
+	if dormantEquippedCalls == 0 {
+		t.Fatal("equipment profiles were not checked on a non-combat stage")
 	}
-	if appliedMaximalCalls == 0 {
-		t.Fatal("maximal loadout was not checked on a combat stage")
+	if appliedEquippedCalls == 0 {
+		t.Fatal("equipment profiles were not checked on a combat stage")
 	}
 }
 
@@ -168,46 +185,81 @@ func TestCampaignBuildProfilesAreOrderedCanonicalAndDeduplicated(
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertProfileNames(t, profiles, "pristine", "maximal")
+	assertProfileNames(
+		t,
+		profiles,
+		"pristine",
+		"maximal",
+		"item.leather_vest",
+		"item.training_sword",
+		"item.traveler_boots",
+	)
 
 	withEmptySlot := config.Clone()
 	withEmptySlot.EquipmentSlots = append(
 		withEmptySlot.EquipmentSlots,
-		"armor",
+		"ring",
 	)
 	profiles, err = campaignBuildProfiles(withEmptySlot, rules)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertProfileNames(t, profiles, "pristine", "maximal")
+	assertProfileNames(
+		t,
+		profiles,
+		"pristine",
+		"maximal",
+		"item.leather_vest",
+		"item.training_sword",
+		"item.traveler_boots",
+	)
 	if got := equippedItemForTest(
 		profiles[1].state,
-		"armor",
+		"ring",
 	); got != "" {
 		t.Fatalf("unfillable armor slot = %q, want empty", got)
 	}
 
 	withAlternative := config.Clone()
+	alternativeItem := campaign.ItemDefinition{
+		ID:            "item.training_sword_alt",
+		MaxQuantity:   1,
+		EquipmentSlot: "weapon",
+	}
+	itemIndex := len(withAlternative.Items)
+	for index, item := range withAlternative.Items {
+		if item.ID > alternativeItem.ID {
+			itemIndex = index
+			break
+		}
+	}
 	withAlternative.Items = append(
 		withAlternative.Items,
-		campaign.ItemDefinition{
-			ID:            "item.training_sword_alt",
-			MaxQuantity:   1,
-			EquipmentSlot: "weapon",
-		},
+		campaign.ItemDefinition{},
 	)
+	copy(
+		withAlternative.Items[itemIndex+1:],
+		withAlternative.Items[itemIndex:],
+	)
+	withAlternative.Items[itemIndex] = alternativeItem
 	alternativeRules := rules.Clone()
+	alternativeRule := gamebuild.ItemRule{
+		ID:         "item.training_sword_alt",
+		StackLimit: 1,
+		Equipment: &gamebuild.ItemEquipmentRule{
+			Slot:           "weapon",
+			AttackModifier: 5,
+		},
+	}
 	alternativeRules.Items = append(
 		alternativeRules.Items,
-		gamebuild.ItemRule{
-			ID:         "item.training_sword_alt",
-			StackLimit: 1,
-			Equipment: &gamebuild.ItemEquipmentRule{
-				Slot:           "weapon",
-				AttackModifier: 5,
-			},
-		},
+		gamebuild.ItemRule{},
 	)
+	copy(
+		alternativeRules.Items[itemIndex+1:],
+		alternativeRules.Items[itemIndex:],
+	)
+	alternativeRules.Items[itemIndex] = alternativeRule
 	profiles, err = campaignBuildProfiles(
 		withAlternative,
 		alternativeRules,
@@ -220,7 +272,10 @@ func TestCampaignBuildProfilesAreOrderedCanonicalAndDeduplicated(
 		profiles,
 		"pristine",
 		"maximal",
+		"item.leather_vest",
+		"item.training_sword",
 		"item.training_sword_alt",
+		"item.traveler_boots",
 	)
 	if got := equippedItemForTest(
 		profiles[1].state,
@@ -228,26 +283,31 @@ func TestCampaignBuildProfilesAreOrderedCanonicalAndDeduplicated(
 	); got != "item.training_sword" {
 		t.Fatalf("equal maximum chose %q, want first item id", got)
 	}
+	alternative := campaignProfileForTest(
+		t,
+		profiles,
+		"item.training_sword_alt",
+	)
 	if got := equippedItemForTest(
-		profiles[2].state,
+		alternative.state,
 		"weapon",
 	); got != "item.training_sword_alt" {
 		t.Fatalf("solo alternative equipped %q", got)
 	}
 	if got := inventoryQuantityForTest(
-		profiles[2].state,
+		alternative.state,
 		"item.training_sword_alt",
 	); got != 1 {
 		t.Fatalf("solo alternative quantity = %d, want 1", got)
 	}
 	if got := inventoryQuantityForTest(
-		profiles[2].state,
+		alternative.state,
 		"item.training_sword",
 	); got != 0 {
 		t.Fatalf("solo profile also owned base sword: %d", got)
 	}
 
-	alternativeRules.Items[len(alternativeRules.Items)-1].
+	alternativeRules.Items[itemIndex].
 		Equipment.AttackModifier = -2
 	profiles, err = campaignBuildProfiles(
 		withAlternative,
@@ -256,7 +316,12 @@ func TestCampaignBuildProfilesAreOrderedCanonicalAndDeduplicated(
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertProfileNames(t, profiles, "pristine", "maximal", "minimal")
+	if len(profiles) < 3 ||
+		profiles[0].name != "pristine" ||
+		profiles[1].name != "maximal" ||
+		profiles[2].name != "minimal" {
+		t.Fatalf("negative boundary profiles = %#v", profiles)
+	}
 	if got := equippedItemForTest(
 		profiles[2].state,
 		"weapon",
@@ -314,8 +379,11 @@ func TestCampaignBuildProfilesOrderSoloItemsByID(t *testing.T) {
 		profiles,
 		"pristine",
 		"maximal",
+		"minimal",
+		"item.leather_vest",
 		"item.potion",
 		"item.training_sword",
+		"item.traveler_boots",
 	)
 }
 
@@ -340,8 +408,124 @@ func TestValidateCountsEveryUniqueEquipmentProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 	if report.EntryBuildCount != 22 ||
-		report.DerivedBuildCount != 66 {
-		t.Fatalf("three-profile report = %#v", report)
+		report.DerivedBuildCount != 154 {
+		t.Fatalf("seven-profile report = %#v", report)
+	}
+}
+
+func TestEquipmentBoundaryLoadoutCoversEveryRPGStatAxis(
+	t *testing.T,
+) {
+	t.Parallel()
+
+	candidates := []campaignEquipmentCandidate{
+		{
+			itemID:            "item.attack",
+			slotID:            "weapon",
+			attackModifier:    5,
+			defenseModifier:   1,
+			moveSpeedModifier: 0,
+		},
+		{
+			itemID:            "item.defense",
+			slotID:            "weapon",
+			attackModifier:    0,
+			defenseModifier:   7,
+			moveSpeedModifier: -0.25,
+		},
+		{
+			itemID:            "item.speed",
+			slotID:            "weapon",
+			attackModifier:    1,
+			defenseModifier:   -2,
+			moveSpeedModifier: 0.5,
+		},
+	}
+	for _, test := range []struct {
+		name    string
+		value   func(campaignEquipmentCandidate) float64
+		maximum bool
+		want    string
+	}{
+		{
+			name: "maximum attack",
+			value: func(candidate campaignEquipmentCandidate) float64 {
+				return float64(candidate.attackModifier)
+			},
+			maximum: true,
+			want:    "item.attack",
+		},
+		{
+			name: "minimum attack",
+			value: func(candidate campaignEquipmentCandidate) float64 {
+				return float64(candidate.attackModifier)
+			},
+			want: "item.defense",
+		},
+		{
+			name: "maximum defense",
+			value: func(candidate campaignEquipmentCandidate) float64 {
+				return float64(candidate.defenseModifier)
+			},
+			maximum: true,
+			want:    "item.defense",
+		},
+		{
+			name: "minimum defense",
+			value: func(candidate campaignEquipmentCandidate) float64 {
+				return float64(candidate.defenseModifier)
+			},
+			want: "item.speed",
+		},
+		{
+			name: "maximum move speed",
+			value: func(candidate campaignEquipmentCandidate) float64 {
+				return candidate.moveSpeedModifier
+			},
+			maximum: true,
+			want:    "item.speed",
+		},
+		{
+			name: "minimum move speed",
+			value: func(candidate campaignEquipmentCandidate) float64 {
+				return candidate.moveSpeedModifier
+			},
+			want: "item.defense",
+		},
+	} {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			loadout := equipmentBoundaryLoadout(
+				[]string{"weapon"},
+				candidates,
+				test.value,
+				test.maximum,
+			)
+			if got := loadout["weapon"]; got != test.want {
+				t.Fatalf("boundary item = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestValidateAcceptsNegativeEquipmentAttackWithZeroClamp(
+	t *testing.T,
+) {
+	t.Parallel()
+
+	catalog := mutateProjectDefinition(
+		t,
+		loadProjectCatalog(t),
+		"item.training_sword",
+		func(data map[string]any) {
+			equipment := data["equipment"].(map[string]any)
+			modifiers := equipment["modifiers"].(map[string]any)
+			modifiers["attack"] = json.Number("-34")
+		},
+	)
+	if _, err := Validate(catalog); err != nil {
+		t.Fatalf("zero-clamped equipment project was rejected: %v", err)
 	}
 }
 
@@ -387,20 +571,12 @@ func TestValidateRejectsLaterEquipmentProfileFailures(t *testing.T) {
 		wantFailure  string
 	}{
 		{
-			name:         "masked negative final damage",
-			potionSlot:   "armor",
-			potionAttack: json.Number("100"),
-			swordAttack:  json.Number("-34"),
-			wantProfile:  "item.training_sword",
-			wantFailure:  "effective attack damage must be positive",
-		},
-		{
 			name:         "effective damage overflow",
 			potionSlot:   "weapon",
 			potionAttack: json.Number("0"),
 			swordAttack:  json.Number("9007199254740991"),
 			wantProfile:  "maximal",
-			wantFailure:  "effective attack damage",
+			wantFailure:  "portable integer range",
 		},
 	}
 	for _, test := range tests {
@@ -457,7 +633,7 @@ func TestValidateRejectsCampaignDerivedEquipmentOverflow(t *testing.T) {
 		},
 		{
 			name:        "effective damage",
-			wantFailure: "effective attack damage",
+			wantFailure: "portable integer range",
 		},
 	}
 	for _, test := range tests {
@@ -793,6 +969,21 @@ func equippedItemForTest(state campaign.State, slotID string) string {
 		}
 	}
 	return "<missing>"
+}
+
+func campaignProfileForTest(
+	t *testing.T,
+	profiles []campaignBuildProfile,
+	name string,
+) campaignBuildProfile {
+	t.Helper()
+	for _, profile := range profiles {
+		if profile.name == name {
+			return profile
+		}
+	}
+	t.Fatalf("campaign profile %q is missing", name)
+	return campaignBuildProfile{}
 }
 
 func assertProfileNames(

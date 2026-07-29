@@ -5,19 +5,27 @@ import (
 	"fmt"
 
 	"practice_love2d/33_ebitengine_spike/internal/rulesruntime"
+	"practice_love2d/33_ebitengine_spike/internal/sim"
 )
 
 // EquipmentMutationResult is the debug/UI acknowledgement for one atomic
 // Campaign equipment change and its derived World rebuild.
 type EquipmentMutationResult struct {
-	Changed                bool    `json:"changed"`
-	SlotID                 string  `json:"slot_id"`
-	ItemID                 string  `json:"item_id"`
-	PreviousItemID         string  `json:"previous_item_id"`
-	AttackModifier         float64 `json:"attack_modifier"`
-	PreviousAttackModifier float64 `json:"previous_attack_modifier"`
-	EffectiveAttackDamage  int     `json:"effective_attack_damage"`
-	Revision               uint64  `json:"revision"`
+	Changed                   bool    `json:"changed"`
+	SlotID                    string  `json:"slot_id"`
+	ItemID                    string  `json:"item_id"`
+	PreviousItemID            string  `json:"previous_item_id"`
+	AttackModifier            float64 `json:"attack_modifier"`
+	PreviousAttackModifier    float64 `json:"previous_attack_modifier"`
+	DefenseModifier           float64 `json:"defense_modifier"`
+	PreviousDefenseModifier   float64 `json:"previous_defense_modifier"`
+	MoveSpeedModifier         float64 `json:"move_speed_modifier"`
+	PreviousMoveSpeedModifier float64 `json:"previous_move_speed_modifier"`
+	EffectiveAttack           int     `json:"effective_attack"`
+	EffectiveDefense          int     `json:"effective_defense"`
+	EffectiveMoveSpeed        float64 `json:"effective_move_speed"`
+	EffectiveAttackDamage     int     `json:"effective_attack_damage"`
+	Revision                  uint64  `json:"revision"`
 }
 
 func (runtime *Runtime) EquipCampaignItem(
@@ -108,15 +116,24 @@ func (runtime *Runtime) changeCampaignEquipmentLocked(
 func (runtime *Runtime) equipmentMutationResultLocked(
 	change rulesruntime.EquipmentChangeResult,
 ) EquipmentMutationResult {
+	stats := runtime.controlledStatsLocked()
 	return EquipmentMutationResult{
-		Changed:                change.Changed,
-		SlotID:                 change.SlotID,
-		ItemID:                 change.ItemID,
-		PreviousItemID:         change.PreviousItemID,
-		AttackModifier:         change.AttackModifier,
-		PreviousAttackModifier: change.PreviousAttackModifier,
-		EffectiveAttackDamage:  runtime.controlledAttackDamageLocked(),
-		Revision:               runtime.revision,
+		Changed:                   change.Changed,
+		SlotID:                    change.SlotID,
+		ItemID:                    change.ItemID,
+		PreviousItemID:            change.PreviousItemID,
+		AttackModifier:            change.AttackModifier,
+		PreviousAttackModifier:    change.PreviousAttackModifier,
+		DefenseModifier:           change.DefenseModifier,
+		PreviousDefenseModifier:   change.PreviousDefenseModifier,
+		MoveSpeedModifier:         change.MoveSpeedModifier,
+		PreviousMoveSpeedModifier: change.PreviousMoveSpeedModifier,
+		EffectiveAttack:           stats.Attack,
+		EffectiveDefense:          stats.Defense,
+		EffectiveMoveSpeed: float64(stats.MoveSpeed) /
+			float64(sim.UnitsPerPixel),
+		EffectiveAttackDamage: runtime.controlledAttackDamageLocked(),
+		Revision:              runtime.revision,
 	}
 }
 
@@ -130,7 +147,25 @@ func (runtime *Runtime) controlledAttackDamageLocked() int {
 		if ability == nil {
 			return 0
 		}
-		return ability.Damage
+		damage := ability.Damage
+		if entity.Stats != nil {
+			damage += entity.Stats.Attack
+		}
+		return damage
 	}
 	return 0
+}
+
+func (runtime *Runtime) controlledStatsLocked() sim.RPGStatsConfig {
+	controlledID := runtime.built.Config.Camera.TargetEntityID
+	for _, entity := range runtime.built.Config.Entities {
+		if entity.ID != controlledID && !entity.Controlled {
+			continue
+		}
+		if entity.Stats != nil {
+			return *entity.Stats
+		}
+		return sim.RPGStatsConfig{MoveSpeed: sim.UnitsPerPixel}
+	}
+	return sim.RPGStatsConfig{MoveSpeed: sim.UnitsPerPixel}
 }

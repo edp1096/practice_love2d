@@ -23,12 +23,22 @@ type UseItemResult struct {
 // equipment slot. Modifier values let a host update or rebuild derived combat
 // stats without reaching into Executor's private rules snapshot.
 type EquipmentChangeResult struct {
-	Changed                bool    `json:"changed"`
-	SlotID                 string  `json:"slot_id"`
-	ItemID                 string  `json:"item_id"`
-	PreviousItemID         string  `json:"previous_item_id"`
-	AttackModifier         float64 `json:"attack_modifier"`
-	PreviousAttackModifier float64 `json:"previous_attack_modifier"`
+	Changed                   bool    `json:"changed"`
+	SlotID                    string  `json:"slot_id"`
+	ItemID                    string  `json:"item_id"`
+	PreviousItemID            string  `json:"previous_item_id"`
+	AttackModifier            float64 `json:"attack_modifier"`
+	PreviousAttackModifier    float64 `json:"previous_attack_modifier"`
+	DefenseModifier           float64 `json:"defense_modifier"`
+	PreviousDefenseModifier   float64 `json:"previous_defense_modifier"`
+	MoveSpeedModifier         float64 `json:"move_speed_modifier"`
+	PreviousMoveSpeedModifier float64 `json:"previous_move_speed_modifier"`
+}
+
+type equipmentModifiers struct {
+	attack    float64
+	defense   float64
+	moveSpeed float64
 }
 
 // UseItem executes an authored consumable's effects and consumes exactly one
@@ -158,7 +168,7 @@ func (executor *Executor) EquipItem(
 		if err != nil {
 			return err
 		}
-		previousModifier, err := executor.itemAttackModifier(
+		previousModifiers, err := executor.itemModifiers(
 			slot.ItemID,
 			definition.EquipmentSlot,
 		)
@@ -168,12 +178,16 @@ func (executor *Executor) EquipItem(
 		previous := slot.ItemID
 		slot.ItemID = itemID
 		candidate = EquipmentChangeResult{
-			Changed:                previous != itemID,
-			SlotID:                 definition.EquipmentSlot,
-			ItemID:                 itemID,
-			PreviousItemID:         previous,
-			AttackModifier:         rule.Equipment.AttackModifier,
-			PreviousAttackModifier: previousModifier,
+			Changed:                   previous != itemID,
+			SlotID:                    definition.EquipmentSlot,
+			ItemID:                    itemID,
+			PreviousItemID:            previous,
+			AttackModifier:            rule.Equipment.AttackModifier,
+			PreviousAttackModifier:    previousModifiers.attack,
+			DefenseModifier:           rule.Equipment.DefenseModifier,
+			PreviousDefenseModifier:   previousModifiers.defense,
+			MoveSpeedModifier:         rule.Equipment.MoveSpeedModifier,
+			PreviousMoveSpeedModifier: previousModifiers.moveSpeed,
 		}
 		return nil
 	})
@@ -221,7 +235,7 @@ func (executor *Executor) UnequipItem(
 		if err != nil {
 			return err
 		}
-		previousModifier, err := executor.itemAttackModifier(
+		previousModifiers, err := executor.itemModifiers(
 			slot.ItemID,
 			slotID,
 		)
@@ -231,12 +245,13 @@ func (executor *Executor) UnequipItem(
 		previous := slot.ItemID
 		slot.ItemID = ""
 		candidate = EquipmentChangeResult{
-			Changed:                previous != "",
-			SlotID:                 slotID,
-			ItemID:                 "",
-			PreviousItemID:         previous,
-			AttackModifier:         0,
-			PreviousAttackModifier: previousModifier,
+			Changed:                   previous != "",
+			SlotID:                    slotID,
+			ItemID:                    "",
+			PreviousItemID:            previous,
+			PreviousAttackModifier:    previousModifiers.attack,
+			PreviousDefenseModifier:   previousModifiers.defense,
+			PreviousMoveSpeedModifier: previousModifiers.moveSpeed,
 		}
 		return nil
 	})
@@ -250,33 +265,37 @@ func (executor *Executor) UnequipItem(
 	return candidate, nil
 }
 
-func (executor *Executor) itemAttackModifier(
+func (executor *Executor) itemModifiers(
 	itemID string,
 	slotID string,
-) (float64, error) {
+) (equipmentModifiers, error) {
 	if itemID == "" {
-		return 0, nil
+		return equipmentModifiers{}, nil
 	}
 	rule, exists := executor.rules.Item(itemID)
 	if !exists {
-		return 0, fmt.Errorf(
+		return equipmentModifiers{}, fmt.Errorf(
 			"equipped item %q is not configured",
 			itemID,
 		)
 	}
 	if rule.Equipment == nil {
-		return 0, fmt.Errorf(
+		return equipmentModifiers{}, fmt.Errorf(
 			"equipped item %q has no equipment rule",
 			itemID,
 		)
 	}
 	if rule.Equipment.Slot != slotID {
-		return 0, fmt.Errorf(
+		return equipmentModifiers{}, fmt.Errorf(
 			"equipped item %q belongs to slot %q, not %q",
 			itemID,
 			rule.Equipment.Slot,
 			slotID,
 		)
 	}
-	return rule.Equipment.AttackModifier, nil
+	return equipmentModifiers{
+		attack:    rule.Equipment.AttackModifier,
+		defense:   rule.Equipment.DefenseModifier,
+		moveSpeed: rule.Equipment.MoveSpeedModifier,
+	}, nil
 }

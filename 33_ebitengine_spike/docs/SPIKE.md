@@ -86,10 +86,10 @@ presentation, runtime Maker editing, WebAssembly packaging gate까지
   `gamebuild → View → renderer` 변환
 - tile layer opacity·카메라 culling·Tiled horizontal/vertical/diagonal
   flip flag를 보존한 실제 960×540 visual acceptance
-- 기존 콘텐츠 정의와 audio asset을 포함한 정의 54개,
-  dependency path 86개 보존
+- 기존 콘텐츠 정의, 방어구·장신구와 audio asset을 포함한 정의 56개,
+  dependency path 88개 보존
 - canonical catalog SHA-256:
-  `7a54f4783ed5a9aecce009029f2cefe69f334bbcbba07153508dd7c72f3cb1ea`
+  `c8dbc5bde518937ffb988b658930f76361ffcb258702a76956c30f2b7ff931e0`
 - `game/game.lua`의 project manifest를 schema v2 catalog에 함께 컴파일
 - 고정소수점 60 tick 이동과 swept wall collision
 - 공격 windup/active/recovery와 cooldown
@@ -139,8 +139,9 @@ presentation, runtime Maker editing, WebAssembly packaging gate까지
   `thanks` 진입의 `finish_game`까지 정확히 한 번 실행
 - 실제 키보드·게임패드 의미 입력과 같은 모델을 사용하는 dialogue,
   shop, inventory, title, pause, gameover, ending 화면
-- item 사용·구매·판매·장착·해제와 장비 기반 파생 공격력을 Campaign,
-  World rebuild, UI, protocol에 일관되게 반영
+- item 사용·구매·판매·장착·해제와 장비 기반
+  attack/defense/move_speed를 Campaign, World rebuild, UI, protocol에
+  일관되게 반영
 - `Flow.getState`, `Flow.move`, `Flow.activate`로 현재 게임 흐름 화면을
   의미 ID 기반으로 조회·제어
 - protocol v8 `App.startNewGame`의 선택형 stage·spawn·locale로 기존
@@ -148,7 +149,7 @@ presentation, runtime Maker editing, WebAssembly packaging gate까지
 - 기존 브라우저 Maker의 `--backend love|ebitengine` 선택, 전체 Lua
   source → 임시 canonical catalog 컴파일, 현재 preview 위치의 원자적
   재구축, 실패 시 source/runtime 복구
-- Ebitengine Maker 실제 실행에서 정의 54개 graph 조회,
+- Ebitengine Maker 실제 실행에서 정의 56개 graph 조회,
   `stage.action_room/default` 전환, `actor.slime` 동적 생성과
   960×540 screenshot을 확인한 뒤 정상 종료
 - project manifest의 master/music/SFX volume과 stage별 BGM,
@@ -212,6 +213,13 @@ presentation, runtime Maker editing, WebAssembly packaging gate까지
 - Ubuntu arm64의 격리된 headless Chromium에서 실제 WebGL/WASM 부팅,
   `data-recreate-ready=true`, 960×540 canvas와 타이틀 화면 PNG 확인 후
   브라우저·서버 자동 종료
+- authored `rpg.stats`의 attack/defense/move_speed와 세 장비 modifier를
+  공통 simulation 경계에 연결했다. 근접·다중 타격·projectile은 같은
+  직접 피해식을 쓰고, 주기 피해와 status multiplier 순서는
+  `32_recreate` 계약을 유지한다.
+- 장착/해제 뒤 Campaign은 장비 ID만 저장하고 World의 유효 능력치는
+  매번 원본 콘텐츠에서 다시 계산한다. debug snapshot, 장비 응답,
+  Ebitengine HUD는 모두 같은 simulation snapshot 값을 노출한다.
 
 ### 호스트가 필요한 검증
 
@@ -225,7 +233,6 @@ presentation, runtime Maker editing, WebAssembly packaging gate까지
 
 다음 항목은 `32_recreate`가 계속 기준 명세여야 하는 이유다.
 
-- 장비 공격력 이외의 확장 RPG stat·상태이상 계산
 - Android/iOS 네이티브 패키징과 실기 수명주기
 - 콘솔별 storage, suspend/resume, safe-area, controller-user 정책
 
@@ -245,14 +252,16 @@ presentation, runtime Maker editing, WebAssembly packaging gate까지
    수 있게 한다.~~ 완료
 6. ~~결정적 WASM 패키지, browser storage와 실제 headless WebGL 부팅
    검증을 통과시킨다.~~ 완료
-7. Windows 실기와 macOS 실기 패키징을 통과시킨다.
-8. 제조사 승인을 확보한 플랫폼만 별도 adapter·SDK branch에서
+7. ~~attack/defense/move_speed와 장비 modifier를 공통 damage/movement,
+   protocol, HUD, Campaign 재구성 경계까지 연결한다.~~ 완료
+8. Windows 실기와 macOS 실기 패키징을 통과시킨다.
+9. 제조사 승인을 확보한 플랫폼만 별도 adapter·SDK branch에서
    개발기 acceptance를 수행한다.
 
 기능·sprite clip·ability visual·audio presentation·runtime Maker
-editing·web packaging gate는 통과했다. 남은 native mobile packaging과
-확장 RPG stat gate를 닫기 전에는 `33_ebitengine_spike`를 본 런타임으로
-승격하지 않는다.
+editing·web packaging·확장 RPG stat gate는 통과했다. 남은 native
+mobile packaging과 호스트별 실기 gate를 닫기 전에는
+`33_ebitengine_spike`를 모든 배포 대상의 본 런타임으로 승격하지 않는다.
 
 자동화의 `Emulation.step` 정지는 위 game-flow의 pause menu와 별도
 상태다. 전자는 테스트 clock만 멈추고, 후자는 게임 안의 UI/세션

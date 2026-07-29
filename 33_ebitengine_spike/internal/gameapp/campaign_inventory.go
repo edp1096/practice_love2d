@@ -58,10 +58,11 @@ func (runtime *Runtime) inventoryViewLocked() (
 				rule.Description,
 				rule.DescriptionKey,
 			),
-			Quantity:   entry.Quantity,
-			Consumable: rule.Consumable,
-			Equipped:   campaignItemEquipped(state, entry.ItemID),
-			CanUse:     rule.Consumable && controlledAlive,
+			ModifierSummary: equipmentModifierSummary(rule.Equipment),
+			Quantity:        entry.Quantity,
+			Consumable:      rule.Consumable,
+			Equipped:        campaignItemEquipped(state, entry.ItemID),
+			CanUse:          rule.Consumable && controlledAlive,
 		}
 		if rule.Equipment != nil {
 			item.EquipmentSlot = rule.Equipment.Slot

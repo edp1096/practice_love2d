@@ -15,7 +15,7 @@ type campaignBuildProfile struct {
 }
 
 // campaignBuildProfiles returns unique equipment states in review order:
-// pristine, per-slot modifier maximum, per-slot modifier minimum, then every
+// pristine, per-slot maxima/minima for every supported RPG stat, then every
 // equippable item alone in canonical item-ID order. Earlier names win when two
 // requested profiles resolve to the same equipment state.
 func campaignBuildProfiles(
@@ -33,8 +33,8 @@ func campaignBuildProfiles(
 		return nil, fmt.Errorf("equipment topology: %w", err)
 	}
 
-	profiles := make([]campaignBuildProfile, 0, 3+len(candidates))
-	seen := make(map[string]struct{}, 3+len(candidates))
+	profiles := make([]campaignBuildProfile, 0, 7+len(candidates))
+	seen := make(map[string]struct{}, 7+len(candidates))
 	if err := appendCampaignBuildProfile(
 		&profiles,
 		seen,
@@ -46,48 +46,64 @@ func campaignBuildProfiles(
 		return nil, err
 	}
 
-	maximal := make(map[string]string, len(prepared.EquipmentSlots))
-	minimal := make(map[string]string, len(prepared.EquipmentSlots))
-	for _, slotID := range prepared.EquipmentSlots {
-		var maximum campaignEquipmentCandidate
-		var minimum campaignEquipmentCandidate
-		found := false
-		for _, candidate := range candidates {
-			if candidate.slotID != slotID {
-				continue
-			}
-			if !found {
-				maximum = candidate
-				minimum = candidate
-				found = true
-				continue
-			}
-			if candidate.attackModifier > maximum.attackModifier {
-				maximum = candidate
-			}
-			if candidate.attackModifier < minimum.attackModifier {
-				minimum = candidate
-			}
-		}
-		if found {
-			maximal[slotID] = maximum.itemID
-			minimal[slotID] = minimum.itemID
-		}
-	}
 	for _, boundary := range []struct {
 		name    string
-		loadout map[string]string
+		value   func(campaignEquipmentCandidate) float64
+		maximum bool
 	}{
-		{name: "maximal", loadout: maximal},
-		{name: "minimal", loadout: minimal},
+		{
+			name: "maximal",
+			value: func(candidate campaignEquipmentCandidate) float64 {
+				return float64(candidate.attackModifier)
+			},
+			maximum: true,
+		},
+		{
+			name: "minimal",
+			value: func(candidate campaignEquipmentCandidate) float64 {
+				return float64(candidate.attackModifier)
+			},
+		},
+		{
+			name: "maximal-defense",
+			value: func(candidate campaignEquipmentCandidate) float64 {
+				return float64(candidate.defenseModifier)
+			},
+			maximum: true,
+		},
+		{
+			name: "minimal-defense",
+			value: func(candidate campaignEquipmentCandidate) float64 {
+				return float64(candidate.defenseModifier)
+			},
+		},
+		{
+			name: "maximal-move-speed",
+			value: func(candidate campaignEquipmentCandidate) float64 {
+				return candidate.moveSpeedModifier
+			},
+			maximum: true,
+		},
+		{
+			name: "minimal-move-speed",
+			value: func(candidate campaignEquipmentCandidate) float64 {
+				return candidate.moveSpeedModifier
+			},
+		},
 	} {
+		loadout := equipmentBoundaryLoadout(
+			prepared.EquipmentSlots,
+			candidates,
+			boundary.value,
+			boundary.maximum,
+		)
 		if err := appendCampaignBuildProfile(
 			&profiles,
 			seen,
 			prepared,
 			pristine,
 			boundary.name,
-			boundary.loadout,
+			loadout,
 		); err != nil {
 			return nil, err
 		}
@@ -110,9 +126,44 @@ func campaignBuildProfiles(
 }
 
 type campaignEquipmentCandidate struct {
-	itemID         string
-	slotID         string
-	attackModifier int64
+	itemID            string
+	slotID            string
+	attackModifier    int64
+	defenseModifier   int64
+	moveSpeedModifier float64
+}
+
+func equipmentBoundaryLoadout(
+	slots []string,
+	candidates []campaignEquipmentCandidate,
+	value func(campaignEquipmentCandidate) float64,
+	maximum bool,
+) map[string]string {
+	loadout := make(map[string]string, len(slots))
+	for _, slotID := range slots {
+		var selected campaignEquipmentCandidate
+		found := false
+		for _, candidate := range candidates {
+			if candidate.slotID != slotID {
+				continue
+			}
+			if !found {
+				selected = candidate
+				found = true
+				continue
+			}
+			candidateValue := value(candidate)
+			selectedValue := value(selected)
+			if maximum && candidateValue > selectedValue ||
+				!maximum && candidateValue < selectedValue {
+				selected = candidate
+			}
+		}
+		if found {
+			loadout[slotID] = selected.itemID
+		}
+	}
+	return loadout
 }
 
 func campaignEquipmentCandidates(
@@ -163,31 +214,68 @@ func campaignEquipmentCandidates(
 				item.EquipmentSlot,
 			)
 		}
-		modifier := rule.Equipment.AttackModifier
-		if math.IsNaN(modifier) ||
-			math.IsInf(modifier, 0) ||
-			math.Trunc(modifier) != modifier {
-			return nil, fmt.Errorf(
-				"item %q attack modifier %v must be a finite integer",
-				item.ID,
-				modifier,
-			)
+		attack, err := projectIntegerModifier(
+			item.ID,
+			"attack",
+			rule.Equipment.AttackModifier,
+		)
+		if err != nil {
+			return nil, err
 		}
-		if math.Abs(modifier) > float64(campaign.MaxJSONInteger) {
+		defense, err := projectIntegerModifier(
+			item.ID,
+			"defense",
+			rule.Equipment.DefenseModifier,
+		)
+		if err != nil {
+			return nil, err
+		}
+		moveSpeed := rule.Equipment.MoveSpeedModifier
+		if math.IsNaN(moveSpeed) ||
+			math.IsInf(moveSpeed, 0) ||
+			math.Abs(moveSpeed) > 16 {
 			return nil, fmt.Errorf(
-				"item %q attack modifier %v exceeds the JSON-safe "+
-					"integer range",
+				"item %q move_speed modifier %v must be finite and "+
+					"between -16 and 16",
 				item.ID,
-				modifier,
+				moveSpeed,
 			)
 		}
 		result = append(result, campaignEquipmentCandidate{
-			itemID:         item.ID,
-			slotID:         item.EquipmentSlot,
-			attackModifier: int64(modifier),
+			itemID:            item.ID,
+			slotID:            item.EquipmentSlot,
+			attackModifier:    attack,
+			defenseModifier:   defense,
+			moveSpeedModifier: moveSpeed,
 		})
 	}
 	return result, nil
+}
+
+func projectIntegerModifier(
+	itemID string,
+	name string,
+	modifier float64,
+) (int64, error) {
+	if math.IsNaN(modifier) ||
+		math.IsInf(modifier, 0) ||
+		math.Trunc(modifier) != modifier {
+		return 0, fmt.Errorf(
+			"item %q %s modifier %v must be a finite integer",
+			itemID,
+			name,
+			modifier,
+		)
+	}
+	if math.Abs(modifier) > float64(campaign.MaxJSONInteger) {
+		return 0, fmt.Errorf(
+			"item %q %s modifier %v exceeds the JSON-safe integer range",
+			itemID,
+			name,
+			modifier,
+		)
+	}
+	return int64(modifier), nil
 }
 
 func appendCampaignBuildProfile(

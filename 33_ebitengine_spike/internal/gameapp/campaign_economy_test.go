@@ -145,6 +145,16 @@ func TestMerchantShopBuyCloseUseAndSaveBoundary(t *testing.T) {
 		shop.Revision != runtime.revision {
 		t.Fatalf("opened village shop = %#v", shop)
 	}
+	presented := runtime.View().Shop
+	modifiers := make(map[string]string, len(presented.Offers))
+	for _, offer := range presented.Offers {
+		modifiers[offer.ID] = offer.ModifierSummary
+	}
+	if modifiers["item.training_sword"] != "ATK +5" ||
+		modifiers["item.leather_vest"] != "DEF +3" ||
+		modifiers["item.traveler_boots"] != "MOVE +0.25" {
+		t.Fatalf("shop equipment summaries = %#v", modifiers)
+	}
 	potion := shopOffer(t, shop, "item.potion")
 	if potion.BuyPrice == nil || *potion.BuyPrice != 25 ||
 		potion.SellPrice == nil || *potion.SellPrice != 10 ||

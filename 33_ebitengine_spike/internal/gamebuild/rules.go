@@ -188,8 +188,10 @@ type QuestRule struct {
 }
 
 type ItemEquipmentRule struct {
-	Slot           string  `json:"slot"`
-	AttackModifier float64 `json:"attack_modifier"`
+	Slot              string  `json:"slot"`
+	AttackModifier    float64 `json:"attack_modifier"`
+	DefenseModifier   float64 `json:"defense_modifier"`
+	MoveSpeedModifier float64 `json:"move_speed_modifier"`
 }
 
 type ItemRule struct {
@@ -956,7 +958,9 @@ func (compiler *contentRuleCompiler) compileItemEquipment(
 		return ItemEquipmentRule{}, fmt.Errorf("build content rules: %w", err)
 	}
 	for name := range modifiers {
-		if name != "attack" {
+		switch name {
+		case "attack", "defense", "move_speed":
+		default:
 			return ItemEquipmentRule{}, &UnsupportedRuleCapabilityError{
 				Path:       path + ".modifiers." + name,
 				Capability: "equipment modifier",
@@ -964,16 +968,47 @@ func (compiler *contentRuleCompiler) compileItemEquipment(
 			}
 		}
 	}
-	attack, err := ruleSignedInteger(
-		modifiers["attack"],
-		path+".modifiers.attack",
-	)
+	integerModifier := func(name string) (float64, error) {
+		raw, exists := modifiers[name]
+		if !exists {
+			return 0, nil
+		}
+		value, err := ruleSignedInteger(raw, path+".modifiers."+name)
+		if err != nil {
+			return 0, err
+		}
+		return float64(value), nil
+	}
+	attack, err := integerModifier("attack")
 	if err != nil {
 		return ItemEquipmentRule{}, fmt.Errorf("build content rules: %w", err)
 	}
+	defense, err := integerModifier("defense")
+	if err != nil {
+		return ItemEquipmentRule{}, fmt.Errorf("build content rules: %w", err)
+	}
+	moveSpeed := 0.0
+	if raw, exists := modifiers["move_speed"]; exists {
+		moveSpeed, err = requiredNumber(raw, path+".modifiers.move_speed")
+		if err != nil {
+			return ItemEquipmentRule{}, fmt.Errorf(
+				"build content rules: %w",
+				err,
+			)
+		}
+		if math.Abs(moveSpeed) > 16 {
+			return ItemEquipmentRule{}, fmt.Errorf(
+				"build content rules: %s.modifiers.move_speed "+
+					"must be between -16 and 16",
+				path,
+			)
+		}
+	}
 	return ItemEquipmentRule{
-		Slot:           slot,
-		AttackModifier: float64(attack),
+		Slot:              slot,
+		AttackModifier:    attack,
+		DefenseModifier:   defense,
+		MoveSpeedModifier: moveSpeed,
 	}, nil
 }
 

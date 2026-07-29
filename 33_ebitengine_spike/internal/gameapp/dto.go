@@ -64,6 +64,12 @@ type cameraDTO struct {
 	Zoom           float64 `json:"zoom"`
 }
 
+type rpgStatsDTO struct {
+	Attack    int     `json:"attack"`
+	Defense   int     `json:"defense"`
+	MoveSpeed float64 `json:"move_speed"`
+}
+
 type entityDTO struct {
 	ID                    string                        `json:"id"`
 	ActorID               string                        `json:"actor_id"`
@@ -81,6 +87,7 @@ type entityDTO struct {
 	RadiusY               float64                       `json:"radius_y"`
 	Health                int                           `json:"health"`
 	MaxHealth             int                           `json:"max_health"`
+	Stats                 rpgStatsDTO                   `json:"stats"`
 	FacingX               float64                       `json:"facing_x"`
 	FacingY               float64                       `json:"facing_y"`
 	AttackPhase           sim.AttackPhase               `json:"attack_phase"`
@@ -258,22 +265,27 @@ func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
 			screenY+radiusY*zoom >= 0 &&
 			screenY-radiusY*zoom <= 540
 		dto := entityDTO{
-			ID:              entity.ID,
-			ActorID:         entity.Kind,
-			Name:            entity.Name,
-			Tags:            append([]string(nil), metadata.Tags...),
-			Team:            entity.Team,
-			Dead:            entity.Dead,
-			X:               x,
-			Y:               y,
-			ScreenX:         screenX,
-			ScreenY:         screenY,
-			Visible:         !entity.Dead && inViewport,
-			InViewport:      inViewport,
-			RadiusX:         radiusX,
-			RadiusY:         radiusY,
-			Health:          entity.Health,
-			MaxHealth:       entity.MaxHealth,
+			ID:         entity.ID,
+			ActorID:    entity.Kind,
+			Name:       entity.Name,
+			Tags:       append([]string(nil), metadata.Tags...),
+			Team:       entity.Team,
+			Dead:       entity.Dead,
+			X:          x,
+			Y:          y,
+			ScreenX:    screenX,
+			ScreenY:    screenY,
+			Visible:    !entity.Dead && inViewport,
+			InViewport: inViewport,
+			RadiusX:    radiusX,
+			RadiusY:    radiusY,
+			Health:     entity.Health,
+			MaxHealth:  entity.MaxHealth,
+			Stats: rpgStatsDTO{
+				Attack:    entity.Stats.Attack,
+				Defense:   entity.Stats.Defense,
+				MoveSpeed: coordPixels(entity.Stats.MoveSpeed),
+			},
 			FacingX:         coordPixels(entity.Facing.X),
 			FacingY:         coordPixels(entity.Facing.Y),
 			AttackPhase:     entity.Attack.Phase,

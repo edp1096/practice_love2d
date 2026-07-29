@@ -73,7 +73,8 @@ automation pause를 게임의 pause menu와 합치지 않는다.
 - [x] 다중 목표 quest와 commit-after-success 보상 실행기
 - [x] simulation kill event와 Campaign quest 연결
 - [x] inventory/equipment/economy/shop 도메인 transaction
-- [x] stat 반영, item use와 shop/inventory 화면
+- [x] attack/defense/move_speed stat, 전체 장비 modifier, item use와
+  shop/inventory/HUD 화면
 - [x] title/pause/continue/gameover/ending
 - [x] authored tilemap·background·image resource presentation
 - [x] 프로세스 재시작을 포함한 headless campaign acceptance
@@ -95,7 +96,14 @@ automation pause를 게임의 pause menu와 합치지 않는다.
 - pause의 `save` 뒤 같은 파일 저장소로 새 `Runtime`을 생성한다.
 - 새 title의 `continue`로 quest, potion, currency, equipment를 복원한다.
 - 장착 검으로 체력 39인 slime을 한 번의 실제 공격으로 처치해 표시용
-  stat이 아니라 simulation 피해가 34에서 39로 바뀌었음을 검증한다.
+  stat이 아니라 공통 simulation 피해가 `34 + attack 5 = 39`로
+  계산됨을 검증한다. ability 원본 damage 34는 변경하지 않는다.
+- `TestEquipmentProtocolRebuildsEveryEffectiveRPGStat`은 장착/해제,
+  Campaign 기반 World 재구성, simulation snapshot, debug DTO와 HUD가
+  실제 검·가죽 조끼·여행자 장화를 함께 장착했을 때 attack 5,
+  defense 3, move_speed 1.25를 같은 값으로 보는지 검증한다.
+- `internal/sim/rpg_stats_test.go`는 직접 피해의 공격·방어, 주기 피해의
+  stat 우회, RPG 이동속도와 status 이동 배율의 결합 순서를 검증한다.
 - village → field → grove → field → village portal을 모두 통과한다.
 - 두 목표, 즉시 보상, completed 대화와 ending을 확인한다.
 

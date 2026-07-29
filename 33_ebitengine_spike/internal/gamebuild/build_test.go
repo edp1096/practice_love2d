@@ -84,6 +84,12 @@ func TestBuildUsesAuthoredActionRPGContent(t *testing.T) {
 	if got, want := hero.MovePerTick, rateToCoord(190); got != want {
 		t.Fatalf("hero speed = %d, want %d", got, want)
 	}
+	if hero.Stats == nil ||
+		hero.Stats.Attack != 0 ||
+		hero.Stats.Defense != 0 ||
+		hero.Stats.MoveSpeed != sim.UnitsPerPixel {
+		t.Fatalf("hero RPG stats = %#v", hero.Stats)
+	}
 	if hero.PrimaryAbility() == nil ||
 		hero.PrimaryAbility().ID != "ability.sword_slash" ||
 		hero.PrimaryAbility().Damage != 34 {
@@ -568,6 +574,26 @@ func TestValidateDefinitionSeparatesSchemaFromRuntimeCoverage(t *testing.T) {
 		if !result.SchemaValid || !result.FullyApplied ||
 			len(result.Warnings) != 0 {
 			t.Fatalf("%s validation = %#v", id, result)
+		}
+	}
+	for _, id := range []string{
+		"dialogue.guide",
+		"dialogue.village_guide",
+		"quest.grove_guardian",
+		"quest.slime_patrol",
+		"item.leather_vest",
+		"item.potion",
+		"item.training_sword",
+		"item.traveler_boots",
+		"shop.village",
+	} {
+		result, err := ValidateDefinition(catalog, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !result.SchemaValid || !result.FullyApplied ||
+			len(result.Warnings) != 0 {
+			t.Fatalf("%s campaign validation = %#v", id, result)
 		}
 	}
 	worldHub, err := ValidateDefinition(catalog, "stage.world_hub")

@@ -164,6 +164,16 @@ type StatusReceiverConfig struct {
 	Immune []string `json:"immune,omitempty"`
 }
 
+// RPGStatsConfig contains the effective immutable stats used by gameplay.
+// Attack and Defense are additive integer damage points. MoveSpeed is a
+// fixed-point multiplier where UnitsPerPixel is 1.0. A nil EntityConfig.Stats
+// means the neutral defaults (0 attack, 0 defense, 1.0 movement).
+type RPGStatsConfig struct {
+	Attack    int   `json:"attack"`
+	Defense   int   `json:"defense"`
+	MoveSpeed Coord `json:"move_speed"`
+}
+
 // PlatformerConfig is an actor-local movement controller. Speeds are
 // fixed-point distance per simulation tick; accelerations and gravity are the
 // per-tick changes to velocity. Keeping this on the actor avoids a global
@@ -314,6 +324,7 @@ type EntityConfig struct {
 	Dodge      *DodgeConfig          `json:"dodge,omitempty"`
 	Parry      *ParryConfig          `json:"parry,omitempty"`
 	Status     *StatusReceiverConfig `json:"status,omitempty"`
+	Stats      *RPGStatsConfig       `json:"stats,omitempty"`
 	Platformer *PlatformerConfig     `json:"platformer,omitempty"`
 
 	// DialogueID makes the entity interactable. StartQuestID is started
@@ -655,6 +666,7 @@ type EntitySnapshot struct {
 	Grounded           bool                      `json:"grounded"`
 	CoyoteTicks        int                       `json:"coyote_ticks"`
 	JumpBufferTicks    int                       `json:"jump_buffer_ticks"`
+	Stats              RPGStatsConfig            `json:"stats"`
 	Platformer         *PlatformerConfig         `json:"platformer,omitempty"`
 }
 

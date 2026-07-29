@@ -210,6 +210,72 @@ func TestBuildForCampaignDeterministicallySumsMultipleSlots(
 	}
 }
 
+func TestBuildForCampaignAppliesEverySupportedEquipmentStat(
+	t *testing.T,
+) {
+	t.Parallel()
+
+	catalog := loadCatalog(t)
+	mutateRuleDefinition(
+		t,
+		catalog,
+		"item.training_sword",
+		func(data map[string]any) {
+			equipment := data["equipment"].(map[string]any)
+			modifiers := equipment["modifiers"].(map[string]any)
+			modifiers["defense"] = float64(2)
+			modifiers["move_speed"] = 0.25
+		},
+	)
+	rules := campaignBuildRules(t, catalog)
+	sword := requireItemRule(t, rules, "item.training_sword")
+	if sword.Equipment == nil ||
+		sword.Equipment.AttackModifier != 5 ||
+		sword.Equipment.DefenseModifier != 2 ||
+		sword.Equipment.MoveSpeedModifier != 0.25 {
+		t.Fatalf("compiled equipment = %#v", sword.Equipment)
+	}
+	state := campaignBuildState(t, catalog)
+	equipCampaignBuildItem(
+		t,
+		&state,
+		"weapon",
+		"item.training_sword",
+	)
+
+	result, derived, err := BuildForCampaign(
+		catalog,
+		Options{},
+		state,
+		rules,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entity := campaignBuildControlledEntity(t, result)
+	if entity.Stats == nil ||
+		entity.Stats.Attack != 5 ||
+		entity.Stats.Defense != 2 ||
+		entity.Stats.MoveSpeed != sim.UnitsPerPixel*5/4 {
+		t.Fatalf("effective RPG stats = %#v", entity.Stats)
+	}
+	if entity.PrimaryAbility().Damage != 34 {
+		t.Fatalf(
+			"equipment mutated authored ability damage to %d",
+			entity.PrimaryAbility().Damage,
+		)
+	}
+	if derived != (DerivedStats{
+		AttackModifier:        5,
+		DefenseModifier:       2,
+		MoveSpeedModifier:     0.25,
+		EffectiveAttackDamage: 39,
+		AttackApplied:         true,
+	}) {
+		t.Fatalf("derived stats = %#v", derived)
+	}
+}
+
 func TestBuildForCampaignRejectsInvalidStateWithoutExposingResult(
 	t *testing.T,
 ) {
@@ -242,7 +308,11 @@ func TestBuildForCampaignRejectsInvalidStateWithoutExposingResult(
 		"weapon",
 		"item.training_sword",
 	)
-	wrongSlot.Equipment[0].SlotID = "armor"
+	for index := range wrongSlot.Equipment {
+		if wrongSlot.Equipment[index].SlotID == "weapon" {
+			wrongSlot.Equipment[index].SlotID = "ring"
+		}
+	}
 	assertCampaignBuildFailure(
 		t,
 		catalog,
@@ -400,7 +470,7 @@ func TestBuildForCampaignRejectsAggregateAndFinalDamageOverflow(
 		)
 	})
 
-	t.Run("effective damage", func(t *testing.T) {
+	t.Run("effective stat", func(t *testing.T) {
 		t.Parallel()
 		catalog := loadCatalog(t)
 		rules := campaignBuildRules(t, catalog)
@@ -422,7 +492,7 @@ func TestBuildForCampaignRejectsAggregateAndFinalDamageOverflow(
 			catalog,
 			state,
 			rules,
-			"effective attack damage",
+			"portable integer range",
 		)
 	})
 
@@ -434,12 +504,12 @@ func TestBuildForCampaignRejectsAggregateAndFinalDamageOverflow(
 	}
 }
 
-func TestBuildForCampaignRejectsNonPositiveDamageAndKeepsDormantModifier(
+func TestBuildForCampaignClampsNegativeStatsAndKeepsDormantModifier(
 	t *testing.T,
 ) {
 	t.Parallel()
 
-	t.Run("non-positive final damage", func(t *testing.T) {
+	t.Run("negative effective attack clamps to zero", func(t *testing.T) {
 		t.Parallel()
 		catalog := loadCatalog(t)
 		rules := campaignBuildRules(t, catalog)
@@ -455,13 +525,26 @@ func TestBuildForCampaignRejectsNonPositiveDamageAndKeepsDormantModifier(
 			&rules,
 			"item.training_sword",
 		).Equipment.AttackModifier = -34
-		assertCampaignBuildFailure(
-			t,
+		result, derived, err := BuildForCampaign(
 			catalog,
+			Options{},
 			state,
 			rules,
-			"must be positive",
 		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		stats := campaignBuildControlledEntity(t, result).Stats
+		if stats == nil || stats.Attack != 0 ||
+			campaignBuildDamage(t, result) != 34 {
+			t.Fatalf("clamped stats=%#v damage=%d", stats,
+				campaignBuildDamage(t, result))
+		}
+		if derived.AttackModifier != -34 ||
+			derived.EffectiveAttackDamage != 34 ||
+			!derived.AttackApplied {
+			t.Fatalf("derived stats = %#v", derived)
+		}
 	})
 
 	t.Run("modifier is dormant without ability", func(t *testing.T) {
@@ -705,7 +788,11 @@ func campaignBuildDamage(t *testing.T, result *Result) int {
 	if entity.PrimaryAbility() == nil {
 		t.Fatal("controlled entity has no ability")
 	}
-	return entity.PrimaryAbility().Damage
+	damage := entity.PrimaryAbility().Damage
+	if entity.Stats != nil {
+		damage += entity.Stats.Attack
+	}
+	return damage
 }
 
 func assertCampaignBuildFailure(

@@ -1232,6 +1232,24 @@
       }
     },
     {
+      "source": "game/content/items/leather_vest.lua",
+      "data": {
+        "description_key": "item.leather_vest.description",
+        "equipment": {
+          "modifiers": {
+            "defense": 3
+          },
+          "slot": "armor"
+        },
+        "id": "item.leather_vest",
+        "kind": "item",
+        "name_key": "item.leather_vest.name",
+        "schema_version": 1,
+        "stack_limit": 1,
+        "value": 60
+      }
+    },
+    {
       "source": "game/content/items/potion.lua",
       "data": {
         "consumable": true,
@@ -1266,6 +1284,24 @@
         "schema_version": 1,
         "stack_limit": 1,
         "value": 60
+      }
+    },
+    {
+      "source": "game/content/items/traveler_boots.lua",
+      "data": {
+        "description_key": "item.traveler_boots.description",
+        "equipment": {
+          "modifiers": {
+            "move_speed": 0.25
+          },
+          "slot": "accessory"
+        },
+        "id": "item.traveler_boots",
+        "kind": "item",
+        "name_key": "item.traveler_boots.name",
+        "schema_version": 1,
+        "stack_limit": 1,
+        "value": 30
       }
     },
     {
@@ -1312,10 +1348,14 @@
           "flow.title.message": "Defeat the guardian threatening the village.",
           "interaction.shop": "Shop",
           "interaction.talk": "Talk",
+          "item.leather_vest.description": "Light armor that adds 3 defense.",
+          "item.leather_vest.name": "Leather Vest",
           "item.potion.description": "Restores 25 HP.",
           "item.potion.name": "Potion",
           "item.training_sword.description": "A balanced sword that adds 5 attack.",
           "item.training_sword.name": "Training Sword",
+          "item.traveler_boots.description": "An accessory that increases movement speed by 25%.",
+          "item.traveler_boots.name": "Traveler Boots",
           "npc.guide.name": "Guild Guide",
           "npc.merchant.name": "Merchant",
           "npc.village_guide.name": "Village Guide",
@@ -1399,10 +1439,14 @@
           "flow.title.message": "마을을 위협하는 숲의 수호자를 물리치세요.",
           "interaction.shop": "상점",
           "interaction.talk": "대화",
+          "item.leather_vest.description": "방어력을 3 올려 주는 가벼운 방어구.",
+          "item.leather_vest.name": "가죽 조끼",
           "item.potion.description": "체력을 25 회복한다.",
           "item.potion.name": "회복 물약",
           "item.training_sword.description": "공격력을 5 올려 주는 균형 잡힌 검.",
           "item.training_sword.name": "연습용 검",
+          "item.traveler_boots.description": "이동속도를 25% 올려 주는 장신구.",
+          "item.traveler_boots.name": "여행자의 장화",
           "npc.guide.name": "길드 안내인",
           "npc.merchant.name": "상인",
           "npc.village_guide.name": "마을 안내인",
@@ -1572,6 +1616,16 @@
           },
           {
             "item": "item.training_sword",
+            "sell_price": 30
+          },
+          {
+            "buy_price": 25,
+            "item": "item.traveler_boots",
+            "sell_price": 12
+          },
+          {
+            "buy_price": 60,
+            "item": "item.leather_vest",
             "sell_price": 30
           }
         ],
@@ -4455,8 +4509,8 @@
     }
   ],
   "graph": {
-    "total": 54,
-    "edge_count": 86,
+    "total": 56,
+    "edge_count": 88,
     "nodes": [
       {
         "id": "ability.fire_bolt",
@@ -5124,6 +5178,18 @@
         ]
       },
       {
+        "id": "item.leather_vest",
+        "kind": "item",
+        "source": "game/content/items/leather_vest.lua",
+        "dependencies": [],
+        "dependents": [
+          {
+            "id": "shop.village",
+            "path": "offers[4].item"
+          }
+        ]
+      },
+      {
         "id": "item.potion",
         "kind": "item",
         "source": "game/content/items/potion.lua",
@@ -5168,6 +5234,18 @@
           {
             "id": "shop.village",
             "path": "offers[2].item"
+          }
+        ]
+      },
+      {
+        "id": "item.traveler_boots",
+        "kind": "item",
+        "source": "game/content/items/traveler_boots.lua",
+        "dependencies": [],
+        "dependents": [
+          {
+            "id": "shop.village",
+            "path": "offers[3].item"
           }
         ]
       },
@@ -5270,12 +5348,20 @@
         "source": "game/content/shops/village.lua",
         "dependencies": [
           {
+            "id": "item.leather_vest",
+            "path": "offers[4].item"
+          },
+          {
             "id": "item.potion",
             "path": "offers[1].item"
           },
           {
             "id": "item.training_sword",
             "path": "offers[2].item"
+          },
+          {
+            "id": "item.traveler_boots",
+            "path": "offers[3].item"
           }
         ],
         "dependents": [

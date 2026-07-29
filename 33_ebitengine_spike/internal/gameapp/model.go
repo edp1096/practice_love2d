@@ -486,8 +486,14 @@ func (runtime *Runtime) View() ebitapp.View {
 	frame := runtime.simulation.RenderFrame()
 	snapshot := runtime.simulation.Snapshot()
 	flash := make(map[string]bool, len(snapshot.Entities))
+	stats := make(map[string]sim.RPGStatsConfig, len(snapshot.Entities))
 	for _, entity := range snapshot.Entities {
 		flash[entity.ID] = entity.FlashTicks > 0
+		stats[entity.ID] = entity.Stats
+	}
+	controlled := make(map[string]bool, len(runtime.built.Config.Entities))
+	for _, entity := range runtime.built.Config.Entities {
+		controlled[entity.ID] = entity.Controlled
 	}
 
 	viewportWidth := coordPixels(frame.Camera.ViewportWidth)
@@ -594,6 +600,7 @@ func (runtime *Runtime) View() ebitapp.View {
 		}
 		entityView := ebitapp.EntityView{
 			ID:            actor.ID,
+			Controlled:    controlled[actor.ID],
 			SpriteID:      metadata.SpriteID,
 			State:         state,
 			AnimationTick: snapshot.WorldTick,
@@ -610,8 +617,20 @@ func (runtime *Runtime) View() ebitapp.View {
 			Layer:         10,
 			Health:        float64(actor.Health),
 			MaxHealth:     float64(actor.MaxHealth),
-			Flash:         flash[actor.ID],
-			Tint:          statusTint(actor.Statuses),
+			Attack:        stats[actor.ID].Attack,
+			Defense:       stats[actor.ID].Defense,
+			MoveSpeed: coordPixels(
+				stats[actor.ID].MoveSpeed,
+			),
+			Flash: flash[actor.ID],
+			Tint:  statusTint(actor.Statuses),
+		}
+		if entityView.Controlled {
+			// The HUD reads the same effective snapshot consumed by combat,
+			// never a separately re-derived presentation value.
+			view.HUD.Attack = entityView.Attack
+			view.HUD.Defense = entityView.Defense
+			view.HUD.MoveSpeed = entityView.MoveSpeed
 		}
 		if actor.Attack != sim.AttackIdle {
 			entityView.AnimationTick = uint64(max(0, actor.AttackTicks))
@@ -762,6 +781,12 @@ func (runtime *Runtime) View() ebitapp.View {
 				Owned:   offer.Owned,
 				CanBuy:  offer.CanBuy,
 				CanSell: offer.CanSell,
+			}
+			if item, exists := runtime.contentRules.Item(
+				offer.ItemID,
+			); exists {
+				presentation.ModifierSummary =
+					equipmentModifierSummary(item.Equipment)
 			}
 			if offer.BuyPrice != nil {
 				presentation.BuyPrice = *offer.BuyPrice

@@ -749,6 +749,12 @@ func (s *Simulation) modifiedSpeed(
 	base Coord,
 ) Coord {
 	result := base
+	stats := effectiveRPGStats(entity)
+	result = Coord(scaleFixedSaturated(
+		int64(result),
+		stats.MoveSpeed,
+		int64(maxAbsCoord),
+	))
 	statusIDs := make([]string, 0, len(entity.statuses))
 	for statusID := range entity.statuses {
 		statusIDs = append(statusIDs, statusID)
@@ -931,8 +937,12 @@ func (s *Simulation) modifiedDamage(
 	sourceID string,
 	target *entityRuntime,
 	base int,
+	periodic bool,
 ) int {
 	result := base
+	if !periodic {
+		result = directRPGDamage(s.entities[sourceID], target, result)
+	}
 	if source := s.entities[sourceID]; source != nil {
 		result = applyStatusModifier(
 			result,
@@ -951,6 +961,31 @@ func (s *Simulation) modifiedDamage(
 			return definition.DamageTaken
 		},
 	)
+}
+
+func directRPGDamage(
+	source *entityRuntime,
+	target *entityRuntime,
+	base int,
+) int {
+	result := int64(base)
+	result += int64(effectiveRPGStats(source).Attack)
+	result -= int64(effectiveRPGStats(target).Defense)
+	if result < 1 {
+		return 1
+	}
+	maximum := maxInt64Value()
+	if result > maximum {
+		return int(maximum)
+	}
+	return int(result)
+}
+
+func effectiveRPGStats(entity *entityRuntime) RPGStatsConfig {
+	if entity == nil || entity.config.Stats == nil {
+		return RPGStatsConfig{MoveSpeed: UnitsPerPixel}
+	}
+	return *entity.config.Stats
 }
 
 func applyStatusModifier(
@@ -1233,7 +1268,7 @@ func (s *Simulation) applyImpact(
 		return nil
 	}
 
-	damage := s.modifiedDamage(sourceID, target, impact.Damage)
+	damage := s.modifiedDamage(sourceID, target, impact.Damage, periodic)
 	damage = minInt(maxInt(1, damage), target.health)
 	target.health -= damage
 	s.emit(Event{
@@ -1994,6 +2029,17 @@ func validateEntityDefinitionWithPlacement(
 	if definition.MovePerTick < 0 || !validCoord(definition.MovePerTick) {
 		return fmt.Errorf("entity %q move speed cannot be negative", definition.ID)
 	}
+	if stats := definition.Stats; stats != nil {
+		if stats.Attack < 0 ||
+			stats.Defense < 0 ||
+			stats.MoveSpeed < 0 ||
+			!validCoord(stats.MoveSpeed) {
+			return fmt.Errorf(
+				"entity %q has invalid RPG stats",
+				definition.ID,
+			)
+		}
+	}
 	if definition.Platformer != nil {
 		if definition.MovePerTick != 0 {
 			return fmt.Errorf(
@@ -2253,6 +2299,10 @@ func cloneEntityConfig(config EntityConfig) EntityConfig {
 		status := *config.Status
 		status.Immune = append([]string(nil), config.Status.Immune...)
 		result.Status = &status
+	}
+	if config.Stats != nil {
+		stats := *config.Stats
+		result.Stats = &stats
 	}
 	if config.Platformer != nil {
 		platformer := *config.Platformer

@@ -9,6 +9,7 @@ import (
 	"math"
 	"sort"
 
+	"practice_love2d/33_ebitengine_spike/internal/campaign"
 	"practice_love2d/33_ebitengine_spike/internal/content"
 	"practice_love2d/33_ebitengine_spike/internal/sim"
 )
@@ -315,6 +316,12 @@ type renderShapeComponent struct {
 
 type statusReceiverComponent struct {
 	Immune []string `json:"immune"`
+}
+
+type rpgStatsComponent struct {
+	Attack    *float64 `json:"attack"`
+	Defense   *float64 `json:"defense"`
+	MoveSpeed *float64 `json:"move_speed"`
 }
 
 type interactableComponent struct {
@@ -1243,6 +1250,19 @@ func buildEntity(
 			Immune: append([]string(nil), receiver.Immune...),
 		}
 	}
+	if raw := actor.Components["rpg.stats"]; raw != nil {
+		var authored rpgStatsComponent
+		if err := json.Unmarshal(raw, &authored); err != nil {
+			return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
+				fmt.Errorf("invalid rpg.stats: %w", err)
+		}
+		stats, err := buildRPGStats(authored)
+		if err != nil {
+			return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
+				fmt.Errorf("invalid rpg.stats: %w", err)
+		}
+		entity.Stats = &stats
+	}
 	if raw := actor.Components["action.combat"]; raw != nil {
 		var combat combatComponent
 		if err := json.Unmarshal(raw, &combat); err != nil ||
@@ -1341,6 +1361,54 @@ func buildEntity(
 		}
 	}
 	return entity, metadata, dialogue, quest, interactionRange, nil
+}
+
+func buildRPGStats(authored rpgStatsComponent) (
+	sim.RPGStatsConfig,
+	error,
+) {
+	result := sim.RPGStatsConfig{MoveSpeed: sim.UnitsPerPixel}
+	for _, field := range []struct {
+		name   string
+		value  *float64
+		target *int
+	}{
+		{name: "attack", value: authored.Attack, target: &result.Attack},
+		{name: "defense", value: authored.Defense, target: &result.Defense},
+	} {
+		if field.value == nil {
+			continue
+		}
+		if !finite(*field.value) ||
+			*field.value < 0 ||
+			math.Trunc(*field.value) != *field.value ||
+			*field.value > float64(campaign.MaxJSONInteger) ||
+			*field.value > float64(1<<31-1) {
+			return sim.RPGStatsConfig{}, fmt.Errorf(
+				"%s must be a non-negative portable integer",
+				field.name,
+			)
+		}
+		*field.target = int(*field.value)
+	}
+	if authored.MoveSpeed != nil {
+		if !finite(*authored.MoveSpeed) ||
+			*authored.MoveSpeed <= 0 ||
+			*authored.MoveSpeed > 16 {
+			return sim.RPGStatsConfig{}, errors.New(
+				"move_speed must be positive, finite, and at most 16",
+			)
+		}
+		result.MoveSpeed = sim.Coord(math.Round(
+			*authored.MoveSpeed * float64(sim.UnitsPerPixel),
+		))
+		if result.MoveSpeed <= 0 {
+			return sim.RPGStatsConfig{}, errors.New(
+				"move_speed is below fixed-point precision",
+			)
+		}
+	}
+	return result, nil
 }
 
 func buildAbility(

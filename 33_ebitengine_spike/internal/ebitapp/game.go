@@ -68,9 +68,9 @@ const (
 	shopCurrencyLabel     = "재화"
 
 	inventoryPanelX      = 72
-	inventoryPanelY      = 106
+	inventoryPanelY      = 126
 	inventoryPanelWidth  = ScreenWidth - inventoryPanelX*2
-	inventoryPanelHeight = 374
+	inventoryPanelHeight = 354
 
 	maxInventoryTitleRunes       = 28
 	maxInventoryItemNameRunes    = 17
@@ -133,15 +133,16 @@ type dialogueLayout struct {
 }
 
 type shopOfferLayout struct {
-	Index     int
-	ID        string
-	Name      string
-	Owned     int64
-	CanBuy    bool
-	BuyPrice  int64
-	CanSell   bool
-	SellPrice int64
-	Selected  bool
+	Index           int
+	ID              string
+	Name            string
+	ModifierSummary string
+	Owned           int64
+	CanBuy          bool
+	BuyPrice        int64
+	CanSell         bool
+	SellPrice       int64
+	Selected        bool
 }
 
 type shopLayout struct {
@@ -154,17 +155,18 @@ type shopLayout struct {
 }
 
 type inventoryItemLayout struct {
-	Index         int
-	ID            string
-	Name          string
-	Description   []string
-	Quantity      int64
-	Consumable    bool
-	EquipmentSlot string
-	Equipped      bool
-	CanUse        bool
-	CanEquip      bool
-	Selected      bool
+	Index           int
+	ID              string
+	Name            string
+	Description     []string
+	ModifierSummary string
+	Quantity        int64
+	Consumable      bool
+	EquipmentSlot   string
+	Equipped        bool
+	CanUse          bool
+	CanEquip        bool
+	Selected        bool
 }
 
 type inventoryLayout struct {
@@ -1349,9 +1351,13 @@ func layoutShop(view ShopView) shopLayout {
 		result.Offers = append(
 			result.Offers,
 			shopOfferLayout{
-				Index:     index,
-				ID:        offer.ID,
-				Name:      ellipsizeText(name, maxShopOfferNameRunes),
+				Index: index,
+				ID:    offer.ID,
+				Name:  ellipsizeText(name, maxShopOfferNameRunes),
+				ModifierSummary: ellipsizeText(
+					offer.ModifierSummary,
+					22,
+				),
 				Owned:     offer.Owned,
 				CanBuy:    offer.CanBuy,
 				BuyPrice:  offer.BuyPrice,
@@ -1480,8 +1486,12 @@ func (game *Game) drawShop(view ShopView) {
 			marker = "› "
 			nameTint = color.RGBA{R: 255, G: 237, B: 185, A: 255}
 		}
+		name := marker + offer.Name
+		if offer.ModifierSummary != "" {
+			name += "  " + offer.ModifierSummary
+		}
 		game.drawText(
-			marker+offer.Name,
+			name,
 			shopPanelX+30,
 			float64(y),
 			15,
@@ -1637,8 +1647,9 @@ func layoutInventoryItem(
 			maxInventoryDescriptionRunes,
 			maxInventoryDescriptionLines,
 		),
-		Quantity:   quantity,
-		Consumable: item.Consumable,
+		ModifierSummary: ellipsizeText(item.ModifierSummary, 28),
+		Quantity:        quantity,
+		Consumable:      item.Consumable,
 		EquipmentSlot: ellipsizeText(
 			item.EquipmentSlot,
 			maxInventorySlotRunes,
@@ -1660,6 +1671,9 @@ func inventoryKindText(item inventoryItemLayout) string {
 			parts,
 			inventoryEquipmentLabel+" · "+item.EquipmentSlot,
 		)
+	}
+	if item.ModifierSummary != "" {
+		parts = append(parts, item.ModifierSummary)
 	}
 	if len(parts) == 0 {
 		parts = append(parts, "기타")
@@ -2203,7 +2217,7 @@ func (game *Game) drawFlow(view FlowView) {
 func (game *Game) drawHUD(view View) {
 	playerHealth, playerMaximum := 0.0, 0.0
 	for _, entity := range view.Entities {
-		if entity.SpriteID == "sprite.hero" {
+		if entity.Controlled {
 			playerHealth, playerMaximum = entity.Health, entity.MaxHealth
 			break
 		}
@@ -2212,8 +2226,8 @@ func (game *Game) drawHUD(view View) {
 		game.canvas,
 		16,
 		14,
-		310,
-		78,
+		360,
+		104,
 		color.RGBA{R: 10, G: 13, B: 19, A: 218},
 		false,
 	)
@@ -2221,8 +2235,8 @@ func (game *Game) drawHUD(view View) {
 		vector.DrawFilledRect(
 			game.canvas,
 			28,
-			58,
-			210,
+			52,
+			250,
 			12,
 			color.RGBA{R: 47, G: 52, B: 62, A: 255},
 			false,
@@ -2230,8 +2244,8 @@ func (game *Game) drawHUD(view View) {
 		vector.DrawFilledRect(
 			game.canvas,
 			28,
-			58,
-			float32(210*max(0, min(1, playerHealth/playerMaximum))),
+			52,
+			float32(250*max(0, min(1, playerHealth/playerMaximum))),
 			12,
 			color.RGBA{R: 61, G: 202, B: 126, A: 255},
 			false,
@@ -2252,10 +2266,23 @@ func (game *Game) drawHUD(view View) {
 		)
 	}
 	game.drawText(
+		fmt.Sprintf(
+			"ATK %d · DEF %d · MOVE %.2f · %dG",
+			view.HUD.Attack,
+			view.HUD.Defense,
+			view.HUD.MoveSpeed,
+			view.HUD.Currency,
+		),
+		28,
+		70,
+		13,
+		color.RGBA{R: 216, G: 225, B: 235, A: 255},
+	)
+	game.drawText(
 		status,
 		28,
-		74,
-		14,
+		91,
+		13,
 		color.RGBA{R: 189, G: 203, B: 219, A: 255},
 	)
 	if view.HUD.Help != "" &&

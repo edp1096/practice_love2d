@@ -166,6 +166,7 @@ type PointView struct {
 
 type EntityView struct {
 	ID            string
+	Controlled    bool
 	SpriteID      string
 	State         string
 	AnimationTick uint64
@@ -185,6 +186,9 @@ type EntityView struct {
 
 	Health    float64
 	MaxHealth float64
+	Attack    int
+	Defense   int
+	MoveSpeed float64
 	Flash     bool
 	Tint      color.RGBA
 	Outline   color.RGBA
@@ -244,13 +248,14 @@ type ShopView struct {
 
 // ShopOfferView is one authored offer with its current presentation facts.
 type ShopOfferView struct {
-	ID        string
-	Name      string
-	Owned     int64
-	CanBuy    bool
-	BuyPrice  int64
-	CanSell   bool
-	SellPrice int64
+	ID              string
+	Name            string
+	ModifierSummary string
+	Owned           int64
+	CanBuy          bool
+	BuyPrice        int64
+	CanSell         bool
+	SellPrice       int64
 }
 
 // InventoryView is presentation-neutral inventory modal state. The model owns
@@ -269,15 +274,16 @@ type InventoryView struct {
 // model-resolved facts for presentation; they do not move gameplay rules into
 // the Ebitengine adapter.
 type InventoryItemView struct {
-	ID            string
-	Name          string
-	Description   string
-	Quantity      int64
-	Consumable    bool
-	EquipmentSlot string
-	Equipped      bool
-	CanUse        bool
-	CanEquip      bool
+	ID              string
+	Name            string
+	Description     string
+	ModifierSummary string
+	Quantity        int64
+	Consumable      bool
+	EquipmentSlot   string
+	Equipped        bool
+	CanUse          bool
+	CanEquip        bool
 }
 
 // FlowView is presentation-neutral state for title, pause, game-over, ending,
@@ -301,10 +307,13 @@ type FlowOptionView struct {
 }
 
 type HUDView struct {
-	Title    string
-	Status   string
-	Help     string
-	Dialogue string
-	Quest    string
-	Currency int64
+	Title     string
+	Status    string
+	Help      string
+	Dialogue  string
+	Quest     string
+	Currency  int64
+	Attack    int
+	Defense   int
+	MoveSpeed float64
 }

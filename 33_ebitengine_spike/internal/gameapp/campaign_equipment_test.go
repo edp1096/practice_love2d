@@ -149,6 +149,149 @@ func TestEquipmentProtocolPreservesSessionAndRollsBackFailures(
 	)
 }
 
+func TestEquipmentProtocolRebuildsEveryEffectiveRPGStat(
+	t *testing.T,
+) {
+	runtime := newTestRuntime(t)
+	if err := runtime.campaign.Transaction(func(state *campaign.State) error {
+		for index := range state.Inventory {
+			switch state.Inventory[index].ItemID {
+			case "item.training_sword",
+				"item.leather_vest",
+				"item.traveler_boots":
+				state.Inventory[index].Quantity = 1
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, test := range []struct {
+		itemID string
+		check  func(EquipmentMutationResult) bool
+	}{
+		{
+			itemID: "item.training_sword",
+			check: func(result EquipmentMutationResult) bool {
+				return result.AttackModifier == 5 &&
+					result.EffectiveAttack == 5 &&
+					result.EffectiveAttackDamage == 39
+			},
+		},
+		{
+			itemID: "item.leather_vest",
+			check: func(result EquipmentMutationResult) bool {
+				return result.DefenseModifier == 3 &&
+					result.EffectiveDefense == 3
+			},
+		},
+		{
+			itemID: "item.traveler_boots",
+			check: func(result EquipmentMutationResult) bool {
+				return result.MoveSpeedModifier == 0.25 &&
+					result.EffectiveMoveSpeed == 1.25
+			},
+		},
+	} {
+		equipped := callRuntime(
+			t,
+			runtime,
+			protocol.MethodEquipmentEquip,
+			protocol.EquipmentEquipParams{ItemID: test.itemID},
+		).(EquipmentMutationResult)
+		if !equipped.Changed || !test.check(equipped) {
+			t.Fatalf("equip %q result = %#v", test.itemID, equipped)
+		}
+	}
+	runtime.mu.RLock()
+	configStats := runtime.controlledStatsLocked()
+	snapshotStats := sim.RPGStatsConfig{}
+	for _, entity := range runtime.simulation.Snapshot().Entities {
+		if entity.ID == "player" {
+			snapshotStats = entity.Stats
+			break
+		}
+	}
+	world := runtime.worldSnapshotLocked()
+	runtime.mu.RUnlock()
+	if configStats.Attack != 5 ||
+		configStats.Defense != 3 ||
+		configStats.MoveSpeed != sim.UnitsPerPixel*5/4 ||
+		snapshotStats != configStats {
+		t.Fatalf(
+			"config/snapshot RPG stats = %#v / %#v",
+			configStats,
+			snapshotStats,
+		)
+	}
+	if dto := worldEntity(t, world, "player").Stats; dto.Attack != 5 ||
+		dto.Defense != 3 || dto.MoveSpeed != 1.25 {
+		t.Fatalf("debug protocol RPG stats = %#v", dto)
+	}
+	view := runtime.View()
+	if view.HUD.Attack != 5 ||
+		view.HUD.Defense != 3 ||
+		view.HUD.MoveSpeed != 1.25 {
+		t.Fatalf("HUD RPG stats = %#v", view.HUD)
+	}
+	foundControlled := false
+	for _, entity := range view.Entities {
+		if !entity.Controlled {
+			continue
+		}
+		foundControlled = true
+		if entity.ID != "player" ||
+			entity.Attack != 5 ||
+			entity.Defense != 3 ||
+			entity.MoveSpeed != 1.25 {
+			t.Fatalf("controlled presentation entity = %#v", entity)
+		}
+	}
+	if !foundControlled {
+		t.Fatal("presentation has no controlled entity")
+	}
+
+	boots := callRuntime(
+		t,
+		runtime,
+		protocol.MethodEquipmentUnequip,
+		protocol.EquipmentUnequipParams{SlotID: "accessory"},
+	).(EquipmentMutationResult)
+	if !boots.Changed ||
+		boots.PreviousMoveSpeedModifier != 0.25 ||
+		boots.EffectiveAttack != 5 ||
+		boots.EffectiveDefense != 3 ||
+		boots.EffectiveMoveSpeed != 1 {
+		t.Fatalf("boots unequip result = %#v", boots)
+	}
+	vest := callRuntime(
+		t,
+		runtime,
+		protocol.MethodEquipmentUnequip,
+		protocol.EquipmentUnequipParams{SlotID: "armor"},
+	).(EquipmentMutationResult)
+	if !vest.Changed ||
+		vest.PreviousDefenseModifier != 3 ||
+		vest.EffectiveAttack != 5 ||
+		vest.EffectiveDefense != 0 {
+		t.Fatalf("vest unequip result = %#v", vest)
+	}
+	sword := callRuntime(
+		t,
+		runtime,
+		protocol.MethodEquipmentUnequip,
+		protocol.EquipmentUnequipParams{SlotID: "weapon"},
+	).(EquipmentMutationResult)
+	if !sword.Changed ||
+		sword.PreviousAttackModifier != 5 ||
+		sword.EffectiveAttack != 0 ||
+		sword.EffectiveDefense != 0 ||
+		sword.EffectiveMoveSpeed != 1 {
+		t.Fatalf("sword unequip result = %#v", sword)
+	}
+}
+
 func TestEquipmentProtocolRejectsAmbiguousWorldAndModalStatesAtomically(
 	t *testing.T,
 ) {
@@ -398,6 +541,7 @@ func TestInventoryModalFreezesWorldAndUsesEquipsAndUnequips(t *testing.T) {
 		view.Items[0].ID != "item.potion" ||
 		!view.Items[0].CanUse ||
 		view.Items[1].ID != "item.training_sword" ||
+		view.Items[1].ModifierSummary != "ATK +5" ||
 		!view.Items[1].CanEquip {
 		t.Fatalf("opened inventory view = %#v", view)
 	}

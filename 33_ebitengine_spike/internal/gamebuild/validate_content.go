@@ -789,8 +789,17 @@ func validateItemSemantics(
 		if len(modifiers) == 0 {
 			return fmt.Errorf("%s.equipment.modifiers must not be empty", id)
 		}
+		if err := rejectUnknownKeys(
+			modifiers,
+			id+".equipment.modifiers",
+			"attack",
+			"defense",
+			"move_speed",
+		); err != nil {
+			return err
+		}
 		for name, value := range modifiers {
-			if name == "attack" {
+			if name == "attack" || name == "defense" {
 				if _, err := ruleSignedInteger(
 					value,
 					id+".equipment.modifiers."+name,
@@ -799,11 +808,19 @@ func validateItemSemantics(
 				}
 				continue
 			}
-			if _, err := requiredNumber(
+			modifier, err := requiredNumber(
 				value,
 				id+".equipment.modifiers."+name,
-			); err != nil {
+			)
+			if err != nil {
 				return err
+			}
+			if math.Abs(modifier) > 16 {
+				return fmt.Errorf(
+					"%s.equipment.modifiers.%s must be between -16 and 16",
+					id,
+					name,
+				)
 			}
 		}
 	}

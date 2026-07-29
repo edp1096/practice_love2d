@@ -13,5 +13,15 @@ return {
             item = "item.training_sword",
             sell_price = 30,
         },
+        {
+            item = "item.traveler_boots",
+            buy_price = 25,
+            sell_price = 12,
+        },
+        {
+            item = "item.leather_vest",
+            buy_price = 60,
+            sell_price = 30,
+        },
     },
 }

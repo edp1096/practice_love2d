@@ -89,7 +89,8 @@
 
 - NPC, 대화, 아이템, 퀘스트와 상점을 데이터 파일만으로 구성
 - RPG feature를 끄면 관련 콘텐츠 종류, 시스템과 UI가 로드되지 않음
-- action과 함께 켠 hero 장비 공격력이 실제 근접 피해에 반영됨
+- action과 함께 켠 hero의 장비 attack·defense·move speed가 실제
+  근접/발사체 피해와 이동에 반영됨
 - `actor.killed` 두 건으로 퀘스트 완료와 보상이 정확히 한 번 발생
 - 장착 아이템 판매를 차단하고 거래 잔액·수량을 원자적으로 유지
 - stage 전환과 성공·실패 콘텐츠 reload 뒤 session 상태 보존

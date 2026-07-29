@@ -158,19 +158,35 @@ func TestBuildContentRulesCompilesCompleteCampaign(t *testing.T) {
 		len(sword.Effects) != 0 {
 		t.Fatalf("training sword = %#v", sword)
 	}
+	vest := requireItemRule(t, rules, "item.leather_vest")
+	if vest.Equipment == nil ||
+		vest.Equipment.Slot != "armor" ||
+		vest.Equipment.DefenseModifier != 3 {
+		t.Fatalf("leather vest = %#v", vest)
+	}
+	boots := requireItemRule(t, rules, "item.traveler_boots")
+	if boots.Equipment == nil ||
+		boots.Equipment.Slot != "accessory" ||
+		boots.Equipment.MoveSpeedModifier != 0.25 {
+		t.Fatalf("traveler boots = %#v", boots)
+	}
 
 	shop := requireShopRule(t, rules, "shop.village")
 	if shop.Name != "" ||
 		shop.NameKey != "shop.village.name" ||
-		len(shop.Offers) != 2 {
+		len(shop.Offers) != 4 {
 		t.Fatalf("shop = %#v", shop)
 	}
 	if got, want := []string{
 		shop.Offers[0].ItemID,
 		shop.Offers[1].ItemID,
+		shop.Offers[2].ItemID,
+		shop.Offers[3].ItemID,
 	}, []string{
 		"item.potion",
 		"item.training_sword",
+		"item.traveler_boots",
+		"item.leather_vest",
 	}; !slices.Equal(got, want) {
 		t.Fatalf("offer order = %q, want authored %q", got, want)
 	}
@@ -180,7 +196,13 @@ func TestBuildContentRulesCompilesCompleteCampaign(t *testing.T) {
 		shop.Offers[0].SellPrice != 10 ||
 		shop.Offers[1].CanBuy ||
 		!shop.Offers[1].CanSell ||
-		shop.Offers[1].SellPrice != 30 {
+		shop.Offers[1].SellPrice != 30 ||
+		!shop.Offers[2].CanBuy ||
+		shop.Offers[2].BuyPrice != 25 ||
+		shop.Offers[2].SellPrice != 12 ||
+		!shop.Offers[3].CanBuy ||
+		shop.Offers[3].BuyPrice != 60 ||
+		shop.Offers[3].SellPrice != 30 {
 		t.Fatalf("offers = %#v", shop.Offers)
 	}
 
@@ -309,17 +331,6 @@ func TestBuildContentRulesRejectsUnsupportedCapabilities(t *testing.T) {
 			},
 			capability: "quest objective event",
 			value:      "enemy.defeated",
-		},
-		{
-			name: "equipment modifier",
-			id:   "item.training_sword",
-			mutate: func(data map[string]any) {
-				equipment := data["equipment"].(map[string]any)
-				modifiers := equipment["modifiers"].(map[string]any)
-				modifiers["defense"] = float64(2)
-			},
-			capability: "equipment modifier",
-			value:      "defense",
 		},
 	} {
 		test := test

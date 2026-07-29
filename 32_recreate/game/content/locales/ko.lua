@@ -101,6 +101,12 @@ return {
             "공격력을 5 올려 주는 균형 잡힌 검.",
         ["item.potion.name"] = "회복 물약",
         ["item.potion.description"] = "체력을 25 회복한다.",
+        ["item.leather_vest.name"] = "가죽 조끼",
+        ["item.leather_vest.description"] =
+            "방어력을 3 올려 주는 가벼운 방어구.",
+        ["item.traveler_boots.name"] = "여행자의 장화",
+        ["item.traveler_boots.description"] =
+            "이동속도를 25% 올려 주는 장신구.",
         ["shop.village.name"] = "마을 잡화점",
     },
 }

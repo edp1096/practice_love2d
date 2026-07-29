@@ -61,7 +61,18 @@ func TestBuildCampaignConfigTranslatesCompleteCatalog(t *testing.T) {
 	if sword.MaxQuantity != 1 || sword.EquipmentSlot != "weapon" {
 		t.Fatalf("training sword = %#v", sword)
 	}
-	if want := []string{"weapon"}; !slices.Equal(got.EquipmentSlots, want) {
+	vest := campaignItem(t, got, "item.leather_vest")
+	if vest.MaxQuantity != 1 || vest.EquipmentSlot != "armor" {
+		t.Fatalf("leather vest = %#v", vest)
+	}
+	boots := campaignItem(t, got, "item.traveler_boots")
+	if boots.MaxQuantity != 1 || boots.EquipmentSlot != "accessory" {
+		t.Fatalf("traveler boots = %#v", boots)
+	}
+	if want := []string{"accessory", "armor", "weapon"}; !slices.Equal(
+		got.EquipmentSlots,
+		want,
+	) {
 		t.Fatalf(
 			"equipment slots = %q, want %q",
 			got.EquipmentSlots,
@@ -179,7 +190,10 @@ func TestBuildCampaignConfigDeduplicatesEquipmentSlots(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{"weapon"}; !slices.Equal(got.EquipmentSlots, want) {
+	if want := []string{"accessory", "armor", "weapon"}; !slices.Equal(
+		got.EquipmentSlots,
+		want,
+	) {
 		t.Fatalf(
 			"equipment slots = %q, want deduplicated %q",
 			got.EquipmentSlots,

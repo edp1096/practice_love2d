@@ -156,6 +156,14 @@ go run ./cmd/recreatectl new-game stage.action_room default locale.ko
 `flow-activate`는 title, pause, gameover, ending 화면을 순서나 번역
 문자열이 아닌 안정적인 option ID로 제어한다.
 
+`world`/`entities` 응답의 각 entity에는 유효 `stats.attack`,
+`stats.defense`, `stats.move_speed`가 포함된다. `equip`/`unequip` 응답도
+세 능력치의 현재·이전 modifier와 최종 유효값을 함께 돌려주므로, 자동화가
+화면 표시값을 추측하지 않고 실제 simulation 입력을 직접 검사할 수 있다.
+직접 피해는 `ability damage + source attack - target defense`(최소 1),
+주기 피해는 RPG 공격·방어를 건너뛰며, 이동속도는 authored 이동량에
+`move_speed`와 정렬된 status multiplier를 차례로 적용한다.
+
 `step`은 요청한 프레임을 원자적으로 진행한 뒤 실행 전 pause 상태를
 복원한다. 따라서 실행 중인 창에 `step`을 호출해도 멈춘 채 남지 않는다.
 title, 게임 pause, gameover, ending 중에는 `step`이 오류로 거부되어
@@ -256,10 +264,11 @@ go run ./cmd/contentc \
   -output game/catalog.json
 ```
 
-현재 결과는 정의 54개, dependency path 86개다. canonical 파일을 쓰기
+현재 결과는 정의 56개, dependency path 88개다. canonical 파일을 쓰기
 전에 7개 stage의 모든 entry spawn과 2개 locale, 총 22개 조합을
-simulation까지 구성한다. 동일 입력은 byte-for-byte 같은 catalog를
-만든다.
+attack/defense/move_speed 극값과 단독 장비를 포함한 5개 고유 Campaign
+프로필로 simulation까지 구성한다. 동일 입력은 byte-for-byte 같은
+catalog를 만든다.
 
 `game/game.lua`의 `audio`는 master/music/SFX volume, semantic event별
 cue, stage별 music을 선언한다. `asset_type = "audio"`인 WAV만 패키징하며

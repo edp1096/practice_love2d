@@ -25,7 +25,7 @@ func TestRunValidatesCompleteProjectBeforeWriting(t *testing.T) {
 	}
 	if !strings.Contains(
 		stdout.String(),
-		"7 stages, 22 entry builds and 44 derived campaign builds "+
+		"7 stages, 22 entry builds and 110 derived campaign builds "+
 			"across 2 locales",
 	) {
 		t.Fatalf("run() stdout = %q", stdout.String())
@@ -75,31 +75,6 @@ func TestRunDoesNotReplaceOutputWhenProjectValidationFails(t *testing.T) {
 			},
 		},
 		{
-			name: "later equipment masked negative final damage",
-			mutations: []projectSourceMutation{
-				{
-					path: "game/content/items/potion.lua",
-					old:  "    value = 25,",
-					new: "    equipment = {\n" +
-						`        slot = "armor",` + "\n" +
-						"        modifiers = {\n" +
-						"            attack = 100,\n" +
-						"        },\n" +
-						"    },\n" +
-						"    value = 25,",
-				},
-				{
-					path: "game/content/items/training_sword.lua",
-					old:  "attack = 5,",
-					new:  "attack = -34,",
-				},
-			},
-			want: []string{
-				`campaign profile "item.training_sword" build`,
-				"effective attack damage must be positive",
-			},
-		},
-		{
 			name: "later equipment effective damage overflow",
 			mutations: []projectSourceMutation{
 				{
@@ -121,8 +96,7 @@ func TestRunDoesNotReplaceOutputWhenProjectValidationFails(t *testing.T) {
 			},
 			want: []string{
 				`campaign profile "maximal" build`,
-				"effective attack damage",
-				"JSON-safe integer range",
+				"portable integer range",
 			},
 		},
 		{

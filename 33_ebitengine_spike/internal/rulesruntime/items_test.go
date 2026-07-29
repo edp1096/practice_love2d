@@ -223,6 +223,13 @@ func TestEquipAndUnequipItemReturnCompleteChanges(t *testing.T) {
 	t.Parallel()
 
 	executor, live, _ := newCompleteRuntime(t)
+	for index := range executor.rules.Items {
+		if executor.rules.Items[index].ID != "item.training_sword" {
+			continue
+		}
+		executor.rules.Items[index].Equipment.DefenseModifier = 2
+		executor.rules.Items[index].Equipment.MoveSpeedModifier = 0.25
+	}
 	giveItem(t, executor, live, "item.training_sword", 1)
 
 	equipped, err := executor.EquipItem(live, "item.training_sword")
@@ -236,6 +243,8 @@ func TestEquipAndUnequipItemReturnCompleteChanges(t *testing.T) {
 		PreviousItemID:         "",
 		AttackModifier:         5,
 		PreviousAttackModifier: 0,
+		DefenseModifier:        2,
+		MoveSpeedModifier:      0.25,
 	}
 	if !reflect.DeepEqual(equipped, wantEquipped) {
 		t.Fatalf("EquipItem() = %#v, want %#v", equipped, wantEquipped)
@@ -254,7 +263,11 @@ func TestEquipAndUnequipItemReturnCompleteChanges(t *testing.T) {
 	if repeated.Changed ||
 		repeated.PreviousItemID != "item.training_sword" ||
 		repeated.PreviousAttackModifier != 5 ||
-		repeated.AttackModifier != 5 {
+		repeated.AttackModifier != 5 ||
+		repeated.PreviousDefenseModifier != 2 ||
+		repeated.DefenseModifier != 2 ||
+		repeated.PreviousMoveSpeedModifier != 0.25 ||
+		repeated.MoveSpeedModifier != 0.25 {
 		t.Fatalf("repeated EquipItem() = %#v", repeated)
 	}
 
@@ -263,12 +276,14 @@ func TestEquipAndUnequipItemReturnCompleteChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantUnequipped := EquipmentChangeResult{
-		Changed:                true,
-		SlotID:                 "weapon",
-		ItemID:                 "",
-		PreviousItemID:         "item.training_sword",
-		AttackModifier:         0,
-		PreviousAttackModifier: 5,
+		Changed:                   true,
+		SlotID:                    "weapon",
+		ItemID:                    "",
+		PreviousItemID:            "item.training_sword",
+		AttackModifier:            0,
+		PreviousAttackModifier:    5,
+		PreviousDefenseModifier:   2,
+		PreviousMoveSpeedModifier: 0.25,
 	}
 	if !reflect.DeepEqual(unequipped, wantUnequipped) {
 		t.Fatalf(
@@ -339,7 +354,7 @@ func TestEquipmentAPIsRejectInvalidRequestsWithoutMutation(t *testing.T) {
 		{
 			name: "unknown slot",
 			call: func() (EquipmentChangeResult, error) {
-				return executor.UnequipItem(live, "armor")
+				return executor.UnequipItem(live, "ring")
 			},
 			match: "not configured",
 		},
@@ -439,6 +454,10 @@ func TestEquipmentResultCannotMutateCampaign(t *testing.T) {
 	result.PreviousItemID = "item.mutated"
 	result.AttackModifier = 999
 	result.PreviousAttackModifier = 999
+	result.DefenseModifier = 999
+	result.PreviousDefenseModifier = 999
+	result.MoveSpeedModifier = 999
+	result.PreviousMoveSpeedModifier = 999
 
 	assertEquipment(
 		t,
@@ -511,7 +530,7 @@ func newForeignCampaign(t *testing.T) *campaign.Campaign {
 func newSameIdentityArmorCampaign(t *testing.T) *campaign.Campaign {
 	t.Helper()
 	config, _ := completeDefinitions(t)
-	config.EquipmentSlots = []string{"armor"}
+	config.EquipmentSlots = []string{"accessory", "armor"}
 	for index := range config.Items {
 		if config.Items[index].ID == "item.training_sword" {
 			config.Items[index].EquipmentSlot = "armor"
