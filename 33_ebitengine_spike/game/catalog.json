@@ -1,0 +1,5259 @@
+{
+  "schema_version": 1,
+  "definitions": [
+    {
+      "source": "game/content/abilities/fire_bolt.lua",
+      "data": {
+        "activation": [
+          {
+            "projectile": "projectile.fire_bolt",
+            "type": "spawn_projectile"
+          }
+        ],
+        "cooldown": 0.5,
+        "duration": 0.04,
+        "id": "ability.fire_bolt",
+        "kind": "ability",
+        "lock_movement": true,
+        "name": "Fire Bolt",
+        "recovery": 0.16,
+        "schema_version": 1,
+        "windup": 0.12
+      }
+    },
+    {
+      "source": "game/content/abilities/slime_bump.lua",
+      "data": {
+        "cooldown": 0.85,
+        "duration": 0.1,
+        "effects": [
+          {
+            "amount": 8,
+            "type": "damage"
+          },
+          {
+            "duration": 0.18,
+            "type": "stagger"
+          },
+          {
+            "distance": 18,
+            "duration": 0.1,
+            "type": "knockback"
+          },
+          {
+            "duration": 0.04,
+            "type": "hitstop"
+          }
+        ],
+        "hitbox": {
+          "arc_degrees": 180,
+          "reach": 10,
+          "shape": "arc"
+        },
+        "id": "ability.slime_bump",
+        "kind": "ability",
+        "lock_movement": true,
+        "name": "Slime Bump",
+        "recovery": 0.16,
+        "schema_version": 1,
+        "windup": 0.35
+      }
+    },
+    {
+      "source": "game/content/abilities/sword_slash.lua",
+      "data": {
+        "cooldown": 0.28,
+        "duration": 0.12,
+        "effects": [
+          {
+            "amount": 34,
+            "type": "damage"
+          },
+          {
+            "duration": 0.22,
+            "type": "stagger"
+          },
+          {
+            "distance": 24,
+            "duration": 0.12,
+            "type": "knockback"
+          },
+          {
+            "duration": 0.05,
+            "type": "hitstop"
+          }
+        ],
+        "hitbox": {
+          "arc_degrees": 105,
+          "reach": 48,
+          "shape": "arc"
+        },
+        "id": "ability.sword_slash",
+        "kind": "ability",
+        "lock_movement": true,
+        "name": "Sword Slash",
+        "recovery": 0.14,
+        "schema_version": 1,
+        "visual": {
+          "asset": "image.slash",
+          "distance": 31,
+          "scale": 1.2
+        },
+        "windup": 0
+      }
+    },
+    {
+      "source": "game/content/abilities/whirlwind.lua",
+      "data": {
+        "cooldown": 1.1,
+        "duration": 0.42,
+        "effects": [
+          {
+            "amount": 6,
+            "type": "damage"
+          },
+          {
+            "duration": 0.04,
+            "type": "stagger"
+          },
+          {
+            "duration": 0.012,
+            "type": "hitstop"
+          }
+        ],
+        "hitbox": {
+          "arc_degrees": 360,
+          "max_hits": 3,
+          "reach": 42,
+          "repeat_interval": 0.15,
+          "shape": "arc"
+        },
+        "id": "ability.whirlwind",
+        "kind": "ability",
+        "lock_movement": true,
+        "name": "Whirlwind",
+        "recovery": 0.2,
+        "schema_version": 1,
+        "windup": 0.1
+      }
+    },
+    {
+      "source": "game/content/actors/fire_bolt.lua",
+      "data": {
+        "components": {
+          "body": {
+            "collision_layer": "projectile",
+            "collision_mask": [
+              "world"
+            ],
+            "radius": 6,
+            "shape": "circle",
+            "solid": true
+          },
+          "motion.facing": {},
+          "motion.kinematics": {},
+          "render.shape": {
+            "color": [
+              0.2,
+              0.85,
+              1,
+              0.95
+            ],
+            "layer": 10,
+            "outline": [
+              0.75,
+              0.98,
+              1,
+              1
+            ],
+            "radius": 7,
+            "shape": "circle"
+          },
+          "transform": {}
+        },
+        "id": "actor.fire_bolt",
+        "kind": "actor",
+        "name": "Fire Bolt",
+        "schema_version": 1,
+        "tags": [
+          "projectile"
+        ]
+      }
+    },
+    {
+      "source": "game/content/actors/grove_guardian.lua",
+      "data": {
+        "components": {
+          "action.chase_ai": {
+            "aggro_range": 520,
+            "attack_distance": 44,
+            "target_tag": "player"
+          },
+          "action.combat": {
+            "abilities": [
+              "ability.slime_bump"
+            ],
+            "primary": "ability.slime_bump",
+            "team": "enemy"
+          },
+          "action.health": {
+            "death_delay": 0.55,
+            "max": 240
+          },
+          "action.hurtbox": {
+            "radius": 20
+          },
+          "action.knockback": {
+            "resistance": 0.65
+          },
+          "action.reaction": {
+            "flash_duration": 0.18,
+            "hit_invulnerability": 0.1
+          },
+          "action.status": {},
+          "body": {
+            "radius": 20,
+            "shape": "circle",
+            "solid": true
+          },
+          "motion.facing": {},
+          "motion.kinematics": {},
+          "movement.topdown": {
+            "speed": 64
+          },
+          "render.sprite": {
+            "scale": 4,
+            "sprite": "sprite.slime",
+            "tint": [
+              0.76,
+              0.42,
+              1,
+              1
+            ]
+          },
+          "transform": {}
+        },
+        "id": "actor.grove_guardian",
+        "kind": "actor",
+        "name": "Grove Guardian",
+        "schema_version": 1,
+        "tags": [
+          "enemy",
+          "boss"
+        ]
+      }
+    },
+    {
+      "source": "game/content/actors/guide.lua",
+      "data": {
+        "components": {
+          "body": {
+            "radius": 18,
+            "shape": "circle",
+            "solid": false
+          },
+          "motion.facing": {},
+          "render.sprite": {
+            "sprite": "sprite.guide"
+          },
+          "rpg.interactable": {
+            "actions": [
+              {
+                "dialogue": "dialogue.guide",
+                "type": "start_dialogue"
+              }
+            ],
+            "input": "interact",
+            "prompt_key": "interaction.talk",
+            "range": 70
+          },
+          "transform": {}
+        },
+        "id": "actor.guide",
+        "kind": "actor",
+        "name": "Guild Guide",
+        "schema_version": 1,
+        "tags": [
+          "npc"
+        ]
+      }
+    },
+    {
+      "source": "game/content/actors/hero.lua",
+      "data": {
+        "components": {
+          "action.combat": {
+            "abilities": [
+              "ability.sword_slash",
+              "ability.fire_bolt",
+              "ability.whirlwind"
+            ],
+            "primary": "ability.sword_slash",
+            "team": "player"
+          },
+          "action.combat_input": {
+            "bindings": [
+              {
+                "ability": "ability.sword_slash",
+                "input": "attack"
+              },
+              {
+                "ability": "ability.fire_bolt",
+                "input": "special"
+              },
+              {
+                "ability": "ability.whirlwind",
+                "input": "technique"
+              }
+            ]
+          },
+          "action.dodge": {
+            "cooldown": 0.48,
+            "distance": 78,
+            "duration": 0.22,
+            "input": "dodge",
+            "invulnerability": 0.18
+          },
+          "action.health": {
+            "max": 100,
+            "remove_on_death": false
+          },
+          "action.hurtbox": {
+            "radius": 15
+          },
+          "action.knockback": {
+            "resistance": 0.15
+          },
+          "action.parry": {
+            "arc_degrees": 170,
+            "cooldown": 0.75,
+            "hitstop": 0.035,
+            "input": "parry",
+            "perfect_hitstop": 0.06,
+            "perfect_stagger": 1.1,
+            "perfect_window": 0.12,
+            "stagger": 0.55,
+            "success_cooldown": 0.18,
+            "window": 0.32
+          },
+          "action.reaction": {
+            "flash_duration": 0.18,
+            "hit_invulnerability": 0.35
+          },
+          "action.status": {},
+          "body": {
+            "radius": 15,
+            "shape": "circle",
+            "solid": true
+          },
+          "control.player": {},
+          "motion.facing": {},
+          "motion.kinematics": {},
+          "movement.topdown": {
+            "speed": 190
+          },
+          "render.sprite": {
+            "sprite": "sprite.hero"
+          },
+          "rpg.equipment": {
+            "loadout": "hero",
+            "slots": [
+              "weapon",
+              "armor",
+              "accessory"
+            ]
+          },
+          "rpg.stats": {
+            "attack": 0,
+            "defense": 0,
+            "move_speed": 1
+          },
+          "transform": {}
+        },
+        "id": "actor.hero",
+        "kind": "actor",
+        "name": "Hero",
+        "schema_version": 1,
+        "tags": [
+          "player"
+        ]
+      }
+    },
+    {
+      "source": "game/content/actors/merchant.lua",
+      "data": {
+        "components": {
+          "body": {
+            "radius": 18,
+            "shape": "circle",
+            "solid": false
+          },
+          "motion.facing": {},
+          "render.sprite": {
+            "sprite": "sprite.merchant"
+          },
+          "rpg.interactable": {
+            "actions": [
+              {
+                "shop": "shop.village",
+                "type": "open_shop"
+              }
+            ],
+            "input": "interact",
+            "prompt_key": "interaction.shop",
+            "range": 70
+          },
+          "transform": {}
+        },
+        "id": "actor.merchant",
+        "kind": "actor",
+        "name": "Merchant",
+        "schema_version": 1,
+        "tags": [
+          "npc",
+          "merchant"
+        ]
+      }
+    },
+    {
+      "source": "game/content/actors/runner.lua",
+      "data": {
+        "components": {
+          "action.combat": {
+            "abilities": [
+              "ability.sword_slash",
+              "ability.fire_bolt",
+              "ability.whirlwind"
+            ],
+            "primary": "ability.sword_slash",
+            "team": "player"
+          },
+          "action.combat_input": {
+            "bindings": [
+              {
+                "ability": "ability.sword_slash",
+                "input": "attack"
+              },
+              {
+                "ability": "ability.fire_bolt",
+                "input": "special"
+              },
+              {
+                "ability": "ability.whirlwind",
+                "input": "technique"
+              }
+            ]
+          },
+          "action.health": {
+            "max": 100,
+            "remove_on_death": false
+          },
+          "action.hurtbox": {
+            "radius": 15
+          },
+          "action.knockback": {
+            "resistance": 0.15
+          },
+          "action.reaction": {
+            "flash_duration": 0.18,
+            "hit_invulnerability": 0.35
+          },
+          "action.status": {},
+          "body": {
+            "radius": 15,
+            "shape": "circle",
+            "solid": true
+          },
+          "control.player": {},
+          "motion.facing": {
+            "x": 1,
+            "y": 0
+          },
+          "motion.kinematics": {},
+          "movement.platformer": {
+            "acceleration": 1500,
+            "air_acceleration": 900,
+            "coyote_time": 0.1,
+            "deceleration": 1800,
+            "gravity": 1500,
+            "jump_buffer": 0.1,
+            "jump_speed": 600,
+            "max_fall_speed": 900,
+            "speed": 220
+          },
+          "render.sprite": {
+            "sprite": "sprite.hero"
+          },
+          "transform": {}
+        },
+        "id": "actor.runner",
+        "kind": "actor",
+        "name": "Runner",
+        "schema_version": 1,
+        "tags": [
+          "player"
+        ]
+      }
+    },
+    {
+      "source": "game/content/actors/slime.lua",
+      "data": {
+        "components": {
+          "action.chase_ai": {
+            "aggro_range": 360,
+            "attack_distance": 38,
+            "target_tag": "player"
+          },
+          "action.combat": {
+            "abilities": [
+              "ability.slime_bump"
+            ],
+            "primary": "ability.slime_bump",
+            "team": "enemy"
+          },
+          "action.health": {
+            "death_delay": 0.35,
+            "max": 68
+          },
+          "action.hurtbox": {
+            "radius": 13
+          },
+          "action.knockback": {
+            "resistance": 0
+          },
+          "action.reaction": {
+            "flash_duration": 0.16,
+            "hit_invulnerability": 0.12
+          },
+          "action.status": {},
+          "body": {
+            "radius": 13,
+            "shape": "circle",
+            "solid": true
+          },
+          "motion.facing": {},
+          "motion.kinematics": {},
+          "movement.topdown": {
+            "speed": 72
+          },
+          "render.sprite": {
+            "sprite": "sprite.slime"
+          },
+          "transform": {}
+        },
+        "id": "actor.slime",
+        "kind": "actor",
+        "name": "Slime",
+        "schema_version": 1,
+        "tags": [
+          "enemy"
+        ]
+      }
+    },
+    {
+      "source": "game/content/actors/village_guide.lua",
+      "data": {
+        "components": {
+          "body": {
+            "radius": 18,
+            "shape": "circle",
+            "solid": false
+          },
+          "motion.facing": {},
+          "render.sprite": {
+            "sprite": "sprite.guide"
+          },
+          "rpg.interactable": {
+            "actions": [
+              {
+                "dialogue": "dialogue.village_guide",
+                "type": "start_dialogue"
+              }
+            ],
+            "input": "interact",
+            "prompt_key": "interaction.talk",
+            "range": 70
+          },
+          "transform": {}
+        },
+        "id": "actor.village_guide",
+        "kind": "actor",
+        "name": "Village Guide",
+        "schema_version": 1,
+        "tags": [
+          "npc",
+          "guide"
+        ]
+      }
+    },
+    {
+      "source": "game/content/actors/wall.lua",
+      "data": {
+        "components": {
+          "body": {
+            "height": 64,
+            "shape": "rectangle",
+            "solid": true,
+            "static": true,
+            "width": 64
+          },
+          "render.shape": {
+            "color": [
+              0.25,
+              0.27,
+              0.34,
+              1
+            ],
+            "layer": 0,
+            "outline": [
+              0.4,
+              0.44,
+              0.56,
+              1
+            ],
+            "shape": "rectangle"
+          },
+          "transform": {}
+        },
+        "id": "actor.wall",
+        "kind": "actor",
+        "name": "Wall",
+        "schema_version": 1,
+        "tags": [
+          "wall"
+        ]
+      }
+    },
+    {
+      "source": "game/content/dialogues/guide.lua",
+      "data": {
+        "id": "dialogue.guide",
+        "kind": "dialogue",
+        "name_key": "dialogue.guide.name",
+        "nodes": {
+          "accepted": {
+            "speaker_key": "npc.guide.name",
+            "text_key": "dialogue.guide.accepted"
+          },
+          "greeting": {
+            "choices": [
+              {
+                "actions": [
+                  {
+                    "quest": "quest.slime_patrol",
+                    "type": "start_quest"
+                  },
+                  {
+                    "item": "item.training_sword",
+                    "type": "give_item"
+                  },
+                  {
+                    "item": "item.training_sword",
+                    "type": "equip_item"
+                  }
+                ],
+                "condition": {
+                  "quest": "quest.slime_patrol",
+                  "state": "inactive",
+                  "type": "quest_state"
+                },
+                "id": "accept",
+                "next": "accepted",
+                "text_key": "dialogue.guide.accept"
+              },
+              {
+                "condition": {
+                  "quest": "quest.slime_patrol",
+                  "state": "active",
+                  "type": "quest_state"
+                },
+                "id": "progress",
+                "next": "reminder",
+                "text_key": "dialogue.guide.progress"
+              },
+              {
+                "condition": {
+                  "quest": "quest.slime_patrol",
+                  "state": "completed",
+                  "type": "quest_state"
+                },
+                "id": "completed",
+                "next": "thanks",
+                "text_key": "dialogue.guide.completed"
+              },
+              {
+                "id": "leave",
+                "text_key": "dialogue.guide.leave"
+              }
+            ],
+            "speaker_key": "npc.guide.name",
+            "text_key": "dialogue.guide.greeting"
+          },
+          "reminder": {
+            "speaker_key": "npc.guide.name",
+            "text_key": "dialogue.guide.reminder"
+          },
+          "thanks": {
+            "speaker_key": "npc.guide.name",
+            "text_key": "dialogue.guide.thanks"
+          }
+        },
+        "schema_version": 1,
+        "start": "greeting"
+      }
+    },
+    {
+      "source": "game/content/dialogues/village_guide.lua",
+      "data": {
+        "id": "dialogue.village_guide",
+        "kind": "dialogue",
+        "name_key": "dialogue.village_guide.name",
+        "nodes": {
+          "accepted": {
+            "speaker_key": "npc.village_guide.name",
+            "text_key": "dialogue.village_guide.accepted"
+          },
+          "greeting": {
+            "choices": [
+              {
+                "actions": [
+                  {
+                    "quest": "quest.grove_guardian",
+                    "type": "start_quest"
+                  },
+                  {
+                    "item": "item.training_sword",
+                    "type": "give_item"
+                  },
+                  {
+                    "item": "item.training_sword",
+                    "type": "equip_item"
+                  },
+                  {
+                    "amount": 25,
+                    "reason": "campaign.starting_supplies",
+                    "type": "add_currency"
+                  }
+                ],
+                "condition": {
+                  "quest": "quest.grove_guardian",
+                  "state": "inactive",
+                  "type": "quest_state"
+                },
+                "id": "accept",
+                "next": "accepted",
+                "text_key": "dialogue.village_guide.accept"
+              },
+              {
+                "condition": {
+                  "quest": "quest.grove_guardian",
+                  "state": "active",
+                  "type": "quest_state"
+                },
+                "id": "progress",
+                "next": "reminder",
+                "text_key": "dialogue.village_guide.progress"
+              },
+              {
+                "condition": {
+                  "quest": "quest.grove_guardian",
+                  "state": "completed",
+                  "type": "quest_state"
+                },
+                "id": "completed",
+                "next": "thanks",
+                "text_key": "dialogue.village_guide.completed"
+              },
+              {
+                "id": "leave",
+                "text_key": "dialogue.village_guide.leave"
+              }
+            ],
+            "speaker_key": "npc.village_guide.name",
+            "text_key": "dialogue.village_guide.greeting"
+          },
+          "reminder": {
+            "speaker_key": "npc.village_guide.name",
+            "text_key": "dialogue.village_guide.reminder"
+          },
+          "thanks": {
+            "actions": [
+              {
+                "type": "finish_game"
+              }
+            ],
+            "speaker_key": "npc.village_guide.name",
+            "text_key": "dialogue.village_guide.thanks"
+          }
+        },
+        "schema_version": 1,
+        "start": "greeting"
+      }
+    },
+    {
+      "source": "game/content/encounters/slime_trial.lua",
+      "data": {
+        "id": "encounter.slime_trial",
+        "kind": "encounter",
+        "name": "Slime Trial",
+        "on_complete": [
+          {
+            "name": "encounter.slime_trial_completed",
+            "type": "emit"
+          }
+        ],
+        "schema_version": 1,
+        "target_tag": "player",
+        "waves": [
+          {
+            "delay": 0.1,
+            "id": "scouts",
+            "on_start": [
+              {
+                "name": "encounter.scouts_started",
+                "type": "emit"
+              }
+            ],
+            "spawns": [
+              {
+                "actor": "actor.slime",
+                "id": "left",
+                "position": {
+                  "x": -60,
+                  "y": 190
+                }
+              },
+              {
+                "actor": "actor.slime",
+                "id": "right",
+                "position": {
+                  "x": 80,
+                  "y": 190
+                }
+              }
+            ]
+          },
+          {
+            "boss_phases": [
+              {
+                "actions": [
+                  {
+                    "status": "status.enraged",
+                    "type": "apply_status"
+                  }
+                ],
+                "health_ratio_at_most": 0.5,
+                "id": "enraged",
+                "spawn": "champion"
+              }
+            ],
+            "delay": 0.15,
+            "id": "boss",
+            "spawns": [
+              {
+                "actor": "actor.slime",
+                "components": {
+                  "action.health": {
+                    "max": 120
+                  },
+                  "movement.topdown": {
+                    "speed": 86
+                  }
+                },
+                "id": "champion",
+                "position": {
+                  "x": 0,
+                  "y": 190
+                },
+                "tags": [
+                  "boss"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source": "game/content/assets/ui_font.lua",
+      "data": {
+        "asset_type": "font",
+        "id": "font.ui",
+        "kind": "asset",
+        "name": "Hakgyoansim Chaekgalpi",
+        "path": "assets/runtime/fonts/Hakgyoansim_ChaekgalpiR.ttf",
+        "schema_version": 1
+      }
+    },
+    {
+      "source": "game/content/assets/guide_sheet.lua",
+      "data": {
+        "asset_type": "image",
+        "filter": "nearest",
+        "height": 96,
+        "id": "image.guide_sheet",
+        "kind": "asset",
+        "path": "assets/runtime/images/npcs/guide-sheet.png",
+        "schema_version": 1,
+        "width": 384
+      }
+    },
+    {
+      "source": "game/content/assets/merchant_sheet.lua",
+      "data": {
+        "asset_type": "image",
+        "filter": "nearest",
+        "height": 96,
+        "id": "image.merchant_sheet",
+        "kind": "asset",
+        "path": "assets/runtime/images/npcs/merchant-sheet.png",
+        "schema_version": 1,
+        "width": 384
+      }
+    },
+    {
+      "source": "game/content/assets/player_sheet.lua",
+      "data": {
+        "asset_type": "image",
+        "filter": "nearest",
+        "height": 960,
+        "id": "image.player_sheet",
+        "kind": "asset",
+        "name": "Original Player Sheet",
+        "path": "assets/runtime/images/player/player-sheet.png",
+        "schema_version": 1,
+        "width": 384
+      }
+    },
+    {
+      "source": "game/content/assets/slash.lua",
+      "data": {
+        "asset_type": "image",
+        "filter": "nearest",
+        "height": 39,
+        "id": "image.slash",
+        "kind": "asset",
+        "name": "Original Slash Effect",
+        "path": "assets/runtime/images/effects/slash.png",
+        "schema_version": 1,
+        "width": 46
+      }
+    },
+    {
+      "source": "game/content/assets/slime_sheet.lua",
+      "data": {
+        "asset_type": "image",
+        "filter": "nearest",
+        "height": 64,
+        "id": "image.slime_red_sheet",
+        "kind": "asset",
+        "name": "Original Red Slime Sheet",
+        "path": "assets/runtime/images/enemies/slime-red-sheet.png",
+        "schema_version": 1,
+        "width": 176
+      }
+    },
+    {
+      "source": "game/content/assets/world_tileset.lua",
+      "data": {
+        "asset_type": "image",
+        "filter": "nearest",
+        "height": 576,
+        "id": "image.world_tileset",
+        "kind": "asset",
+        "name": "Original World Tileset",
+        "path": "assets/runtime/images/tilesets/tileset_area1.png",
+        "schema_version": 1,
+        "width": 864
+      }
+    },
+    {
+      "source": "game/content/items/potion.lua",
+      "data": {
+        "consumable": true,
+        "description_key": "item.potion.description",
+        "effects": [
+          {
+            "amount": 25,
+            "type": "heal"
+          }
+        ],
+        "id": "item.potion",
+        "kind": "item",
+        "name_key": "item.potion.name",
+        "schema_version": 1,
+        "stack_limit": 10,
+        "value": 25
+      }
+    },
+    {
+      "source": "game/content/items/training_sword.lua",
+      "data": {
+        "description_key": "item.training_sword.description",
+        "equipment": {
+          "modifiers": {
+            "attack": 5
+          },
+          "slot": "weapon"
+        },
+        "id": "item.training_sword",
+        "kind": "item",
+        "name_key": "item.training_sword.name",
+        "schema_version": 1,
+        "stack_limit": 1,
+        "value": 60
+      }
+    },
+    {
+      "source": "game/content/locales/en.lua",
+      "data": {
+        "code": "en",
+        "id": "locale.en",
+        "kind": "locale",
+        "name": "English",
+        "schema_version": 1,
+        "strings": {
+          "dialogue.guide.accept": "I will handle them.",
+          "dialogue.guide.accepted": "Take this training sword. Come back safely.",
+          "dialogue.guide.completed": "The road is safe now.",
+          "dialogue.guide.greeting": "Two slimes are blocking the road. Can you help?",
+          "dialogue.guide.leave": "Maybe later.",
+          "dialogue.guide.name": "A Small Request",
+          "dialogue.guide.progress": "I am still working on it.",
+          "dialogue.guide.reminder": "Defeat the two slimes near the east road.",
+          "dialogue.guide.thanks": "Excellent work. The reward is already yours.",
+          "dialogue.village_guide.accept": "I will stop them.",
+          "dialogue.village_guide.accepted": "Take this training sword. Be careful deep in the grove.",
+          "dialogue.village_guide.completed": "The guardian is defeated.",
+          "dialogue.village_guide.greeting": "Slimes and the grove guardian are threatening our village.",
+          "dialogue.village_guide.leave": "I will return after preparing.",
+          "dialogue.village_guide.name": "The Grove in Danger",
+          "dialogue.village_guide.progress": "Report my progress.",
+          "dialogue.village_guide.reminder": "Defeat two slimes, then stop the guardian deep in the grove.",
+          "dialogue.village_guide.thanks": "Excellent work. The grove and village are peaceful again.",
+          "flow.controls": "↑/↓ Select    Enter Confirm    Esc Back",
+          "flow.ending.heading": "Peace Returns to the Grove",
+          "flow.ending.message": "You completed this small but complete adventure. Thank you.",
+          "flow.game_over.heading": "You Have Fallen",
+          "flow.game_over.message": "Try again or continue from your last save.",
+          "flow.menu.continue": "Continue",
+          "flow.menu.new_game": "New Game",
+          "flow.menu.quit": "Quit",
+          "flow.menu.resume": "Resume",
+          "flow.menu.retry": "Retry",
+          "flow.menu.save": "Save",
+          "flow.menu.title": "Return to Title",
+          "flow.pause.heading": "Paused",
+          "flow.title.heading": "Guardian of the Quiet Grove",
+          "flow.title.message": "Defeat the guardian threatening the village.",
+          "interaction.shop": "Shop",
+          "interaction.talk": "Talk",
+          "item.potion.description": "Restores 25 HP.",
+          "item.potion.name": "Potion",
+          "item.training_sword.description": "A balanced sword that adds 5 attack.",
+          "item.training_sword.name": "Training Sword",
+          "npc.guide.name": "Guild Guide",
+          "npc.merchant.name": "Merchant",
+          "npc.village_guide.name": "Village Guide",
+          "quest.grove_guardian.description": "Defeat two road slimes and the grove guardian.",
+          "quest.grove_guardian.name": "Guardian of the Quiet Grove",
+          "quest.slime_patrol.description": "Defeat two slimes blocking the east road.",
+          "quest.slime_patrol.name": "East Road Patrol",
+          "shop.village.name": "Village Supplies",
+          "stage.village.name": "Willow Village",
+          "stage.world_grove.name": "Quiet Grove",
+          "stage.world_hub.name": "East Forest Road",
+          "ui.currency": "Currency",
+          "ui.input.attack": "Attack: Space",
+          "ui.input.debug": "Debug: F1",
+          "ui.input.dodge": "Dodge: Shift",
+          "ui.input.interact": "Interact: E",
+          "ui.input.jump": "Jump: W/Up",
+          "ui.input.move": "Move: WASD/arrows",
+          "ui.input.parry": "Parry: C",
+          "ui.input.restart": "Restart: R",
+          "ui.input.special": "Ranged: F",
+          "ui.input.technique": "Whirlwind: Q",
+          "ui.quest_status.active": "Active",
+          "ui.quest_status.completed": "Completed",
+          "ui.quest_status.failed": "Failed",
+          "ui.shop.buy": "BUY",
+          "ui.shop.owned": "owned %d",
+          "ui.shop.purchased": "Purchased.",
+          "ui.shop.sell": "SELL",
+          "ui.shop.sold": "Sold.",
+          "ui.slot.accessory": "Accessory",
+          "ui.slot.armor": "Armor",
+          "ui.slot.weapon": "Weapon",
+          "ui.stat.attack": "ATK",
+          "ui.stat.defense": "DEF",
+          "ui.stat.move": "MOVE"
+        }
+      }
+    },
+    {
+      "source": "game/content/locales/ko.lua",
+      "data": {
+        "code": "ko",
+        "id": "locale.ko",
+        "kind": "locale",
+        "name": "한국어",
+        "schema_version": 1,
+        "strings": {
+          "dialogue.guide.accept": "제가 처리하겠습니다.",
+          "dialogue.guide.accepted": "연습용 검을 드릴게요. 무사히 돌아오세요.",
+          "dialogue.guide.completed": "이제 길이 안전합니다.",
+          "dialogue.guide.greeting": "동쪽 길을 슬라임 둘이 막고 있어요. 도와주시겠습니까?",
+          "dialogue.guide.leave": "나중에 하겠습니다.",
+          "dialogue.guide.name": "작은 부탁",
+          "dialogue.guide.progress": "아직 처리 중입니다.",
+          "dialogue.guide.reminder": "동쪽 길의 슬라임 둘을 처치해 주세요.",
+          "dialogue.guide.thanks": "훌륭합니다. 보상은 이미 지급했습니다.",
+          "dialogue.village_guide.accept": "제가 막겠습니다.",
+          "dialogue.village_guide.accepted": "연습용 검을 드릴게요. 숲 깊은 곳까지 조심하세요.",
+          "dialogue.village_guide.completed": "수호자를 물리쳤습니다.",
+          "dialogue.village_guide.greeting": "동쪽 길의 슬라임과 숲의 수호자가 마을을 위협하고 있어요.",
+          "dialogue.village_guide.leave": "준비한 뒤 돌아오겠습니다.",
+          "dialogue.village_guide.name": "숲의 위기",
+          "dialogue.village_guide.progress": "의뢰 진행 상황을 말한다.",
+          "dialogue.village_guide.reminder": "슬라임 둘을 처치한 뒤 숲 깊은 곳의 수호자를 막아 주세요.",
+          "dialogue.village_guide.thanks": "훌륭합니다. 숲과 마을이 다시 평온해졌습니다.",
+          "flow.controls": "↑/↓ 선택    Enter 확인    Esc 뒤로",
+          "flow.ending.heading": "숲에 평화가 돌아왔습니다",
+          "flow.ending.message": "작지만 완전한 모험을 끝냈습니다. 플레이해 주셔서 감사합니다.",
+          "flow.game_over.heading": "쓰러졌습니다",
+          "flow.game_over.message": "다시 도전하거나 마지막 저장에서 이어갈 수 있습니다.",
+          "flow.menu.continue": "이어하기",
+          "flow.menu.new_game": "새 게임",
+          "flow.menu.quit": "종료",
+          "flow.menu.resume": "계속하기",
+          "flow.menu.retry": "다시 도전",
+          "flow.menu.save": "저장",
+          "flow.menu.title": "타이틀로",
+          "flow.pause.heading": "일시 정지",
+          "flow.title.heading": "고요한 숲의 수호자",
+          "flow.title.message": "마을을 위협하는 숲의 수호자를 물리치세요.",
+          "interaction.shop": "상점",
+          "interaction.talk": "대화",
+          "item.potion.description": "체력을 25 회복한다.",
+          "item.potion.name": "회복 물약",
+          "item.training_sword.description": "공격력을 5 올려 주는 균형 잡힌 검.",
+          "item.training_sword.name": "연습용 검",
+          "npc.guide.name": "길드 안내인",
+          "npc.merchant.name": "상인",
+          "npc.village_guide.name": "마을 안내인",
+          "quest.grove_guardian.description": "동쪽 길의 슬라임 둘과 숲의 수호자를 처치한다.",
+          "quest.grove_guardian.name": "고요한 숲의 수호자",
+          "quest.slime_patrol.description": "동쪽 길을 막은 슬라임 둘을 처치한다.",
+          "quest.slime_patrol.name": "동쪽 길 순찰",
+          "shop.village.name": "마을 잡화점",
+          "stage.village.name": "버드나무 마을",
+          "stage.world_grove.name": "고요한 숲",
+          "stage.world_hub.name": "동쪽 숲길",
+          "ui.currency": "소지금",
+          "ui.input.attack": "공격: Space",
+          "ui.input.debug": "디버그: F1",
+          "ui.input.dodge": "회피: Shift",
+          "ui.input.interact": "상호작용: E",
+          "ui.input.jump": "점프: W/↑",
+          "ui.input.move": "이동: WASD/방향키",
+          "ui.input.parry": "패링: C",
+          "ui.input.restart": "재시작: R",
+          "ui.input.special": "원거리: F",
+          "ui.input.technique": "회전 공격: Q",
+          "ui.quest_status.active": "진행 중",
+          "ui.quest_status.completed": "완료",
+          "ui.quest_status.failed": "실패",
+          "ui.shop.buy": "구매",
+          "ui.shop.owned": "보유 %d",
+          "ui.shop.purchased": "구입했습니다.",
+          "ui.shop.sell": "판매",
+          "ui.shop.sold": "판매했습니다.",
+          "ui.slot.accessory": "장신구",
+          "ui.slot.armor": "방어구",
+          "ui.slot.weapon": "무기",
+          "ui.stat.attack": "공격",
+          "ui.stat.defense": "방어",
+          "ui.stat.move": "이동"
+        }
+      }
+    },
+    {
+      "source": "game/content/projectiles/fire_bolt.lua",
+      "data": {
+        "actor": "actor.fire_bolt",
+        "destroy_on_wall": true,
+        "effects": [
+          {
+            "amount": 18,
+            "type": "damage"
+          },
+          {
+            "duration": 0.12,
+            "type": "stagger"
+          },
+          {
+            "status": "status.burning",
+            "type": "apply_status"
+          },
+          {
+            "distance": 12,
+            "duration": 0.08,
+            "type": "knockback"
+          },
+          {
+            "duration": 0.025,
+            "type": "hitstop"
+          }
+        ],
+        "id": "projectile.fire_bolt",
+        "kind": "projectile",
+        "lifetime": 1.8,
+        "name": "Fire Bolt",
+        "pierce": 0,
+        "schema_version": 1,
+        "spawn_offset": 25,
+        "speed": 420
+      }
+    },
+    {
+      "source": "game/content/quests/grove_guardian.lua",
+      "data": {
+        "description_key": "quest.grove_guardian.description",
+        "id": "quest.grove_guardian",
+        "kind": "quest",
+        "name_key": "quest.grove_guardian.name",
+        "objectives": [
+          {
+            "count": 2,
+            "event": "actor.killed",
+            "id": "defeat_slimes",
+            "where": {
+              "actor_id": "actor.slime"
+            }
+          },
+          {
+            "count": 1,
+            "event": "actor.killed",
+            "id": "defeat_guardian",
+            "where": {
+              "actor_id": "actor.grove_guardian"
+            }
+          }
+        ],
+        "on_complete": [
+          {
+            "item": "item.potion",
+            "type": "give_item"
+          },
+          {
+            "amount": 75,
+            "reason": "quest.grove_guardian",
+            "type": "add_currency"
+          },
+          {
+            "name": "quest.grove_guardian.rewarded",
+            "type": "set_flag"
+          }
+        ],
+        "schema_version": 1
+      }
+    },
+    {
+      "source": "game/content/quests/slime_patrol.lua",
+      "data": {
+        "description_key": "quest.slime_patrol.description",
+        "id": "quest.slime_patrol",
+        "kind": "quest",
+        "name_key": "quest.slime_patrol.name",
+        "objectives": [
+          {
+            "count": 2,
+            "event": "actor.killed",
+            "id": "defeat_slimes",
+            "where": {
+              "actor_id": "actor.slime"
+            }
+          }
+        ],
+        "on_complete": [
+          {
+            "item": "item.potion",
+            "type": "give_item"
+          },
+          {
+            "amount": 100,
+            "reason": "quest.slime_patrol",
+            "type": "add_currency"
+          },
+          {
+            "name": "quest.slime_patrol.rewarded",
+            "type": "set_flag"
+          }
+        ],
+        "schema_version": 1
+      }
+    },
+    {
+      "source": "game/content/shops/village.lua",
+      "data": {
+        "id": "shop.village",
+        "kind": "shop",
+        "name_key": "shop.village.name",
+        "offers": [
+          {
+            "buy_price": 25,
+            "item": "item.potion",
+            "sell_price": 10
+          },
+          {
+            "item": "item.training_sword",
+            "sell_price": 30
+          }
+        ],
+        "schema_version": 1
+      }
+    },
+    {
+      "source": "game/content/sprites/guide.lua",
+      "data": {
+        "asset": "image.guide_sheet",
+        "clips": {
+          "idle_down": {
+            "fps": 5,
+            "frames": [
+              [
+                1,
+                1
+              ],
+              [
+                2,
+                1
+              ],
+              [
+                3,
+                1
+              ],
+              [
+                4,
+                1
+              ]
+            ]
+          },
+          "idle_left": {
+            "fps": 5,
+            "frames": [
+              [
+                1,
+                2
+              ],
+              [
+                2,
+                2
+              ],
+              [
+                3,
+                2
+              ],
+              [
+                4,
+                2
+              ]
+            ]
+          },
+          "idle_right": {
+            "fps": 5,
+            "frames": [
+              [
+                5,
+                2
+              ],
+              [
+                6,
+                2
+              ],
+              [
+                7,
+                2
+              ],
+              [
+                8,
+                2
+              ]
+            ]
+          },
+          "idle_up": {
+            "fps": 5,
+            "frames": [
+              [
+                5,
+                1
+              ],
+              [
+                6,
+                1
+              ],
+              [
+                7,
+                1
+              ],
+              [
+                8,
+                1
+              ]
+            ]
+          }
+        },
+        "default_clip": "idle_down",
+        "frame_height": 48,
+        "frame_width": 48,
+        "id": "sprite.guide",
+        "kind": "sprite",
+        "name": "Guide Animation",
+        "origin_x": 24,
+        "origin_y": 24,
+        "scale": 2,
+        "schema_version": 1,
+        "state_map": {
+          "idle_down": "idle_down",
+          "idle_left": "idle_left",
+          "idle_right": "idle_right",
+          "idle_up": "idle_up"
+        }
+      }
+    },
+    {
+      "source": "game/content/sprites/hero.lua",
+      "data": {
+        "asset": "image.player_sheet",
+        "clips": {
+          "attack_down": {
+            "fps": 13,
+            "frames": [
+              [
+                1,
+                11
+              ],
+              [
+                2,
+                11
+              ],
+              [
+                3,
+                11
+              ],
+              [
+                4,
+                11
+              ]
+            ],
+            "loop": false
+          },
+          "attack_left": {
+            "fps": 13,
+            "frames": [
+              [
+                1,
+                12
+              ],
+              [
+                2,
+                12
+              ],
+              [
+                3,
+                12
+              ],
+              [
+                4,
+                12
+              ]
+            ],
+            "loop": false
+          },
+          "attack_right": {
+            "fps": 13,
+            "frames": [
+              [
+                5,
+                12
+              ],
+              [
+                6,
+                12
+              ],
+              [
+                7,
+                12
+              ],
+              [
+                8,
+                12
+              ]
+            ],
+            "loop": false
+          },
+          "attack_up": {
+            "fps": 13,
+            "frames": [
+              [
+                5,
+                11
+              ],
+              [
+                6,
+                11
+              ],
+              [
+                7,
+                11
+              ],
+              [
+                8,
+                11
+              ]
+            ],
+            "loop": false
+          },
+          "idle_down": {
+            "fps": 7,
+            "frames": [
+              [
+                1,
+                1
+              ],
+              [
+                2,
+                1
+              ],
+              [
+                3,
+                1
+              ],
+              [
+                4,
+                1
+              ]
+            ]
+          },
+          "idle_left": {
+            "fps": 7,
+            "frames": [
+              [
+                1,
+                2
+              ],
+              [
+                2,
+                2
+              ],
+              [
+                3,
+                2
+              ],
+              [
+                4,
+                2
+              ]
+            ]
+          },
+          "idle_right": {
+            "fps": 7,
+            "frames": [
+              [
+                5,
+                2
+              ],
+              [
+                6,
+                2
+              ],
+              [
+                7,
+                2
+              ],
+              [
+                8,
+                2
+              ]
+            ]
+          },
+          "idle_up": {
+            "fps": 7,
+            "frames": [
+              [
+                5,
+                1
+              ],
+              [
+                6,
+                1
+              ],
+              [
+                7,
+                1
+              ],
+              [
+                8,
+                1
+              ]
+            ]
+          },
+          "run_down": {
+            "fps": 12,
+            "frames": [
+              [
+                1,
+                6
+              ],
+              [
+                2,
+                6
+              ],
+              [
+                3,
+                6
+              ],
+              [
+                4,
+                6
+              ],
+              [
+                5,
+                6
+              ],
+              [
+                6,
+                6
+              ]
+            ]
+          },
+          "run_left": {
+            "fps": 12,
+            "frames": [
+              [
+                5,
+                7
+              ],
+              [
+                6,
+                7
+              ],
+              [
+                7,
+                7
+              ],
+              [
+                8,
+                7
+              ],
+              [
+                1,
+                8
+              ],
+              [
+                2,
+                8
+              ]
+            ]
+          },
+          "run_right": {
+            "fps": 12,
+            "frames": [
+              [
+                3,
+                8
+              ],
+              [
+                4,
+                8
+              ],
+              [
+                5,
+                8
+              ],
+              [
+                6,
+                8
+              ],
+              [
+                7,
+                8
+              ],
+              [
+                8,
+                8
+              ]
+            ]
+          },
+          "run_up": {
+            "fps": 12,
+            "frames": [
+              [
+                7,
+                6
+              ],
+              [
+                8,
+                6
+              ],
+              [
+                1,
+                7
+              ],
+              [
+                2,
+                7
+              ],
+              [
+                3,
+                7
+              ],
+              [
+                4,
+                7
+              ]
+            ]
+          }
+        },
+        "default_clip": "idle_down",
+        "frame_height": 48,
+        "frame_width": 48,
+        "id": "sprite.hero",
+        "kind": "sprite",
+        "name": "Hero Animation",
+        "origin_x": 24,
+        "origin_y": 24,
+        "scale": 2,
+        "schema_version": 1,
+        "state_map": {
+          "attack_down": "attack_down",
+          "attack_left": "attack_left",
+          "attack_right": "attack_right",
+          "attack_up": "attack_up",
+          "idle_down": "idle_down",
+          "idle_left": "idle_left",
+          "idle_right": "idle_right",
+          "idle_up": "idle_up",
+          "move_down": "run_down",
+          "move_left": "run_left",
+          "move_right": "run_right",
+          "move_up": "run_up"
+        }
+      }
+    },
+    {
+      "source": "game/content/sprites/merchant.lua",
+      "data": {
+        "asset": "image.merchant_sheet",
+        "clips": {
+          "idle_down": {
+            "fps": 5,
+            "frames": [
+              [
+                1,
+                1
+              ],
+              [
+                2,
+                1
+              ],
+              [
+                3,
+                1
+              ],
+              [
+                4,
+                1
+              ]
+            ]
+          },
+          "idle_left": {
+            "fps": 5,
+            "frames": [
+              [
+                1,
+                2
+              ],
+              [
+                2,
+                2
+              ],
+              [
+                3,
+                2
+              ],
+              [
+                4,
+                2
+              ]
+            ]
+          },
+          "idle_right": {
+            "fps": 5,
+            "frames": [
+              [
+                5,
+                2
+              ],
+              [
+                6,
+                2
+              ],
+              [
+                7,
+                2
+              ],
+              [
+                8,
+                2
+              ]
+            ]
+          },
+          "idle_up": {
+            "fps": 5,
+            "frames": [
+              [
+                5,
+                1
+              ],
+              [
+                6,
+                1
+              ],
+              [
+                7,
+                1
+              ],
+              [
+                8,
+                1
+              ]
+            ]
+          }
+        },
+        "default_clip": "idle_down",
+        "frame_height": 48,
+        "frame_width": 48,
+        "id": "sprite.merchant",
+        "kind": "sprite",
+        "name": "Merchant Animation",
+        "origin_x": 24,
+        "origin_y": 24,
+        "scale": 2,
+        "schema_version": 1,
+        "state_map": {
+          "idle_down": "idle_down",
+          "idle_left": "idle_left",
+          "idle_right": "idle_right",
+          "idle_up": "idle_up"
+        }
+      }
+    },
+    {
+      "source": "game/content/sprites/slime.lua",
+      "data": {
+        "asset": "image.slime_red_sheet",
+        "clips": {
+          "attack_left": {
+            "fps": 10,
+            "frames": [
+              [
+                8,
+                2
+              ],
+              [
+                9,
+                2
+              ],
+              [
+                10,
+                2
+              ],
+              [
+                11,
+                2
+              ]
+            ],
+            "loop": false
+          },
+          "attack_right": {
+            "fps": 10,
+            "frames": [
+              [
+                8,
+                1
+              ],
+              [
+                9,
+                1
+              ],
+              [
+                10,
+                1
+              ],
+              [
+                11,
+                1
+              ]
+            ],
+            "loop": false
+          },
+          "idle_left": {
+            "fps": 5,
+            "frames": [
+              [
+                1,
+                2
+              ],
+              [
+                2,
+                2
+              ],
+              [
+                3,
+                2
+              ]
+            ]
+          },
+          "idle_right": {
+            "fps": 5,
+            "frames": [
+              [
+                1,
+                1
+              ],
+              [
+                2,
+                1
+              ],
+              [
+                3,
+                1
+              ]
+            ]
+          },
+          "move_left": {
+            "fps": 8,
+            "frames": [
+              [
+                4,
+                2
+              ],
+              [
+                5,
+                2
+              ],
+              [
+                6,
+                2
+              ],
+              [
+                7,
+                2
+              ]
+            ]
+          },
+          "move_right": {
+            "fps": 8,
+            "frames": [
+              [
+                4,
+                1
+              ],
+              [
+                5,
+                1
+              ],
+              [
+                6,
+                1
+              ],
+              [
+                7,
+                1
+              ]
+            ]
+          }
+        },
+        "default_clip": "idle_right",
+        "frame_height": 32,
+        "frame_width": 16,
+        "id": "sprite.slime",
+        "kind": "sprite",
+        "name": "Red Slime Animation",
+        "origin_x": 8,
+        "origin_y": 24,
+        "scale": 2.5,
+        "schema_version": 1,
+        "state_map": {
+          "attack_down": "attack_right",
+          "attack_left": "attack_left",
+          "attack_right": "attack_right",
+          "attack_up": "attack_right",
+          "idle_down": "idle_right",
+          "idle_left": "idle_left",
+          "idle_right": "idle_right",
+          "idle_up": "idle_right",
+          "move_down": "move_right",
+          "move_left": "move_left",
+          "move_right": "move_right",
+          "move_up": "move_right"
+        }
+      }
+    },
+    {
+      "source": "game/content/stages/action_room.lua",
+      "data": {
+        "background": [
+          0.07,
+          0.085,
+          0.12,
+          1
+        ],
+        "height": 540,
+        "id": "stage.action_room",
+        "kind": "stage",
+        "name": "Action Runtime Vertical Slice",
+        "schema_version": 1,
+        "spawns": [
+          {
+            "actor": "actor.hero",
+            "id": "player",
+            "position": {
+              "x": 180,
+              "y": 270
+            }
+          },
+          {
+            "actor": "actor.slime",
+            "id": "enemy.slime.1",
+            "position": {
+              "x": 560,
+              "y": 190
+            }
+          },
+          {
+            "actor": "actor.slime",
+            "id": "enemy.slime.2",
+            "position": {
+              "x": 660,
+              "y": 350
+            }
+          },
+          {
+            "actor": "actor.wall",
+            "components": {
+              "body": {
+                "height": 180,
+                "width": 76
+              },
+              "render.shape": {
+                "label": "WALL"
+              }
+            },
+            "id": "wall.center",
+            "position": {
+              "x": 460,
+              "y": 270
+            }
+          },
+          {
+            "actor": "actor.wall",
+            "components": {
+              "body": {
+                "height": 42,
+                "width": 160
+              }
+            },
+            "id": "wall.upper",
+            "position": {
+              "x": 300,
+              "y": 120
+            }
+          }
+        ],
+        "width": 960
+      }
+    },
+    {
+      "source": "game/content/stages/encounter_room.lua",
+      "data": {
+        "background": [
+          0.09,
+          0.055,
+          0.09,
+          1
+        ],
+        "encounters": [
+          {
+            "auto_start": true,
+            "encounter": "encounter.slime_trial",
+            "id": "arena",
+            "position": {
+              "x": 480,
+              "y": 80
+            }
+          }
+        ],
+        "height": 540,
+        "id": "stage.encounter_room",
+        "kind": "stage",
+        "name": "Encounter and Boss Phase Slice",
+        "schema_version": 1,
+        "spawns": [
+          {
+            "actor": "actor.hero",
+            "id": "player",
+            "position": {
+              "x": 180,
+              "y": 270
+            }
+          }
+        ],
+        "width": 960
+      }
+    },
+    {
+      "source": "game/content/stages/platformer_room.lua",
+      "data": {
+        "background": [
+          0.045,
+          0.075,
+          0.12,
+          1
+        ],
+        "camera": {
+          "follow_tag": "player",
+          "viewport_height": 450,
+          "viewport_width": 800
+        },
+        "height": 540,
+        "id": "stage.platformer_room",
+        "kind": "stage",
+        "mode": "platformer",
+        "name": "Independent Platformer Movement Slice",
+        "schema_version": 1,
+        "spawns": [
+          {
+            "actor": "actor.runner",
+            "id": "player",
+            "position": {
+              "x": 360,
+              "y": 485
+            }
+          },
+          {
+            "actor": "actor.wall",
+            "components": {
+              "body": {
+                "height": 40,
+                "solid": false,
+                "width": 960
+              },
+              "render.shape": {
+                "color": [
+                  0.16,
+                  0.25,
+                  0.35,
+                  1
+                ],
+                "outline": [
+                  0.3,
+                  0.65,
+                  0.85,
+                  1
+                ]
+              }
+            },
+            "id": "visual.floor",
+            "position": {
+              "x": 480,
+              "y": 520
+            }
+          },
+          {
+            "actor": "actor.wall",
+            "components": {
+              "body": {
+                "height": 24,
+                "solid": false,
+                "width": 180
+              },
+              "render.shape": {
+                "color": [
+                  0.2,
+                  0.36,
+                  0.42,
+                  1
+                ],
+                "outline": [
+                  0.35,
+                  0.85,
+                  0.72,
+                  1
+                ]
+              }
+            },
+            "id": "visual.raised_platform",
+            "position": {
+              "x": 520,
+              "y": 402
+            }
+          }
+        ],
+        "walls": [
+          {
+            "id": "floor",
+            "shape": {
+              "height": 40,
+              "type": "rectangle",
+              "width": 960,
+              "x": 480,
+              "y": 520
+            }
+          },
+          {
+            "id": "raised_platform",
+            "shape": {
+              "height": 24,
+              "type": "rectangle",
+              "width": 180,
+              "x": 520,
+              "y": 402
+            }
+          }
+        ],
+        "width": 960
+      }
+    },
+    {
+      "source": "game/content/stages/rpg_village.lua",
+      "data": {
+        "background": [
+          0.055,
+          0.11,
+          0.09,
+          1
+        ],
+        "camera": {
+          "follow_tag": "player",
+          "viewport_height": 450,
+          "viewport_width": 800
+        },
+        "height": 540,
+        "id": "stage.rpg_village",
+        "kind": "stage",
+        "name": "RPG Vertical Slice Village",
+        "portals": [
+          {
+            "id": "to_field",
+            "shape": {
+              "height": 128,
+              "type": "rectangle",
+              "width": 32,
+              "x": 944,
+              "y": 270
+            },
+            "target_spawn": "village_entry",
+            "target_stage": "stage.world_hub"
+          }
+        ],
+        "schema_version": 1,
+        "spawn_points": [
+          {
+            "id": "default",
+            "x": 150,
+            "y": 270
+          },
+          {
+            "id": "field_return",
+            "x": 850,
+            "y": 270
+          }
+        ],
+        "spawns": [
+          {
+            "actor": "actor.hero",
+            "id": "player",
+            "position": {
+              "x": 150,
+              "y": 270
+            }
+          },
+          {
+            "actor": "actor.guide",
+            "id": "guide",
+            "position": {
+              "x": 260,
+              "y": 240
+            }
+          },
+          {
+            "actor": "actor.merchant",
+            "id": "merchant",
+            "position": {
+              "x": 390,
+              "y": 240
+            }
+          },
+          {
+            "actor": "actor.slime",
+            "id": "quest.slime.1",
+            "position": {
+              "x": 620,
+              "y": 215
+            }
+          },
+          {
+            "actor": "actor.slime",
+            "id": "quest.slime.2",
+            "position": {
+              "x": 700,
+              "y": 325
+            }
+          }
+        ],
+        "walls": [
+          {
+            "id": "north",
+            "shape": {
+              "height": 32,
+              "type": "rectangle",
+              "width": 960,
+              "x": 480,
+              "y": 16
+            }
+          },
+          {
+            "id": "south",
+            "shape": {
+              "height": 32,
+              "type": "rectangle",
+              "width": 960,
+              "x": 480,
+              "y": 524
+            }
+          },
+          {
+            "id": "west",
+            "shape": {
+              "height": 540,
+              "type": "rectangle",
+              "width": 32,
+              "x": 16,
+              "y": 270
+            }
+          },
+          {
+            "id": "east_north",
+            "shape": {
+              "height": 206,
+              "type": "rectangle",
+              "width": 32,
+              "x": 944,
+              "y": 103
+            }
+          },
+          {
+            "id": "east_south",
+            "shape": {
+              "height": 206,
+              "type": "rectangle",
+              "width": 32,
+              "x": 944,
+              "y": 437
+            }
+          }
+        ],
+        "width": 960
+      }
+    },
+    {
+      "source": "game/content/stages/village.lua",
+      "data": {
+        "background": [
+          0.055,
+          0.11,
+          0.09,
+          1
+        ],
+        "camera": {
+          "follow_tag": "player",
+          "viewport_height": 450,
+          "viewport_width": 800
+        },
+        "height": 540,
+        "id": "stage.village",
+        "kind": "stage",
+        "name": "버드나무 마을",
+        "name_key": "stage.village.name",
+        "portals": [
+          {
+            "id": "to_field",
+            "shape": {
+              "height": 128,
+              "type": "rectangle",
+              "width": 32,
+              "x": 944,
+              "y": 270
+            },
+            "target_spawn": "village_entry",
+            "target_stage": "stage.world_hub"
+          }
+        ],
+        "schema_version": 1,
+        "spawn_points": [
+          {
+            "id": "default",
+            "x": 150,
+            "y": 270
+          },
+          {
+            "id": "field_return",
+            "x": 850,
+            "y": 270
+          }
+        ],
+        "spawns": [
+          {
+            "actor": "actor.hero",
+            "id": "player",
+            "position": {
+              "x": 150,
+              "y": 270
+            }
+          },
+          {
+            "actor": "actor.village_guide",
+            "id": "guide",
+            "position": {
+              "x": 310,
+              "y": 240
+            }
+          },
+          {
+            "actor": "actor.merchant",
+            "id": "merchant",
+            "position": {
+              "x": 490,
+              "y": 240
+            }
+          }
+        ],
+        "walls": [
+          {
+            "id": "north",
+            "shape": {
+              "height": 32,
+              "type": "rectangle",
+              "width": 960,
+              "x": 480,
+              "y": 16
+            }
+          },
+          {
+            "id": "south",
+            "shape": {
+              "height": 32,
+              "type": "rectangle",
+              "width": 960,
+              "x": 480,
+              "y": 524
+            }
+          },
+          {
+            "id": "west",
+            "shape": {
+              "height": 540,
+              "type": "rectangle",
+              "width": 32,
+              "x": 16,
+              "y": 270
+            }
+          },
+          {
+            "id": "east_north",
+            "shape": {
+              "height": 206,
+              "type": "rectangle",
+              "width": 32,
+              "x": 944,
+              "y": 103
+            }
+          },
+          {
+            "id": "east_south",
+            "shape": {
+              "height": 206,
+              "type": "rectangle",
+              "width": 32,
+              "x": 944,
+              "y": 437
+            }
+          }
+        ],
+        "width": 960
+      }
+    },
+    {
+      "source": "game/content/stages/generated/world_grove.lua",
+      "data": {
+        "background": [
+          0.06274509803921569,
+          0.13725490196078433,
+          0.10980392156862745,
+          1
+        ],
+        "camera": {
+          "follow_tag": "player",
+          "viewport_height": 450,
+          "viewport_width": 800
+        },
+        "height": 576,
+        "id": "stage.world_grove",
+        "kind": "stage",
+        "metadata": {
+          "generated": true,
+          "source": "game/maps/world_grove.tmx"
+        },
+        "mode": "topdown",
+        "name": "Quiet Grove",
+        "name_key": "stage.world_grove.name",
+        "portals": [
+          {
+            "cooldown": 0.25,
+            "id": "to_hub",
+            "shape": {
+              "height": 128,
+              "type": "rectangle",
+              "width": 32,
+              "x": 16,
+              "y": 288
+            },
+            "target_spawn": "grove_return",
+            "target_stage": "stage.world_hub"
+          }
+        ],
+        "schema_version": 1,
+        "spawn_points": [
+          {
+            "id": "west_entry",
+            "x": 96,
+            "y": 288
+          }
+        ],
+        "spawns": [
+          {
+            "actor": "actor.hero",
+            "id": "player",
+            "position": {
+              "x": 96,
+              "y": 288
+            }
+          },
+          {
+            "actor": "actor.grove_guardian",
+            "id": "boss.grove_guardian",
+            "position": {
+              "x": 620,
+              "y": 288
+            }
+          }
+        ],
+        "tilemap": {
+          "layers": [
+            {
+              "data": [
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29
+              ],
+              "height": 18,
+              "id": "ground",
+              "name": "Ground",
+              "offset_x": 0,
+              "offset_y": 0,
+              "opacity": 1,
+              "visible": true,
+              "width": 32
+            }
+          ],
+          "source": "game/maps/world_grove.tmx",
+          "tile_height": 32,
+          "tile_width": 32,
+          "tilesets": [
+            {
+              "asset": "image.world_tileset",
+              "columns": 27,
+              "first_gid": 1,
+              "id": "world_tileset",
+              "tile_count": 486,
+              "tile_height": 32,
+              "tile_width": 32
+            }
+          ]
+        },
+        "triggers": [
+          {
+            "actions": [
+              {
+                "data": {
+                  "region": "grove"
+                },
+                "name": "world.grove_discovered",
+                "type": "emit"
+              }
+            ],
+            "cooldown": 0,
+            "id": "grove_discovery",
+            "once": true,
+            "shape": {
+              "height": 100,
+              "type": "rectangle",
+              "width": 120,
+              "x": 630,
+              "y": 410
+            }
+          }
+        ],
+        "walls": [
+          {
+            "id": "north_boundary",
+            "shape": {
+              "height": 32,
+              "type": "rectangle",
+              "width": 1024,
+              "x": 512,
+              "y": 16
+            }
+          },
+          {
+            "id": "south_boundary",
+            "shape": {
+              "height": 32,
+              "type": "rectangle",
+              "width": 1024,
+              "x": 512,
+              "y": 560
+            }
+          },
+          {
+            "id": "west_north",
+            "shape": {
+              "height": 224,
+              "type": "rectangle",
+              "width": 32,
+              "x": 16,
+              "y": 112
+            }
+          },
+          {
+            "id": "west_south",
+            "shape": {
+              "height": 224,
+              "type": "rectangle",
+              "width": 32,
+              "x": 16,
+              "y": 464
+            }
+          },
+          {
+            "id": "east_boundary",
+            "shape": {
+              "height": 576,
+              "type": "rectangle",
+              "width": 32,
+              "x": 1008,
+              "y": 288
+            }
+          },
+          {
+            "id": "grove_rocks",
+            "shape": {
+              "points": [
+                {
+                  "x": 690,
+                  "y": 150
+                },
+                {
+                  "x": 840,
+                  "y": 178
+                },
+                {
+                  "x": 810,
+                  "y": 276
+                },
+                {
+                  "x": 708,
+                  "y": 254
+                }
+              ],
+              "type": "polygon"
+            }
+          }
+        ],
+        "width": 1024
+      }
+    },
+    {
+      "source": "game/content/stages/generated/world_hub.lua",
+      "data": {
+        "background": [
+          0.06274509803921569,
+          0.10196078431372549,
+          0.13333333333333333,
+          1
+        ],
+        "camera": {
+          "follow_tag": "player",
+          "viewport_height": 450,
+          "viewport_width": 800
+        },
+        "height": 576,
+        "id": "stage.world_hub",
+        "kind": "stage",
+        "metadata": {
+          "generated": true,
+          "source": "game/maps/world_hub.tmx"
+        },
+        "mode": "topdown",
+        "name": "World Hub",
+        "name_key": "stage.world_hub.name",
+        "portals": [
+          {
+            "cooldown": 0.25,
+            "id": "to_grove",
+            "shape": {
+              "height": 128,
+              "type": "rectangle",
+              "width": 32,
+              "x": 1072,
+              "y": 288
+            },
+            "target_spawn": "west_entry",
+            "target_stage": "stage.world_grove"
+          },
+          {
+            "cooldown": 0.25,
+            "id": "to_village",
+            "shape": {
+              "height": 128,
+              "type": "rectangle",
+              "width": 32,
+              "x": 16,
+              "y": 288
+            },
+            "target_spawn": "field_return",
+            "target_stage": "stage.village"
+          }
+        ],
+        "schema_version": 1,
+        "spawn_points": [
+          {
+            "id": "default",
+            "x": 120,
+            "y": 288
+          },
+          {
+            "id": "grove_return",
+            "x": 980,
+            "y": 288
+          },
+          {
+            "id": "village_entry",
+            "x": 80,
+            "y": 288
+          }
+        ],
+        "spawns": [
+          {
+            "actor": "actor.hero",
+            "id": "player",
+            "position": {
+              "x": 120,
+              "y": 288
+            }
+          },
+          {
+            "actor": "actor.slime",
+            "id": "enemy.slime.1",
+            "position": {
+              "x": 420,
+              "y": 160
+            }
+          },
+          {
+            "actor": "actor.slime",
+            "id": "enemy.slime.2",
+            "position": {
+              "x": 760,
+              "y": 430
+            }
+          }
+        ],
+        "tilemap": {
+          "layers": [
+            {
+              "data": [
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                110,
+                110,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                110,
+                110,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                110,
+                110,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                110,
+                110,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                110,
+                110,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                110,
+                110,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                110,
+                110,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                110,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                110,
+                110,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                110,
+                110,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                110,
+                110,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                110,
+                110,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                110,
+                110,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                110,
+                110,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                110,
+                110,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29,
+                29
+              ],
+              "height": 18,
+              "id": "ground",
+              "name": "Ground",
+              "offset_x": 0,
+              "offset_y": 0,
+              "opacity": 1,
+              "visible": true,
+              "width": 34
+            }
+          ],
+          "source": "game/maps/world_hub.tmx",
+          "tile_height": 32,
+          "tile_width": 32,
+          "tilesets": [
+            {
+              "asset": "image.world_tileset",
+              "columns": 27,
+              "first_gid": 1,
+              "id": "world_tileset",
+              "tile_count": 486,
+              "tile_height": 32,
+              "tile_width": 32
+            }
+          ]
+        },
+        "triggers": [
+          {
+            "actions": [
+              {
+                "amount": 15,
+                "type": "heal"
+              }
+            ],
+            "cooldown": 1,
+            "id": "healing_grove",
+            "once": false,
+            "shape": {
+              "height": 136,
+              "type": "rectangle",
+              "width": 108,
+              "x": 314,
+              "y": 286
+            }
+          }
+        ],
+        "walls": [
+          {
+            "id": "north_boundary",
+            "shape": {
+              "height": 32,
+              "type": "rectangle",
+              "width": 1088,
+              "x": 544,
+              "y": 16
+            }
+          },
+          {
+            "id": "south_boundary",
+            "shape": {
+              "height": 32,
+              "type": "rectangle",
+              "width": 1088,
+              "x": 544,
+              "y": 560
+            }
+          },
+          {
+            "id": "west_north",
+            "shape": {
+              "height": 224,
+              "type": "rectangle",
+              "width": 32,
+              "x": 16,
+              "y": 112
+            }
+          },
+          {
+            "id": "west_south",
+            "shape": {
+              "height": 224,
+              "type": "rectangle",
+              "width": 32,
+              "x": 16,
+              "y": 464
+            }
+          },
+          {
+            "id": "east_north",
+            "shape": {
+              "height": 224,
+              "type": "rectangle",
+              "width": 32,
+              "x": 1072,
+              "y": 112
+            }
+          },
+          {
+            "id": "east_south",
+            "shape": {
+              "height": 224,
+              "type": "rectangle",
+              "width": 32,
+              "x": 1072,
+              "y": 464
+            }
+          },
+          {
+            "id": "rotated_ruin",
+            "shape": {
+              "points": [
+                {
+                  "x": 470,
+                  "y": 170
+                },
+                {
+                  "x": 634.2073904691416,
+                  "y": 213.99923766742853
+                },
+                {
+                  "x": 623.3369905748357,
+                  "y": 254.5681223715694
+                },
+                {
+                  "x": 459.1296001056941,
+                  "y": 210.56888470414088
+                }
+              ],
+              "type": "polygon"
+            }
+          },
+          {
+            "id": "stone_garden",
+            "shape": {
+              "points": [
+                {
+                  "x": 610,
+                  "y": 380
+                },
+                {
+                  "x": 765,
+                  "y": 380
+                },
+                {
+                  "x": 800,
+                  "y": 458
+                },
+                {
+                  "x": 652,
+                  "y": 492
+                }
+              ],
+              "type": "polygon"
+            }
+          }
+        ],
+        "width": 1088
+      }
+    },
+    {
+      "source": "game/content/statuses/burning.lua",
+      "data": {
+        "color": [
+          1,
+          0.35,
+          0.08,
+          1
+        ],
+        "duration": 1.5,
+        "id": "status.burning",
+        "kind": "status",
+        "max_stacks": 3,
+        "modifiers": {
+          "move_speed": 0.85
+        },
+        "name": "Burning",
+        "schema_version": 1,
+        "stacking": "stack",
+        "tick_actions": [
+          {
+            "amount": 3,
+            "type": "damage"
+          }
+        ],
+        "tick_interval": 0.5
+      }
+    },
+    {
+      "source": "game/content/statuses/enraged.lua",
+      "data": {
+        "color": [
+          1,
+          0.08,
+          0.12,
+          1
+        ],
+        "duration": 999,
+        "id": "status.enraged",
+        "kind": "status",
+        "modifiers": {
+          "damage_dealt": 1.5,
+          "move_speed": 1.25
+        },
+        "name": "Enraged",
+        "schema_version": 1,
+        "stacking": "refresh"
+      }
+    }
+  ],
+  "graph": {
+    "total": 44,
+    "edge_count": 86,
+    "nodes": [
+      {
+        "id": "ability.fire_bolt",
+        "kind": "ability",
+        "source": "game/content/abilities/fire_bolt.lua",
+        "dependencies": [
+          {
+            "id": "projectile.fire_bolt",
+            "path": "activation[1].projectile"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "actor.hero",
+            "path": "components.action.combat.abilities[2]"
+          },
+          {
+            "id": "actor.hero",
+            "path": "components.action.combat_input.bindings[2].ability"
+          },
+          {
+            "id": "actor.runner",
+            "path": "components.action.combat.abilities[2]"
+          },
+          {
+            "id": "actor.runner",
+            "path": "components.action.combat_input.bindings[2].ability"
+          }
+        ]
+      },
+      {
+        "id": "ability.slime_bump",
+        "kind": "ability",
+        "source": "game/content/abilities/slime_bump.lua",
+        "dependencies": [],
+        "dependents": [
+          {
+            "id": "actor.grove_guardian",
+            "path": "components.action.combat.abilities[1]"
+          },
+          {
+            "id": "actor.grove_guardian",
+            "path": "components.action.combat.primary"
+          },
+          {
+            "id": "actor.slime",
+            "path": "components.action.combat.abilities[1]"
+          },
+          {
+            "id": "actor.slime",
+            "path": "components.action.combat.primary"
+          }
+        ]
+      },
+      {
+        "id": "ability.sword_slash",
+        "kind": "ability",
+        "source": "game/content/abilities/sword_slash.lua",
+        "dependencies": [
+          {
+            "id": "image.slash",
+            "path": "visual.asset"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "actor.hero",
+            "path": "components.action.combat.abilities[1]"
+          },
+          {
+            "id": "actor.hero",
+            "path": "components.action.combat.primary"
+          },
+          {
+            "id": "actor.hero",
+            "path": "components.action.combat_input.bindings[1].ability"
+          },
+          {
+            "id": "actor.runner",
+            "path": "components.action.combat.abilities[1]"
+          },
+          {
+            "id": "actor.runner",
+            "path": "components.action.combat.primary"
+          },
+          {
+            "id": "actor.runner",
+            "path": "components.action.combat_input.bindings[1].ability"
+          }
+        ]
+      },
+      {
+        "id": "ability.whirlwind",
+        "kind": "ability",
+        "source": "game/content/abilities/whirlwind.lua",
+        "dependencies": [],
+        "dependents": [
+          {
+            "id": "actor.hero",
+            "path": "components.action.combat.abilities[3]"
+          },
+          {
+            "id": "actor.hero",
+            "path": "components.action.combat_input.bindings[3].ability"
+          },
+          {
+            "id": "actor.runner",
+            "path": "components.action.combat.abilities[3]"
+          },
+          {
+            "id": "actor.runner",
+            "path": "components.action.combat_input.bindings[3].ability"
+          }
+        ]
+      },
+      {
+        "id": "actor.fire_bolt",
+        "kind": "actor",
+        "source": "game/content/actors/fire_bolt.lua",
+        "dependencies": [],
+        "dependents": [
+          {
+            "id": "projectile.fire_bolt",
+            "path": "actor"
+          }
+        ]
+      },
+      {
+        "id": "actor.grove_guardian",
+        "kind": "actor",
+        "source": "game/content/actors/grove_guardian.lua",
+        "dependencies": [
+          {
+            "id": "ability.slime_bump",
+            "path": "components.action.combat.abilities[1]"
+          },
+          {
+            "id": "ability.slime_bump",
+            "path": "components.action.combat.primary"
+          },
+          {
+            "id": "sprite.slime",
+            "path": "components.render.sprite.sprite"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "stage.world_grove",
+            "path": "spawns[2].actor"
+          }
+        ]
+      },
+      {
+        "id": "actor.guide",
+        "kind": "actor",
+        "source": "game/content/actors/guide.lua",
+        "dependencies": [
+          {
+            "id": "dialogue.guide",
+            "path": "components.rpg.interactable.actions[1].dialogue"
+          },
+          {
+            "id": "sprite.guide",
+            "path": "components.render.sprite.sprite"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "stage.rpg_village",
+            "path": "spawns[2].actor"
+          }
+        ]
+      },
+      {
+        "id": "actor.hero",
+        "kind": "actor",
+        "source": "game/content/actors/hero.lua",
+        "dependencies": [
+          {
+            "id": "ability.fire_bolt",
+            "path": "components.action.combat.abilities[2]"
+          },
+          {
+            "id": "ability.fire_bolt",
+            "path": "components.action.combat_input.bindings[2].ability"
+          },
+          {
+            "id": "ability.sword_slash",
+            "path": "components.action.combat.abilities[1]"
+          },
+          {
+            "id": "ability.sword_slash",
+            "path": "components.action.combat.primary"
+          },
+          {
+            "id": "ability.sword_slash",
+            "path": "components.action.combat_input.bindings[1].ability"
+          },
+          {
+            "id": "ability.whirlwind",
+            "path": "components.action.combat.abilities[3]"
+          },
+          {
+            "id": "ability.whirlwind",
+            "path": "components.action.combat_input.bindings[3].ability"
+          },
+          {
+            "id": "sprite.hero",
+            "path": "components.render.sprite.sprite"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "stage.action_room",
+            "path": "spawns[1].actor"
+          },
+          {
+            "id": "stage.encounter_room",
+            "path": "spawns[1].actor"
+          },
+          {
+            "id": "stage.rpg_village",
+            "path": "spawns[1].actor"
+          },
+          {
+            "id": "stage.village",
+            "path": "spawns[1].actor"
+          },
+          {
+            "id": "stage.world_grove",
+            "path": "spawns[1].actor"
+          },
+          {
+            "id": "stage.world_hub",
+            "path": "spawns[1].actor"
+          }
+        ]
+      },
+      {
+        "id": "actor.merchant",
+        "kind": "actor",
+        "source": "game/content/actors/merchant.lua",
+        "dependencies": [
+          {
+            "id": "shop.village",
+            "path": "components.rpg.interactable.actions[1].shop"
+          },
+          {
+            "id": "sprite.merchant",
+            "path": "components.render.sprite.sprite"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "stage.rpg_village",
+            "path": "spawns[3].actor"
+          },
+          {
+            "id": "stage.village",
+            "path": "spawns[3].actor"
+          }
+        ]
+      },
+      {
+        "id": "actor.runner",
+        "kind": "actor",
+        "source": "game/content/actors/runner.lua",
+        "dependencies": [
+          {
+            "id": "ability.fire_bolt",
+            "path": "components.action.combat.abilities[2]"
+          },
+          {
+            "id": "ability.fire_bolt",
+            "path": "components.action.combat_input.bindings[2].ability"
+          },
+          {
+            "id": "ability.sword_slash",
+            "path": "components.action.combat.abilities[1]"
+          },
+          {
+            "id": "ability.sword_slash",
+            "path": "components.action.combat.primary"
+          },
+          {
+            "id": "ability.sword_slash",
+            "path": "components.action.combat_input.bindings[1].ability"
+          },
+          {
+            "id": "ability.whirlwind",
+            "path": "components.action.combat.abilities[3]"
+          },
+          {
+            "id": "ability.whirlwind",
+            "path": "components.action.combat_input.bindings[3].ability"
+          },
+          {
+            "id": "sprite.hero",
+            "path": "components.render.sprite.sprite"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "stage.platformer_room",
+            "path": "spawns[1].actor"
+          }
+        ]
+      },
+      {
+        "id": "actor.slime",
+        "kind": "actor",
+        "source": "game/content/actors/slime.lua",
+        "dependencies": [
+          {
+            "id": "ability.slime_bump",
+            "path": "components.action.combat.abilities[1]"
+          },
+          {
+            "id": "ability.slime_bump",
+            "path": "components.action.combat.primary"
+          },
+          {
+            "id": "sprite.slime",
+            "path": "components.render.sprite.sprite"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "encounter.slime_trial",
+            "path": "waves[1].spawns[1].actor"
+          },
+          {
+            "id": "encounter.slime_trial",
+            "path": "waves[1].spawns[2].actor"
+          },
+          {
+            "id": "encounter.slime_trial",
+            "path": "waves[2].spawns[1].actor"
+          },
+          {
+            "id": "stage.action_room",
+            "path": "spawns[2].actor"
+          },
+          {
+            "id": "stage.action_room",
+            "path": "spawns[3].actor"
+          },
+          {
+            "id": "stage.rpg_village",
+            "path": "spawns[4].actor"
+          },
+          {
+            "id": "stage.rpg_village",
+            "path": "spawns[5].actor"
+          },
+          {
+            "id": "stage.world_hub",
+            "path": "spawns[2].actor"
+          },
+          {
+            "id": "stage.world_hub",
+            "path": "spawns[3].actor"
+          }
+        ]
+      },
+      {
+        "id": "actor.village_guide",
+        "kind": "actor",
+        "source": "game/content/actors/village_guide.lua",
+        "dependencies": [
+          {
+            "id": "dialogue.village_guide",
+            "path": "components.rpg.interactable.actions[1].dialogue"
+          },
+          {
+            "id": "sprite.guide",
+            "path": "components.render.sprite.sprite"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "stage.village",
+            "path": "spawns[2].actor"
+          }
+        ]
+      },
+      {
+        "id": "actor.wall",
+        "kind": "actor",
+        "source": "game/content/actors/wall.lua",
+        "dependencies": [],
+        "dependents": [
+          {
+            "id": "stage.action_room",
+            "path": "spawns[4].actor"
+          },
+          {
+            "id": "stage.action_room",
+            "path": "spawns[5].actor"
+          },
+          {
+            "id": "stage.platformer_room",
+            "path": "spawns[2].actor"
+          },
+          {
+            "id": "stage.platformer_room",
+            "path": "spawns[3].actor"
+          }
+        ]
+      },
+      {
+        "id": "dialogue.guide",
+        "kind": "dialogue",
+        "source": "game/content/dialogues/guide.lua",
+        "dependencies": [
+          {
+            "id": "item.training_sword",
+            "path": "nodes.greeting.choices[1].actions[2].item"
+          },
+          {
+            "id": "item.training_sword",
+            "path": "nodes.greeting.choices[1].actions[3].item"
+          },
+          {
+            "id": "quest.slime_patrol",
+            "path": "nodes.greeting.choices[1].actions[1].quest"
+          },
+          {
+            "id": "quest.slime_patrol",
+            "path": "nodes.greeting.choices[1].condition.quest"
+          },
+          {
+            "id": "quest.slime_patrol",
+            "path": "nodes.greeting.choices[2].condition.quest"
+          },
+          {
+            "id": "quest.slime_patrol",
+            "path": "nodes.greeting.choices[3].condition.quest"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "actor.guide",
+            "path": "components.rpg.interactable.actions[1].dialogue"
+          }
+        ]
+      },
+      {
+        "id": "dialogue.village_guide",
+        "kind": "dialogue",
+        "source": "game/content/dialogues/village_guide.lua",
+        "dependencies": [
+          {
+            "id": "item.training_sword",
+            "path": "nodes.greeting.choices[1].actions[2].item"
+          },
+          {
+            "id": "item.training_sword",
+            "path": "nodes.greeting.choices[1].actions[3].item"
+          },
+          {
+            "id": "quest.grove_guardian",
+            "path": "nodes.greeting.choices[1].actions[1].quest"
+          },
+          {
+            "id": "quest.grove_guardian",
+            "path": "nodes.greeting.choices[1].condition.quest"
+          },
+          {
+            "id": "quest.grove_guardian",
+            "path": "nodes.greeting.choices[2].condition.quest"
+          },
+          {
+            "id": "quest.grove_guardian",
+            "path": "nodes.greeting.choices[3].condition.quest"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "actor.village_guide",
+            "path": "components.rpg.interactable.actions[1].dialogue"
+          }
+        ]
+      },
+      {
+        "id": "encounter.slime_trial",
+        "kind": "encounter",
+        "source": "game/content/encounters/slime_trial.lua",
+        "dependencies": [
+          {
+            "id": "actor.slime",
+            "path": "waves[1].spawns[1].actor"
+          },
+          {
+            "id": "actor.slime",
+            "path": "waves[1].spawns[2].actor"
+          },
+          {
+            "id": "actor.slime",
+            "path": "waves[2].spawns[1].actor"
+          },
+          {
+            "id": "status.enraged",
+            "path": "waves[2].boss_phases[1].actions[1].status"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "stage.encounter_room",
+            "path": "encounters[1].encounter"
+          }
+        ]
+      },
+      {
+        "id": "font.ui",
+        "kind": "asset",
+        "source": "game/content/assets/ui_font.lua",
+        "dependencies": [],
+        "dependents": []
+      },
+      {
+        "id": "image.guide_sheet",
+        "kind": "asset",
+        "source": "game/content/assets/guide_sheet.lua",
+        "dependencies": [],
+        "dependents": [
+          {
+            "id": "sprite.guide",
+            "path": "asset"
+          }
+        ]
+      },
+      {
+        "id": "image.merchant_sheet",
+        "kind": "asset",
+        "source": "game/content/assets/merchant_sheet.lua",
+        "dependencies": [],
+        "dependents": [
+          {
+            "id": "sprite.merchant",
+            "path": "asset"
+          }
+        ]
+      },
+      {
+        "id": "image.player_sheet",
+        "kind": "asset",
+        "source": "game/content/assets/player_sheet.lua",
+        "dependencies": [],
+        "dependents": [
+          {
+            "id": "sprite.hero",
+            "path": "asset"
+          }
+        ]
+      },
+      {
+        "id": "image.slash",
+        "kind": "asset",
+        "source": "game/content/assets/slash.lua",
+        "dependencies": [],
+        "dependents": [
+          {
+            "id": "ability.sword_slash",
+            "path": "visual.asset"
+          }
+        ]
+      },
+      {
+        "id": "image.slime_red_sheet",
+        "kind": "asset",
+        "source": "game/content/assets/slime_sheet.lua",
+        "dependencies": [],
+        "dependents": [
+          {
+            "id": "sprite.slime",
+            "path": "asset"
+          }
+        ]
+      },
+      {
+        "id": "image.world_tileset",
+        "kind": "asset",
+        "source": "game/content/assets/world_tileset.lua",
+        "dependencies": [],
+        "dependents": [
+          {
+            "id": "stage.world_grove",
+            "path": "tilemap.tilesets[1].asset"
+          },
+          {
+            "id": "stage.world_hub",
+            "path": "tilemap.tilesets[1].asset"
+          }
+        ]
+      },
+      {
+        "id": "item.potion",
+        "kind": "item",
+        "source": "game/content/items/potion.lua",
+        "dependencies": [],
+        "dependents": [
+          {
+            "id": "quest.grove_guardian",
+            "path": "on_complete[1].item"
+          },
+          {
+            "id": "quest.slime_patrol",
+            "path": "on_complete[1].item"
+          },
+          {
+            "id": "shop.village",
+            "path": "offers[1].item"
+          }
+        ]
+      },
+      {
+        "id": "item.training_sword",
+        "kind": "item",
+        "source": "game/content/items/training_sword.lua",
+        "dependencies": [],
+        "dependents": [
+          {
+            "id": "dialogue.guide",
+            "path": "nodes.greeting.choices[1].actions[2].item"
+          },
+          {
+            "id": "dialogue.guide",
+            "path": "nodes.greeting.choices[1].actions[3].item"
+          },
+          {
+            "id": "dialogue.village_guide",
+            "path": "nodes.greeting.choices[1].actions[2].item"
+          },
+          {
+            "id": "dialogue.village_guide",
+            "path": "nodes.greeting.choices[1].actions[3].item"
+          },
+          {
+            "id": "shop.village",
+            "path": "offers[2].item"
+          }
+        ]
+      },
+      {
+        "id": "locale.en",
+        "kind": "locale",
+        "source": "game/content/locales/en.lua",
+        "dependencies": [],
+        "dependents": []
+      },
+      {
+        "id": "locale.ko",
+        "kind": "locale",
+        "source": "game/content/locales/ko.lua",
+        "dependencies": [],
+        "dependents": []
+      },
+      {
+        "id": "projectile.fire_bolt",
+        "kind": "projectile",
+        "source": "game/content/projectiles/fire_bolt.lua",
+        "dependencies": [
+          {
+            "id": "actor.fire_bolt",
+            "path": "actor"
+          },
+          {
+            "id": "status.burning",
+            "path": "effects[3].status"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "ability.fire_bolt",
+            "path": "activation[1].projectile"
+          }
+        ]
+      },
+      {
+        "id": "quest.grove_guardian",
+        "kind": "quest",
+        "source": "game/content/quests/grove_guardian.lua",
+        "dependencies": [
+          {
+            "id": "item.potion",
+            "path": "on_complete[1].item"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "dialogue.village_guide",
+            "path": "nodes.greeting.choices[1].actions[1].quest"
+          },
+          {
+            "id": "dialogue.village_guide",
+            "path": "nodes.greeting.choices[1].condition.quest"
+          },
+          {
+            "id": "dialogue.village_guide",
+            "path": "nodes.greeting.choices[2].condition.quest"
+          },
+          {
+            "id": "dialogue.village_guide",
+            "path": "nodes.greeting.choices[3].condition.quest"
+          }
+        ]
+      },
+      {
+        "id": "quest.slime_patrol",
+        "kind": "quest",
+        "source": "game/content/quests/slime_patrol.lua",
+        "dependencies": [
+          {
+            "id": "item.potion",
+            "path": "on_complete[1].item"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "dialogue.guide",
+            "path": "nodes.greeting.choices[1].actions[1].quest"
+          },
+          {
+            "id": "dialogue.guide",
+            "path": "nodes.greeting.choices[1].condition.quest"
+          },
+          {
+            "id": "dialogue.guide",
+            "path": "nodes.greeting.choices[2].condition.quest"
+          },
+          {
+            "id": "dialogue.guide",
+            "path": "nodes.greeting.choices[3].condition.quest"
+          }
+        ]
+      },
+      {
+        "id": "shop.village",
+        "kind": "shop",
+        "source": "game/content/shops/village.lua",
+        "dependencies": [
+          {
+            "id": "item.potion",
+            "path": "offers[1].item"
+          },
+          {
+            "id": "item.training_sword",
+            "path": "offers[2].item"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "actor.merchant",
+            "path": "components.rpg.interactable.actions[1].shop"
+          }
+        ]
+      },
+      {
+        "id": "sprite.guide",
+        "kind": "sprite",
+        "source": "game/content/sprites/guide.lua",
+        "dependencies": [
+          {
+            "id": "image.guide_sheet",
+            "path": "asset"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "actor.guide",
+            "path": "components.render.sprite.sprite"
+          },
+          {
+            "id": "actor.village_guide",
+            "path": "components.render.sprite.sprite"
+          }
+        ]
+      },
+      {
+        "id": "sprite.hero",
+        "kind": "sprite",
+        "source": "game/content/sprites/hero.lua",
+        "dependencies": [
+          {
+            "id": "image.player_sheet",
+            "path": "asset"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "actor.hero",
+            "path": "components.render.sprite.sprite"
+          },
+          {
+            "id": "actor.runner",
+            "path": "components.render.sprite.sprite"
+          }
+        ]
+      },
+      {
+        "id": "sprite.merchant",
+        "kind": "sprite",
+        "source": "game/content/sprites/merchant.lua",
+        "dependencies": [
+          {
+            "id": "image.merchant_sheet",
+            "path": "asset"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "actor.merchant",
+            "path": "components.render.sprite.sprite"
+          }
+        ]
+      },
+      {
+        "id": "sprite.slime",
+        "kind": "sprite",
+        "source": "game/content/sprites/slime.lua",
+        "dependencies": [
+          {
+            "id": "image.slime_red_sheet",
+            "path": "asset"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "actor.grove_guardian",
+            "path": "components.render.sprite.sprite"
+          },
+          {
+            "id": "actor.slime",
+            "path": "components.render.sprite.sprite"
+          }
+        ]
+      },
+      {
+        "id": "stage.action_room",
+        "kind": "stage",
+        "source": "game/content/stages/action_room.lua",
+        "dependencies": [
+          {
+            "id": "actor.hero",
+            "path": "spawns[1].actor"
+          },
+          {
+            "id": "actor.slime",
+            "path": "spawns[2].actor"
+          },
+          {
+            "id": "actor.slime",
+            "path": "spawns[3].actor"
+          },
+          {
+            "id": "actor.wall",
+            "path": "spawns[4].actor"
+          },
+          {
+            "id": "actor.wall",
+            "path": "spawns[5].actor"
+          }
+        ],
+        "dependents": []
+      },
+      {
+        "id": "stage.encounter_room",
+        "kind": "stage",
+        "source": "game/content/stages/encounter_room.lua",
+        "dependencies": [
+          {
+            "id": "actor.hero",
+            "path": "spawns[1].actor"
+          },
+          {
+            "id": "encounter.slime_trial",
+            "path": "encounters[1].encounter"
+          }
+        ],
+        "dependents": []
+      },
+      {
+        "id": "stage.platformer_room",
+        "kind": "stage",
+        "source": "game/content/stages/platformer_room.lua",
+        "dependencies": [
+          {
+            "id": "actor.runner",
+            "path": "spawns[1].actor"
+          },
+          {
+            "id": "actor.wall",
+            "path": "spawns[2].actor"
+          },
+          {
+            "id": "actor.wall",
+            "path": "spawns[3].actor"
+          }
+        ],
+        "dependents": []
+      },
+      {
+        "id": "stage.rpg_village",
+        "kind": "stage",
+        "source": "game/content/stages/rpg_village.lua",
+        "dependencies": [
+          {
+            "id": "actor.guide",
+            "path": "spawns[2].actor"
+          },
+          {
+            "id": "actor.hero",
+            "path": "spawns[1].actor"
+          },
+          {
+            "id": "actor.merchant",
+            "path": "spawns[3].actor"
+          },
+          {
+            "id": "actor.slime",
+            "path": "spawns[4].actor"
+          },
+          {
+            "id": "actor.slime",
+            "path": "spawns[5].actor"
+          },
+          {
+            "id": "stage.world_hub",
+            "path": "portals[1].target_stage"
+          }
+        ],
+        "dependents": []
+      },
+      {
+        "id": "stage.village",
+        "kind": "stage",
+        "source": "game/content/stages/village.lua",
+        "dependencies": [
+          {
+            "id": "actor.hero",
+            "path": "spawns[1].actor"
+          },
+          {
+            "id": "actor.merchant",
+            "path": "spawns[3].actor"
+          },
+          {
+            "id": "actor.village_guide",
+            "path": "spawns[2].actor"
+          },
+          {
+            "id": "stage.world_hub",
+            "path": "portals[1].target_stage"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "stage.world_hub",
+            "path": "portals[2].target_stage"
+          }
+        ]
+      },
+      {
+        "id": "stage.world_grove",
+        "kind": "stage",
+        "source": "game/content/stages/generated/world_grove.lua",
+        "dependencies": [
+          {
+            "id": "actor.grove_guardian",
+            "path": "spawns[2].actor"
+          },
+          {
+            "id": "actor.hero",
+            "path": "spawns[1].actor"
+          },
+          {
+            "id": "image.world_tileset",
+            "path": "tilemap.tilesets[1].asset"
+          },
+          {
+            "id": "stage.world_hub",
+            "path": "portals[1].target_stage"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "stage.world_hub",
+            "path": "portals[1].target_stage"
+          }
+        ]
+      },
+      {
+        "id": "stage.world_hub",
+        "kind": "stage",
+        "source": "game/content/stages/generated/world_hub.lua",
+        "dependencies": [
+          {
+            "id": "actor.hero",
+            "path": "spawns[1].actor"
+          },
+          {
+            "id": "actor.slime",
+            "path": "spawns[2].actor"
+          },
+          {
+            "id": "actor.slime",
+            "path": "spawns[3].actor"
+          },
+          {
+            "id": "image.world_tileset",
+            "path": "tilemap.tilesets[1].asset"
+          },
+          {
+            "id": "stage.village",
+            "path": "portals[2].target_stage"
+          },
+          {
+            "id": "stage.world_grove",
+            "path": "portals[1].target_stage"
+          }
+        ],
+        "dependents": [
+          {
+            "id": "stage.rpg_village",
+            "path": "portals[1].target_stage"
+          },
+          {
+            "id": "stage.village",
+            "path": "portals[1].target_stage"
+          },
+          {
+            "id": "stage.world_grove",
+            "path": "portals[1].target_stage"
+          }
+        ]
+      },
+      {
+        "id": "status.burning",
+        "kind": "status",
+        "source": "game/content/statuses/burning.lua",
+        "dependencies": [],
+        "dependents": [
+          {
+            "id": "projectile.fire_bolt",
+            "path": "effects[3].status"
+          }
+        ]
+      },
+      {
+        "id": "status.enraged",
+        "kind": "status",
+        "source": "game/content/statuses/enraged.lua",
+        "dependencies": [],
+        "dependents": [
+          {
+            "id": "encounter.slime_trial",
+            "path": "waves[2].boss_phases[1].actions[1].status"
+          }
+        ]
+      }
+    ]
+  }
+}
