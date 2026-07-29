@@ -93,6 +93,68 @@ func TestProtocolDrivesRuntimeWithoutPresentationWindow(t *testing.T) {
 		},
 		nil,
 	)
+	var dialogue startDialogueResult
+	call(
+		protocol.MethodDialogueStart,
+		protocol.StartDialogueParams{DialogueID: "dialogue.guide"},
+		&dialogue,
+	)
+	if !dialogue.Applied || dialogue.NodeID != "greeting" {
+		t.Fatalf("wire dialogue preview = %#v", dialogue)
+	}
+	call(
+		protocol.MethodInputAction,
+		protocol.InputActionParams{
+			Action: "interact",
+			Value:  1,
+			Frames: 1,
+		},
+		nil,
+	)
+	call(
+		protocol.MethodEmulationStep,
+		protocol.StepParams{Frames: 1},
+		nil,
+	)
+	spawnX, spawnY := 520.0, 270.0
+	var spawned entityDTO
+	call(
+		protocol.MethodEntitySpawn,
+		protocol.SpawnEntityParams{
+			ActorID:  "actor.slime",
+			EntityID: "wire.preview",
+			X:        &spawnX,
+			Y:        &spawnY,
+		},
+		&spawned,
+	)
+	if spawned.ID != "wire.preview" ||
+		spawned.ActorID != "actor.slime" {
+		t.Fatalf("wire entity preview = %#v", spawned)
+	}
+	var removal removeEntityResult
+	call(
+		protocol.MethodEntityRemove,
+		protocol.RemoveEntityParams{EntityID: spawned.ID},
+		&removal,
+	)
+	if !removal.Queued {
+		t.Fatalf("wire entity removal = %#v", removal)
+	}
+	call(protocol.MethodWorldGetSnapshot, nil, &world)
+	if world.Count != 6 {
+		t.Fatalf("queued wire removal flushed early: count=%d", world.Count)
+	}
+	call(
+		protocol.MethodEmulationStep,
+		protocol.StepParams{Frames: 1},
+		nil,
+	)
+	call(protocol.MethodWorldGetSnapshot, nil, &world)
+	if world.Count != 5 {
+		t.Fatalf("wire removal did not flush: count=%d", world.Count)
+	}
+	savedTick := world.Tick
 	call(
 		protocol.MethodAppSave,
 		protocol.SaveSlotParams{Slot: "wire"},
@@ -105,8 +167,12 @@ func TestProtocolDrivesRuntimeWithoutPresentationWindow(t *testing.T) {
 		nil,
 	)
 	call(protocol.MethodWorldGetSnapshot, nil, &world)
-	if world.Tick != 12 {
-		t.Fatalf("wire save/load tick = %d, want 12", world.Tick)
+	if world.Tick != savedTick {
+		t.Fatalf(
+			"wire save/load tick = %d, want %d",
+			world.Tick,
+			savedTick,
+		)
 	}
 
 	call(protocol.MethodAppQuit, nil, nil)

@@ -80,6 +80,8 @@ type dialogueRuntime struct {
 	active       bool
 	definitionID string
 	npcID        string
+	direct       bool
+	definition   DialogueDefinition
 }
 
 type cameraRuntime struct {
@@ -102,15 +104,21 @@ type Simulation struct {
 	worldTick uint64
 	hitstop   int
 
-	entities     map[string]*entityRuntime
-	entityOrder  []string
-	controlledID string
-	dialogues    map[string]DialogueDefinition
-	quests       map[string]*questRuntime
-	questOrder   []string
-	dialogue     dialogueRuntime
-	camera       cameraRuntime
-	lastEvents   []Event
+	entities         map[string]*entityRuntime
+	entityOrder      []string
+	controlledID     string
+	authoredIDs      map[string]struct{}
+	dynamicIDs       map[string]struct{}
+	removedIDs       map[string]struct{}
+	previewDefs      map[string]EntityPreviewConfig
+	interactionRange Coord
+	directQuestDefs  map[string]QuestDefinition
+	dialogues        map[string]DialogueDefinition
+	quests           map[string]*questRuntime
+	questOrder       []string
+	dialogue         dialogueRuntime
+	camera           cameraRuntime
+	lastEvents       []Event
 }
 
 // New validates and deep-copies content before constructing a simulation.
@@ -122,12 +130,18 @@ func New(config Config) (*Simulation, error) {
 	sortConfig(&copied)
 
 	simulation := &Simulation{
-		config:      copied,
-		entities:    make(map[string]*entityRuntime, len(copied.Entities)),
-		dialogues:   make(map[string]DialogueDefinition, len(copied.Dialogues)),
-		quests:      make(map[string]*questRuntime, len(copied.Quests)),
-		entityOrder: make([]string, 0, len(copied.Entities)),
-		questOrder:  make([]string, 0, len(copied.Quests)),
+		config:           copied,
+		entities:         make(map[string]*entityRuntime, len(copied.Entities)),
+		dialogues:        make(map[string]DialogueDefinition, len(copied.Dialogues)),
+		quests:           make(map[string]*questRuntime, len(copied.Quests)),
+		authoredIDs:      make(map[string]struct{}, len(copied.Entities)),
+		dynamicIDs:       make(map[string]struct{}),
+		removedIDs:       make(map[string]struct{}),
+		previewDefs:      make(map[string]EntityPreviewConfig),
+		interactionRange: copied.InteractionRange,
+		directQuestDefs:  make(map[string]QuestDefinition),
+		entityOrder:      make([]string, 0, len(copied.Entities)),
+		questOrder:       make([]string, 0, len(copied.Quests)),
 	}
 	for _, definition := range copied.Dialogues {
 		simulation.dialogues[definition.ID] = definition
@@ -144,18 +158,10 @@ func New(config Config) (*Simulation, error) {
 		simulation.questOrder = append(simulation.questOrder, definition.ID)
 	}
 	for _, definition := range copied.Entities {
-		facing := normalize(definition.Facing)
-		if facing == (Vec{}) {
-			facing = Vec{X: UnitsPerPixel}
-		}
-		entity := &entityRuntime{
-			config:   cloneEntityConfig(definition),
-			position: definition.Position,
-			facing:   facing,
-			health:   definition.MaxHealth,
-		}
+		entity := newEntityRuntime(definition)
 		simulation.entities[definition.ID] = entity
 		simulation.entityOrder = append(simulation.entityOrder, definition.ID)
+		simulation.authoredIDs[definition.ID] = struct{}{}
 		if definition.Controlled {
 			simulation.controlledID = definition.ID
 		}
@@ -169,19 +175,25 @@ func New(config Config) (*Simulation, error) {
 // editor/debug operations transactional.
 func (s *Simulation) Clone() *Simulation {
 	result := &Simulation{
-		config:       cloneConfig(s.config),
-		rawTick:      s.rawTick,
-		worldTick:    s.worldTick,
-		hitstop:      s.hitstop,
-		entities:     make(map[string]*entityRuntime, len(s.entities)),
-		entityOrder:  append([]string(nil), s.entityOrder...),
-		controlledID: s.controlledID,
-		dialogues:    make(map[string]DialogueDefinition, len(s.dialogues)),
-		quests:       make(map[string]*questRuntime, len(s.quests)),
-		questOrder:   append([]string(nil), s.questOrder...),
-		dialogue:     s.dialogue,
-		camera:       s.camera,
-		lastEvents:   cloneEvents(s.lastEvents),
+		config:           cloneConfig(s.config),
+		rawTick:          s.rawTick,
+		worldTick:        s.worldTick,
+		hitstop:          s.hitstop,
+		entities:         make(map[string]*entityRuntime, len(s.entities)),
+		entityOrder:      append([]string(nil), s.entityOrder...),
+		controlledID:     s.controlledID,
+		authoredIDs:      cloneStringSet(s.authoredIDs),
+		dynamicIDs:       cloneStringSet(s.dynamicIDs),
+		removedIDs:       cloneStringSet(s.removedIDs),
+		previewDefs:      clonePreviewDefinitions(s.previewDefs),
+		interactionRange: s.interactionRange,
+		directQuestDefs:  cloneQuestDefinitions(s.directQuestDefs),
+		dialogues:        make(map[string]DialogueDefinition, len(s.dialogues)),
+		quests:           make(map[string]*questRuntime, len(s.quests)),
+		questOrder:       append([]string(nil), s.questOrder...),
+		dialogue:         s.dialogue,
+		camera:           s.camera,
+		lastEvents:       cloneEvents(s.lastEvents),
 	}
 	for id, entity := range s.entities {
 		result.entities[id] = cloneEntityRuntime(entity)
@@ -423,7 +435,7 @@ func (s *Simulation) processInteraction(entityIDs []string) {
 		return
 	}
 
-	rangeLimit := s.config.InteractionRange
+	rangeLimit := s.interactionRange
 	var best *entityRuntime
 	var bestDistance int64
 	for _, id := range s.entityOrder {
@@ -780,6 +792,17 @@ func (s *Simulation) killEntity(source, target *entityRuntime) {
 		SourceID: source.config.ID,
 		TargetID: target.config.ID,
 	})
+	if s.dialogue.active && s.dialogue.npcID == target.config.ID {
+		closed := s.dialogue
+		s.dialogue = dialogueRuntime{}
+		s.emit(Event{
+			Type:       EventDialogueClosed,
+			EntityID:   source.config.ID,
+			TargetID:   target.config.ID,
+			DialogueID: closed.definitionID,
+			Reason:     "speaker killed",
+		})
+	}
 	s.progressQuests(target)
 }
 
@@ -1097,9 +1120,6 @@ func validateConfig(config Config) error {
 	controlled := 0
 	hasInteractable := false
 	for _, definition := range config.Entities {
-		if definition.ID == "" || definition.Kind == "" {
-			return errors.New("entity ID and kind are required")
-		}
 		if _, duplicate := entities[definition.ID]; duplicate {
 			return fmt.Errorf("duplicate entity %q", definition.ID)
 		}
@@ -1145,24 +1165,13 @@ func validateConfig(config Config) error {
 		}
 		if definition.DialogueID != "" {
 			hasInteractable = true
-			if _, exists := dialogues[definition.DialogueID]; !exists {
-				return fmt.Errorf(
-					"entity %q references unknown dialogue %q",
-					definition.ID,
-					definition.DialogueID,
-				)
-			}
 		}
-		if definition.StartQuestID != "" {
-			if _, exists := quests[definition.StartQuestID]; !exists {
-				return fmt.Errorf(
-					"entity %q references unknown quest %q",
-					definition.ID,
-					definition.StartQuestID,
-				)
-			}
-		}
-		if err := validateEntityActionConfig(definition); err != nil {
+		if err := validateEntityDefinition(
+			config,
+			definition,
+			dialogues,
+			quests,
+		); err != nil {
 			return err
 		}
 	}
@@ -1190,6 +1199,93 @@ func validateConfig(config Config) error {
 		}
 	}
 	return nil
+}
+
+func validateEntityDefinition(
+	config Config,
+	definition EntityConfig,
+	dialogues map[string]struct{},
+	quests map[string]struct{},
+) error {
+	return validateEntityDefinitionWithPlacement(
+		config,
+		definition,
+		dialogues,
+		quests,
+		true,
+	)
+}
+
+func validateEntityDefinitionWithPlacement(
+	config Config,
+	definition EntityConfig,
+	dialogues map[string]struct{},
+	quests map[string]struct{},
+	validatePlacement bool,
+) error {
+	if definition.ID == "" || definition.Kind == "" {
+		return errors.New("entity ID and kind are required")
+	}
+	if definition.MaxHealth <= 0 {
+		return fmt.Errorf("entity %q maximum health must be positive", definition.ID)
+	}
+	if definition.Body.HalfWidth <= 0 || definition.Body.HalfHeight <= 0 {
+		return fmt.Errorf("entity %q body dimensions must be positive", definition.ID)
+	}
+	if !validCoord(definition.Body.HalfWidth) ||
+		!validCoord(definition.Body.HalfHeight) {
+		return fmt.Errorf("entity %q body is outside deterministic range", definition.ID)
+	}
+	if definition.MovePerTick < 0 || !validCoord(definition.MovePerTick) {
+		return fmt.Errorf("entity %q move speed cannot be negative", definition.ID)
+	}
+	if !validCoord(definition.Position.X) ||
+		!validCoord(definition.Position.Y) {
+		return fmt.Errorf("entity %q position is outside deterministic range", definition.ID)
+	}
+	if validatePlacement {
+		if !containsRect(
+			config.StageBounds,
+			entityRect(definition.Position, definition.Body),
+		) {
+			return fmt.Errorf(
+				"entity %q starts outside stage bounds",
+				definition.ID,
+			)
+		}
+		for wallIndex, wall := range config.Walls {
+			if overlaps(
+				entityRect(definition.Position, definition.Body),
+				wall.Rect,
+			) {
+				return fmt.Errorf(
+					"entity %q overlaps wall %q at index %d",
+					definition.ID,
+					wall.ID,
+					wallIndex,
+				)
+			}
+		}
+	}
+	if definition.DialogueID != "" {
+		if _, exists := dialogues[definition.DialogueID]; !exists {
+			return fmt.Errorf(
+				"entity %q references unknown dialogue %q",
+				definition.ID,
+				definition.DialogueID,
+			)
+		}
+	}
+	if definition.StartQuestID != "" {
+		if _, exists := quests[definition.StartQuestID]; !exists {
+			return fmt.Errorf(
+				"entity %q references unknown quest %q",
+				definition.ID,
+				definition.StartQuestID,
+			)
+		}
+	}
+	return validateEntityActionConfig(definition)
 }
 
 func validateEntityActionConfig(definition EntityConfig) error {

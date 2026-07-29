@@ -47,6 +47,7 @@ func TestBuildUsesAuthoredActionRPGContent(t *testing.T) {
 		t.Fatalf("north wall = %#v", north)
 	}
 	var hero sim.EntityConfig
+	var guide sim.EntityConfig
 	slimeCount := 0
 	foundGuide, foundMerchant := false, false
 	for _, entity := range result.Config.Entities {
@@ -57,6 +58,7 @@ func TestBuildUsesAuthoredActionRPGContent(t *testing.T) {
 			slimeCount++
 		case "actor.guide":
 			foundGuide = true
+			guide = entity
 		case "actor.merchant":
 			foundMerchant = true
 		}
@@ -82,6 +84,10 @@ func TestBuildUsesAuthoredActionRPGContent(t *testing.T) {
 			foundGuide,
 			foundMerchant,
 		)
+	}
+	if guide.DialogueID != "dialogue.guide" ||
+		guide.StartQuestID != "" {
+		t.Fatalf("guide interaction = %#v", guide)
 	}
 	if got, want := result.Config.Camera.ViewportWidth, pixels(800); got != want {
 		t.Fatalf("camera width = %d, want %d", got, want)

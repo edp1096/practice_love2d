@@ -126,7 +126,10 @@ func (s *Simulation) dialogueSnapshot() DialogueSnapshot {
 	if !s.dialogue.active {
 		return DialogueSnapshot{}
 	}
-	definition := s.dialogues[s.dialogue.definitionID]
+	definition := s.dialogue.definition
+	if !s.dialogue.direct {
+		definition = s.dialogues[s.dialogue.definitionID]
+	}
 	return DialogueSnapshot{
 		Active:  true,
 		ID:      definition.ID,

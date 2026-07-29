@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 
 	gamecatalog "practice_love2d/33_ebitengine_spike/game"
@@ -34,6 +35,11 @@ type virtualAction struct {
 	fresh     bool
 }
 
+type previewEntity struct {
+	config   sim.EntityConfig
+	metadata gamebuild.InstanceMetadata
+}
+
 // Runtime serializes every mutable simulation operation. Ebitengine's update
 // goroutine and protocol connection goroutines may call it concurrently.
 type Runtime struct {
@@ -53,7 +59,11 @@ type Runtime struct {
 
 	virtual          map[string]virtualAction
 	pendingAbilities map[string]bool
+	pendingRemovals  map[string]bool
 	moving           map[string]bool
+
+	previewSequence uint64
+	previewEntities map[string]previewEntity
 
 	captureMu sync.RWMutex
 	capture   CaptureFunc
@@ -71,7 +81,7 @@ func New(options Options) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Runtime{
+	runtime := &Runtime{
 		catalogPath:      options.CatalogPath,
 		buildOptions:     options.Build,
 		catalog:          catalog,
@@ -80,9 +90,12 @@ func New(options Options) (*Runtime, error) {
 		store:            options.Store,
 		virtual:          make(map[string]virtualAction),
 		pendingAbilities: make(map[string]bool),
+		pendingRemovals:  make(map[string]bool),
 		moving:           make(map[string]bool),
 		revision:         1,
-	}, nil
+	}
+	runtime.resetPreviewLocked()
+	return runtime, nil
 }
 
 func loadCatalog(path string) (*content.Catalog, error) {
@@ -135,6 +148,12 @@ func (runtime *Runtime) reloadContent(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	if runtime.simulation.HasTemporaryPreview() ||
+		len(runtime.pendingRemovals) != 0 {
+		return errors.New(
+			"reload is unavailable while temporary Maker preview state is active; start a new game first",
+		)
+	}
 	catalog, err := loadCatalog(runtime.catalogPath)
 	if err != nil {
 		return err
@@ -158,7 +177,9 @@ func (runtime *Runtime) reloadContent(ctx context.Context) error {
 	runtime.simulation = candidate
 	runtime.virtual = make(map[string]virtualAction)
 	runtime.pendingAbilities = make(map[string]bool)
+	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
+	runtime.resetPreviewLocked()
 	runtime.revision++
 	return nil
 }
@@ -186,7 +207,9 @@ func (runtime *Runtime) startNewGame(ctx context.Context) error {
 	runtime.simulation = simulation
 	runtime.virtual = make(map[string]virtualAction)
 	runtime.pendingAbilities = make(map[string]bool)
+	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
+	runtime.resetPreviewLocked()
 	runtime.revision++
 	return nil
 }
@@ -199,12 +222,17 @@ func (runtime *Runtime) resetLocked() error {
 	runtime.simulation = candidate
 	runtime.virtual = make(map[string]virtualAction)
 	runtime.pendingAbilities = make(map[string]bool)
+	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
+	runtime.resetPreviewLocked()
 	runtime.revision++
 	return nil
 }
 
 func (runtime *Runtime) entityConfig(id string) (sim.EntityConfig, bool) {
+	if preview, ok := runtime.previewEntities[id]; ok {
+		return preview.config, true
+	}
 	for _, definition := range runtime.built.Config.Entities {
 		if definition.ID == id {
 			return definition, true
@@ -214,5 +242,33 @@ func (runtime *Runtime) entityConfig(id string) (sim.EntityConfig, bool) {
 }
 
 func (runtime *Runtime) metadata(id string) (gamebuild.InstanceMetadata, bool) {
+	if preview, ok := runtime.previewEntities[id]; ok {
+		metadata := preview.metadata
+		metadata.Tags = append([]string(nil), metadata.Tags...)
+		return metadata, true
+	}
 	return runtime.built.Presentation.Instance(id)
+}
+
+func (runtime *Runtime) resetPreviewLocked() {
+	runtime.previewSequence = uint64(len(runtime.built.Config.Entities))
+	runtime.previewEntities = make(map[string]previewEntity)
+}
+
+func (runtime *Runtime) allMetadataLocked() []gamebuild.InstanceMetadata {
+	result := make(
+		[]gamebuild.InstanceMetadata,
+		0,
+		len(runtime.built.Presentation.Instances)+len(runtime.previewEntities),
+	)
+	result = append(result, runtime.built.Presentation.Instances...)
+	previewIDs := make([]string, 0, len(runtime.previewEntities))
+	for id := range runtime.previewEntities {
+		previewIDs = append(previewIDs, id)
+	}
+	sort.Strings(previewIDs)
+	for _, id := range previewIDs {
+		result = append(result, runtime.previewEntities[id].metadata)
+	}
+	return result
 }

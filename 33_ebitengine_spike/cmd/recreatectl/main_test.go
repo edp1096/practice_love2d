@@ -76,9 +76,12 @@ func TestCLIMapsUsefulCommandsToProtocol(t *testing.T) {
 		{"graph"},
 		{"definition", "actor.hero"},
 		{"wall", "north", "0", "0", "960", "32"},
+		{"spawn", "actor.slime", "80.5", "-4.25", "preview.slime"},
+		{"remove", "preview.slime"},
 		{"position", "player", "10.5", "-2"},
 		{"health", "player", "7"},
 		{"ability", "player", "ability.parry"},
+		{"dialogue", "dialogue.guide", "guide"},
 		{"action", "attack", "--value", "0.5", "--frames", "3"},
 		{"pause", "true"},
 		{"step", "--frames", "4", "--dt", "0.0166666667"},
@@ -93,9 +96,12 @@ func TestCLIMapsUsefulCommandsToProtocol(t *testing.T) {
 		protocol.MethodContentGetGraph,
 		protocol.MethodContentGetDefinition,
 		protocol.MethodWorldSetWall,
+		protocol.MethodEntitySpawn,
+		protocol.MethodEntityRemove,
 		protocol.MethodEntitySetPosition,
 		protocol.MethodEntitySetHealth,
 		protocol.MethodEntityRequestAbility,
+		protocol.MethodDialogueStart,
 		protocol.MethodInputAction,
 		protocol.MethodEmulationSetPaused,
 		protocol.MethodEmulationStep,
@@ -136,13 +142,57 @@ func TestCLIMapsUsefulCommandsToProtocol(t *testing.T) {
 			)
 		}
 	}
-	action := calls[7].Params.(protocol.InputActionParams)
+	spawn := calls[4].Params.(protocol.SpawnEntityParams)
+	if spawn.ActorID != "actor.slime" ||
+		spawn.EntityID != "preview.slime" ||
+		spawn.X == nil || *spawn.X != 80.5 ||
+		spawn.Y == nil || *spawn.Y != -4.25 {
+		t.Fatalf("unexpected spawn params: %+v", spawn)
+	}
+	dialogue := calls[9].Params.(protocol.StartDialogueParams)
+	if dialogue.DialogueID != "dialogue.guide" ||
+		dialogue.SpeakerID != "guide" {
+		t.Fatalf("unexpected dialogue params: %+v", dialogue)
+	}
+	action := calls[10].Params.(protocol.InputActionParams)
 	if action.Value != 0.5 || action.Frames != 3 {
 		t.Fatalf("unexpected action params: %+v", action)
 	}
-	step := calls[9].Params.(protocol.StepParams)
+	step := calls[12].Params.(protocol.StepParams)
 	if step.Frames != 4 || step.DT == nil {
 		t.Fatalf("unexpected step params: %+v", step)
+	}
+}
+
+func TestCLIMakerPreviewOptionalDefaults(t *testing.T) {
+	backend := &cliBackend{}
+	address := startCLITestServer(t, backend)
+	for _, command := range [][]string{
+		{"spawn", "actor.slime"},
+		{"dialogue", "dialogue.guide"},
+	} {
+		arguments := append([]string{"--address", address}, command...)
+		if err := run(
+			context.Background(),
+			arguments,
+			bytes.NewReader(nil),
+			io.Discard,
+			io.Discard,
+		); err != nil {
+			t.Fatalf("%v: %v", command, err)
+		}
+	}
+	calls := backend.snapshot()
+	if len(calls) != 2 {
+		t.Fatalf("got %d calls, want 2", len(calls))
+	}
+	spawn := calls[0].Params.(protocol.SpawnEntityParams)
+	if spawn.EntityID != "" || spawn.X != nil || spawn.Y != nil {
+		t.Fatalf("spawn defaults were not preserved: %+v", spawn)
+	}
+	dialogue := calls[1].Params.(protocol.StartDialogueParams)
+	if dialogue.SpeakerID != "" {
+		t.Fatalf("dialogue speaker should be optional: %+v", dialogue)
 	}
 }
 
@@ -249,6 +299,11 @@ func TestCLIRejectsUnsafeOrMalformedInput(t *testing.T) {
 	cases := [][]string{
 		{"--address", "0.0.0.0:19832", "state"},
 		{"position", "player", "NaN", "1"},
+		{"spawn", "actor.slime", "10"},
+		{"spawn", "actor.slime", "NaN", "1"},
+		{"remove"},
+		{"dialogue"},
+		{"dialogue", "dialogue.guide", "guide", "extra"},
 		{"pause", "maybe"},
 		{"validate", "actor.hero", "-"},
 		{"call", "Runtime.getState", "[]"},

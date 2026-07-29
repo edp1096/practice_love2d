@@ -38,8 +38,17 @@ func (runtime *Runtime) Tick(actions ebitapp.Actions) error {
 		Dodge:    actions.Dodge,
 		Interact: actions.Interact,
 	}
+	var originalVirtual map[string]virtualAction
+	if len(runtime.pendingRemovals) != 0 {
+		originalVirtual = cloneVirtualActions(runtime.virtual)
+	}
 	runtime.mergeVirtualInputLocked(&input)
-	runtime.tickLocked(input)
+	if err := runtime.tickLocked(input); err != nil {
+		if originalVirtual != nil {
+			runtime.virtual = originalVirtual
+		}
+		return err
+	}
 	return nil
 }
 
@@ -109,7 +118,32 @@ func (runtime *Runtime) advanceVirtualLocked() {
 	}
 }
 
-func (runtime *Runtime) tickLocked(input sim.Input) {
+func (runtime *Runtime) tickLocked(input sim.Input) error {
+	var originalSimulation *sim.Simulation
+	var originalPendingAbilities map[string]bool
+	var originalPendingRemovals map[string]bool
+	var originalMoving map[string]bool
+	var originalPreviewEntities map[string]previewEntity
+	if len(runtime.pendingRemovals) != 0 {
+		originalSimulation = runtime.simulation
+		originalPendingAbilities = runtime.pendingAbilities
+		originalPendingRemovals = runtime.pendingRemovals
+		originalMoving = runtime.moving
+		originalPreviewEntities = runtime.previewEntities
+		runtime.simulation = runtime.simulation.Clone()
+		runtime.pendingAbilities = cloneBoolMap(runtime.pendingAbilities)
+		runtime.pendingRemovals = cloneBoolMap(runtime.pendingRemovals)
+		runtime.moving = cloneBoolMap(runtime.moving)
+		runtime.previewEntities = clonePreviewEntities(runtime.previewEntities)
+
+		// Removal wins over interaction on its flush tick. This prevents a
+		// queued speaker from becoming a new strong dialogue reference after
+		// Entity.remove has already acknowledged the request.
+		input.Interact = false
+		for index := range input.Commands {
+			input.Commands[index].Interact = false
+		}
+	}
 	commands := make(map[string]sim.EntityInput)
 	snapshot := runtime.simulation.Snapshot()
 	entities := make(map[string]sim.EntitySnapshot, len(snapshot.Entities))
@@ -117,7 +151,7 @@ func (runtime *Runtime) tickLocked(input sim.Input) {
 		entities[entity.ID] = entity
 	}
 
-	for _, metadata := range runtime.built.Presentation.Instances {
+	for _, metadata := range runtime.allMetadataLocked() {
 		if metadata.Chase == nil {
 			continue
 		}
@@ -203,7 +237,16 @@ func (runtime *Runtime) tickLocked(input sim.Input) {
 			delete(runtime.pendingAbilities, entity.ID)
 		}
 	}
+	if err := runtime.flushPendingRemovalsLocked(); err != nil {
+		runtime.simulation = originalSimulation
+		runtime.pendingAbilities = originalPendingAbilities
+		runtime.pendingRemovals = originalPendingRemovals
+		runtime.moving = originalMoving
+		runtime.previewEntities = originalPreviewEntities
+		return err
+	}
 	runtime.revision++
+	return nil
 }
 
 func pixelsCoord(value float64) sim.Coord {
@@ -226,7 +269,7 @@ func (runtime *Runtime) chaseTargetLocked(
 	tag string,
 	entities map[string]sim.EntitySnapshot,
 ) (sim.EntitySnapshot, bool) {
-	for _, metadata := range runtime.built.Presentation.Instances {
+	for _, metadata := range runtime.allMetadataLocked() {
 		if !contains(metadata.Tags, tag) {
 			continue
 		}

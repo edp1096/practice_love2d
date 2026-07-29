@@ -7,7 +7,9 @@ import (
 )
 
 // SessionVersion is the current deterministic save-state schema.
-const SessionVersion = 1
+const SessionVersion = 2
+
+const legacySessionVersion = 1
 
 // BurstSessionState is the serialized form of a fixed-duration motion burst.
 type BurstSessionState struct {
@@ -25,8 +27,8 @@ type AttackSessionState struct {
 	HitCount       int         `json:"hit_count"`
 }
 
-// EntitySessionState stores only mutable entity state. Immutable content is
-// resolved from Config during load.
+// EntitySessionState stores only mutable entity state. Immutable definitions
+// are resolved from authored Config plus the session's preview topology.
 type EntitySessionState struct {
 	ID       string `json:"id"`
 	Position Vec    `json:"position"`
@@ -56,9 +58,10 @@ type QuestSessionState struct {
 
 // DialogueSessionState stores a currently open dialogue reference.
 type DialogueSessionState struct {
-	Active       bool   `json:"active"`
-	DefinitionID string `json:"definition_id,omitempty"`
-	NPCID        string `json:"npc_id,omitempty"`
+	Active       bool                `json:"active"`
+	DefinitionID string              `json:"definition_id,omitempty"`
+	NPCID        string              `json:"npc_id,omitempty"`
+	Definition   *DialogueDefinition `json:"definition,omitempty"`
 }
 
 // CameraSessionState stores deterministic shake state. Base and final centers
@@ -73,17 +76,22 @@ type CameraSessionState struct {
 	ShakeSequence  uint64 `json:"shake_sequence"`
 }
 
-// SessionState is a JSON-safe, detached full simulation save.
+// SessionState is a JSON-safe, detached full simulation save. Version 2 can
+// round-trip temporary preview topology for transactions and tests; player-save
+// policy remains a caller concern.
 type SessionState struct {
 	Version   int    `json:"version"`
 	Tick      uint64 `json:"tick"`
 	WorldTick uint64 `json:"world_tick"`
 	Hitstop   int    `json:"hitstop"`
 
-	Entities []EntitySessionState `json:"entities"`
-	Quests   []QuestSessionState  `json:"quests"`
-	Dialogue DialogueSessionState `json:"dialogue"`
-	Camera   CameraSessionState   `json:"camera"`
+	PreviewEntities  []EntityPreviewConfig `json:"preview_entities,omitempty"`
+	PreviewQuests    []QuestDefinition     `json:"preview_quests,omitempty"`
+	RemovedEntityIDs []string              `json:"removed_entity_ids,omitempty"`
+	Entities         []EntitySessionState  `json:"entities"`
+	Quests           []QuestSessionState   `json:"quests"`
+	Dialogue         DialogueSessionState  `json:"dialogue"`
+	Camera           CameraSessionState    `json:"camera"`
 }
 
 // SaveSession returns a detached, deterministic full-session save value.
@@ -109,6 +117,31 @@ func (s *Simulation) SaveSession() SessionState {
 			ShakeRemaining: s.camera.shakeRemaining,
 			ShakeSequence:  s.camera.shakeSequence,
 		},
+	}
+	for _, id := range sortedPreviewIDs(s.previewDefs) {
+		state.PreviewEntities = append(
+			state.PreviewEntities,
+			cloneEntityPreviewConfig(s.previewDefs[id]),
+		)
+	}
+	directQuestIDs := make([]string, 0, len(s.directQuestDefs))
+	for id := range s.directQuestDefs {
+		directQuestIDs = append(directQuestIDs, id)
+	}
+	sort.Strings(directQuestIDs)
+	for _, id := range directQuestIDs {
+		state.PreviewQuests = append(
+			state.PreviewQuests,
+			s.directQuestDefs[id],
+		)
+	}
+	for id := range s.removedIDs {
+		state.RemovedEntityIDs = append(state.RemovedEntityIDs, id)
+	}
+	sort.Strings(state.RemovedEntityIDs)
+	if s.dialogue.direct {
+		definition := s.dialogue.definition
+		state.Dialogue.Definition = &definition
 	}
 	for _, id := range s.entityOrder {
 		entity := s.entities[id]
@@ -159,171 +192,28 @@ func (s *Simulation) SaveSession() SessionState {
 // A rejected load leaves the simulation byte-for-byte equivalent at its public
 // snapshot boundary.
 func (s *Simulation) LoadSession(state SessionState) error {
-	entities, quests, dialogue, camera, err := s.prepareSession(state)
+	prepared, err := s.prepareSession(state)
 	if err != nil {
 		return err
 	}
 	s.rawTick = state.Tick
 	s.worldTick = state.WorldTick
 	s.hitstop = state.Hitstop
-	s.entities = entities
-	s.quests = quests
-	s.dialogue = dialogue
-	s.camera = camera
+	s.entities = prepared.entities
+	s.entityOrder = prepared.topology.entityOrder
+	s.dynamicIDs = prepared.topology.dynamicIDs
+	s.removedIDs = prepared.topology.removedIDs
+	s.previewDefs = prepared.topology.previewDefs
+	s.directQuestDefs = prepared.topology.directQuestDefs
+	s.dialogues = prepared.topology.dialogues
+	s.interactionRange = prepared.topology.interactionRange
+	s.quests = prepared.quests
+	s.questOrder = prepared.topology.questOrder
+	s.dialogue = prepared.dialogue
+	s.camera = prepared.camera
 	s.lastEvents = nil
 	s.refreshCameraCenter()
 	return nil
-}
-
-func (s *Simulation) prepareSession(
-	state SessionState,
-) (
-	map[string]*entityRuntime,
-	map[string]*questRuntime,
-	dialogueRuntime,
-	cameraRuntime,
-	error,
-) {
-	if state.Version != SessionVersion {
-		return nil, nil, dialogueRuntime{}, cameraRuntime{},
-			fmt.Errorf("unsupported session version %d", state.Version)
-	}
-	if state.WorldTick > state.Tick {
-		return nil, nil, dialogueRuntime{}, cameraRuntime{},
-			errors.New("world tick cannot exceed raw tick")
-	}
-	if state.Hitstop < 0 {
-		return nil, nil, dialogueRuntime{}, cameraRuntime{},
-			errors.New("hitstop cannot be negative")
-	}
-	if !validTickCount(state.Hitstop) {
-		return nil, nil, dialogueRuntime{}, cameraRuntime{},
-			errors.New("hitstop exceeds deterministic timer range")
-	}
-	if len(state.Entities) != len(s.entityOrder) {
-		return nil, nil, dialogueRuntime{}, cameraRuntime{},
-			errors.New("session entity set does not match content")
-	}
-
-	entities := make(map[string]*entityRuntime, len(state.Entities))
-	for _, saved := range state.Entities {
-		definition := s.entities[saved.ID]
-		if definition == nil {
-			return nil, nil, dialogueRuntime{}, cameraRuntime{},
-				fmt.Errorf("session contains unknown entity %q", saved.ID)
-		}
-		if entities[saved.ID] != nil {
-			return nil, nil, dialogueRuntime{}, cameraRuntime{},
-				fmt.Errorf("session duplicates entity %q", saved.ID)
-		}
-		entity, err := s.restoreEntitySession(definition.config, saved, state.WorldTick)
-		if err != nil {
-			return nil, nil, dialogueRuntime{}, cameraRuntime{},
-				fmt.Errorf("entity %q: %w", saved.ID, err)
-		}
-		entities[saved.ID] = entity
-	}
-	for _, id := range s.entityOrder {
-		if entities[id] == nil {
-			return nil, nil, dialogueRuntime{}, cameraRuntime{},
-				fmt.Errorf("session is missing entity %q", id)
-		}
-	}
-
-	if len(state.Quests) != len(s.questOrder) {
-		return nil, nil, dialogueRuntime{}, cameraRuntime{},
-			errors.New("session quest set does not match content")
-	}
-	quests := make(map[string]*questRuntime, len(state.Quests))
-	for _, saved := range state.Quests {
-		current := s.quests[saved.ID]
-		if current == nil || quests[saved.ID] != nil {
-			return nil, nil, dialogueRuntime{}, cameraRuntime{},
-				fmt.Errorf("invalid or duplicate quest %q", saved.ID)
-		}
-		if saved.Status != QuestInactive &&
-			saved.Status != QuestActive &&
-			saved.Status != QuestCompleted {
-			return nil, nil, dialogueRuntime{}, cameraRuntime{},
-				fmt.Errorf("quest %q has invalid status", saved.ID)
-		}
-		if saved.Progress < 0 || saved.Progress > current.definition.Required ||
-			(saved.Status == QuestCompleted &&
-				saved.Progress != current.definition.Required) ||
-			(saved.Status != QuestCompleted &&
-				saved.Progress == current.definition.Required) {
-			return nil, nil, dialogueRuntime{}, cameraRuntime{},
-				fmt.Errorf("quest %q has invalid progress", saved.ID)
-		}
-		quests[saved.ID] = &questRuntime{
-			definition: current.definition,
-			status:     saved.Status,
-			progress:   saved.Progress,
-		}
-	}
-
-	dialogue := dialogueRuntime{}
-	if state.Dialogue.Active {
-		if s.dialogues[state.Dialogue.DefinitionID].ID == "" {
-			return nil, nil, dialogueRuntime{}, cameraRuntime{},
-				fmt.Errorf(
-					"session references unknown dialogue %q",
-					state.Dialogue.DefinitionID,
-				)
-		}
-		npc := entities[state.Dialogue.NPCID]
-		if npc == nil || npc.config.DialogueID != state.Dialogue.DefinitionID ||
-			npc.dead {
-			return nil, nil, dialogueRuntime{}, cameraRuntime{},
-				errors.New("session dialogue NPC is invalid")
-		}
-		dialogue = dialogueRuntime{
-			active:       true,
-			definitionID: state.Dialogue.DefinitionID,
-			npcID:        state.Dialogue.NPCID,
-		}
-	} else if state.Dialogue.DefinitionID != "" || state.Dialogue.NPCID != "" {
-		return nil, nil, dialogueRuntime{}, cameraRuntime{},
-			errors.New("inactive session dialogue must not contain references")
-	}
-
-	if err := validateCameraSession(state.Camera); err != nil {
-		return nil, nil, dialogueRuntime{}, cameraRuntime{}, err
-	}
-	target := entities[s.config.Camera.TargetEntityID]
-	expectedBase := clampCamera(
-		target.position,
-		s.config.StageBounds,
-		s.config.Camera,
-	)
-	expectedCenter := clampCamera(
-		Vec{
-			X: expectedBase.X + state.Camera.Offset.X,
-			Y: expectedBase.Y + state.Camera.Offset.Y,
-		},
-		s.config.StageBounds,
-		s.config.Camera,
-	)
-	expectedOffset := Vec{
-		X: expectedCenter.X - expectedBase.X,
-		Y: expectedCenter.Y - expectedBase.Y,
-	}
-	if state.Camera.BaseCenter != expectedBase ||
-		state.Camera.Center != expectedCenter ||
-		state.Camera.Offset != expectedOffset {
-		return nil, nil, dialogueRuntime{}, cameraRuntime{},
-			errors.New("camera session state is not canonical for target position")
-	}
-	camera := cameraRuntime{
-		baseCenter:     state.Camera.BaseCenter,
-		center:         state.Camera.Center,
-		offset:         state.Camera.Offset,
-		shakeMagnitude: state.Camera.ShakeMagnitude,
-		shakeDuration:  state.Camera.ShakeDuration,
-		shakeRemaining: state.Camera.ShakeRemaining,
-		shakeSequence:  state.Camera.ShakeSequence,
-	}
-	return entities, quests, dialogue, camera, nil
 }
 
 func (s *Simulation) restoreEntitySession(

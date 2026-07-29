@@ -84,6 +84,12 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 - ID가 보존된 wall 조회·검증·runtime 형상 제어
 - wall ID를 simulation까지 직접 보존하며 현재 entity 위치를 기준으로
   원자적으로 형상을 교체
+- 32 wire와 수명주기를 보존한 `Entity.spawn`, queued
+  `Entity.remove`, optional-speaker `Dialogue.start`
+- 동적 actor의 sprite/tag/chase metadata까지 renderer, AI, snapshot에
+  반영하고 player save와 Maker preview topology를 분리
+- stage 밖 actor/dialogue도 같은 catalog translator로 변환하며 instance
+  name/tag/component override와 start-node quest 의미를 보존
 - 월드 좌표와 960×540 논리 화면 좌표 동시 조회
 - screenshot의 정확한 render tick/revision 응답
 - 취소된 다중 frame step의 전체 rollback
@@ -124,15 +130,13 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 - merchant interaction의 실제 shop 화면
 - tilemap 렌더링과 전체 오디오
 - status effect와 RPG stat 계산
-- Maker preview가 쓰는 `Entity.spawn`, `Entity.remove`,
-  `Dialogue.start`
 - 실행 중 정의 반영과 stage/entity 생성 편집
 - 모바일·웹 패키징
 - 콘솔별 storage, suspend/resume, safe-area, controller-user 정책
 
 ## 다음 구현 gate
 
-1. protocol에 Maker preview 생성·삭제·대화 계약을 추가한다.
+1. ~~protocol에 Maker preview 생성·삭제·대화 계약을 추가한다.~~ 완료
 2. `32_recreate`의 complete campaign을 같은 catalog와 scripted
    acceptance로 Ebitengine에서 재현한다.
 3. shop/inventory/equipment와 secondary ability/projectile을 renderer와

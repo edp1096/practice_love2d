@@ -30,9 +30,12 @@ const (
 	MethodContentValidateDefinition = "Content.validateDefinition"
 	MethodWorldGetSnapshot          = "World.getSnapshot"
 	MethodWorldSetWall              = "World.setWall"
+	MethodEntitySpawn               = "Entity.spawn"
+	MethodEntityRemove              = "Entity.remove"
 	MethodEntitySetPosition         = "Entity.setPosition"
 	MethodEntitySetHealth           = "Entity.setHealth"
 	MethodEntityRequestAbility      = "Entity.requestAbility"
+	MethodDialogueStart             = "Dialogue.start"
 	MethodInputAction               = "Input.action"
 	MethodEmulationSetPaused        = "Emulation.setPaused"
 	MethodEmulationStep             = "Emulation.step"
@@ -60,9 +63,12 @@ var methods = []string{
 	MethodContentValidateDefinition,
 	MethodWorldGetSnapshot,
 	MethodWorldSetWall,
+	MethodEntitySpawn,
+	MethodEntityRemove,
 	MethodEntitySetPosition,
 	MethodEntitySetHealth,
 	MethodEntityRequestAbility,
+	MethodDialogueStart,
 	MethodInputAction,
 	MethodEmulationSetPaused,
 	MethodEmulationStep,
@@ -123,9 +129,12 @@ func (call Call) Mutating() bool {
 func IsMutating(method string) bool {
 	switch method {
 	case MethodWorldSetWall,
+		MethodEntitySpawn,
+		MethodEntityRemove,
 		MethodEntitySetPosition,
 		MethodEntitySetHealth,
 		MethodEntityRequestAbility,
+		MethodDialogueStart,
 		MethodInputAction,
 		MethodEmulationSetPaused,
 		MethodEmulationStep,
@@ -187,6 +196,25 @@ type SetPositionParams struct {
 	Y        float64 `json:"y"`
 }
 
+// SpawnEntityParams preserves 32_recreate's Maker preview wire contract.
+// ActorID is required. EntityID is optional so preview callers may request an
+// engine-generated instance ID. X and Y are either both nil (spawn at the
+// presentation default) or both non-nil.
+//
+// Instance tags and control ownership intentionally are not protocol fields:
+// 32_recreate derives them from authored actor/instance content instead of
+// permitting debug calls to alter gameplay composition ad hoc.
+type SpawnEntityParams struct {
+	ActorID  string   `json:"actorId"`
+	EntityID string   `json:"entityId,omitempty"`
+	X        *float64 `json:"x,omitempty"`
+	Y        *float64 `json:"y,omitempty"`
+}
+
+type RemoveEntityParams struct {
+	EntityID string `json:"entityId"`
+}
+
 type SetWallParams struct {
 	WallID string  `json:"wallId"`
 	X      float64 `json:"x"`
@@ -203,6 +231,14 @@ type SetHealthParams struct {
 type RequestAbilityParams struct {
 	EntityID  string `json:"entityId"`
 	AbilityID string `json:"abilityId"`
+}
+
+// StartDialogueParams mirrors 32_recreate's dialogue preview contract.
+// SpeakerID is optional: the runtime resolves the controlled player as the
+// interactor and may preview dialogue without a speaker entity.
+type StartDialogueParams struct {
+	DialogueID string `json:"dialogueId"`
+	SpeakerID  string `json:"speakerId,omitempty"`
 }
 
 type InputActionParams struct {

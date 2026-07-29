@@ -197,6 +197,59 @@ func parseCall(request Request, fixedStepSeconds float64) (Call, *Error) {
 			},
 		}, nil
 
+	case MethodEntitySpawn:
+		type spawnWire struct {
+			ActorID  string   `json:"actorId"`
+			EntityID *string  `json:"entityId,omitempty"`
+			X        *float64 `json:"x,omitempty"`
+			Y        *float64 `json:"y,omitempty"`
+		}
+		var wire spawnWire
+		if err := decodeParams(request.Params, &wire); err != nil {
+			return Call{}, err
+		}
+		if err := requireIdentifier("actorId", wire.ActorID); err != nil {
+			return Call{}, err
+		}
+		entityID := ""
+		if wire.EntityID != nil {
+			if err := requireIdentifier("entityId", *wire.EntityID); err != nil {
+				return Call{}, err
+			}
+			entityID = *wire.EntityID
+		}
+		if (wire.X == nil) != (wire.Y == nil) {
+			return Call{}, rpcError(
+				CodeInvalidParams,
+				"x and y must be provided together",
+			)
+		}
+		if wire.X != nil && (!finite(*wire.X) || !finite(*wire.Y)) {
+			return Call{}, rpcError(
+				CodeInvalidParams,
+				"x and y must be finite numbers",
+			)
+		}
+		return Call{
+			Method: request.Method,
+			Params: SpawnEntityParams{
+				ActorID:  wire.ActorID,
+				EntityID: entityID,
+				X:        wire.X,
+				Y:        wire.Y,
+			},
+		}, nil
+
+	case MethodEntityRemove:
+		var params RemoveEntityParams
+		if err := decodeParams(request.Params, &params); err != nil {
+			return Call{}, err
+		}
+		if err := requireIdentifier("entityId", params.EntityID); err != nil {
+			return Call{}, err
+		}
+		return Call{Method: request.Method, Params: params}, nil
+
 	case MethodEntitySetPosition:
 		type positionWire struct {
 			EntityID string   `json:"entityId"`
@@ -275,6 +328,33 @@ func parseCall(request Request, fixedStepSeconds float64) (Call, *Error) {
 			return Call{}, err
 		}
 		return Call{Method: request.Method, Params: params}, nil
+
+	case MethodDialogueStart:
+		type dialogueWire struct {
+			DialogueID string  `json:"dialogueId"`
+			SpeakerID  *string `json:"speakerId,omitempty"`
+		}
+		var wire dialogueWire
+		if err := decodeParams(request.Params, &wire); err != nil {
+			return Call{}, err
+		}
+		if err := requireIdentifier("dialogueId", wire.DialogueID); err != nil {
+			return Call{}, err
+		}
+		speakerID := ""
+		if wire.SpeakerID != nil {
+			if err := requireIdentifier("speakerId", *wire.SpeakerID); err != nil {
+				return Call{}, err
+			}
+			speakerID = *wire.SpeakerID
+		}
+		return Call{
+			Method: request.Method,
+			Params: StartDialogueParams{
+				DialogueID: wire.DialogueID,
+				SpeakerID:  speakerID,
+			},
+		}, nil
 
 	case MethodInputAction:
 		type inputWire struct {

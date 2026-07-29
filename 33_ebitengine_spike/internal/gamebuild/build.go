@@ -95,9 +95,12 @@ type stageCamera struct {
 }
 
 type stageSpawn struct {
-	ID       string        `json:"id"`
-	Actor    string        `json:"actor"`
-	Position stagePosition `json:"position"`
+	ID         string                     `json:"id"`
+	Actor      string                     `json:"actor"`
+	Name       string                     `json:"name"`
+	Tags       []string                   `json:"tags"`
+	Components map[string]json.RawMessage `json:"components"`
+	Position   stagePosition              `json:"position"`
 }
 
 type stagePosition struct {
@@ -273,12 +276,8 @@ func Build(catalog *content.Catalog, options Options) (*Result, error) {
 		"stage", options.StageID); err != nil {
 		return nil, err
 	}
-	var locale localeDefinition
-	if err := catalog.Decode(options.LocaleID, &locale); err != nil {
-		return nil, err
-	}
-	if err := validateHeader(locale.SchemaVersion, locale.Kind, locale.ID,
-		"locale", options.LocaleID); err != nil {
+	strings, err := loadLocaleStrings(catalog, options.LocaleID)
+	if err != nil {
 		return nil, err
 	}
 	if !positiveFinite(stage.Width) || !positiveFinite(stage.Height) {
@@ -302,7 +301,7 @@ func Build(catalog *content.Catalog, options Options) (*Result, error) {
 		},
 		Presentation: Presentation{
 			StageID:   stage.ID,
-			StageName: localized(locale.Strings, stage.NameKey, stage.Name),
+			StageName: localized(strings, stage.NameKey, stage.Name),
 		},
 	}
 	for index := range min(len(stage.Background), 4) {
@@ -348,7 +347,7 @@ func Build(catalog *content.Catalog, options Options) (*Result, error) {
 		}
 		seenInstances[spawn.ID] = struct{}{}
 		entity, metadata, dialogue, quest, interactionRange, err :=
-			buildEntity(catalog, locale.Strings, spawn, options.Impact)
+			buildEntity(catalog, strings, spawn, options.Impact)
 		if err != nil {
 			return nil, fmt.Errorf("%s spawn %q: %w", stage.ID, spawn.ID, err)
 		}
@@ -429,6 +428,148 @@ func containsTag(tags []string, wanted string) bool {
 	return false
 }
 
+func mergeTags(base []string, overrides []string) ([]string, error) {
+	seen := make(map[string]struct{}, len(base)+len(overrides))
+	result := make([]string, 0, len(base)+len(overrides))
+	for _, values := range [][]string{base, overrides} {
+		for _, tag := range values {
+			if tag == "" {
+				return nil, errors.New("entity tag must not be empty")
+			}
+			if _, duplicate := seen[tag]; duplicate {
+				continue
+			}
+			seen[tag] = struct{}{}
+			result = append(result, tag)
+		}
+	}
+	sort.Strings(result)
+	return result, nil
+}
+
+func cloneRawMessages(
+	source map[string]json.RawMessage,
+) map[string]json.RawMessage {
+	if source == nil {
+		return nil
+	}
+	result := make(map[string]json.RawMessage, len(source))
+	for key, value := range source {
+		result[key] = append(json.RawMessage(nil), value...)
+	}
+	return result
+}
+
+func mergeComponentConfigs(
+	base map[string]json.RawMessage,
+	overrides map[string]json.RawMessage,
+) (map[string]json.RawMessage, error) {
+	result := cloneRawMessages(base)
+	if result == nil {
+		result = make(map[string]json.RawMessage)
+	}
+	for name, overrideRaw := range overrides {
+		if name == "" {
+			return nil, errors.New("component override name must not be empty")
+		}
+		override, err := decodeJSONObject(
+			overrideRaw,
+			fmt.Sprintf("component override %q", name),
+		)
+		if err != nil {
+			return nil, err
+		}
+		baseRaw, exists := result[name]
+		if !exists {
+			encoded, err := json.Marshal(override)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"encode component override %q: %w",
+					name,
+					err,
+				)
+			}
+			result[name] = encoded
+			continue
+		}
+		baseObject, err := decodeJSONObject(
+			baseRaw,
+			fmt.Sprintf("actor component %q", name),
+		)
+		if err != nil {
+			return nil, err
+		}
+		merged := mergeJSONValue(baseObject, override)
+		encoded, err := json.Marshal(merged)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"encode merged component %q: %w",
+				name,
+				err,
+			)
+		}
+		result[name] = encoded
+	}
+	return result, nil
+}
+
+func decodeJSONObject(
+	raw json.RawMessage,
+	label string,
+) (map[string]any, error) {
+	var result map[string]any
+	if len(raw) == 0 {
+		return nil, fmt.Errorf("%s must be a JSON object", label)
+	}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, fmt.Errorf("%s must be a JSON object: %w", label, err)
+	}
+	if result == nil {
+		return nil, fmt.Errorf("%s must be a JSON object", label)
+	}
+	return result, nil
+}
+
+// mergeJSONValue mirrors the recursive table merge used by 32_recreate.
+// Objects merge by key and arrays merge by index; other values replace.
+func mergeJSONValue(base any, override any) any {
+	switch typed := override.(type) {
+	case map[string]any:
+		result := make(map[string]any, len(typed))
+		if baseObject, ok := base.(map[string]any); ok {
+			for key, value := range baseObject {
+				result[key] = value
+			}
+		}
+		for key, value := range typed {
+			if current, exists := result[key]; exists {
+				result[key] = mergeJSONValue(current, value)
+			} else {
+				result[key] = value
+			}
+		}
+		return result
+	case []any:
+		result := make([]any, 0, len(typed))
+		if baseArray, ok := base.([]any); ok {
+			result = append(result, baseArray...)
+		}
+		if len(result) < len(typed) {
+			result = append(result, make([]any, len(typed)-len(result))...)
+		}
+		for index, value := range typed {
+			if index < len(result) && result[index] != nil {
+				result[index] = mergeJSONValue(result[index], value)
+			} else {
+				result[index] = value
+			}
+		}
+		return result
+	default:
+		return override
+	}
+}
+
 func applyDefaults(options *Options) {
 	if options.StageID == "" {
 		options.StageID = defaultStageID
@@ -448,6 +589,30 @@ func applyDefaults(options *Options) {
 	if options.Impact.ParryShakeSeconds == 0 {
 		options.Impact.ParryShakeSeconds = 0.17
 	}
+}
+
+func loadLocaleStrings(
+	catalog *content.Catalog,
+	id string,
+) (map[string]string, error) {
+	var locale localeDefinition
+	if err := catalog.Decode(id, &locale); err != nil {
+		return nil, err
+	}
+	if err := validateHeader(
+		locale.SchemaVersion,
+		locale.Kind,
+		locale.ID,
+		"locale",
+		id,
+	); err != nil {
+		return nil, err
+	}
+	result := make(map[string]string, len(locale.Strings))
+	for key, value := range locale.Strings {
+		result[key] = value
+	}
+	return result, nil
 }
 
 func buildEntity(
@@ -471,6 +636,18 @@ func buildEntity(
 		"actor", spawn.Actor); err != nil {
 		return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0, err
 	}
+	if !finite(spawn.Position.X) || !finite(spawn.Position.Y) {
+		return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
+			errors.New("entity position must be finite")
+	}
+	components, err := mergeComponentConfigs(
+		actor.Components,
+		spawn.Components,
+	)
+	if err != nil {
+		return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0, err
+	}
+	actor.Components = components
 	bodyRaw, exists := actor.Components["body"]
 	if !exists {
 		return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
@@ -498,10 +675,20 @@ func buildEntity(
 		MaxHealth: 1,
 		Facing:    sim.Vec{X: sim.UnitsPerPixel},
 	}
+	if spawn.Name != "" {
+		entity.Name = spawn.Name
+	}
+	if entity.Name == "" {
+		entity.Name = spawn.ID
+	}
+	tags, err := mergeTags(actor.Tags, spawn.Tags)
+	if err != nil {
+		return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0, err
+	}
 	metadata := InstanceMetadata{
 		ID:      spawn.ID,
 		ActorID: actor.ID,
-		Tags:    append([]string(nil), actor.Tags...),
+		Tags:    tags,
 	}
 	if _, exists := actor.Components["control.player"]; exists {
 		entity.Controlled = true
@@ -631,8 +818,7 @@ func buildEntity(
 			}
 		}
 		if entity.DialogueID != "" {
-			var err error
-			dialogue, entity.StartQuestID, err = buildDialogue(
+			bundle, err := buildDialoguePreview(
 				catalog,
 				strings,
 				entity.DialogueID,
@@ -640,11 +826,10 @@ func buildEntity(
 			if err != nil {
 				return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0, err
 			}
-			if entity.StartQuestID != "" {
-				quest, err = buildQuest(catalog, entity.StartQuestID)
-				if err != nil {
-					return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0, err
-				}
+			dialogue = &bundle.Dialogue
+			quest = bundle.Quest
+			if quest != nil && bundle.StartQuestOnOpen {
+				entity.StartQuestID = quest.ID
 			}
 		}
 	}
@@ -701,24 +886,36 @@ func buildAbility(
 	return result, nil
 }
 
+type translatedDialogue struct {
+	definition       sim.DialogueDefinition
+	startNodeID      string
+	questID          string
+	startQuestOnOpen bool
+}
+
 func buildDialogue(
 	catalog *content.Catalog,
 	strings map[string]string,
 	id string,
-) (*sim.DialogueDefinition, string, error) {
+) (*translatedDialogue, error) {
 	var authored dialogueDefinition
 	if err := catalog.Decode(id, &authored); err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	if err := validateHeader(authored.SchemaVersion, authored.Kind, authored.ID,
 		"dialogue", id); err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	node, exists := authored.Nodes[authored.Start]
 	if !exists {
-		return nil, "", fmt.Errorf("%s has unknown start node %q", id, authored.Start)
+		return nil, fmt.Errorf(
+			"%s has unknown start node %q",
+			id,
+			authored.Start,
+		)
 	}
 	questID := questAction(node.Actions)
+	startQuestOnOpen := questID != ""
 	if questID == "" {
 		for _, choice := range node.Choices {
 			if questID = questAction(choice.Actions); questID != "" {
@@ -726,11 +923,40 @@ func buildDialogue(
 			}
 		}
 	}
-	return &sim.DialogueDefinition{
-		ID:      id,
-		Speaker: localized(strings, node.SpeakerKey, node.SpeakerKey),
-		Text:    localized(strings, node.TextKey, node.TextKey),
-	}, questID, nil
+	return &translatedDialogue{
+		definition: sim.DialogueDefinition{
+			ID:      id,
+			Speaker: localized(strings, node.SpeakerKey, node.SpeakerKey),
+			Text:    localized(strings, node.TextKey, node.TextKey),
+		},
+		startNodeID:      authored.Start,
+		questID:          questID,
+		startQuestOnOpen: startQuestOnOpen,
+	}, nil
+}
+
+func buildDialoguePreview(
+	catalog *content.Catalog,
+	strings map[string]string,
+	id string,
+) (*DialoguePreview, error) {
+	translated, err := buildDialogue(catalog, strings, id)
+	if err != nil {
+		return nil, err
+	}
+	result := &DialoguePreview{
+		Dialogue:         translated.definition,
+		StartNodeID:      translated.startNodeID,
+		StartQuestOnOpen: translated.startQuestOnOpen,
+	}
+	if translated.questID == "" {
+		return result, nil
+	}
+	result.Quest, err = buildQuest(catalog, translated.questID)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func questAction(actions []contentAction) string {

@@ -56,93 +56,113 @@ type Body struct {
 // AbilityConfig describes the single primary attack in this vertical slice.
 // ArcDegrees is the full facing arc and must be in [1, 360].
 type AbilityConfig struct {
-	ID               string
-	WindupTicks      int
-	ActiveTicks      int
-	RecoveryTicks    int
-	CooldownTicks    int
-	LockMovement     bool
-	Reach            Coord
-	ArcDegrees       int
-	Damage           int
-	StaggerTicks     int
-	Knockback        Coord
-	KnockbackTicks   int
-	HitstopTicks     int
-	CameraShake      Coord
-	CameraShakeTicks int
+	ID               string `json:"id"`
+	WindupTicks      int    `json:"windup_ticks"`
+	ActiveTicks      int    `json:"active_ticks"`
+	RecoveryTicks    int    `json:"recovery_ticks"`
+	CooldownTicks    int    `json:"cooldown_ticks"`
+	LockMovement     bool   `json:"lock_movement"`
+	Reach            Coord  `json:"reach"`
+	ArcDegrees       int    `json:"arc_degrees"`
+	Damage           int    `json:"damage"`
+	StaggerTicks     int    `json:"stagger_ticks"`
+	Knockback        Coord  `json:"knockback"`
+	KnockbackTicks   int    `json:"knockback_ticks"`
+	HitstopTicks     int    `json:"hitstop_ticks"`
+	CameraShake      Coord  `json:"camera_shake"`
+	CameraShakeTicks int    `json:"camera_shake_ticks"`
 }
 
 // ReactionConfig controls hit invulnerability and presentation feedback.
 type ReactionConfig struct {
-	HitInvulnerabilityTicks int
-	FlashTicks              int
+	HitInvulnerabilityTicks int `json:"hit_invulnerability_ticks"`
+	FlashTicks              int `json:"flash_ticks"`
 }
 
 // DodgeConfig controls deterministic burst motion and invulnerability.
 type DodgeConfig struct {
-	DurationTicks        int
-	Distance             Coord
-	InvulnerabilityTicks int
-	CooldownTicks        int
+	DurationTicks        int   `json:"duration_ticks"`
+	Distance             Coord `json:"distance"`
+	InvulnerabilityTicks int   `json:"invulnerability_ticks"`
+	CooldownTicks        int   `json:"cooldown_ticks"`
 }
 
 // ParryConfig controls the guarding arc and perfect-parry window.
 type ParryConfig struct {
-	WindowTicks          int
-	PerfectWindowTicks   int
-	CooldownTicks        int
-	SuccessCooldownTicks int
-	ArcDegrees           int
-	StaggerTicks         int
-	PerfectStaggerTicks  int
-	HitstopTicks         int
-	PerfectHitstopTicks  int
-	CameraShake          Coord
-	CameraShakeTicks     int
+	WindowTicks          int   `json:"window_ticks"`
+	PerfectWindowTicks   int   `json:"perfect_window_ticks"`
+	CooldownTicks        int   `json:"cooldown_ticks"`
+	SuccessCooldownTicks int   `json:"success_cooldown_ticks"`
+	ArcDegrees           int   `json:"arc_degrees"`
+	StaggerTicks         int   `json:"stagger_ticks"`
+	PerfectStaggerTicks  int   `json:"perfect_stagger_ticks"`
+	HitstopTicks         int   `json:"hitstop_ticks"`
+	PerfectHitstopTicks  int   `json:"perfect_hitstop_ticks"`
+	CameraShake          Coord `json:"camera_shake"`
+	CameraShakeTicks     int   `json:"camera_shake_ticks"`
 }
 
 // EntityConfig is immutable content used to construct an entity. Runtime state
 // is deliberately kept out of this type.
 type EntityConfig struct {
-	ID          string
-	Kind        string
-	Name        string
-	Team        string
-	Position    Vec
-	Body        Body
-	MaxHealth   int
-	MovePerTick Coord
-	Facing      Vec
-	Controlled  bool
+	ID          string `json:"id"`
+	Kind        string `json:"kind"`
+	Name        string `json:"name"`
+	Team        string `json:"team,omitempty"`
+	Position    Vec    `json:"position"`
+	Body        Body   `json:"body"`
+	MaxHealth   int    `json:"max_health"`
+	MovePerTick Coord  `json:"move_per_tick"`
+	Facing      Vec    `json:"facing"`
+	Controlled  bool   `json:"controlled,omitempty"`
 
-	Ability  *AbilityConfig
-	Reaction ReactionConfig
-	Dodge    *DodgeConfig
-	Parry    *ParryConfig
+	Ability  *AbilityConfig `json:"ability,omitempty"`
+	Reaction ReactionConfig `json:"reaction"`
+	Dodge    *DodgeConfig   `json:"dodge,omitempty"`
+	Parry    *ParryConfig   `json:"parry,omitempty"`
 
 	// DialogueID makes the entity interactable. StartQuestID is started
 	// transactionally when that dialogue opens.
-	DialogueID   string
-	StartQuestID string
+	DialogueID   string `json:"dialogue_id,omitempty"`
+	StartQuestID string `json:"start_quest_id,omitempty"`
+}
+
+// EntityPreviewConfig is one atomic Maker-preview bundle. Dialogue and Quest
+// are optional definitions needed when content is not authored by the current
+// stage. Quest may be Entity.StartQuestID or a choice-only dependency anchored
+// by Entity.DialogueID. InteractionRange raises (but never lowers) the authored
+// range while this preview entity exists.
+type EntityPreviewConfig struct {
+	Entity           EntityConfig        `json:"entity"`
+	Dialogue         *DialogueDefinition `json:"dialogue,omitempty"`
+	Quest            *QuestDefinition    `json:"quest,omitempty"`
+	InteractionRange Coord               `json:"interaction_range,omitempty"`
+}
+
+// DialoguePreviewConfig atomically previews a dialogue and an optional quest
+// started by its entry node.
+type DialoguePreviewConfig struct {
+	Dialogue   DialogueDefinition `json:"dialogue"`
+	Quest      *QuestDefinition   `json:"quest,omitempty"`
+	StartQuest bool               `json:"start_quest,omitempty"`
 }
 
 // DialogueDefinition is a deliberately small data-authored dialogue node for
 // the spike. A richer graph can be placed above this simulation boundary.
 type DialogueDefinition struct {
-	ID      string
-	Speaker string
-	Text    string
+	ID      string `json:"id"`
+	Speaker string `json:"speaker"`
+	Text    string `json:"text"`
 }
 
 // QuestDefinition tracks defeat events for an actor ID or kind. Empty match
 // fields are wildcards. Required must be positive.
 type QuestDefinition struct {
-	ID              string
-	TargetEntityID  string
-	TargetKind      string
-	Required        int
-	InitiallyActive bool
+	ID              string `json:"id"`
+	TargetEntityID  string `json:"target_entity_id,omitempty"`
+	TargetKind      string `json:"target_kind,omitempty"`
+	Required        int    `json:"required"`
+	InitiallyActive bool   `json:"initially_active,omitempty"`
 }
 
 // CameraConfig controls follow, viewport clamping, and deterministic shake.
@@ -225,6 +245,8 @@ const (
 	EventParryStarted      EventType = "parry.started"
 	EventAttackParried     EventType = "attack.parried"
 	EventDodgeStarted      EventType = "dodge.started"
+	EventEntitySpawned     EventType = "entity.spawned"
+	EventEntityRemoved     EventType = "entity.removed"
 	EventDialogueStarted   EventType = "dialogue.started"
 	EventDialogueClosed    EventType = "dialogue.closed"
 	EventQuestStarted      EventType = "quest.started"

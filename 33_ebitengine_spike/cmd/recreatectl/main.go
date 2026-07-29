@@ -148,6 +148,41 @@ func run(
 				Height: values[3],
 			},
 		)
+	case "spawn":
+		if len(commandArguments) != 1 &&
+			len(commandArguments) != 3 &&
+			len(commandArguments) != 4 {
+			return errors.New(
+				"usage: recreatectl spawn ACTOR_ID [X Y [ENTITY_ID]]",
+			)
+		}
+		params := protocol.SpawnEntityParams{
+			ActorID: commandArguments[0],
+		}
+		if len(commandArguments) >= 3 {
+			x, err := parseFiniteFloat(commandArguments[1], "X")
+			if err != nil {
+				return err
+			}
+			y, err := parseFiniteFloat(commandArguments[2], "Y")
+			if err != nil {
+				return err
+			}
+			params.X = &x
+			params.Y = &y
+		}
+		if len(commandArguments) == 4 {
+			params.EntityID = commandArguments[3]
+		}
+		return call(protocol.MethodEntitySpawn, params)
+	case "remove":
+		if len(commandArguments) != 1 {
+			return errors.New("usage: recreatectl remove ENTITY_ID")
+		}
+		return call(
+			protocol.MethodEntityRemove,
+			protocol.RemoveEntityParams{EntityID: commandArguments[0]},
+		)
 	case "position":
 		if len(commandArguments) != 3 {
 			return errors.New(
@@ -200,6 +235,19 @@ func run(
 				AbilityID: commandArguments[1],
 			},
 		)
+	case "dialogue":
+		if len(commandArguments) < 1 || len(commandArguments) > 2 {
+			return errors.New(
+				"usage: recreatectl dialogue DIALOGUE_ID [SPEAKER_ENTITY_ID]",
+			)
+		}
+		params := protocol.StartDialogueParams{
+			DialogueID: commandArguments[0],
+		}
+		if len(commandArguments) == 2 {
+			params.SpeakerID = commandArguments[1]
+		}
+		return call(protocol.MethodDialogueStart, params)
 	case "action":
 		return runAction(call, commandArguments, stderr)
 	case "pause":
@@ -619,9 +667,12 @@ Inspect:
 
 Control:
   wall WALL_ID X Y WIDTH HEIGHT
+  spawn ACTOR_ID [X Y [ENTITY_ID]]
+  remove ENTITY_ID
   position ENTITY_ID X Y
   health ENTITY_ID VALUE
   ability ENTITY_ID ABILITY_ID
+  dialogue DIALOGUE_ID [SPEAKER_ENTITY_ID]
   action NAME [--value N] [--frames N]
   pause true|false
   step [--frames N] [--dt SECONDS]

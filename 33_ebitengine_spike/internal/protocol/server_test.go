@@ -119,6 +119,8 @@ func TestProtocolV8DispatchesTypedCalls(t *testing.T) {
 	definition := json.RawMessage(
 		`{"id":"actor.hero","kind":"actor","health":10}`,
 	)
+	spawnX := 80.5
+	spawnY := -4.25
 	cases := []struct {
 		method     string
 		params     any
@@ -156,6 +158,23 @@ func TestProtocolV8DispatchesTypedCalls(t *testing.T) {
 			true,
 		},
 		{
+			MethodEntitySpawn,
+			SpawnEntityParams{
+				ActorID:  "actor.slime",
+				EntityID: "preview.slime",
+				X:        &spawnX,
+				Y:        &spawnY,
+			},
+			SpawnEntityParams{},
+			true,
+		},
+		{
+			MethodEntityRemove,
+			RemoveEntityParams{EntityID: "preview.slime"},
+			RemoveEntityParams{},
+			true,
+		},
+		{
 			MethodEntitySetPosition,
 			SetPositionParams{EntityID: "player", X: 12.5, Y: -3},
 			SetPositionParams{},
@@ -174,6 +193,15 @@ func TestProtocolV8DispatchesTypedCalls(t *testing.T) {
 				AbilityID: "ability.parry",
 			},
 			RequestAbilityParams{},
+			true,
+		},
+		{
+			MethodDialogueStart,
+			StartDialogueParams{
+				DialogueID: "dialogue.guide",
+				SpeakerID:  "guide",
+			},
+			StartDialogueParams{},
 			true,
 		},
 		{
@@ -270,13 +298,56 @@ func TestProtocolV8DispatchesTypedCalls(t *testing.T) {
 		}
 	}
 
-	input := calls[9].Params.(InputActionParams)
+	spawn := calls[6].Params.(SpawnEntityParams)
+	if spawn.X == nil || spawn.Y == nil ||
+		*spawn.X != spawnX || *spawn.Y != spawnY {
+		t.Fatalf("spawn coordinates were not preserved: %+v", spawn)
+	}
+	input := calls[12].Params.(InputActionParams)
 	if input.Value != 1 || input.Frames != 1 {
 		t.Fatalf("input defaults were not normalized: %+v", input)
 	}
 	validated := calls[3].Params.(ValidateDefinitionParams)
 	if string(validated.Definition) != string(definition) {
 		t.Fatalf("definition changed: %s", validated.Definition)
+	}
+}
+
+func TestMakerPreviewParamsPreserveProtocolV8Contract(t *testing.T) {
+	backend := &callRecorder{}
+	address, _ := startTestServer(t, backend, Config{})
+	client := newTestClient(t, address)
+
+	if _, err := client.CallRaw(
+		context.Background(),
+		MethodEntitySpawn,
+		map[string]any{"actorId": "actor.slime"},
+	); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.CallRaw(
+		context.Background(),
+		MethodDialogueStart,
+		map[string]any{"dialogueId": "dialogue.guide"},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	calls := backend.snapshot()
+	if len(calls) != 2 {
+		t.Fatalf("got %d calls, want 2", len(calls))
+	}
+	spawn := calls[0].Params.(SpawnEntityParams)
+	if spawn.ActorID != "actor.slime" ||
+		spawn.EntityID != "" ||
+		spawn.X != nil ||
+		spawn.Y != nil {
+		t.Fatalf("unexpected default spawn params: %+v", spawn)
+	}
+	dialogue := calls[1].Params.(StartDialogueParams)
+	if dialogue.DialogueID != "dialogue.guide" ||
+		dialogue.SpeakerID != "" {
+		t.Fatalf("unexpected default dialogue params: %+v", dialogue)
 	}
 }
 
@@ -510,6 +581,60 @@ func TestProtocolRejectsInvalidRequestsAndStrictParams(t *testing.T) {
 			"position missing coordinates",
 			`{"id":13,"method":"Entity.setPosition","params":{"entityId":"p"}}`,
 			13,
+			CodeInvalidParams,
+		},
+		{
+			"spawn missing actor",
+			`{"id":131,"method":"Entity.spawn","params":{"entityId":"preview","x":1,"y":2}}`,
+			131,
+			CodeInvalidParams,
+		},
+		{
+			"spawn has only x",
+			`{"id":132,"method":"Entity.spawn","params":{"actorId":"actor.slime","x":1}}`,
+			132,
+			CodeInvalidParams,
+		},
+		{
+			"spawn blank entity id",
+			`{"id":133,"method":"Entity.spawn","params":{"actorId":"actor.slime","entityId":""}}`,
+			133,
+			CodeInvalidParams,
+		},
+		{
+			"spawn rejects unauthored tags",
+			`{"id":134,"method":"Entity.spawn","params":{"actorId":"actor.slime","tags":["enemy"]}}`,
+			134,
+			CodeInvalidParams,
+		},
+		{
+			"spawn rejects control override",
+			`{"id":135,"method":"Entity.spawn","params":{"actorId":"actor.slime","controlled":true}}`,
+			135,
+			CodeInvalidParams,
+		},
+		{
+			"remove missing entity",
+			`{"id":136,"method":"Entity.remove","params":{}}`,
+			136,
+			CodeInvalidParams,
+		},
+		{
+			"dialogue missing definition",
+			`{"id":137,"method":"Dialogue.start","params":{"speakerId":"guide"}}`,
+			137,
+			CodeInvalidParams,
+		},
+		{
+			"dialogue blank speaker",
+			`{"id":138,"method":"Dialogue.start","params":{"dialogueId":"dialogue.guide","speakerId":""}}`,
+			138,
+			CodeInvalidParams,
+		},
+		{
+			"dialogue rejects unknown npc context",
+			`{"id":139,"method":"Dialogue.start","params":{"dialogueId":"dialogue.guide","npcId":"guide"}}`,
+			139,
 			CodeInvalidParams,
 		},
 		{

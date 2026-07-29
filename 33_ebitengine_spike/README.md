@@ -48,6 +48,10 @@ go run ./cmd/recreatectl action move_right --frames 45
 go run ./cmd/recreatectl step --frames 45
 go run ./cmd/recreatectl screenshot /tmp/controlled.png
 go run ./cmd/recreatectl wall north 0 0 960 24
+go run ./cmd/recreatectl spawn actor.slime 520 270 preview.slime
+go run ./cmd/recreatectl dialogue dialogue.guide guide
+go run ./cmd/recreatectl ability preview.slime ability.slime_bump
+go run ./cmd/recreatectl remove preview.slime
 go run ./cmd/recreatectl position quest.slime.1 190 270
 go run ./cmd/recreatectl health quest.slime.1 1
 go run ./cmd/recreatectl save test-slot
@@ -73,6 +77,14 @@ go run ./cmd/recreatectl pause false
 `screenshot` 출력에는 실제 렌더 tick과 revision이 함께 표시되어 상태
 조회와 같은 프레임을 캡처했는지 확인할 수 있다.
 
+`spawn`은 actor 콘텐츠를 현재 World에 즉시 생성한다. 좌표를 생략하면
+현재 카메라 중앙, entity ID도 생략하면 32와 같은
+`ACTOR_ID.spawn_sequence` 형식을 쓴다. `remove`는 삭제를 예약하고 다음
+고정 tick 끝에서 확정하므로 자동화에서는 뒤이어 `step --frames 1`을
+호출한다. `dialogue`의 speaker는 생략할 수 있으며 start node의 직접
+action만 적용한다. 선택지 안의 quest action은 선택 전에는 실행되지
+않는다.
+
 `world`는 ID가 보존된 stage 벽뿐 아니라 모든 entity의 월드 좌표,
 논리 화면
 좌표, 가시성, 체력, 방향, 공격·경직·패링·회피 상태, 카메라와 최근
@@ -81,8 +93,11 @@ go run ./cmd/recreatectl pause false
 
 `save`/`load`는 실제 플레이 세션용이다. 체력·위치·전투·퀘스트·대화·
 카메라 상태를 저장하지만, 테스트가 주입한 가상 입력과 대기 명령,
-일시적인 벽 preview는 의도적으로 저장하지 않는다. 자동화는 저장 파일을
-checkpoint처럼 재사용하지 말고 setup 명령과 고정 `step`을 다시 실행한다.
+일시적인 벽 preview는 의도적으로 저장하지 않는다. 동적 entity,
+entity 삭제 예약, 직접 dialogue 같은 Maker preview가 남아 있으면
+`save`와 호환 session `reload`를 명시적으로 거부한다. `new-game`으로
+authored World를 복원한 뒤 저장한다. 자동화는 저장 파일을 checkpoint처럼
+재사용하지 말고 setup 명령과 고정 `step`을 다시 실행한다.
 
 디버그 브리지는 loopback만 허용한다. 여러 사용자가 쓰는 호스트에서는
 토큰 파일을 `0600`으로 만들고 양쪽에 지정한다.

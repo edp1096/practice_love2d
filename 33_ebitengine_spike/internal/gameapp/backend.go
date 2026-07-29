@@ -111,6 +111,20 @@ func (runtime *Runtime) Call(
 		}
 		return runtime.setWall(params)
 
+	case protocol.MethodEntitySpawn:
+		params, ok := call.Params.(protocol.SpawnEntityParams)
+		if !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.spawnEntity(params)
+
+	case protocol.MethodEntityRemove:
+		params, ok := call.Params.(protocol.RemoveEntityParams)
+		if !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.queueEntityRemoval(params)
+
 	case protocol.MethodEntitySetPosition:
 		params, ok := call.Params.(protocol.SetPositionParams)
 		if !ok {
@@ -131,6 +145,13 @@ func (runtime *Runtime) Call(
 			return nil, invalidBackendParams(call.Method)
 		}
 		return runtime.requestAbility(params)
+
+	case protocol.MethodDialogueStart:
+		params, ok := call.Params.(protocol.StartDialogueParams)
+		if !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.startDialogue(params)
 
 	case protocol.MethodInputAction:
 		params, ok := call.Params.(protocol.InputActionParams)
@@ -547,6 +568,20 @@ func (runtime *Runtime) requestAbility(
 ) (any, error) {
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
+	var live *sim.EntitySnapshot
+	snapshot := runtime.simulation.Snapshot()
+	for index := range snapshot.Entities {
+		if snapshot.Entities[index].ID == params.EntityID {
+			live = &snapshot.Entities[index]
+			break
+		}
+	}
+	if live == nil {
+		return nil, fmt.Errorf("unknown entity %q", params.EntityID)
+	}
+	if live.Dead {
+		return nil, fmt.Errorf("entity %q is dead", params.EntityID)
+	}
 	definition, exists := runtime.entityConfig(params.EntityID)
 	if !exists {
 		return nil, fmt.Errorf("unknown entity %q", params.EntityID)
@@ -558,11 +593,6 @@ func (runtime *Runtime) requestAbility(
 			params.EntityID,
 			params.AbilityID,
 		)
-	}
-	for _, entity := range runtime.simulation.Snapshot().Entities {
-		if entity.ID == params.EntityID && entity.Dead {
-			return nil, fmt.Errorf("entity %q is dead", params.EntityID)
-		}
 	}
 	runtime.pendingAbilities[params.EntityID] = true
 	return struct {
@@ -630,28 +660,44 @@ func (runtime *Runtime) step(ctx context.Context, frames int) (any, error) {
 	originalSimulation := runtime.simulation
 	originalVirtual := runtime.virtual
 	originalPending := runtime.pendingAbilities
+	originalRemovals := runtime.pendingRemovals
 	originalMoving := runtime.moving
+	originalPreviewEntities := runtime.previewEntities
 	originalPaused := runtime.paused
 	originalRevision := runtime.revision
 
 	runtime.simulation = originalSimulation.Clone()
 	runtime.virtual = cloneVirtualActions(originalVirtual)
 	runtime.pendingAbilities = cloneBoolMap(originalPending)
+	runtime.pendingRemovals = cloneBoolMap(originalRemovals)
 	runtime.moving = cloneBoolMap(originalMoving)
+	runtime.previewEntities = clonePreviewEntities(originalPreviewEntities)
 	runtime.paused = true
 	for range frames {
 		if err := ctx.Err(); err != nil {
 			runtime.simulation = originalSimulation
 			runtime.virtual = originalVirtual
 			runtime.pendingAbilities = originalPending
+			runtime.pendingRemovals = originalRemovals
 			runtime.moving = originalMoving
+			runtime.previewEntities = originalPreviewEntities
 			runtime.paused = originalPaused
 			runtime.revision = originalRevision
 			return nil, err
 		}
 		input := sim.Input{}
 		runtime.mergeVirtualInputLocked(&input)
-		runtime.tickLocked(input)
+		if err := runtime.tickLocked(input); err != nil {
+			runtime.simulation = originalSimulation
+			runtime.virtual = originalVirtual
+			runtime.pendingAbilities = originalPending
+			runtime.pendingRemovals = originalRemovals
+			runtime.moving = originalMoving
+			runtime.previewEntities = originalPreviewEntities
+			runtime.paused = originalPaused
+			runtime.revision = originalRevision
+			return nil, err
+		}
 	}
 	snapshot := runtime.simulation.Snapshot()
 	return struct {
@@ -689,6 +735,13 @@ func cloneBoolMap(source map[string]bool) map[string]bool {
 
 func (runtime *Runtime) save(ctx context.Context, slot string) (any, error) {
 	runtime.mu.RLock()
+	if runtime.simulation.HasTemporaryPreview() ||
+		len(runtime.pendingRemovals) != 0 {
+		runtime.mu.RUnlock()
+		return nil, errors.New(
+			"temporary Maker preview state cannot be written to a player save; start a new game first",
+		)
+	}
 	state := runtime.simulation.SaveSession()
 	runtime.mu.RUnlock()
 	data, err := json.MarshalIndent(state, "", "  ")
@@ -731,14 +784,28 @@ func (runtime *Runtime) load(ctx context.Context, slot string) (any, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	if sessionContainsPreview(state) {
+		return nil, fmt.Errorf(
+			"load save slot %q: temporary Maker preview state is not valid in a player save",
+			slot,
+		)
+	}
 	runtime.mu.Lock()
-	if err := runtime.simulation.LoadSession(state); err != nil {
+	candidate, err := sim.New(runtime.built.Config)
+	if err != nil {
 		runtime.mu.Unlock()
 		return nil, fmt.Errorf("load save slot %q: %w", slot, err)
 	}
+	if err := candidate.LoadSession(state); err != nil {
+		runtime.mu.Unlock()
+		return nil, fmt.Errorf("load save slot %q: %w", slot, err)
+	}
+	runtime.simulation = candidate
 	runtime.virtual = make(map[string]virtualAction)
 	runtime.pendingAbilities = make(map[string]bool)
+	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
+	runtime.resetPreviewLocked()
 	runtime.revision++
 	tick := runtime.simulation.Snapshot().Tick
 	runtime.mu.Unlock()
@@ -747,6 +814,13 @@ func (runtime *Runtime) load(ctx context.Context, slot string) (any, error) {
 		Loaded bool   `json:"loaded"`
 		Tick   uint64 `json:"tick"`
 	}{slot, true, tick}, nil
+}
+
+func sessionContainsPreview(state sim.SessionState) bool {
+	return len(state.PreviewEntities) != 0 ||
+		len(state.PreviewQuests) != 0 ||
+		len(state.RemovedEntityIDs) != 0 ||
+		state.Dialogue.Definition != nil
 }
 
 func ebitengineVersion() string {
