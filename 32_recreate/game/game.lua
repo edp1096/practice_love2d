@@ -51,6 +51,95 @@ return {
         asset = "font.ui",
         size = 16,
     },
+    audio = {
+        master_volume = 0.8,
+        music_volume = 0.45,
+        sfx_volume = 0.8,
+        cues = {
+            {
+                event = "actor.killed",
+                asset = "audio.kill",
+                volume = 0.9,
+            },
+            {
+                event = "attack.parried",
+                asset = "audio.parry",
+                volume = 1,
+            },
+            {
+                event = "attack.started",
+                asset = "audio.attack",
+                volume = 0.75,
+            },
+            {
+                event = "damage.applied",
+                asset = "audio.hit",
+                volume = 0.85,
+            },
+            {
+                event = "platformer.jumped",
+                asset = "audio.jump",
+                volume = 0.7,
+            },
+            {
+                event = "projectile.spawned",
+                asset = "audio.projectile",
+                volume = 0.75,
+            },
+            {
+                event = "quest.completed",
+                asset = "audio.quest",
+                volume = 1,
+            },
+            {
+                event = "ui.cancel",
+                asset = "audio.ui_cancel",
+                volume = 0.7,
+            },
+            {
+                event = "ui.confirm",
+                asset = "audio.ui_confirm",
+                volume = 0.7,
+            },
+        },
+        stage_music = {
+            {
+                stage = "stage.action_room",
+                asset = "audio.forest_theme",
+                volume = 0.75,
+            },
+            {
+                stage = "stage.encounter_room",
+                asset = "audio.forest_theme",
+                volume = 0.8,
+            },
+            {
+                stage = "stage.platformer_room",
+                asset = "audio.forest_theme",
+                volume = 0.7,
+            },
+            {
+                stage = "stage.rpg_village",
+                asset = "audio.forest_theme",
+                volume = 0.65,
+            },
+            {
+                stage = "stage.village",
+                asset = "audio.forest_theme",
+                volume = 0.65,
+            },
+            {
+                stage = "stage.world_grove",
+                asset = "audio.forest_theme",
+                volume = 0.8,
+            },
+            {
+                stage = "stage.world_hub",
+                asset = "audio.forest_theme",
+                volume = 0.7,
+            },
+        },
+    },
     flow = {
         save_slot = "campaign",
         start_stage = "stage.village",

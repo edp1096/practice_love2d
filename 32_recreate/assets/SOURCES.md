@@ -13,6 +13,22 @@
 | `image.merchant_sheet` | `31_dev_proto/assets/images/sprites/npcs/merchant-sheet.png` | `assets/runtime/images/npcs/merchant-sheet.png` | `453267ed90602fe338fec27a7dfdff6a2598180dd00079246e1a9dc9d623b4f8` |
 | `font.ui` | `31_dev_proto/assets/fonts/Hakgyoansim_ChaekgalpiR.ttf` | `assets/runtime/fonts/Hakgyoansim_ChaekgalpiR.ttf` | `a9a24de881bc3e26da0186a953f78c6f750e0ecb8eda52b051fa013cd1453587` |
 
+다음 오디오는 외부 음원을 가져온 것이 아니라
+`33_ebitengine_spike/tools/audiofixtures`가 생성한 프로젝트 원본이다.
+
+| asset ID | 경로 | SHA-256 |
+|---|---|---|
+| `audio.forest_theme` | `assets/runtime/audio/music/forest-theme.wav` | `96457c52293a384fa1e39f67366014d60303efda5aed2206b3d2bdcf3e6f35aa` |
+| `audio.attack` | `assets/runtime/audio/sfx/attack.wav` | `9a76f7aba36fc2617d31717e197a3e46f380c120053c197a1f07559ab65b7d53` |
+| `audio.hit` | `assets/runtime/audio/sfx/hit.wav` | `de0b25792b09326b702e7c26a55e59349d96ac996a7f42fbf5ae0b0183923ddd` |
+| `audio.jump` | `assets/runtime/audio/sfx/jump.wav` | `1995ca22020b48fd91c77f24ae908b1b1ad2a7cf6b422ef873a90664b1b41f91` |
+| `audio.kill` | `assets/runtime/audio/sfx/kill.wav` | `1016bb8538c6e63357abedbc84f3097c2c5662c0b22c745283918ddd9feaec87` |
+| `audio.parry` | `assets/runtime/audio/sfx/parry.wav` | `7cf9f17b900f4e6a9595bd279d1c0698d12f0fb467ad61fe2da8c35845f3f20b` |
+| `audio.projectile` | `assets/runtime/audio/sfx/projectile.wav` | `022b41778afdbf22a10664aa3ca9eb349711be0845fc6504cde9bb65336f57dd` |
+| `audio.quest` | `assets/runtime/audio/sfx/quest.wav` | `07c262b9b2d88c8b89f24527049c609f2f37f8cf865ae4a7e96844173e15effd` |
+| `audio.ui_cancel` | `assets/runtime/audio/sfx/ui-cancel.wav` | `1dcacd029776aea0047b953f71b924dd4a43163c0876339b0b272230a0d6c8bb` |
+| `audio.ui_confirm` | `assets/runtime/audio/sfx/ui-confirm.wav` | `de408767d84dcbd7107ecb680d94e782208806378099bce0c7196d22887f6c87` |
+
 기존 `assets` 디렉터리에서는 별도 라이선스 파일을 찾지 못했다. 외부
 배포 전 각 원본 애셋의 라이선스와 크레딧 요구사항을 별도로 확인해야
 한다.

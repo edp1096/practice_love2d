@@ -81,7 +81,7 @@ automation pause를 게임의 pause menu와 합치지 않는다.
 - [x] actor-local platformer 이동과 authored shape presentation fixture
 - [x] authored encounter wave·boss phase·session fixture
 - [x] sprite clip·instance override·ability visual의 data-driven presentation
-- [ ] audio cue와 전체 오디오의 data-driven presentation
+- [x] audio cue와 전체 오디오의 data-driven presentation
 
 ## 현재 인수 근거
 
@@ -109,8 +109,13 @@ automation pause를 게임의 pause menu와 합치지 않는다.
 충돌벽 overlay를 확인했다. 같은 제한 실행에서 grove 보스의 authored
 `scale=4`와 보라 tint를 확인했다. sprite sheet geometry, clip FPS/loop,
 state map, non-looping 공격 시간과 `ability.sword_slash.visual`은 typed
-`gamebuild → View → Ebitengine` 경계를 사용한다. audio는 별도 gate로
-남긴다.
+`gamebuild → View → Ebitengine` 경계를 사용한다. 같은 project manifest의
+stage music과 semantic cue도 `gamebuild → AudioView → Ebitengine
+audio.Context` 경계를 통과한다. 저장소에서 직접 생성한 BGM 1개와
+SFX 9개를 패키징했고, 실제 Ubuntu arm64 창을 `-frames 2 -action attack`
+제한으로 실행해 stage BGM·공격 cue 경로와 공격 화면이 함께 동작한 뒤
+자동 종료하는 것을 확인했다. 반복 View는 sequence를 재생하지 않으며,
+취소된 원자적 step은 cue ring까지 되돌린다.
 
 `stage.action_room`은 실제 창을 실행한 채 protocol로 player와 slime
 좌표를 고정하고 `ability.fire_bolt`를 queue했다. 동일 tick의 화면에서

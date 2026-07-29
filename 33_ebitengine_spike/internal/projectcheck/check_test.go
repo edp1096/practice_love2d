@@ -24,7 +24,7 @@ func TestValidateChecksEveryStageEntryAndLocaleDeterministically(
 		t.Fatal(err)
 	}
 	want := Report{
-		DefinitionCount:   44,
+		DefinitionCount:   54,
 		StageCount:        7,
 		EntryBuildCount:   22,
 		DerivedBuildCount: 44,

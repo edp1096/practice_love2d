@@ -28,6 +28,7 @@ type ProjectManifest struct {
 	Locale       ProjectLocale            `json:"locale"`
 	Flow         ProjectFlow              `json:"flow"`
 	Font         ProjectFont              `json:"font"`
+	Audio        ProjectAudio             `json:"audio"`
 	Warnings     []ProjectManifestWarning `json:"warnings"`
 }
 
@@ -53,6 +54,26 @@ type ProjectFlowCopy struct {
 type ProjectFont struct {
 	Asset string  `json:"asset"`
 	Size  float64 `json:"size"`
+}
+
+type ProjectAudio struct {
+	MasterVolume float64             `json:"master_volume"`
+	MusicVolume  float64             `json:"music_volume"`
+	SFXVolume    float64             `json:"sfx_volume"`
+	Cues         []ProjectAudioCue   `json:"cues"`
+	StageMusic   []ProjectStageMusic `json:"stage_music"`
+}
+
+type ProjectAudioCue struct {
+	Event  string  `json:"event"`
+	Asset  string  `json:"asset"`
+	Volume float64 `json:"volume"`
+}
+
+type ProjectStageMusic struct {
+	Stage  string  `json:"stage"`
+	Asset  string  `json:"asset"`
+	Volume float64 `json:"volume"`
 }
 
 type ProjectManifestWarning struct {
@@ -84,6 +105,20 @@ func (catalog *Catalog) ValidateProjectReferences() error {
 }
 
 func cloneProjectManifest(manifest ProjectManifest) ProjectManifest {
+	manifest.Audio.Cues = append(
+		[]ProjectAudioCue(nil),
+		manifest.Audio.Cues...,
+	)
+	manifest.Audio.StageMusic = append(
+		[]ProjectStageMusic(nil),
+		manifest.Audio.StageMusic...,
+	)
+	if manifest.Audio.Cues == nil {
+		manifest.Audio.Cues = []ProjectAudioCue{}
+	}
+	if manifest.Audio.StageMusic == nil {
+		manifest.Audio.StageMusic = []ProjectStageMusic{}
+	}
 	manifest.Warnings = append(
 		[]ProjectManifestWarning(nil),
 		manifest.Warnings...,
@@ -92,6 +127,24 @@ func cloneProjectManifest(manifest ProjectManifest) ProjectManifest {
 		manifest.Warnings = []ProjectManifestWarning{}
 	}
 	return manifest
+}
+
+func normalizeLegacyProjectAudio(manifest *ProjectManifest) {
+	if manifest == nil ||
+		manifest.Audio.Cues != nil ||
+		manifest.Audio.StageMusic != nil ||
+		manifest.Audio.MasterVolume != 0 ||
+		manifest.Audio.MusicVolume != 0 ||
+		manifest.Audio.SFXVolume != 0 {
+		return
+	}
+	manifest.Audio = ProjectAudio{
+		MasterVolume: 1,
+		MusicVolume:  0.5,
+		SFXVolume:    0.8,
+		Cues:         []ProjectAudioCue{},
+		StageMusic:   []ProjectStageMusic{},
+	}
 }
 
 func compileProjectManifest(data map[string]any) (ProjectManifest, error) {
@@ -107,6 +160,7 @@ func compileProjectManifest(data map[string]any) (ProjectManifest, error) {
 		"fixed_dt":      {},
 		"flow":          {},
 		"font":          {},
+		"audio":         {},
 		"id":            {},
 		"initial_stage": {},
 		"locale":        {},
@@ -198,6 +252,10 @@ func compileProjectManifest(data map[string]any) (ProjectManifest, error) {
 	if err != nil {
 		return ProjectManifest{}, err
 	}
+	audio, err := compileProjectAudio(data)
+	if err != nil {
+		return ProjectManifest{}, err
+	}
 
 	flowData, err := manifestObject(data, "flow", source)
 	if err != nil {
@@ -263,12 +321,168 @@ func compileProjectManifest(data map[string]any) (ProjectManifest, error) {
 			Asset: fontAsset,
 			Size:  fontSize,
 		},
+		Audio:    audio,
 		Warnings: warnings,
 	}
 	if err := validateProjectManifest(manifest); err != nil {
 		return ProjectManifest{}, err
 	}
 	return manifest, nil
+}
+
+func compileProjectAudio(data map[string]any) (ProjectAudio, error) {
+	result := ProjectAudio{
+		MasterVolume: 1,
+		MusicVolume:  0.5,
+		SFXVolume:    0.8,
+		Cues:         []ProjectAudioCue{},
+		StageMusic:   []ProjectStageMusic{},
+	}
+	raw, exists := data["audio"]
+	if !exists {
+		return result, nil
+	}
+	audio, ok := raw.(map[string]any)
+	if !ok {
+		return ProjectAudio{}, fmt.Errorf(
+			"%s.audio must be an object",
+			projectManifestSource,
+		)
+	}
+	currentPath := projectManifestSource + ".audio"
+	if err := rejectUnknownManifestFields(
+		audio,
+		currentPath,
+		"cues",
+		"master_volume",
+		"music_volume",
+		"sfx_volume",
+		"stage_music",
+	); err != nil {
+		return ProjectAudio{}, err
+	}
+	var err error
+	result.MasterVolume, err = manifestNumber(
+		audio,
+		"master_volume",
+		currentPath,
+	)
+	if err != nil {
+		return ProjectAudio{}, err
+	}
+	result.MusicVolume, err = manifestNumber(
+		audio,
+		"music_volume",
+		currentPath,
+	)
+	if err != nil {
+		return ProjectAudio{}, err
+	}
+	result.SFXVolume, err = manifestNumber(
+		audio,
+		"sfx_volume",
+		currentPath,
+	)
+	if err != nil {
+		return ProjectAudio{}, err
+	}
+	rawCues, err := manifestArray(audio, "cues", currentPath)
+	if err != nil {
+		return ProjectAudio{}, err
+	}
+	for index, rawCue := range rawCues {
+		path := fmt.Sprintf("%s.cues[%d]", currentPath, index+1)
+		cue, ok := rawCue.(map[string]any)
+		if !ok {
+			return ProjectAudio{}, fmt.Errorf("%s must be an object", path)
+		}
+		if err := rejectUnknownManifestFields(
+			cue,
+			path,
+			"asset",
+			"event",
+			"volume",
+		); err != nil {
+			return ProjectAudio{}, err
+		}
+		event, err := manifestString(cue, "event", path)
+		if err != nil {
+			return ProjectAudio{}, err
+		}
+		asset, err := manifestString(cue, "asset", path)
+		if err != nil {
+			return ProjectAudio{}, err
+		}
+		volume, err := manifestNumber(cue, "volume", path)
+		if err != nil {
+			return ProjectAudio{}, err
+		}
+		result.Cues = append(result.Cues, ProjectAudioCue{
+			Event:  event,
+			Asset:  asset,
+			Volume: volume,
+		})
+	}
+	sort.Slice(result.Cues, func(i, j int) bool {
+		return result.Cues[i].Event < result.Cues[j].Event
+	})
+	rawMusic, err := manifestArray(audio, "stage_music", currentPath)
+	if err != nil {
+		return ProjectAudio{}, err
+	}
+	for index, rawTrack := range rawMusic {
+		path := fmt.Sprintf("%s.stage_music[%d]", currentPath, index+1)
+		track, ok := rawTrack.(map[string]any)
+		if !ok {
+			return ProjectAudio{}, fmt.Errorf("%s must be an object", path)
+		}
+		if err := rejectUnknownManifestFields(
+			track,
+			path,
+			"asset",
+			"stage",
+			"volume",
+		); err != nil {
+			return ProjectAudio{}, err
+		}
+		stage, err := manifestString(track, "stage", path)
+		if err != nil {
+			return ProjectAudio{}, err
+		}
+		asset, err := manifestString(track, "asset", path)
+		if err != nil {
+			return ProjectAudio{}, err
+		}
+		volume, err := manifestNumber(track, "volume", path)
+		if err != nil {
+			return ProjectAudio{}, err
+		}
+		result.StageMusic = append(result.StageMusic, ProjectStageMusic{
+			Stage:  stage,
+			Asset:  asset,
+			Volume: volume,
+		})
+	}
+	sort.Slice(result.StageMusic, func(i, j int) bool {
+		return result.StageMusic[i].Stage < result.StageMusic[j].Stage
+	})
+	return result, nil
+}
+
+func manifestArray(
+	data map[string]any,
+	field string,
+	currentPath string,
+) ([]any, error) {
+	value, exists := data[field]
+	if !exists {
+		return nil, fmt.Errorf("%s.%s is required", currentPath, field)
+	}
+	array, ok := value.([]any)
+	if !ok {
+		return nil, fmt.Errorf("%s.%s must be an array", currentPath, field)
+	}
+	return array, nil
 }
 
 func compileProjectFlowCopy(
@@ -471,6 +685,88 @@ func validateProjectManifest(manifest ProjectManifest) error {
 			manifest.Source,
 		)
 	}
+	for name, volume := range map[string]float64{
+		"master_volume": manifest.Audio.MasterVolume,
+		"music_volume":  manifest.Audio.MusicVolume,
+		"sfx_volume":    manifest.Audio.SFXVolume,
+	} {
+		if !manifestVolume(volume) {
+			return fmt.Errorf(
+				"%s.audio.%s must be between 0 and 1",
+				manifest.Source,
+				name,
+			)
+		}
+	}
+	for index, cue := range manifest.Audio.Cues {
+		if !simpleManifestValue(cue.Event) {
+			return fmt.Errorf(
+				"%s.audio.cues[%d].event is invalid",
+				manifest.Source,
+				index+1,
+			)
+		}
+		if !manifestIDWithNamespace(cue.Asset, "audio.") {
+			return fmt.Errorf(
+				"%s.audio.cues[%d].asset must be an audio asset id",
+				manifest.Source,
+				index+1,
+			)
+		}
+		if !manifestVolume(cue.Volume) {
+			return fmt.Errorf(
+				"%s.audio.cues[%d].volume must be between 0 and 1",
+				manifest.Source,
+				index+1,
+			)
+		}
+		if index > 0 &&
+			manifest.Audio.Cues[index-1].Event >= cue.Event {
+			return fmt.Errorf(
+				"%s.audio.cues must have unique sorted events",
+				manifest.Source,
+			)
+		}
+	}
+	if manifest.Audio.Cues == nil {
+		return fmt.Errorf("%s.audio.cues must be an array", manifest.Source)
+	}
+	for index, track := range manifest.Audio.StageMusic {
+		if !manifestIDWithNamespace(track.Stage, "stage.") {
+			return fmt.Errorf(
+				"%s.audio.stage_music[%d].stage must be a stage content id",
+				manifest.Source,
+				index+1,
+			)
+		}
+		if !manifestIDWithNamespace(track.Asset, "audio.") {
+			return fmt.Errorf(
+				"%s.audio.stage_music[%d].asset must be an audio asset id",
+				manifest.Source,
+				index+1,
+			)
+		}
+		if !manifestVolume(track.Volume) {
+			return fmt.Errorf(
+				"%s.audio.stage_music[%d].volume must be between 0 and 1",
+				manifest.Source,
+				index+1,
+			)
+		}
+		if index > 0 &&
+			manifest.Audio.StageMusic[index-1].Stage >= track.Stage {
+			return fmt.Errorf(
+				"%s.audio.stage_music must have unique sorted stages",
+				manifest.Source,
+			)
+		}
+	}
+	if manifest.Audio.StageMusic == nil {
+		return fmt.Errorf(
+			"%s.audio.stage_music must be an array",
+			manifest.Source,
+		)
+	}
 	for index, warning := range manifest.Warnings {
 		if warning.Code != unsupportedProjectFieldCode {
 			return fmt.Errorf(
@@ -557,6 +853,46 @@ func validateManifestReferences(
 	if _, err := requireKind("font.asset", manifest.Font.Asset, "asset"); err != nil {
 		return err
 	}
+	requireAudioAsset := func(field, id string) error {
+		definition, err := requireKind(field, id, "asset")
+		if err != nil {
+			return err
+		}
+		if definition.Data["asset_type"] != "audio" {
+			return fmt.Errorf(
+				"%s.%s references %q with asset_type %q, want %q",
+				manifest.Source,
+				field,
+				id,
+				definition.Data["asset_type"],
+				"audio",
+			)
+		}
+		return nil
+	}
+	for index, cue := range manifest.Audio.Cues {
+		if err := requireAudioAsset(
+			fmt.Sprintf("audio.cues[%d].asset", index+1),
+			cue.Asset,
+		); err != nil {
+			return err
+		}
+	}
+	for index, track := range manifest.Audio.StageMusic {
+		if _, err := requireKind(
+			fmt.Sprintf("audio.stage_music[%d].stage", index+1),
+			track.Stage,
+			"stage",
+		); err != nil {
+			return err
+		}
+		if err := requireAudioAsset(
+			fmt.Sprintf("audio.stage_music[%d].asset", index+1),
+			track.Asset,
+		); err != nil {
+			return err
+		}
+	}
 
 	foundSpawn := false
 	rawSpawnPoints, _ := startStage.Data["spawn_points"].([]any)
@@ -596,6 +932,13 @@ func simpleManifestValue(value string) bool {
 		return false
 	}
 	return true
+}
+
+func manifestVolume(value float64) bool {
+	return value >= 0 &&
+		value <= 1 &&
+		!math.IsNaN(value) &&
+		!math.IsInf(value, 0)
 }
 
 func simpleManifestPath(value string) bool {

@@ -403,6 +403,7 @@ func (runtime *Runtime) tickLocked(input sim.Input) error {
 			return err
 		}
 	}
+	runtime.publishAudioEventsLocked(events)
 	runtime.revision++
 	return nil
 }
@@ -526,6 +527,24 @@ func (runtime *Runtime) View() ebitapp.View {
 			Help: "WASD 이동 · Space 공격 · F 특수 · Q 기술 · " +
 				"C 패링 · X 회피 · E 대화",
 		},
+	}
+	if music, exists := runtime.built.Presentation.Audio.Music(
+		runtime.built.Presentation.StageID,
+	); exists {
+		view.Audio.MusicAssetID = music.AssetID
+		view.Audio.MusicVolume = music.Volume
+	}
+	view.Audio.Cues = make(
+		[]ebitapp.AudioCueView,
+		len(runtime.audioCues),
+	)
+	for index, cue := range runtime.audioCues {
+		view.Audio.Cues[index] = ebitapp.AudioCueView{
+			Sequence: cue.sequence,
+			Event:    cue.event,
+			AssetID:  cue.assetID,
+			Volume:   cue.volume,
+		}
 	}
 	for _, entity := range runtime.built.Config.Entities {
 		if entity.Controlled && entity.Platformer != nil {
@@ -816,6 +835,40 @@ func (runtime *Runtime) View() ebitapp.View {
 		}
 	}
 	return view
+}
+
+func (runtime *Runtime) publishAudioEventsLocked(events []sim.Event) {
+	for _, event := range events {
+		runtime.queueAudioEventLocked(string(event.Type))
+	}
+}
+
+func (runtime *Runtime) queueAudioEvent(event string) {
+	runtime.mu.Lock()
+	defer runtime.mu.Unlock()
+	runtime.queueAudioEventLocked(event)
+}
+
+func (runtime *Runtime) queueAudioEventLocked(event string) {
+	const retainedCueLimit = 128
+	mapping, exists := runtime.built.Presentation.Audio.Cue(event)
+	if !exists {
+		return
+	}
+	runtime.audioSequence++
+	runtime.audioCues = append(
+		runtime.audioCues,
+		queuedAudioCue{
+			sequence: runtime.audioSequence,
+			event:    event,
+			assetID:  mapping.AssetID,
+			volume:   mapping.Volume,
+		},
+	)
+	if overflow := len(runtime.audioCues) - retainedCueLimit; overflow > 0 {
+		copy(runtime.audioCues, runtime.audioCues[overflow:])
+		runtime.audioCues = runtime.audioCues[:retainedCueLimit]
+	}
 }
 
 func statusTint(statuses []sim.StatusSnapshot) color.RGBA {

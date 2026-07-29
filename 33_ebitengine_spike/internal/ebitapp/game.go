@@ -218,6 +218,7 @@ type Game struct {
 	images  map[string]*ebiten.Image
 	filters map[string]ebiten.Filter
 	sprites map[string]loadedSprite
+	audio   *audioManager
 	font    *text.GoTextFaceSource
 	capture chan captureRequest
 
@@ -257,6 +258,14 @@ func NewWithOptions(model Model, options Options) (*Game, error) {
 	if err != nil {
 		return nil, err
 	}
+	var audioResources AudioResourceManifest
+	if provider, ok := model.(AudioResourceProvider); ok {
+		audioResources = provider.AudioResources()
+	}
+	audioManager, err := newAudioManager(audioResources)
+	if err != nil {
+		return nil, err
+	}
 	fontData, err := gameassets.ReadFile(
 		"fonts/Hakgyoansim_ChaekgalpiR.ttf",
 	)
@@ -273,6 +282,7 @@ func NewWithOptions(model Model, options Options) (*Game, error) {
 		images:  images,
 		filters: filters,
 		sprites: sprites,
+		audio:   audioManager,
 		font:    font,
 		capture: make(chan captureRequest, 8),
 		options: options,
@@ -418,6 +428,9 @@ func (game *Game) Update() error {
 		return game.autoError
 	}
 	view := game.model.View()
+	if err := game.audio.Sync(view.Audio); err != nil {
+		return err
+	}
 	if game.options.StopAfterTicks > 0 &&
 		view.Tick >= game.options.StopAfterTicks {
 		if game.options.ScreenshotPath == "" || game.autoCaptured {
@@ -428,7 +441,11 @@ func (game *Game) Update() error {
 	if err := game.model.Tick(actionsForView(PollActions(), view)); err != nil {
 		return err
 	}
-	if game.model.View().Quit {
+	updated := game.model.View()
+	if err := game.audio.Sync(updated.Audio); err != nil {
+		return err
+	}
+	if updated.Quit {
 		return ebiten.Termination
 	}
 	return nil

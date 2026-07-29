@@ -262,9 +262,11 @@ func ValidateDefinition(
 		if err := validateAssetSemantics(data, id); err != nil {
 			return DefinitionValidation{}, err
 		}
-		unsupported(
-			"asset definitions are currently bound by embedded asset IDs",
-		)
+		if data["asset_type"] == "font" {
+			unsupported(
+				"font selection is currently bound by the UI adapter",
+			)
+		}
 
 	case "sprite":
 		if err := validateSpriteSemantics(catalog, data, id); err != nil {

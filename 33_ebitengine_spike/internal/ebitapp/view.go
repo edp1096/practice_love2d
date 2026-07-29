@@ -27,6 +27,10 @@ type SpriteResourceProvider interface {
 	SpriteResources() []SpriteResource
 }
 
+type AudioResourceProvider interface {
+	AudioResources() AudioResourceManifest
+}
+
 type ImageResource struct {
 	ID     string
 	Path   string
@@ -67,6 +71,18 @@ type SpriteStateResource struct {
 	Clip  string
 }
 
+type AudioResourceManifest struct {
+	MasterVolume float64
+	MusicVolume  float64
+	SFXVolume    float64
+	Assets       []AudioResource
+}
+
+type AudioResource struct {
+	ID   string
+	Path string
+}
+
 // View is an immutable render snapshot produced after a simulation tick.
 type View struct {
 	Tick             uint64
@@ -81,6 +97,7 @@ type View struct {
 	Entities  []EntityView
 	Walls     []RectView
 	Effects   []EffectView
+	Audio     AudioView
 	Flow      FlowView
 	Dialogue  DialogueView
 	Shop      ShopView
@@ -181,6 +198,19 @@ type EffectView struct {
 	Rotation float64
 	Scale    float64
 	Opacity  float64
+}
+
+type AudioView struct {
+	MusicAssetID string
+	MusicVolume  float64
+	Cues         []AudioCueView
+}
+
+type AudioCueView struct {
+	Sequence uint64
+	Event    string
+	AssetID  string
+	Volume   float64
 }
 
 // DialogueView is presentation-neutral modal dialogue state. Choices contains

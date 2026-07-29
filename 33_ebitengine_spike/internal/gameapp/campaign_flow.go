@@ -384,8 +384,15 @@ func (runtime *Runtime) consumeFlowActionsLocked(
 	}
 }
 
-func (runtime *Runtime) executeFlowCommand(command flowCommand) error {
+func (runtime *Runtime) executeFlowCommand(command flowCommand) (err error) {
 	ctx := context.Background()
+	if command != "" {
+		defer func() {
+			if err == nil {
+				runtime.queueAudioEvent("ui.confirm")
+			}
+		}()
+	}
 	switch command {
 	case "":
 		return nil
@@ -481,6 +488,7 @@ func (runtime *Runtime) pauseFlowLocked() error {
 		return fmt.Errorf("pause game flow: %w", err)
 	}
 	runtime.resetFlowPresentationLocked()
+	runtime.queueAudioEventLocked("ui.confirm")
 	runtime.revision++
 	return nil
 }

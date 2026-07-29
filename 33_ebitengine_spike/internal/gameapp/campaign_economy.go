@@ -453,6 +453,7 @@ func (runtime *Runtime) tradeShopItemLocked(
 		return ShopState{}, err
 	}
 	runtime.shopStatus = ""
+	runtime.queueAudioEventLocked("ui.confirm")
 	runtime.revision++
 	state, err := runtime.shopStateLocked()
 	if err != nil {
@@ -475,6 +476,7 @@ func (runtime *Runtime) closeShopLocked() (ShopState, error) {
 	runtime.activeShopID = ""
 	runtime.shopSelectedIndex = 0
 	runtime.shopStatus = ""
+	runtime.queueAudioEventLocked("ui.cancel")
 	runtime.revision++
 	return runtime.shopStateLocked()
 }
@@ -526,6 +528,7 @@ func (runtime *Runtime) useInventoryItemLocked(
 			err,
 		)
 	}
+	runtime.queueAudioEventLocked("ui.confirm")
 	runtime.revision++
 	return InventoryUseResult{
 		ItemID:            result.ItemID,

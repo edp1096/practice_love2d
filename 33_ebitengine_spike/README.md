@@ -16,6 +16,8 @@ preview에서는 슬라임을 생성할 수 있다. 이동·충돌·공격·피�
 타임·점프 버퍼를 사용한다.
 stage에 배치한 encounter는 작성된 target tag·지연·웨이브·spawn
 override·보스 체력 단계·완료 event를 결정적인 순서로 실행한다.
+프로젝트 manifest의 stage music과 전투·퀘스트·UI semantic cue도
+동일한 data-driven 경계를 거쳐 WAV BGM/SFX로 재생한다.
 
 ## 실행
 
@@ -48,9 +50,10 @@ go run ./cmd/recreate
 ```bash
 go run ./cmd/recreate \
   -no-debug \
-  -stage stage.world_hub \
+  -stage stage.action_room \
   -spawn default \
-  -frames 180 \
+  -action attack \
+  -frames 2 \
   -screenshot /tmp/recreate-ebitengine.png
 ```
 
@@ -60,6 +63,9 @@ tilemap, catalog image manifest, sprite clip/state map, ability visual은
 typed `gamebuild`를 거쳐 렌더링된다. actor의 sprite scale/tint override도
 같은 경로를 사용하며 누락된 tile GID·sheet 범위를 벗어난 frame·잘못된
 image 크기·runtime 경로 이탈은 실행 전에 거부된다.
+`-action`은 `-frames` 제한 실행의 첫 tick에 공격·점프 같은 의미 입력
+하나를 주입한다. 위 명령은 공격 clip, slash visual, stage BGM,
+`attack.started` cue를 같은 제한 실행에서 통과시키고 자동 종료한다.
 
 ## 화면·상태 자동화
 
@@ -191,10 +197,16 @@ go run ./cmd/contentc \
   -output game/catalog.json
 ```
 
-현재 결과는 정의 44개, dependency path 86개다. canonical 파일을 쓰기
+현재 결과는 정의 54개, dependency path 86개다. canonical 파일을 쓰기
 전에 7개 stage의 모든 entry spawn과 2개 locale, 총 22개 조합을
 simulation까지 구성한다. 동일 입력은 byte-for-byte 같은 catalog를
 만든다.
+
+`game/game.lua`의 `audio`는 master/music/SFX volume, semantic event별
+cue, stage별 music을 선언한다. `asset_type = "audio"`인 WAV만 패키징하며
+누락된 asset, 중복 event/stage, 범위를 벗어난 volume은 컴파일 전에
+거부된다. 샘플 음원은 저장소의 `tools/audiofixtures`로 생성한 원본이며
+출처와 해시는 `assets/AUDIO_SOURCES.md`에 기록한다.
 
 기본 catalog는 실행 파일에 embed된다. `-catalog path/to/catalog.json`은
 개발 중 외부 catalog를 reload할 때만 쓰는 override다.
@@ -225,15 +237,15 @@ Maker / debug client ──protocol v8──▶ gameapp
 ```
 
 - `internal/content`: 제한된 Lua 콘텐츠 컴파일러와 dependency graph
-- `internal/gamebuild`: catalog와 image manifest·tilemap·sprite clip·
-  ability visual을 검증된 simulation·render DTO로 변환
+- `internal/gamebuild`: catalog와 image/audio manifest·tilemap·sprite
+  clip·ability visual을 검증된 simulation·presentation DTO로 변환
 - `internal/projectcheck`: 모든 stage·entry·locale과 Campaign/rule
   topology 사전 검증
 - `internal/campaign`: stage와 분리된 장기 진행 및 versioned player save
 - `internal/rulesruntime`: 대화·quest·inventory·shop의 원자적 규칙 실행
 - `internal/sim`: 렌더러와 분리된 고정소수점 결정적 게임 상태
 - `internal/gameapp`: AI, 저장, 화면 DTO, 프로토콜 backend
-- `internal/ebitapp`: Ebitengine 입력·스프라이트·화면 출력
+- `internal/ebitapp`: Ebitengine 입력·스프라이트·화면·WAV 오디오 출력
 - `internal/protocol`: 인증 가능한 loopback NDJSON protocol v8
 - `internal/storage`: 플랫폼 교체 가능한 세이브 저장소
 

@@ -88,6 +88,25 @@ func (runtime *Runtime) SpriteResources() []ebitapp.SpriteResource {
 	return result
 }
 
+func (runtime *Runtime) AudioResources() ebitapp.AudioResourceManifest {
+	runtime.mu.RLock()
+	defer runtime.mu.RUnlock()
+	source := runtime.built.Presentation.Audio
+	result := ebitapp.AudioResourceManifest{
+		MasterVolume: source.MasterVolume,
+		MusicVolume:  source.MusicVolume,
+		SFXVolume:    source.SFXVolume,
+		Assets:       make([]ebitapp.AudioResource, len(source.Assets)),
+	}
+	for index, asset := range source.Assets {
+		result.Assets[index] = ebitapp.AudioResource{
+			ID:   asset.ID,
+			Path: asset.Path,
+		}
+	}
+	return result
+}
+
 func tilemapView(source *gamebuild.Tilemap) *ebitapp.TilemapView {
 	if source == nil {
 		return nil

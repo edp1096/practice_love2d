@@ -322,6 +322,39 @@ func TestBuildPublishesAuthoredSpriteClipsAndInstanceOverrides(t *testing.T) {
 	}
 }
 
+func TestBuildPublishesAuthoredAudioRouting(t *testing.T) {
+	t.Parallel()
+
+	result, err := Build(loadCatalog(t), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	audio := result.Presentation.Audio
+	if audio.MasterVolume != 0.8 ||
+		audio.MusicVolume != 0.45 ||
+		audio.SFXVolume != 0.8 ||
+		len(audio.Assets) != 10 ||
+		len(audio.Cues) != 9 ||
+		len(audio.StageMusic) != 7 {
+		t.Fatalf("audio presentation = %#v", audio)
+	}
+	cue, found := audio.Cue("attack.parried")
+	if !found ||
+		cue.AssetID != "audio.parry" ||
+		cue.Volume != 1 {
+		t.Fatalf("parry cue = %#v, found=%v", cue, found)
+	}
+	music, found := audio.Music("stage.village")
+	if !found ||
+		music.AssetID != "audio.forest_theme" ||
+		music.Volume != 0.65 {
+		t.Fatalf("village music = %#v, found=%v", music, found)
+	}
+	if _, found := audio.Cue("missing"); found {
+		t.Fatal("unknown audio cue resolved")
+	}
+}
+
 func TestBuildAppliesNamedEntrySpawnToControlledActor(t *testing.T) {
 	t.Parallel()
 

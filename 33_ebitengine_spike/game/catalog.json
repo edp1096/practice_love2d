@@ -32,6 +32,95 @@
       "asset": "font.ui",
       "size": 16
     },
+    "audio": {
+      "master_volume": 0.8,
+      "music_volume": 0.45,
+      "sfx_volume": 0.8,
+      "cues": [
+        {
+          "event": "actor.killed",
+          "asset": "audio.kill",
+          "volume": 0.9
+        },
+        {
+          "event": "attack.parried",
+          "asset": "audio.parry",
+          "volume": 1
+        },
+        {
+          "event": "attack.started",
+          "asset": "audio.attack",
+          "volume": 0.75
+        },
+        {
+          "event": "damage.applied",
+          "asset": "audio.hit",
+          "volume": 0.85
+        },
+        {
+          "event": "platformer.jumped",
+          "asset": "audio.jump",
+          "volume": 0.7
+        },
+        {
+          "event": "projectile.spawned",
+          "asset": "audio.projectile",
+          "volume": 0.75
+        },
+        {
+          "event": "quest.completed",
+          "asset": "audio.quest",
+          "volume": 1
+        },
+        {
+          "event": "ui.cancel",
+          "asset": "audio.ui_cancel",
+          "volume": 0.7
+        },
+        {
+          "event": "ui.confirm",
+          "asset": "audio.ui_confirm",
+          "volume": 0.7
+        }
+      ],
+      "stage_music": [
+        {
+          "stage": "stage.action_room",
+          "asset": "audio.forest_theme",
+          "volume": 0.75
+        },
+        {
+          "stage": "stage.encounter_room",
+          "asset": "audio.forest_theme",
+          "volume": 0.8
+        },
+        {
+          "stage": "stage.platformer_room",
+          "asset": "audio.forest_theme",
+          "volume": 0.7
+        },
+        {
+          "stage": "stage.rpg_village",
+          "asset": "audio.forest_theme",
+          "volume": 0.65
+        },
+        {
+          "stage": "stage.village",
+          "asset": "audio.forest_theme",
+          "volume": 0.65
+        },
+        {
+          "stage": "stage.world_grove",
+          "asset": "audio.forest_theme",
+          "volume": 0.8
+        },
+        {
+          "stage": "stage.world_hub",
+          "asset": "audio.forest_theme",
+          "volume": 0.7
+        }
+      ]
+    },
     "warnings": [
       {
         "code": "unsupported_project_field",
@@ -687,6 +776,116 @@
         "tags": [
           "wall"
         ]
+      }
+    },
+    {
+      "source": "game/content/assets/audio_attack.lua",
+      "data": {
+        "asset_type": "audio",
+        "id": "audio.attack",
+        "kind": "asset",
+        "name": "Original Attack Cue",
+        "path": "assets/runtime/audio/sfx/attack.wav",
+        "schema_version": 1
+      }
+    },
+    {
+      "source": "game/content/assets/audio_forest_theme.lua",
+      "data": {
+        "asset_type": "audio",
+        "id": "audio.forest_theme",
+        "kind": "asset",
+        "name": "Original Forest Theme",
+        "path": "assets/runtime/audio/music/forest-theme.wav",
+        "schema_version": 1
+      }
+    },
+    {
+      "source": "game/content/assets/audio_hit.lua",
+      "data": {
+        "asset_type": "audio",
+        "id": "audio.hit",
+        "kind": "asset",
+        "name": "Original Hit Cue",
+        "path": "assets/runtime/audio/sfx/hit.wav",
+        "schema_version": 1
+      }
+    },
+    {
+      "source": "game/content/assets/audio_jump.lua",
+      "data": {
+        "asset_type": "audio",
+        "id": "audio.jump",
+        "kind": "asset",
+        "name": "Original Jump Cue",
+        "path": "assets/runtime/audio/sfx/jump.wav",
+        "schema_version": 1
+      }
+    },
+    {
+      "source": "game/content/assets/audio_kill.lua",
+      "data": {
+        "asset_type": "audio",
+        "id": "audio.kill",
+        "kind": "asset",
+        "name": "Original Kill Cue",
+        "path": "assets/runtime/audio/sfx/kill.wav",
+        "schema_version": 1
+      }
+    },
+    {
+      "source": "game/content/assets/audio_parry.lua",
+      "data": {
+        "asset_type": "audio",
+        "id": "audio.parry",
+        "kind": "asset",
+        "name": "Original Parry Cue",
+        "path": "assets/runtime/audio/sfx/parry.wav",
+        "schema_version": 1
+      }
+    },
+    {
+      "source": "game/content/assets/audio_projectile.lua",
+      "data": {
+        "asset_type": "audio",
+        "id": "audio.projectile",
+        "kind": "asset",
+        "name": "Original Projectile Cue",
+        "path": "assets/runtime/audio/sfx/projectile.wav",
+        "schema_version": 1
+      }
+    },
+    {
+      "source": "game/content/assets/audio_quest.lua",
+      "data": {
+        "asset_type": "audio",
+        "id": "audio.quest",
+        "kind": "asset",
+        "name": "Original Quest Cue",
+        "path": "assets/runtime/audio/sfx/quest.wav",
+        "schema_version": 1
+      }
+    },
+    {
+      "source": "game/content/assets/audio_ui_cancel.lua",
+      "data": {
+        "asset_type": "audio",
+        "id": "audio.ui_cancel",
+        "kind": "asset",
+        "name": "Original UI Cancel Cue",
+        "path": "assets/runtime/audio/sfx/ui-cancel.wav",
+        "schema_version": 1
+      }
+    },
+    {
+      "source": "game/content/assets/audio_ui_confirm.lua",
+      "data": {
+        "asset_type": "audio",
+        "id": "audio.ui_confirm",
+        "kind": "asset",
+        "name": "Original UI Confirm Cue",
+        "path": "assets/runtime/audio/sfx/ui-confirm.wav",
+        "schema_version": 1
       }
     },
     {
@@ -4256,7 +4455,7 @@
     }
   ],
   "graph": {
-    "total": 44,
+    "total": 54,
     "edge_count": 86,
     "nodes": [
       {
@@ -4667,6 +4866,76 @@
             "path": "spawns[3].actor"
           }
         ]
+      },
+      {
+        "id": "audio.attack",
+        "kind": "asset",
+        "source": "game/content/assets/audio_attack.lua",
+        "dependencies": [],
+        "dependents": []
+      },
+      {
+        "id": "audio.forest_theme",
+        "kind": "asset",
+        "source": "game/content/assets/audio_forest_theme.lua",
+        "dependencies": [],
+        "dependents": []
+      },
+      {
+        "id": "audio.hit",
+        "kind": "asset",
+        "source": "game/content/assets/audio_hit.lua",
+        "dependencies": [],
+        "dependents": []
+      },
+      {
+        "id": "audio.jump",
+        "kind": "asset",
+        "source": "game/content/assets/audio_jump.lua",
+        "dependencies": [],
+        "dependents": []
+      },
+      {
+        "id": "audio.kill",
+        "kind": "asset",
+        "source": "game/content/assets/audio_kill.lua",
+        "dependencies": [],
+        "dependents": []
+      },
+      {
+        "id": "audio.parry",
+        "kind": "asset",
+        "source": "game/content/assets/audio_parry.lua",
+        "dependencies": [],
+        "dependents": []
+      },
+      {
+        "id": "audio.projectile",
+        "kind": "asset",
+        "source": "game/content/assets/audio_projectile.lua",
+        "dependencies": [],
+        "dependents": []
+      },
+      {
+        "id": "audio.quest",
+        "kind": "asset",
+        "source": "game/content/assets/audio_quest.lua",
+        "dependencies": [],
+        "dependents": []
+      },
+      {
+        "id": "audio.ui_cancel",
+        "kind": "asset",
+        "source": "game/content/assets/audio_ui_cancel.lua",
+        "dependencies": [],
+        "dependents": []
+      },
+      {
+        "id": "audio.ui_confirm",
+        "kind": "asset",
+        "source": "game/content/assets/audio_ui_confirm.lua",
+        "dependencies": [],
+        "dependents": []
       },
       {
         "id": "dialogue.guide",

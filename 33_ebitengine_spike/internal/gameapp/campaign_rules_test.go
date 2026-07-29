@@ -382,6 +382,20 @@ func TestSimulationKillsAdvanceActorObjectivesExactlyOnce(t *testing.T) {
 		!campaignFlag(t, completed, "quest.grove_guardian.rewarded") {
 		t.Fatalf("quest completion rewards = %#v", completed)
 	}
+	foundQuestCue := false
+	for _, cue := range runtime.View().Audio.Cues {
+		if cue.Event == "quest.completed" &&
+			cue.AssetID == "audio.quest" {
+			foundQuestCue = true
+			break
+		}
+	}
+	if !foundQuestCue {
+		t.Fatalf(
+			"quest completion audio cue = %#v",
+			runtime.View().Audio.Cues,
+		)
+	}
 
 	runtime.mu.Lock()
 	err := runtime.applyObjectiveEventsLocked([]sim.Event{

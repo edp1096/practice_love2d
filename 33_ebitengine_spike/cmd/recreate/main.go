@@ -32,6 +32,7 @@ type options struct {
 	fullscreen    bool
 	frames        uint64
 	screenshot    string
+	action        string
 }
 
 func main() {
@@ -114,11 +115,20 @@ func run(arguments []string) error {
 		"",
 		"write the last automated frame to a PNG",
 	)
+	flags.StringVar(
+		&options.action,
+		"action",
+		"",
+		"queue one semantic action on the first deterministic tick",
+	)
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
 	if len(flags.Args()) != 0 {
 		return fmt.Errorf("unexpected arguments: %v", flags.Args())
+	}
+	if options.action != "" && options.frames == 0 {
+		return errors.New("-action requires a non-zero -frames limit")
 	}
 
 	store, err := storage.NewFileStore(options.saveDirectory)
@@ -140,6 +150,18 @@ func run(arguments []string) error {
 	})
 	if err != nil {
 		return err
+	}
+	if options.action != "" {
+		if _, err := runtime.Call(context.Background(), protocol.Call{
+			Method: protocol.MethodInputAction,
+			Params: protocol.InputActionParams{
+				Action: options.action,
+				Value:  1,
+				Frames: 1,
+			},
+		}); err != nil {
+			return fmt.Errorf("queue initial action: %w", err)
+		}
 	}
 	game, err := ebitapp.NewWithOptions(runtime, ebitapp.Options{
 		StopAfterTicks: options.frames,

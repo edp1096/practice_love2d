@@ -100,6 +100,7 @@ type Presentation struct {
 	Images     []ImageAsset       `json:"images"`
 	Sprites    []SpriteDefinition `json:"sprites"`
 	Abilities  []AbilityVisual    `json:"ability_visuals"`
+	Audio      AudioPresentation  `json:"audio"`
 	Tilemap    *Tilemap           `json:"tilemap,omitempty"`
 	Instances  []InstanceMetadata `json:"instances"`
 }
@@ -541,6 +542,10 @@ func Build(catalog *content.Catalog, options Options) (*Result, error) {
 	result.Presentation.Abilities, err = buildAbilityVisuals(catalog)
 	if err != nil {
 		return nil, fmt.Errorf("%s ability visuals: %w", stage.ID, err)
+	}
+	result.Presentation.Audio, err = buildAudioPresentation(catalog)
+	if err != nil {
+		return nil, fmt.Errorf("%s audio presentation: %w", stage.ID, err)
 	}
 	result.Presentation.Tilemap, err = buildTilemap(
 		stage.Tilemap,

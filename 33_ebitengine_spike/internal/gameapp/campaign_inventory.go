@@ -103,6 +103,7 @@ func (runtime *Runtime) openInventoryLocked() error {
 	} else {
 		runtime.inventorySelected = 0
 	}
+	runtime.queueAudioEventLocked("ui.confirm")
 	runtime.revision++
 	return nil
 }
@@ -114,6 +115,7 @@ func (runtime *Runtime) closeInventoryLocked() {
 	runtime.inventoryOpen = false
 	runtime.inventorySelected = 0
 	runtime.inventoryStatus = ""
+	runtime.queueAudioEventLocked("ui.cancel")
 	runtime.revision++
 }
 
@@ -187,6 +189,7 @@ func (runtime *Runtime) activateInventorySelectionLocked() error {
 		return fmt.Errorf("item %q cannot be used or equipped", item.ID)
 	}
 	runtime.normalizeInventorySelectionLocked()
+	runtime.queueAudioEventLocked("ui.confirm")
 	if runtime.revision == beforeRevision {
 		runtime.revision++
 	}
@@ -211,6 +214,7 @@ func (runtime *Runtime) unequipInventorySelectionLocked() error {
 		return err
 	}
 	runtime.inventoryStatus = item.Name + " 장착 해제"
+	runtime.queueAudioEventLocked("ui.confirm")
 	if runtime.revision == beforeRevision {
 		runtime.revision++
 	}

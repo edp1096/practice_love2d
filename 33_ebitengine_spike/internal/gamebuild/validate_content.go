@@ -376,7 +376,9 @@ func validateAssetSemantics(data map[string]any, id string) error {
 	if err != nil {
 		return err
 	}
-	if assetType != "image" && assetType != "font" {
+	if assetType != "image" &&
+		assetType != "font" &&
+		assetType != "audio" {
 		return fmt.Errorf("%s.asset_type has unsupported value %q", id, assetType)
 	}
 	if _, err := requiredString(data["path"], id+".path"); err != nil {
@@ -400,7 +402,7 @@ func validateAssetSemantics(data map[string]any, id string) error {
 		}
 	} else if data["width"] != nil || data["height"] != nil ||
 		data["filter"] != nil {
-		return fmt.Errorf("%s font asset cannot define image geometry", id)
+		return fmt.Errorf("%s non-image asset cannot define image geometry", id)
 	}
 	return nil
 }

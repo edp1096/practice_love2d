@@ -257,6 +257,9 @@ func (runtime *Runtime) applyObjectiveEventsLocked(
 				err,
 			)
 		}
+		for range result.CompletedQuestIDs {
+			runtime.queueAudioEventLocked("quest.completed")
+		}
 	}
 	return nil
 }
@@ -582,6 +585,7 @@ func (runtime *Runtime) chooseDialogueLocked(
 	if runtime.dialogue == session {
 		runtime.dialogueChoiceIndex = 0
 	}
+	runtime.queueAudioEventLocked("ui.confirm")
 	runtime.revision++
 	return runtime.dialogueStateLocked()
 }
@@ -629,6 +633,7 @@ func (runtime *Runtime) advanceDialogueLocked() (
 		runtime.restoreCheckpointLocked(checkpoint)
 		return DialogueState{}, err
 	}
+	runtime.queueAudioEventLocked("ui.confirm")
 	runtime.revision++
 	return runtime.dialogueStateLocked()
 }
@@ -676,6 +681,7 @@ func (runtime *Runtime) cancelDialogueLocked() (DialogueState, error) {
 	runtime.dialogue = nil
 	runtime.dialogueSpeakerID = ""
 	runtime.dialogueChoiceIndex = 0
+	runtime.queueAudioEventLocked("ui.cancel")
 	runtime.revision++
 	return runtime.dialogueStateLocked()
 }

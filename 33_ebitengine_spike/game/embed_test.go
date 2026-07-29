@@ -14,7 +14,7 @@ func TestEmbeddedCatalogIsCompleteAndDetached(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if catalog.Graph().Total != 44 || catalog.Graph().EdgeCount != 86 {
+	if catalog.Graph().Total != 54 || catalog.Graph().EdgeCount != 86 {
 		t.Fatalf("embedded graph = %#v", catalog.Graph())
 	}
 	if project := catalog.Project(); project.ID != "recreate.maker_runtime" ||

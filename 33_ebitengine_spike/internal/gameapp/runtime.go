@@ -46,6 +46,13 @@ type previewEntity struct {
 	metadata gamebuild.InstanceMetadata
 }
 
+type queuedAudioCue struct {
+	sequence uint64
+	event    string
+	assetID  string
+	volume   float64
+}
+
 type runtimeCheckpoint struct {
 	buildOptions gamebuild.Options
 	built        *gamebuild.Result
@@ -57,6 +64,8 @@ type runtimeCheckpoint struct {
 	pendingAbilities map[string]string
 	pendingRemovals  map[string]bool
 	moving           map[string]bool
+	audioSequence    uint64
+	audioCues        []queuedAudioCue
 
 	previewSequence uint64
 	previewEntities map[string]previewEntity
@@ -108,6 +117,8 @@ type Runtime struct {
 	pendingAbilities map[string]string
 	pendingRemovals  map[string]bool
 	moving           map[string]bool
+	audioSequence    uint64
+	audioCues        []queuedAudioCue
 
 	previewSequence uint64
 	previewEntities map[string]previewEntity
@@ -202,6 +213,7 @@ func New(options Options) (*Runtime, error) {
 		pendingAbilities: make(map[string]string),
 		pendingRemovals:  make(map[string]bool),
 		moving:           make(map[string]bool),
+		audioCues:        make([]queuedAudioCue, 0),
 		portalInside:     portalInside,
 		revision:         1,
 	}
@@ -686,6 +698,8 @@ func (runtime *Runtime) checkpointLocked() runtimeCheckpoint {
 		pendingAbilities:        runtime.pendingAbilities,
 		pendingRemovals:         runtime.pendingRemovals,
 		moving:                  runtime.moving,
+		audioSequence:           runtime.audioSequence,
+		audioCues:               runtime.audioCues,
 		previewSequence:         runtime.previewSequence,
 		previewEntities:         runtime.previewEntities,
 		dialogueSpeakerID:       runtime.dialogueSpeakerID,
@@ -732,6 +746,11 @@ func (runtime *Runtime) detachMutableLocked(
 	runtime.pendingAbilities = cloneStringMap(checkpoint.pendingAbilities)
 	runtime.pendingRemovals = cloneBoolMap(checkpoint.pendingRemovals)
 	runtime.moving = cloneBoolMap(checkpoint.moving)
+	runtime.audioSequence = checkpoint.audioSequence
+	runtime.audioCues = append(
+		[]queuedAudioCue(nil),
+		checkpoint.audioCues...,
+	)
 	runtime.previewEntities = clonePreviewEntities(
 		checkpoint.previewEntities,
 	)
@@ -751,6 +770,8 @@ func (runtime *Runtime) restoreCheckpointLocked(
 	runtime.pendingAbilities = checkpoint.pendingAbilities
 	runtime.pendingRemovals = checkpoint.pendingRemovals
 	runtime.moving = checkpoint.moving
+	runtime.audioSequence = checkpoint.audioSequence
+	runtime.audioCues = checkpoint.audioCues
 	runtime.previewSequence = checkpoint.previewSequence
 	runtime.previewEntities = checkpoint.previewEntities
 	runtime.dialogueSpeakerID = checkpoint.dialogueSpeakerID

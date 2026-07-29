@@ -13,9 +13,9 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 다만 `32_recreate`를 지금 삭제하거나 본 런타임을 즉시 교체하면 안 된다.
 현재는 프로세스 재시작을 포함한 샘플 캠페인의 headless 실행 계약과
 authored tilemap visual gate, secondary combat, platformer, encounter
-fixture와 data-driven sprite clip·ability visual gate까지 통과했다.
-다만 전체 오디오가 아직 남아 있으므로 시각·기능 전체가
-`32_recreate`와 동등하다는 뜻은 아니다.
+fixture, data-driven sprite clip·ability visual과 전체 audio
+presentation gate까지 통과했다. 다만 아래에 남은 runtime 편집·패키징
+항목 때문에 시각·기능 전체가 `32_recreate`와 동등하다는 뜻은 아니다.
 콘솔도 일반 `go build` 대상이 아니며 각 제조사 승인, SDK, 개발기와
 비공개 Ebitengine 도구가 필요하다.
 
@@ -84,9 +84,10 @@ fixture와 data-driven sprite clip·ability visual gate까지 통과했다.
   `gamebuild → View → renderer` 변환
 - tile layer opacity·카메라 culling·Tiled horizontal/vertical/diagonal
   flip flag를 보존한 실제 960×540 visual acceptance
-- 기존 콘텐츠 정의 44개와 dependency path 86개 보존
+- 기존 콘텐츠 정의와 audio asset을 포함한 정의 54개,
+  dependency path 86개 보존
 - canonical catalog SHA-256:
-  `a8c64856d22cb4e6039f88737602fe3ba08bbd7c24bd5a4193cb3e2ed413d0e9`
+  `7a54f4783ed5a9aecce009029f2cefe69f334bbcbba07153508dd7c72f3cb1ea`
 - `game/game.lua`의 project manifest를 schema v2 catalog에 함께 컴파일
 - 고정소수점 60 tick 이동과 swept wall collision
 - 공격 windup/active/recovery와 cooldown
@@ -140,6 +141,17 @@ fixture와 data-driven sprite clip·ability visual gate까지 통과했다.
   World rebuild, UI, protocol에 일관되게 반영
 - `Flow.getState`, `Flow.move`, `Flow.activate`로 현재 게임 흐름 화면을
   의미 ID 기반으로 조회·제어
+- project manifest의 master/music/SFX volume과 stage별 BGM,
+  simulation·quest·UI semantic event별 cue를 typed presentation으로
+  변환
+- package에 embed한 48 kHz/16-bit WAV를 하나의 Ebitengine audio
+  context에서 BGM loop와 중첩 SFX로 재생하고, cue sequence를 이용해
+  반복 View/Draw에서 같은 소리가 다시 재생되지 않도록 보장
+- 다중 frame step이 취소되면 이미 생성한 audio cue sequence와 retained
+  cue ring까지 함께 rollback
+- 저장소 자체 생성 BGM 1개와 SFX 9개의 출처·생성기·SHA-256 기록
+- Ubuntu arm64에서 stage BGM과 `attack.started` cue가 포함된 실제 창을
+  2 tick만 실행해 공격 clip·slash 화면을 캡처하고 자동 종료
 - title 또는 pause 같은 semantic flow가 활성화된 동안
   `Emulation.step`을 거부해 숨은 World 진행 방지
 - 새 게임 → 퀘스트 수락 → 상점 → pause save → 새 Runtime의 continue
@@ -193,7 +205,6 @@ fixture와 data-driven sprite clip·ability visual gate까지 통과했다.
 
 다음 항목은 `32_recreate`가 계속 기준 명세여야 하는 이유다.
 
-- 전체 오디오와 audio cue의 data-driven 실행
 - 장비 공격력 이외의 확장 RPG stat·상태이상 계산
 - 실행 중 정의 반영과 stage/entity 생성 편집
 - 모바일·웹 패키징
@@ -217,8 +228,8 @@ fixture와 data-driven sprite clip·ability visual gate까지 통과했다.
 7. 제조사 승인을 확보한 플랫폼만 별도 adapter·SDK branch에서
    개발기 acceptance를 수행한다.
 
-기능·sprite clip·ability visual gate는 통과했다. 남은 audio
-presentation과 Maker backend 선택 gate를 통과하기 전에는
+기능·sprite clip·ability visual·audio presentation gate는 통과했다.
+남은 runtime 편집과 Maker backend 선택 gate를 통과하기 전에는
 `33_ebitengine_spike`를 본 런타임으로 승격하지 않는다.
 
 자동화의 `Emulation.step` 정지는 위 game-flow의 pause menu와 별도

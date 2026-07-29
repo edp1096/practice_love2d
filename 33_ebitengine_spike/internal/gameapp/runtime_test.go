@@ -504,9 +504,21 @@ func TestCancelledStepRollsBackPartialBatch(t *testing.T) {
 			Frames: 20,
 		},
 	)
+	callRuntime(
+		t,
+		runtime,
+		protocol.MethodInputAction,
+		protocol.InputActionParams{
+			Action: "attack",
+			Value:  1,
+			Frames: 1,
+		},
+	)
 	before := runtime.worldSnapshotLocked()
 	runtime.mu.RLock()
 	beforeVirtual := cloneVirtualActions(runtime.virtual)
+	beforeAudioSequence := runtime.audioSequence
+	beforeAudioCues := append([]queuedAudioCue(nil), runtime.audioCues...)
 	beforeRevision := runtime.revision
 	beforePaused := runtime.automationPaused
 	runtime.mu.RUnlock()
@@ -521,11 +533,15 @@ func TestCancelledStepRollsBackPartialBatch(t *testing.T) {
 	after := runtime.worldSnapshotLocked()
 	runtime.mu.RLock()
 	afterVirtual := cloneVirtualActions(runtime.virtual)
+	afterAudioSequence := runtime.audioSequence
+	afterAudioCues := append([]queuedAudioCue(nil), runtime.audioCues...)
 	afterRevision := runtime.revision
 	afterPaused := runtime.automationPaused
 	runtime.mu.RUnlock()
 	if !reflect.DeepEqual(after, before) ||
 		!reflect.DeepEqual(afterVirtual, beforeVirtual) ||
+		afterAudioSequence != beforeAudioSequence ||
+		!reflect.DeepEqual(afterAudioCues, beforeAudioCues) ||
 		afterRevision != beforeRevision ||
 		afterPaused != beforePaused {
 		t.Fatalf(

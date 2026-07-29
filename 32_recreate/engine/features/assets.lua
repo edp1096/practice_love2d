@@ -14,7 +14,7 @@ local function validateAsset(definition, validator, host)
     validator:string(definition.name, "name", false)
     local asset_type = validator:enum(
         definition.asset_type,
-        {"image", "font"},
+        {"image", "font", "audio"},
         "asset_type",
         true
     )
@@ -59,12 +59,12 @@ local function validateAsset(definition, validator, host)
                 )
             end
         end
-    elseif asset_type == "font" then
+    elseif asset_type == "font" or asset_type == "audio" then
         if definition.width ~= nil or definition.height ~= nil or
            definition.filter ~= nil then
             validator:error(
                 "content",
-                "font assets do not use width, height, or filter"
+                "non-image assets do not use width, height, or filter"
             )
         end
     end

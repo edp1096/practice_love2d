@@ -29,7 +29,7 @@ func TestCompileRecreateCatalogAcceptance(t *testing.T) {
 		t.Fatalf("Compile second: %v", err)
 	}
 
-	if got, want := first.DependencyGraph.Total, 44; got != want {
+	if got, want := first.DependencyGraph.Total, 54; got != want {
 		t.Fatalf("definition total = %d, want %d", got, want)
 	}
 	if got, want := first.DependencyGraph.EdgeCount, 86; got != want {
@@ -82,6 +82,23 @@ func TestCompileRecreateCatalogAcceptance(t *testing.T) {
 	}); got != want {
 		t.Fatalf("font = %#v, want %#v", got, want)
 	}
+	if project.Audio.MasterVolume != 0.8 ||
+		project.Audio.MusicVolume != 0.45 ||
+		project.Audio.SFXVolume != 0.8 ||
+		len(project.Audio.Cues) != 9 ||
+		len(project.Audio.StageMusic) != 7 ||
+		project.Audio.Cues[0] != (ProjectAudioCue{
+			Event:  "actor.killed",
+			Asset:  "audio.kill",
+			Volume: 0.9,
+		}) ||
+		project.Audio.StageMusic[0] != (ProjectStageMusic{
+			Stage:  "stage.action_room",
+			Asset:  "audio.forest_theme",
+			Volume: 0.75,
+		}) {
+		t.Fatalf("audio = %#v", project.Audio)
+	}
 	if err := first.ValidateProjectReferences(); err != nil {
 		t.Fatalf("project references: %v", err)
 	}
@@ -127,7 +144,7 @@ func TestCompileRecreateCatalogAcceptance(t *testing.T) {
 	}
 
 	ids := loaded.IDs()
-	if len(ids) != 44 || !sort.StringsAreSorted(ids) {
+	if len(ids) != 54 || !sort.StringsAreSorted(ids) {
 		t.Fatalf("IDs are not complete and sorted: %v", ids)
 	}
 	if ids[0] != "ability.fire_bolt" ||
