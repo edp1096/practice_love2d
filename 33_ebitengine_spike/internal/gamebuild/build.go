@@ -136,6 +136,7 @@ type stageDefinition struct {
 	Walls         []stageWall       `json:"walls"`
 	SpawnPoints   []stageSpawnPoint `json:"spawn_points"`
 	Portals       []stagePortal     `json:"portals"`
+	Encounters    []stageEncounter  `json:"encounters"`
 	Tilemap       *stageTilemap     `json:"tilemap,omitempty"`
 }
 
@@ -177,6 +178,13 @@ type stagePortal struct {
 type stageWall struct {
 	ID    string    `json:"id"`
 	Shape shapeRect `json:"shape"`
+}
+
+type stageEncounter struct {
+	ID        string        `json:"id"`
+	Encounter string        `json:"encounter"`
+	Position  stagePosition `json:"position"`
+	AutoStart *bool         `json:"auto_start"`
 }
 
 type shapePoint struct {
@@ -297,6 +305,33 @@ type contentAction struct {
 	Type     string `json:"type"`
 	Dialogue string `json:"dialogue"`
 	Quest    string `json:"quest"`
+	Name     string `json:"name"`
+	Status   string `json:"status"`
+}
+
+type encounterDefinition struct {
+	SchemaVersion int             `json:"schema_version"`
+	Kind          string          `json:"kind"`
+	ID            string          `json:"id"`
+	TargetTag     string          `json:"target_tag"`
+	Waves         []encounterWave `json:"waves"`
+	OnComplete    []contentAction `json:"on_complete"`
+}
+
+type encounterWave struct {
+	ID         string               `json:"id"`
+	Delay      float64              `json:"delay"`
+	Spawns     []stageSpawn         `json:"spawns"`
+	BossPhases []encounterBossPhase `json:"boss_phases"`
+	OnStart    []contentAction      `json:"on_start"`
+	OnComplete []contentAction      `json:"on_complete"`
+}
+
+type encounterBossPhase struct {
+	ID                string          `json:"id"`
+	Spawn             string          `json:"spawn"`
+	HealthRatioAtMost float64         `json:"health_ratio_at_most"`
+	Actions           []contentAction `json:"actions"`
 }
 
 type abilityDefinition struct {
@@ -680,6 +715,29 @@ func Build(catalog *content.Catalog, options Options) (*Result, error) {
 		}
 	}
 	result.Config.Camera.TargetEntityID = cameraTarget
+	encounters, encounterMetadata, encounterRange, err :=
+		buildEncounterPlacements(
+			catalog,
+			strings,
+			stage.Encounters,
+			options.Impact,
+			seenInstances,
+			result.Presentation.Instances,
+			dialogues,
+			quests,
+		)
+	if err != nil {
+		return nil, fmt.Errorf("%s encounters: %w", stage.ID, err)
+	}
+	result.Config.Encounters = encounters
+	result.Presentation.Instances = append(
+		result.Presentation.Instances,
+		encounterMetadata...,
+	)
+	result.Config.InteractionRange = max(
+		result.Config.InteractionRange,
+		encounterRange,
+	)
 	for _, value := range dialogues {
 		result.Config.Dialogues = append(result.Config.Dialogues, value)
 	}

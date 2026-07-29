@@ -35,6 +35,7 @@ const (
 	MethodEntitySetPosition         = "Entity.setPosition"
 	MethodEntitySetHealth           = "Entity.setHealth"
 	MethodEntityRequestAbility      = "Entity.requestAbility"
+	MethodEncounterStart            = "Encounter.start"
 	MethodFlowGetState              = "Flow.getState"
 	MethodFlowMove                  = "Flow.move"
 	MethodFlowActivate              = "Flow.activate"
@@ -82,6 +83,7 @@ var methods = []string{
 	MethodEntitySetPosition,
 	MethodEntitySetHealth,
 	MethodEntityRequestAbility,
+	MethodEncounterStart,
 	MethodFlowGetState,
 	MethodFlowMove,
 	MethodFlowActivate,
@@ -162,6 +164,7 @@ func IsMutating(method string) bool {
 		MethodEntitySetPosition,
 		MethodEntitySetHealth,
 		MethodEntityRequestAbility,
+		MethodEncounterStart,
 		MethodFlowMove,
 		MethodFlowActivate,
 		MethodDialogueStart,
@@ -269,6 +272,10 @@ type SetHealthParams struct {
 type RequestAbilityParams struct {
 	EntityID  string `json:"entityId"`
 	AbilityID string `json:"abilityId"`
+}
+
+type StartEncounterParams struct {
+	EncounterID string `json:"encounterId"`
 }
 
 // FlowMoveParams moves the visible game-flow menu by one enabled option.

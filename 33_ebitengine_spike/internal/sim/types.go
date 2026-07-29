@@ -180,6 +180,54 @@ type PlatformerConfig struct {
 	JumpBufferTicks     int   `json:"jump_buffer_ticks"`
 }
 
+type EncounterActionType string
+
+const (
+	EncounterEmit        EncounterActionType = "emit"
+	EncounterApplyStatus EncounterActionType = "apply_status"
+)
+
+// EncounterActionConfig is the deterministic action subset used by authored
+// wave and boss-phase fixtures. The content adapter rejects unsupported
+// actions instead of silently discarding them.
+type EncounterActionConfig struct {
+	Type     EncounterActionType `json:"type"`
+	Event    string              `json:"event,omitempty"`
+	StatusID string              `json:"status_id,omitempty"`
+}
+
+type EncounterSpawnConfig struct {
+	ID     string       `json:"id"`
+	Entity EntityConfig `json:"entity"`
+}
+
+type BossPhaseConfig struct {
+	ID                string                  `json:"id"`
+	SpawnID           string                  `json:"spawn_id"`
+	HealthRatioAtMost Coord                   `json:"health_ratio_at_most"`
+	Actions           []EncounterActionConfig `json:"actions"`
+}
+
+type EncounterWaveConfig struct {
+	ID         string                  `json:"id"`
+	DelayTicks int                     `json:"delay_ticks"`
+	Spawns     []EncounterSpawnConfig  `json:"spawns"`
+	BossPhases []BossPhaseConfig       `json:"boss_phases,omitempty"`
+	OnStart    []EncounterActionConfig `json:"on_start,omitempty"`
+	OnComplete []EncounterActionConfig `json:"on_complete,omitempty"`
+}
+
+// EncounterConfig is one stage placement with already translated absolute
+// spawn definitions. Wave order remains authored; placements are sorted by ID.
+type EncounterConfig struct {
+	ID             string                  `json:"id"`
+	DefinitionID   string                  `json:"definition_id"`
+	TargetEntityID string                  `json:"target_entity_id"`
+	AutoStart      bool                    `json:"auto_start"`
+	Waves          []EncounterWaveConfig   `json:"waves"`
+	OnComplete     []EncounterActionConfig `json:"on_complete,omitempty"`
+}
+
 // Ability returns mutable configuration owned by this CombatConfig.
 func (config *CombatConfig) Ability(id string) *AbilityConfig {
 	if config == nil {
@@ -337,6 +385,7 @@ type Config struct {
 	Quests           []QuestDefinition
 	Projectiles      []ProjectileConfig
 	Statuses         []StatusConfig
+	Encounters       []EncounterConfig
 	Camera           CameraConfig
 	InteractionRange Coord
 }
@@ -394,40 +443,96 @@ const (
 type EventType string
 
 const (
-	EventAttackStarted     EventType = "attack.started"
-	EventAttackActive      EventType = "attack.active"
-	EventAttackFinished    EventType = "attack.finished"
-	EventAttackInterrupted EventType = "attack.interrupted"
-	EventDamageApplied     EventType = "damage.applied"
-	EventDamageBlocked     EventType = "damage.blocked"
-	EventActorStaggered    EventType = "actor.staggered"
-	EventActorKilled       EventType = "actor.killed"
-	EventKnockbackStarted  EventType = "knockback.started"
-	EventHitstopStarted    EventType = "hitstop.started"
-	EventParryStarted      EventType = "parry.started"
-	EventAttackParried     EventType = "attack.parried"
-	EventDodgeStarted      EventType = "dodge.started"
-	EventProjectileSpawned EventType = "projectile.spawned"
-	EventProjectileHit     EventType = "projectile.hit"
-	EventProjectileBlocked EventType = "projectile.blocked"
-	EventProjectileExpired EventType = "projectile.expired"
-	EventStatusApplied     EventType = "status.applied"
-	EventStatusStacked     EventType = "status.stacked"
-	EventStatusRefreshed   EventType = "status.refreshed"
-	EventStatusTicked      EventType = "status.ticked"
-	EventStatusExpired     EventType = "status.expired"
-	EventStatusResisted    EventType = "status.resisted"
-	EventPlatformerJumped  EventType = "platformer.jumped"
-	EventPlatformerLanded  EventType = "platformer.landed"
-	EventEntitySpawned     EventType = "entity.spawned"
-	EventEntityRemoved     EventType = "entity.removed"
-	EventDialogueStarted   EventType = "dialogue.started"
-	EventDialogueClosed    EventType = "dialogue.closed"
-	EventQuestStarted      EventType = "quest.started"
-	EventQuestProgress     EventType = "quest.progress"
-	EventQuestCompleted    EventType = "quest.completed"
-	EventInputRejected     EventType = "input.rejected"
+	EventAttackStarted          EventType = "attack.started"
+	EventAttackActive           EventType = "attack.active"
+	EventAttackFinished         EventType = "attack.finished"
+	EventAttackInterrupted      EventType = "attack.interrupted"
+	EventDamageApplied          EventType = "damage.applied"
+	EventDamageBlocked          EventType = "damage.blocked"
+	EventActorStaggered         EventType = "actor.staggered"
+	EventActorKilled            EventType = "actor.killed"
+	EventKnockbackStarted       EventType = "knockback.started"
+	EventHitstopStarted         EventType = "hitstop.started"
+	EventParryStarted           EventType = "parry.started"
+	EventAttackParried          EventType = "attack.parried"
+	EventDodgeStarted           EventType = "dodge.started"
+	EventProjectileSpawned      EventType = "projectile.spawned"
+	EventProjectileHit          EventType = "projectile.hit"
+	EventProjectileBlocked      EventType = "projectile.blocked"
+	EventProjectileExpired      EventType = "projectile.expired"
+	EventStatusApplied          EventType = "status.applied"
+	EventStatusStacked          EventType = "status.stacked"
+	EventStatusRefreshed        EventType = "status.refreshed"
+	EventStatusTicked           EventType = "status.ticked"
+	EventStatusExpired          EventType = "status.expired"
+	EventStatusResisted         EventType = "status.resisted"
+	EventPlatformerJumped       EventType = "platformer.jumped"
+	EventPlatformerLanded       EventType = "platformer.landed"
+	EventEncounterStarted       EventType = "encounter.started"
+	EventEncounterWaveStarted   EventType = "encounter.wave_started"
+	EventEncounterWaveCompleted EventType = "encounter.wave_completed"
+	EventEncounterCompleted     EventType = "encounter.completed"
+	EventEncounterActionFailed  EventType = "encounter.action_failed"
+	EventBossPhaseEntered       EventType = "boss.phase_entered"
+	EventEntitySpawned          EventType = "entity.spawned"
+	EventEntityRemoved          EventType = "entity.removed"
+	EventDialogueStarted        EventType = "dialogue.started"
+	EventDialogueClosed         EventType = "dialogue.closed"
+	EventQuestStarted           EventType = "quest.started"
+	EventQuestProgress          EventType = "quest.progress"
+	EventQuestCompleted         EventType = "quest.completed"
+	EventInputRejected          EventType = "input.rejected"
 )
+
+// IsReservedEventType reports event names owned by the engine contract.
+// Authored emit actions must not impersonate these events because gameapp
+// assigns gameplay meaning to fields such as TargetID.
+func IsReservedEventType(eventType EventType) bool {
+	switch eventType {
+	case EventAttackStarted,
+		EventAttackActive,
+		EventAttackFinished,
+		EventAttackInterrupted,
+		EventDamageApplied,
+		EventDamageBlocked,
+		EventActorStaggered,
+		EventActorKilled,
+		EventKnockbackStarted,
+		EventHitstopStarted,
+		EventParryStarted,
+		EventAttackParried,
+		EventDodgeStarted,
+		EventProjectileSpawned,
+		EventProjectileHit,
+		EventProjectileBlocked,
+		EventProjectileExpired,
+		EventStatusApplied,
+		EventStatusStacked,
+		EventStatusRefreshed,
+		EventStatusTicked,
+		EventStatusExpired,
+		EventStatusResisted,
+		EventPlatformerJumped,
+		EventPlatformerLanded,
+		EventEncounterStarted,
+		EventEncounterWaveStarted,
+		EventEncounterWaveCompleted,
+		EventEncounterCompleted,
+		EventEncounterActionFailed,
+		EventBossPhaseEntered,
+		EventEntitySpawned,
+		EventEntityRemoved,
+		EventDialogueStarted,
+		EventDialogueClosed,
+		EventQuestStarted,
+		EventQuestProgress,
+		EventQuestCompleted,
+		EventInputRejected:
+		return true
+	default:
+		return false
+	}
+}
 
 // Event is an immutable-by-copy simulation event. Only fields relevant to Type
 // are populated.
@@ -442,6 +547,14 @@ type Event struct {
 	AbilityID    string    `json:"ability_id,omitempty"`
 	ProjectileID string    `json:"projectile_id,omitempty"`
 	StatusID     string    `json:"status_id,omitempty"`
+	EncounterID  string    `json:"encounter_id,omitempty"`
+	DefinitionID string    `json:"definition_id,omitempty"`
+	WaveID       string    `json:"wave_id,omitempty"`
+	WaveIndex    int       `json:"wave_index,omitempty"`
+	PhaseID      string    `json:"phase_id,omitempty"`
+	Scope        string    `json:"scope,omitempty"`
+	ActionIndex  int       `json:"action_index,omitempty"`
+	ActionType   string    `json:"action_type,omitempty"`
 	Stacks       int       `json:"stacks,omitempty"`
 	Amount       int       `json:"amount,omitempty"`
 	Progress     int       `json:"progress,omitempty"`
@@ -489,6 +602,28 @@ type ProjectileSnapshot struct {
 	Tint           [4]uint8 `json:"tint"`
 	RemainingTicks int      `json:"remaining_ticks"`
 	Hits           int      `json:"hits"`
+}
+
+type EncounterStatus string
+
+const (
+	EncounterIdle      EncounterStatus = "idle"
+	EncounterPending   EncounterStatus = "pending"
+	EncounterActive    EncounterStatus = "active"
+	EncounterCompleted EncounterStatus = "completed"
+	EncounterFailed    EncounterStatus = "failed"
+)
+
+type EncounterSnapshot struct {
+	ID             string          `json:"id"`
+	DefinitionID   string          `json:"definition_id"`
+	Status         EncounterStatus `json:"status"`
+	WaveIndex      int             `json:"wave_index"`
+	WaveID         string          `json:"wave_id,omitempty"`
+	RemainingTicks int             `json:"remaining_ticks"`
+	Living         int             `json:"living"`
+	EnteredPhases  []string        `json:"entered_phases,omitempty"`
+	Error          string          `json:"error,omitempty"`
 }
 
 // EntitySnapshot is the complete debug-facing runtime view of an entity.
@@ -563,6 +698,7 @@ type Snapshot struct {
 	Camera       CameraSnapshot       `json:"camera"`
 	Events       []Event              `json:"events"`
 	Projectiles  []ProjectileSnapshot `json:"projectiles,omitempty"`
+	Encounters   []EncounterSnapshot  `json:"encounters,omitempty"`
 }
 
 // RenderEntity is the renderer-facing subset of EntitySnapshot.

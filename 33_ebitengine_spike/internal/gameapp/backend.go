@@ -146,6 +146,13 @@ func (runtime *Runtime) Call(
 		}
 		return runtime.requestAbility(params)
 
+	case protocol.MethodEncounterStart:
+		params, ok := call.Params.(protocol.StartEncounterParams)
+		if !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.startEncounter(params)
+
 	case protocol.MethodFlowGetState:
 		if _, ok := call.Params.(protocol.EmptyParams); !ok {
 			return nil, invalidBackendParams(call.Method)
@@ -705,6 +712,75 @@ func (runtime *Runtime) requestAbility(
 		AbilityID string `json:"ability_id"`
 		Queued    bool   `json:"queued"`
 	}{params.EntityID, params.AbilityID, true}, nil
+}
+
+type encounterStartResult struct {
+	EncounterID    string              `json:"encounter_id"`
+	DefinitionID   string              `json:"definition_id"`
+	Status         sim.EncounterStatus `json:"status"`
+	RemainingTicks int                 `json:"remaining_ticks"`
+	Applied        bool                `json:"applied"`
+}
+
+func (runtime *Runtime) startEncounter(
+	params protocol.StartEncounterParams,
+) (any, error) {
+	runtime.mu.Lock()
+	defer runtime.mu.Unlock()
+	if err := runtime.rejectMakerMutationWhileEquipmentPendingLocked(
+		"start encounter",
+	); err != nil {
+		return nil, err
+	}
+	if mode := runtime.campaign.Snapshot().Mode; mode != campaign.ModePlaying {
+		return nil, fmt.Errorf(
+			"cannot start encounter while campaign mode is %q",
+			mode,
+		)
+	}
+	before, found := encounterByID(
+		runtime.simulation.Snapshot().Encounters,
+		params.EncounterID,
+	)
+	if !found {
+		return nil, fmt.Errorf(
+			"unknown encounter %q",
+			params.EncounterID,
+		)
+	}
+	if err := runtime.simulation.StartEncounter(
+		params.EncounterID,
+	); err != nil {
+		return nil, err
+	}
+	after, _ := encounterByID(
+		runtime.simulation.Snapshot().Encounters,
+		params.EncounterID,
+	)
+	applied := before.Status == sim.EncounterIdle &&
+		after.Status != before.Status
+	if applied {
+		runtime.revision++
+	}
+	return encounterStartResult{
+		EncounterID:    after.ID,
+		DefinitionID:   after.DefinitionID,
+		Status:         after.Status,
+		RemainingTicks: after.RemainingTicks,
+		Applied:        applied,
+	}, nil
+}
+
+func encounterByID(
+	encounters []sim.EncounterSnapshot,
+	id string,
+) (sim.EncounterSnapshot, bool) {
+	for _, encounter := range encounters {
+		if encounter.ID == id {
+			return encounter, true
+		}
+	}
+	return sim.EncounterSnapshot{}, false
 }
 
 var supportedActions = map[string]struct{}{

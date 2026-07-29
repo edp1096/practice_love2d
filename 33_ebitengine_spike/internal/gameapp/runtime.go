@@ -631,6 +631,15 @@ func (runtime *Runtime) entityConfig(id string) (sim.EntityConfig, bool) {
 			return definition, true
 		}
 	}
+	for _, encounter := range runtime.built.Config.Encounters {
+		for _, wave := range encounter.Waves {
+			for _, spawn := range wave.Spawns {
+				if spawn.Entity.ID == id {
+					return spawn.Entity, true
+				}
+			}
+		}
+	}
 	return sim.EntityConfig{}, false
 }
 

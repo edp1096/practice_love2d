@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"practice_love2d/33_ebitengine_spike/internal/content"
+	"practice_love2d/33_ebitengine_spike/internal/sim"
 )
 
 // DefinitionValidation separates data validity from current vertical-slice
@@ -218,7 +219,6 @@ func ValidateDefinition(
 			unsupported(issue)
 		}
 		for _, field := range []string{
-			"encounters",
 			"triggers",
 			"completion",
 			"metadata",
@@ -283,9 +283,39 @@ func ValidateDefinition(
 		if err := validateEncounterSemantics(catalog, data, id); err != nil {
 			return DefinitionValidation{}, err
 		}
-		unsupported(
-			"encounter definitions are catalogued but not executed",
-		)
+		checkEncounterActions := func(value any, scope string) {
+			for _, raw := range anySlice(value) {
+				action, _ := raw.(map[string]any)
+				switch action["type"] {
+				case "emit":
+					name, _ := action["name"].(string)
+					if sim.IsReservedEventType(sim.EventType(name)) {
+						unsupported(fmt.Sprintf(
+							"%s emit name %q is reserved by the engine",
+							scope,
+							name,
+						))
+					}
+				case "apply_status":
+				default:
+					unsupported(fmt.Sprintf(
+						"%s action %q is not executed",
+						scope,
+						action["type"],
+					))
+				}
+			}
+		}
+		checkEncounterActions(data["on_complete"], "encounter completion")
+		for _, rawWave := range anySlice(data["waves"]) {
+			wave, _ := rawWave.(map[string]any)
+			checkEncounterActions(wave["on_start"], "wave start")
+			checkEncounterActions(wave["on_complete"], "wave completion")
+			for _, rawPhase := range anySlice(wave["boss_phases"]) {
+				phase, _ := rawPhase.(map[string]any)
+				checkEncounterActions(phase["actions"], "boss phase")
+			}
+		}
 
 	case "item":
 		if err := validateItemSemantics(catalog, data, id); err != nil {

@@ -132,23 +132,25 @@ type projectileDTO struct {
 }
 
 type worldSnapshotDTO struct {
-	Available       bool                `json:"available"`
-	Time            float64             `json:"time"`
-	Tick            uint64              `json:"tick"`
-	WorldTick       uint64              `json:"world_tick"`
-	Revision        uint64              `json:"revision"`
-	HitstopTicks    int                 `json:"hitstop_ticks"`
-	Stage           stageDTO            `json:"stage"`
-	Walls           []wallDTO           `json:"walls"`
-	Camera          cameraDTO           `json:"camera"`
-	Count           int                 `json:"count"`
-	Entities        []entityDTO         `json:"entities"`
-	ProjectileCount int                 `json:"projectile_count"`
-	Projectiles     []projectileDTO     `json:"projectiles"`
-	Quests          []sim.QuestSnapshot `json:"quests"`
-	Campaign        campaign.State      `json:"campaign"`
-	Dialogue        DialogueState       `json:"dialogue"`
-	RecentEvents    []sim.Event         `json:"recent_events"`
+	Available       bool                    `json:"available"`
+	Time            float64                 `json:"time"`
+	Tick            uint64                  `json:"tick"`
+	WorldTick       uint64                  `json:"world_tick"`
+	Revision        uint64                  `json:"revision"`
+	HitstopTicks    int                     `json:"hitstop_ticks"`
+	Stage           stageDTO                `json:"stage"`
+	Walls           []wallDTO               `json:"walls"`
+	Camera          cameraDTO               `json:"camera"`
+	Count           int                     `json:"count"`
+	Entities        []entityDTO             `json:"entities"`
+	ProjectileCount int                     `json:"projectile_count"`
+	Projectiles     []projectileDTO         `json:"projectiles"`
+	EncounterCount  int                     `json:"encounter_count"`
+	Encounters      []sim.EncounterSnapshot `json:"encounters"`
+	Quests          []sim.QuestSnapshot     `json:"quests"`
+	Campaign        campaign.State          `json:"campaign"`
+	Dialogue        DialogueState           `json:"dialogue"`
+	RecentEvents    []sim.Event             `json:"recent_events"`
 }
 
 func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
@@ -211,6 +213,11 @@ func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
 		Walls:           make([]wallDTO, 0, len(frame.Walls)),
 		Entities:        make([]entityDTO, 0, len(snapshot.Entities)),
 		ProjectileCount: len(snapshot.Projectiles),
+		EncounterCount:  len(snapshot.Encounters),
+		Encounters: append(
+			[]sim.EncounterSnapshot(nil),
+			snapshot.Encounters...,
+		),
 		Projectiles: make(
 			[]projectileDTO,
 			0,

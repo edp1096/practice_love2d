@@ -337,6 +337,19 @@ func parseCall(request Request, fixedStepSeconds float64) (Call, *Error) {
 		}
 		return Call{Method: request.Method, Params: params}, nil
 
+	case MethodEncounterStart:
+		var params StartEncounterParams
+		if err := decodeParams(request.Params, &params); err != nil {
+			return Call{}, err
+		}
+		if err := requireIdentifier(
+			"encounterId",
+			params.EncounterID,
+		); err != nil {
+			return Call{}, err
+		}
+		return Call{Method: request.Method, Params: params}, nil
+
 	case MethodFlowMove:
 		type flowMoveWire struct {
 			Delta *int `json:"delta"`

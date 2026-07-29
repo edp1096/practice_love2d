@@ -29,12 +29,15 @@ type preparedSession struct {
 	camera          cameraRuntime
 	projectiles     map[string]*projectileRuntime
 	projectileOrder []string
+	encounters      map[string]*encounterRuntime
+	encounterOrder  []string
 }
 
 func (s *Simulation) prepareSession(
 	state SessionState,
 ) (preparedSession, error) {
 	if state.Version != SessionVersion &&
+		state.Version != platformerSessionVersion &&
 		state.Version != actionSessionVersion &&
 		state.Version != topologySessionVersion &&
 		state.Version != legacySessionVersion {
@@ -65,7 +68,15 @@ func (s *Simulation) prepareSession(
 		return preparedSession{},
 			errors.New("hitstop exceeds deterministic timer range")
 	}
-	topology, err := s.prepareSessionTopology(state)
+	encounters, encounterOrder, encounterDefinitions, err :=
+		s.prepareSessionEncounters(state)
+	if err != nil {
+		return preparedSession{}, err
+	}
+	topology, err := s.prepareSessionTopology(
+		state,
+		encounterDefinitions,
+	)
 	if err != nil {
 		return preparedSession{}, err
 	}
@@ -114,6 +125,12 @@ func (s *Simulation) prepareSession(
 			return preparedSession{},
 				fmt.Errorf("session is missing entity %q", id)
 		}
+	}
+	if err := validatePreparedEncounterEntities(
+		encounters,
+		entities,
+	); err != nil {
+		return preparedSession{}, err
 	}
 
 	if len(state.Quests) != len(topology.questOrder) {
@@ -175,6 +192,8 @@ func (s *Simulation) prepareSession(
 		camera:          camera,
 		projectiles:     projectiles,
 		projectileOrder: projectileOrder,
+		encounters:      encounters,
+		encounterOrder:  encounterOrder,
 	}, nil
 }
 
@@ -292,6 +311,7 @@ func (s *Simulation) prepareSessionProjectiles(
 
 func (s *Simulation) prepareSessionTopology(
 	state SessionState,
+	encounterDefinitions map[string]EntityConfig,
 ) (sessionTopology, error) {
 	topology := sessionTopology{
 		definitions:      make(map[string]EntityConfig),
@@ -362,6 +382,12 @@ func (s *Simulation) prepareSessionTopology(
 			continue
 		}
 		topology.definitions[definition.ID] = cloneEntityConfig(definition)
+	}
+	for id, definition := range encounterDefinitions {
+		if _, removed := topology.removedIDs[id]; removed {
+			continue
+		}
+		topology.definitions[id] = cloneEntityConfig(definition)
 	}
 
 	// Collect dependencies before validating entities. Two bundles may share a

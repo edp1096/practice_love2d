@@ -137,6 +137,19 @@ func (runtime *Runtime) requireCampaignRebuildSafeLocked(
 			true,
 		)
 	}
+	for _, encounter := range snapshot.Encounters {
+		if encounter.Status == sim.EncounterPending ||
+			encounter.Status == sim.EncounterActive {
+			return campaignRebuildBlocked(
+				fmt.Sprintf(
+					"equipment change is unavailable while encounter %q is %s",
+					encounter.ID,
+					encounter.Status,
+				),
+				true,
+			)
+		}
+	}
 	for _, entity := range snapshot.Entities {
 		if entity.Attack.Phase != sim.AttackIdle {
 			return campaignRebuildBlocked(

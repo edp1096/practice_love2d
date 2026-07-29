@@ -14,6 +14,8 @@ preview에서는 슬라임을 생성할 수 있다. 이동·충돌·공격·피�
 중첩·주기 피해·배율·면역 상태이상도 같은 경계를 사용한다.
 `movement.platformer` actor는 같은 충돌 경계에서 가속·중력·코요테
 타임·점프 버퍼를 사용한다.
+stage에 배치한 encounter는 작성된 target tag·지연·웨이브·spawn
+override·보스 체력 단계·완료 event를 결정적인 순서로 실행한다.
 
 ## 실행
 
@@ -88,6 +90,7 @@ go run ./cmd/recreatectl equip item.training_sword
 go run ./cmd/recreatectl unequip weapon
 go run ./cmd/recreatectl ability player ability.fire_bolt
 go run ./cmd/recreatectl ability preview.slime ability.slime_bump
+go run ./cmd/recreatectl encounter-start arena
 go run ./cmd/recreatectl remove preview.slime
 go run ./cmd/recreatectl position quest.slime.1 190 270
 go run ./cmd/recreatectl health quest.slime.1 1
@@ -149,7 +152,11 @@ cooldown, 상태이상, 공격·경직·패링·회피 상태를 반환한다. �
 같은 응답에 있으며, 변이는 전체 상태를 검증한 뒤 원자적으로
 반영된다. 벽 ID는 렌더 좌표에서 역산하지 않고 simulation까지 직접
 보존된다. 플랫포머 actor는 속도, 접지, 코요테/버퍼 남은 tick과 실제
-고정틱 이동 수치도 같은 entity 응답에서 조회한다.
+고정틱 이동 수치도 같은 entity 응답에서 조회한다. stage encounter는
+placement/definition ID, idle·pending·active·completed·failed 상태,
+현재 wave와 남은 지연 tick, 생존 수, 진입한 boss phase를 반환한다.
+`encounter-start`는 `auto_start=false`인 배치를 안정적인 placement ID로
+시작하며, 이미 시작한 배치에 대한 반복 호출은 상태를 바꾸지 않는다.
 
 `save`/`load`는 stage와 진입 spawn, locale, 게임 진행, flag, inventory,
 equipment, quest, 재화를 담은 versioned campaign 저장이다. 체력·위치·

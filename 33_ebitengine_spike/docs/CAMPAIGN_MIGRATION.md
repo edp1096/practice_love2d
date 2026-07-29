@@ -79,8 +79,8 @@ automation pause를 게임의 pause menu와 합치지 않는다.
 - [x] 프로세스 재시작을 포함한 headless campaign acceptance
 - [x] projectile/status/secondary ability/multi-hit 전투 fixture
 - [x] actor-local platformer 이동과 authored shape presentation fixture
+- [x] authored encounter wave·boss phase·session fixture
 - [ ] sprite clip·ability visual·audio의 완전한 data-driven presentation
-- [ ] encounter 및 나머지 fixture
 
 ## 현재 인수 근거
 
@@ -121,8 +121,20 @@ special/technique 의미 입력, 정확한 ability ID queue, whirlwind 3회
 중심 Y=375에 착지하는 것을 확인했다.
 `internal/gameapp/platformer_runtime_test.go`는 동일한 작성 콘텐츠의
 상승 높이·수평 이동·발판 착지와 shape View를 반복 검증하며,
-`internal/sim/platformer_test.go`는 코요테 타임·점프 버퍼·session v4를
-렌더러 없이 검증한다.
+`internal/sim/platformer_test.go`는 코요테 타임·점프 버퍼와 v4에서
+도입한 platformer session 상태가 현재 v5에서도 보존되는지 렌더러 없이
+검증한다.
+
+`stage.encounter_room`은 작성된 `encounter.slime_trial`을 실제 창에서
+실행했다. 정찰 두 마리를 protocol로 처치한 뒤 9 tick 지연과 보스의
+정확한 생성 ID·좌표·체력 120을 확인했고, 체력을 60으로 낮춘 다음
+`status.enraged`, `boss.phase_entered`, 붉은 tint 화면을 같은 tick에서
+대조했다. 마지막 처치는 `encounter.wave_completed`,
+`encounter.slime_trial_completed`, `encounter.completed` 순서로 끝난다.
+`internal/gameapp/encounter_runtime_test.go`는 전체 작성 데이터 경로와
+활성 encounter session v5 복원을 반복 검증하고,
+`internal/sim/encounter_test.go`는 수동 시작·지연·event 순서·손상
+mapping 거부·첫 wave 실패 topology 복원을 검증한다.
 
 `Flow.getState`, `Flow.move`, `Flow.activate`는 title/pause/gameover/ending
 화면을 외부 자동화가 의미 ID로 조회·제어하는 계약이다.

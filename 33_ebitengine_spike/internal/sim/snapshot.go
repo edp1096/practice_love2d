@@ -20,6 +20,7 @@ func (s *Simulation) Snapshot() Snapshot {
 		Camera:       s.cameraSnapshot(),
 		Events:       cloneEvents(s.lastEvents),
 		Projectiles:  s.projectileSnapshots(),
+		Encounters:   s.encounterSnapshots(),
 	}
 }
 

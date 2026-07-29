@@ -236,6 +236,18 @@ func run(
 				AbilityID: commandArguments[1],
 			},
 		)
+	case "encounter-start":
+		if len(commandArguments) != 1 {
+			return errors.New(
+				"usage: recreatectl encounter-start ENCOUNTER_ID",
+			)
+		}
+		return call(
+			protocol.MethodEncounterStart,
+			protocol.StartEncounterParams{
+				EncounterID: commandArguments[0],
+			},
+		)
 	case "dialogue":
 		if len(commandArguments) < 1 || len(commandArguments) > 2 {
 			return errors.New(
@@ -808,6 +820,7 @@ Control:
   position ENTITY_ID X Y
   health ENTITY_ID VALUE
   ability ENTITY_ID ABILITY_ID
+  encounter-start ENCOUNTER_ID
   dialogue DIALOGUE_ID [SPEAKER_ENTITY_ID]  (Maker preview)
   dialogue-state
   dialogue-choose CHOICE_ID

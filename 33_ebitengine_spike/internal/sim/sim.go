@@ -105,6 +105,17 @@ type projectileRuntime struct {
 	hitTargets   map[string]struct{}
 }
 
+type encounterRuntime struct {
+	definition    EncounterConfig
+	status        EncounterStatus
+	waveIndex     int
+	remaining     int
+	liveIDs       []string
+	spawnEntities map[string]string
+	enteredPhases map[string]struct{}
+	err           string
+}
+
 type questRuntime struct {
 	definition QuestDefinition
 	status     QuestStatus
@@ -158,6 +169,8 @@ type Simulation struct {
 	projectiles           map[string]*projectileRuntime
 	projectileOrder       []string
 	projectileSequence    uint64
+	encounters            map[string]*encounterRuntime
+	encounterOrder        []string
 	lastEvents            []Event
 }
 
@@ -192,6 +205,7 @@ func New(config Config) (*Simulation, error) {
 			len(copied.Statuses),
 		),
 		projectiles: make(map[string]*projectileRuntime),
+		encounters:  make(map[string]*encounterRuntime, len(copied.Encounters)),
 	}
 	for _, definition := range copied.Projectiles {
 		simulation.projectileDefinitions[definition.ID] = definition
@@ -222,7 +236,36 @@ func New(config Config) (*Simulation, error) {
 			simulation.controlledID = definition.ID
 		}
 	}
+	for _, definition := range copied.Encounters {
+		simulation.encounters[definition.ID] = &encounterRuntime{
+			definition:    cloneEncounterConfig(definition),
+			status:        EncounterIdle,
+			waveIndex:     -1,
+			spawnEntities: make(map[string]string),
+			enteredPhases: make(map[string]struct{}),
+		}
+		simulation.encounterOrder = append(
+			simulation.encounterOrder,
+			definition.ID,
+		)
+		for _, wave := range definition.Waves {
+			for _, spawn := range wave.Spawns {
+				simulation.authoredIDs[spawn.Entity.ID] = struct{}{}
+			}
+		}
+	}
 	simulation.refreshCameraCenter()
+	for _, id := range simulation.encounterOrder {
+		if simulation.encounters[id].definition.AutoStart {
+			if err := simulation.StartEncounter(id); err != nil {
+				return nil, fmt.Errorf(
+					"auto-start encounter %q: %w",
+					id,
+					err,
+				)
+			}
+		}
+	}
 	return simulation, nil
 }
 
@@ -256,6 +299,8 @@ func (s *Simulation) Clone() *Simulation {
 		projectiles:        cloneProjectiles(s.projectiles),
 		projectileOrder:    append([]string(nil), s.projectileOrder...),
 		projectileSequence: s.projectileSequence,
+		encounters:         cloneEncounters(s.encounters),
+		encounterOrder:     append([]string(nil), s.encounterOrder...),
 		lastEvents:         cloneEvents(s.lastEvents),
 	}
 	for id, entity := range s.entities {
@@ -293,6 +338,7 @@ func (s *Simulation) Tick(input Input) []Event {
 	s.integrateMotion(commands)
 	s.advanceAttacks()
 	s.advanceProjectiles()
+	s.advanceEncounters()
 	s.refreshCameraCenter()
 	return cloneEvents(s.lastEvents)
 }
@@ -1824,6 +1870,16 @@ func validateConfig(config Config) error {
 			}
 		}
 	}
+	if err := validateEncounters(
+		config,
+		entities,
+		dialogues,
+		quests,
+		statuses,
+		projectiles,
+	); err != nil {
+		return err
+	}
 	if hasInteractable && config.InteractionRange == 0 {
 		return errors.New("interactable entities require a positive interaction range")
 	}
@@ -2162,6 +2218,10 @@ func cloneConfig(config Config) Config {
 	result.Quests = append([]QuestDefinition(nil), config.Quests...)
 	result.Projectiles = append([]ProjectileConfig(nil), config.Projectiles...)
 	result.Statuses = append([]StatusConfig(nil), config.Statuses...)
+	result.Encounters = make([]EncounterConfig, len(config.Encounters))
+	for index, encounter := range config.Encounters {
+		result.Encounters[index] = cloneEncounterConfig(encounter)
+	}
 	result.Entities = make([]EntityConfig, len(config.Entities))
 	for index, entity := range config.Entities {
 		result.Entities[index] = cloneEntityConfig(entity)
@@ -2205,6 +2265,16 @@ func normalizeCombatConfig(config *Config) {
 	for index := range config.Entities {
 		normalizeEntityCombat(&config.Entities[index])
 	}
+	for encounterIndex := range config.Encounters {
+		for waveIndex := range config.Encounters[encounterIndex].Waves {
+			wave := &config.Encounters[encounterIndex].Waves[waveIndex]
+			for spawnIndex := range wave.Spawns {
+				normalizeEntityCombat(
+					&wave.Spawns[spawnIndex].Entity,
+				)
+			}
+		}
+	}
 }
 
 func normalizeEntityCombat(entity *EntityConfig) {
@@ -2234,16 +2304,7 @@ func sortConfig(config *Config) {
 		return config.Entities[left].ID < config.Entities[right].ID
 	})
 	for index := range config.Entities {
-		combat := config.Entities[index].Combat
-		if combat == nil {
-			continue
-		}
-		sort.Slice(combat.Abilities, func(left, right int) bool {
-			return combat.Abilities[left].ID < combat.Abilities[right].ID
-		})
-		sort.Slice(combat.Bindings, func(left, right int) bool {
-			return combat.Bindings[left].Input < combat.Bindings[right].Input
-		})
+		sortEntityConfig(&config.Entities[index])
 	}
 	sort.Slice(config.Dialogues, func(left, right int) bool {
 		return config.Dialogues[left].ID < config.Dialogues[right].ID
@@ -2257,10 +2318,34 @@ func sortConfig(config *Config) {
 	sort.Slice(config.Statuses, func(left, right int) bool {
 		return config.Statuses[left].ID < config.Statuses[right].ID
 	})
-	for index := range config.Entities {
-		if config.Entities[index].Status != nil {
-			sort.Strings(config.Entities[index].Status.Immune)
+	sort.Slice(config.Encounters, func(left, right int) bool {
+		return config.Encounters[left].ID < config.Encounters[right].ID
+	})
+	for encounterIndex := range config.Encounters {
+		for waveIndex := range config.Encounters[encounterIndex].Waves {
+			wave := &config.Encounters[encounterIndex].Waves[waveIndex]
+			for spawnIndex := range wave.Spawns {
+				sortEntityConfig(&wave.Spawns[spawnIndex].Entity)
+			}
 		}
+	}
+}
+
+func sortEntityConfig(entity *EntityConfig) {
+	if entity == nil {
+		return
+	}
+	combat := entity.Combat
+	if combat != nil {
+		sort.Slice(combat.Abilities, func(left, right int) bool {
+			return combat.Abilities[left].ID < combat.Abilities[right].ID
+		})
+		sort.Slice(combat.Bindings, func(left, right int) bool {
+			return combat.Bindings[left].Input < combat.Bindings[right].Input
+		})
+	}
+	if entity.Status != nil {
+		sort.Strings(entity.Status.Immune)
 	}
 }
 

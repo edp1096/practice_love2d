@@ -81,6 +81,7 @@ func TestCLIMapsUsefulCommandsToProtocol(t *testing.T) {
 		{"position", "player", "10.5", "-2"},
 		{"health", "player", "7"},
 		{"ability", "player", "ability.parry"},
+		{"encounter-start", "arena"},
 		{"dialogue", "dialogue.guide", "guide"},
 		{"dialogue-state"},
 		{"dialogue-choose", "accept"},
@@ -115,6 +116,7 @@ func TestCLIMapsUsefulCommandsToProtocol(t *testing.T) {
 		protocol.MethodEntitySetPosition,
 		protocol.MethodEntitySetHealth,
 		protocol.MethodEntityRequestAbility,
+		protocol.MethodEncounterStart,
 		protocol.MethodDialogueStart,
 		protocol.MethodDialogueGetState,
 		protocol.MethodDialogueChoose,
@@ -177,40 +179,40 @@ func TestCLIMapsUsefulCommandsToProtocol(t *testing.T) {
 		spawn.Y == nil || *spawn.Y != -4.25 {
 		t.Fatalf("unexpected spawn params: %+v", spawn)
 	}
-	dialogue := calls[9].Params.(protocol.StartDialogueParams)
+	dialogue := calls[10].Params.(protocol.StartDialogueParams)
 	if dialogue.DialogueID != "dialogue.guide" ||
 		dialogue.SpeakerID != "guide" {
 		t.Fatalf("unexpected dialogue params: %+v", dialogue)
 	}
-	choice := calls[11].Params.(protocol.ChooseDialogueParams)
+	choice := calls[12].Params.(protocol.ChooseDialogueParams)
 	if choice.ChoiceID != "accept" {
 		t.Fatalf("unexpected dialogue choice params: %+v", choice)
 	}
-	flowMove := calls[15].Params.(protocol.FlowMoveParams)
+	flowMove := calls[16].Params.(protocol.FlowMoveParams)
 	if flowMove.Delta != -1 {
 		t.Fatalf("unexpected flow move params: %+v", flowMove)
 	}
-	flowActivate := calls[16].Params.(protocol.FlowActivateParams)
+	flowActivate := calls[17].Params.(protocol.FlowActivateParams)
 	if flowActivate.OptionID != "new_game" {
 		t.Fatalf("unexpected flow activation params: %+v", flowActivate)
 	}
-	buy := calls[18].Params.(protocol.ShopTradeParams)
+	buy := calls[19].Params.(protocol.ShopTradeParams)
 	if buy.ItemID != "item.potion" || buy.Quantity != 1 {
 		t.Fatalf("unexpected shop buy params: %+v", buy)
 	}
-	sell := calls[19].Params.(protocol.ShopTradeParams)
+	sell := calls[20].Params.(protocol.ShopTradeParams)
 	if sell.ItemID != "item.potion" || sell.Quantity != 2 {
 		t.Fatalf("unexpected shop sell params: %+v", sell)
 	}
-	equip := calls[22].Params.(protocol.EquipmentEquipParams)
+	equip := calls[23].Params.(protocol.EquipmentEquipParams)
 	if equip.ItemID != "item.sword" {
 		t.Fatalf("unexpected equipment params: %+v", equip)
 	}
-	action := calls[24].Params.(protocol.InputActionParams)
+	action := calls[25].Params.(protocol.InputActionParams)
 	if action.Value != 0.5 || action.Frames != 3 {
 		t.Fatalf("unexpected action params: %+v", action)
 	}
-	step := calls[26].Params.(protocol.StepParams)
+	step := calls[27].Params.(protocol.StepParams)
 	if step.Frames != 4 || step.DT == nil {
 		t.Fatalf("unexpected step params: %+v", step)
 	}

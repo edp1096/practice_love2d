@@ -7,11 +7,12 @@ import (
 )
 
 // SessionVersion is the current deterministic save-state schema.
-const SessionVersion = 4
+const SessionVersion = 5
 
 const legacySessionVersion = 1
 const topologySessionVersion = 2
 const actionSessionVersion = 3
+const platformerSessionVersion = 4
 
 // BurstSessionState is the serialized form of a fixed-duration motion burst.
 type BurstSessionState struct {
@@ -64,6 +65,22 @@ type ProjectileSessionState struct {
 	Remaining    int      `json:"remaining"`
 	Hits         int      `json:"hits"`
 	HitTargets   []string `json:"hit_targets,omitempty"`
+}
+
+type EncounterSpawnSessionState struct {
+	SpawnID  string `json:"spawn_id"`
+	EntityID string `json:"entity_id"`
+}
+
+type EncounterSessionState struct {
+	ID            string                       `json:"id"`
+	Status        EncounterStatus              `json:"status"`
+	WaveIndex     int                          `json:"wave_index"`
+	Remaining     int                          `json:"remaining"`
+	LiveIDs       []string                     `json:"live_ids,omitempty"`
+	SpawnEntities []EncounterSpawnSessionState `json:"spawn_entities,omitempty"`
+	EnteredPhases []string                     `json:"entered_phases,omitempty"`
+	Error         string                       `json:"error,omitempty"`
 }
 
 // EntitySessionState stores only mutable entity state. Immutable definitions
@@ -122,10 +139,10 @@ type CameraSessionState struct {
 	ShakeSequence  uint64 `json:"shake_sequence"`
 }
 
-// SessionState is a JSON-safe, detached full simulation save. Version 4
+// SessionState is a JSON-safe, detached full simulation save. Version 5
 // round-trips temporary preview topology, multi-ability cooldowns, projectiles,
-// statuses, and platformer physics for transactions and tests; player-save
-// policy remains a caller concern.
+// statuses, platformer physics, and encounter waves for transactions and
+// tests; player-save policy remains a caller concern.
 type SessionState struct {
 	Version            int    `json:"version"`
 	Tick               uint64 `json:"tick"`
@@ -138,6 +155,7 @@ type SessionState struct {
 	RemovedEntityIDs []string                 `json:"removed_entity_ids,omitempty"`
 	Entities         []EntitySessionState     `json:"entities"`
 	Projectiles      []ProjectileSessionState `json:"projectiles,omitempty"`
+	Encounters       []EncounterSessionState  `json:"encounters,omitempty"`
 	Quests           []QuestSessionState      `json:"quests"`
 	Dialogue         DialogueSessionState     `json:"dialogue"`
 	Camera           CameraSessionState       `json:"camera"`
@@ -296,6 +314,38 @@ func (s *Simulation) SaveSession() SessionState {
 			},
 		)
 	}
+	for _, id := range s.encounterOrder {
+		encounter := s.encounters[id]
+		saved := EncounterSessionState{
+			ID:        id,
+			Status:    encounter.status,
+			WaveIndex: encounter.waveIndex,
+			Remaining: encounter.remaining,
+			LiveIDs:   append([]string(nil), encounter.liveIDs...),
+			Error:     encounter.err,
+		}
+		for spawnID, entityID := range encounter.spawnEntities {
+			saved.SpawnEntities = append(
+				saved.SpawnEntities,
+				EncounterSpawnSessionState{
+					SpawnID:  spawnID,
+					EntityID: entityID,
+				},
+			)
+		}
+		sort.Slice(saved.SpawnEntities, func(left, right int) bool {
+			return saved.SpawnEntities[left].SpawnID <
+				saved.SpawnEntities[right].SpawnID
+		})
+		for phaseID := range encounter.enteredPhases {
+			saved.EnteredPhases = append(
+				saved.EnteredPhases,
+				phaseID,
+			)
+		}
+		sort.Strings(saved.EnteredPhases)
+		state.Encounters = append(state.Encounters, saved)
+	}
 	for _, id := range s.questOrder {
 		quest := s.quests[id]
 		state.Quests = append(state.Quests, QuestSessionState{
@@ -333,6 +383,8 @@ func (s *Simulation) LoadSession(state SessionState) error {
 	s.projectiles = prepared.projectiles
 	s.projectileOrder = prepared.projectileOrder
 	s.projectileSequence = state.ProjectileSequence
+	s.encounters = prepared.encounters
+	s.encounterOrder = prepared.encounterOrder
 	s.lastEvents = nil
 	s.refreshCameraCenter()
 	return nil
@@ -585,7 +637,7 @@ func (s *Simulation) restoreEntitySession(
 		(entity.parryTicks > 0 && blocked) {
 		return nil, errors.New("mutually exclusive action states overlap")
 	}
-	if sessionVersion < SessionVersion {
+	if sessionVersion < platformerSessionVersion {
 		if saved.Velocity != (Vec{}) || saved.Grounded ||
 			saved.CoyoteTicks != 0 || saved.JumpBufferTicks != 0 {
 			return nil, errors.New(

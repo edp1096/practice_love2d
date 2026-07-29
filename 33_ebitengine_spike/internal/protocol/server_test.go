@@ -196,6 +196,12 @@ func TestProtocolV8DispatchesTypedCalls(t *testing.T) {
 			true,
 		},
 		{
+			MethodEncounterStart,
+			StartEncounterParams{EncounterID: "arena"},
+			StartEncounterParams{},
+			true,
+		},
+		{
 			MethodFlowGetState,
 			nil,
 			EmptyParams{},
