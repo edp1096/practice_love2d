@@ -3,6 +3,8 @@ package gameapp
 import (
 	"image/color"
 	"testing"
+
+	"practice_love2d/33_ebitengine_spike/internal/ebitapp"
 )
 
 func TestViewPublishesDetachedAuthoredTilemapBackgroundAndResources(
@@ -56,5 +58,66 @@ func TestViewPublishesDetachedAuthoredTilemapBackgroundAndResources(
 	view.Tilemap.Layers[0].Data[0] = 0
 	if runtime.View().Tilemap.Layers[0].Data[0] != 29 {
 		t.Fatal("tilemap View data mutated the Runtime presentation")
+	}
+}
+
+func TestSpriteResourcesAndEntityOverridesAreDetached(t *testing.T) {
+	runtime := newCampaignRuntime(t)
+	resources := runtime.SpriteResources()
+	if len(resources) != 4 {
+		t.Fatalf("sprite resources = %d, want 4", len(resources))
+	}
+	var heroIndex = -1
+	for index := range resources {
+		if resources[index].ID == "sprite.hero" {
+			heroIndex = index
+			break
+		}
+	}
+	if heroIndex < 0 {
+		t.Fatal("hero sprite resource is missing")
+	}
+	hero := resources[heroIndex]
+	if hero.AssetID != "image.player_sheet" ||
+		hero.FrameWidth != 48 ||
+		hero.DefaultClip != "idle_down" ||
+		len(hero.Clips) != 12 {
+		t.Fatalf("hero sprite resource = %#v", hero)
+	}
+	resources[heroIndex].Clips[0].Frames[0].Column = 999
+	if runtime.SpriteResources()[heroIndex].Clips[0].Frames[0].Column == 999 {
+		t.Fatal("sprite frame resource aliases Runtime presentation")
+	}
+}
+
+func TestAuthoredAbilityVisualAndAttackAnimationReachView(t *testing.T) {
+	runtime := newCampaignRuntime(t)
+	if err := runtime.Tick(ebitapp.Actions{Attack: true}); err != nil {
+		t.Fatal(err)
+	}
+	view := runtime.View()
+	var player ebitapp.EntityView
+	for _, entity := range view.Entities {
+		if entity.ID == "player" {
+			player = entity
+			break
+		}
+	}
+	if player.ID == "" ||
+		player.State != "attack_right" ||
+		player.AnimationTick != 0 {
+		t.Fatalf("player attack presentation = %#v", player)
+	}
+	if len(view.Effects) != 1 {
+		t.Fatalf("attack effects = %#v", view.Effects)
+	}
+	effect := view.Effects[0]
+	if effect.Kind != "ability" ||
+		effect.AssetID != "image.slash" ||
+		effect.Scale != 1.2 ||
+		effect.Opacity != 0.95 ||
+		effect.X != player.X+31 ||
+		effect.Y != player.Y {
+		t.Fatalf("authored ability effect = %#v player=%#v", effect, player)
 	}
 }

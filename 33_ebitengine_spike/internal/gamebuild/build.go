@@ -71,6 +71,9 @@ type InstanceMetadata struct {
 	ID             string         `json:"id"`
 	ActorID        string         `json:"actor_id"`
 	SpriteID       string         `json:"sprite_id,omitempty"`
+	SpriteScale    float64        `json:"sprite_scale,omitempty"`
+	SpriteTint     [4]float64     `json:"sprite_tint,omitempty"`
+	SpriteTintSet  bool           `json:"sprite_tint_set,omitempty"`
 	Shape          *ShapeMetadata `json:"shape,omitempty"`
 	PrimaryAbility string         `json:"primary_ability,omitempty"`
 	Controlled     bool           `json:"controlled,omitempty"`
@@ -95,6 +98,8 @@ type Presentation struct {
 	StageName  string             `json:"stage_name"`
 	Background [4]float64         `json:"background"`
 	Images     []ImageAsset       `json:"images"`
+	Sprites    []SpriteDefinition `json:"sprites"`
+	Abilities  []AbilityVisual    `json:"ability_visuals"`
 	Tilemap    *Tilemap           `json:"tilemap,omitempty"`
 	Instances  []InstanceMetadata `json:"instances"`
 }
@@ -114,6 +119,19 @@ func (presentation Presentation) Instance(id string) (InstanceMetadata, bool) {
 		item.Shape = &shape
 	}
 	return item, true
+}
+
+func (presentation Presentation) AbilityVisual(
+	id string,
+) (AbilityVisual, bool) {
+	index := sort.Search(len(presentation.Abilities), func(index int) bool {
+		return presentation.Abilities[index].AbilityID >= id
+	})
+	if index == len(presentation.Abilities) ||
+		presentation.Abilities[index].AbilityID != id {
+		return AbilityVisual{}, false
+	}
+	return presentation.Abilities[index], true
 }
 
 type Result struct {
@@ -284,7 +302,9 @@ type parryComponent struct {
 }
 
 type renderSpriteComponent struct {
-	Sprite string `json:"sprite"`
+	Sprite string    `json:"sprite"`
+	Scale  float64   `json:"scale"`
+	Tint   []float64 `json:"tint"`
 }
 
 type renderShapeComponent struct {
@@ -335,17 +355,25 @@ type encounterBossPhase struct {
 }
 
 type abilityDefinition struct {
-	SchemaVersion int                 `json:"schema_version"`
-	Kind          string              `json:"kind"`
-	ID            string              `json:"id"`
-	Windup        float64             `json:"windup"`
-	Duration      float64             `json:"duration"`
-	Recovery      float64             `json:"recovery"`
-	Cooldown      float64             `json:"cooldown"`
-	LockMovement  bool                `json:"lock_movement"`
-	Hitbox        abilityHitbox       `json:"hitbox"`
-	Effects       []abilityEffect     `json:"effects"`
-	Activation    []abilityActivation `json:"activation"`
+	SchemaVersion int                    `json:"schema_version"`
+	Kind          string                 `json:"kind"`
+	ID            string                 `json:"id"`
+	Windup        float64                `json:"windup"`
+	Duration      float64                `json:"duration"`
+	Recovery      float64                `json:"recovery"`
+	Cooldown      float64                `json:"cooldown"`
+	LockMovement  bool                   `json:"lock_movement"`
+	Hitbox        abilityHitbox          `json:"hitbox"`
+	Effects       []abilityEffect        `json:"effects"`
+	Activation    []abilityActivation    `json:"activation"`
+	Visual        *authoredAbilityVisual `json:"visual"`
+}
+
+type authoredAbilityVisual struct {
+	Asset          string  `json:"asset"`
+	Scale          float64 `json:"scale"`
+	Distance       float64 `json:"distance"`
+	RotationOffset float64 `json:"rotation_offset"`
 }
 
 type abilityHitbox struct {
@@ -505,6 +533,14 @@ func Build(catalog *content.Catalog, options Options) (*Result, error) {
 	result.Presentation.Images, err = buildImageAssets(catalog)
 	if err != nil {
 		return nil, fmt.Errorf("%s image resources: %w", stage.ID, err)
+	}
+	result.Presentation.Sprites, err = buildSpriteDefinitions(catalog)
+	if err != nil {
+		return nil, fmt.Errorf("%s sprite resources: %w", stage.ID, err)
+	}
+	result.Presentation.Abilities, err = buildAbilityVisuals(catalog)
+	if err != nil {
+		return nil, fmt.Errorf("%s ability visuals: %w", stage.ID, err)
 	}
 	result.Presentation.Tilemap, err = buildTilemap(
 		stage.Tilemap,
@@ -1115,6 +1151,16 @@ func buildEntity(
 				fmt.Errorf("unknown sprite %q", renderer.Sprite)
 		}
 		metadata.SpriteID = renderer.Sprite
+		metadata.SpriteScale = renderer.Scale
+		if len(renderer.Tint) != 0 {
+			tint, err := rgba(renderer.Tint)
+			if err != nil {
+				return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
+					fmt.Errorf("invalid render.sprite tint: %w", err)
+			}
+			metadata.SpriteTint = tint
+			metadata.SpriteTintSet = true
+		}
 	}
 	if raw := actor.Components["render.shape"]; raw != nil {
 		var renderer renderShapeComponent

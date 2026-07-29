@@ -56,9 +56,10 @@ go run ./cmd/recreate \
 
 `-stage`, `-spawn`, `-locale`는 개발·인수 테스트에서 project manifest의
 특정 조합을 직접 실행하는 override다. stage의 authored background와
-tilemap, catalog image manifest는 typed `gamebuild`를 거쳐 렌더링되며
-누락된 tile GID·잘못된 image 크기·runtime 경로 이탈은 실행 전에
-거부된다.
+tilemap, catalog image manifest, sprite clip/state map, ability visual은
+typed `gamebuild`를 거쳐 렌더링된다. actor의 sprite scale/tint override도
+같은 경로를 사용하며 누락된 tile GID·sheet 범위를 벗어난 frame·잘못된
+image 크기·runtime 경로 이탈은 실행 전에 거부된다.
 
 ## 화면·상태 자동화
 
@@ -224,8 +225,8 @@ Maker / debug client ──protocol v8──▶ gameapp
 ```
 
 - `internal/content`: 제한된 Lua 콘텐츠 컴파일러와 dependency graph
-- `internal/gamebuild`: catalog와 image manifest·tilemap을 검증된
-  simulation·render DTO로 변환
+- `internal/gamebuild`: catalog와 image manifest·tilemap·sprite clip·
+  ability visual을 검증된 simulation·render DTO로 변환
 - `internal/projectcheck`: 모든 stage·entry·locale과 Campaign/rule
   topology 사전 검증
 - `internal/campaign`: stage와 분리된 장기 진행 및 versioned player save

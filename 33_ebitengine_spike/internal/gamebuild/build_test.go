@@ -226,6 +226,102 @@ func TestBuildPreservesAuthoredTilemapAndImageManifest(t *testing.T) {
 	}
 }
 
+func TestBuildPublishesAuthoredSpriteClipsAndInstanceOverrides(t *testing.T) {
+	t.Parallel()
+
+	result, err := Build(loadCatalog(t), Options{
+		StageID:  "stage.encounter_room",
+		SpawnID:  "default",
+		LocaleID: "locale.ko",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Presentation.Sprites) != 4 {
+		t.Fatalf(
+			"presentation sprites = %d, want 4",
+			len(result.Presentation.Sprites),
+		)
+	}
+	var hero SpriteDefinition
+	for _, sprite := range result.Presentation.Sprites {
+		if sprite.ID == "sprite.hero" {
+			hero = sprite
+			break
+		}
+	}
+	if hero.AssetID != "image.player_sheet" ||
+		hero.FrameWidth != 48 ||
+		hero.FrameHeight != 48 ||
+		hero.OriginX != 24 ||
+		hero.OriginY != 24 ||
+		hero.Scale != 2 ||
+		hero.DefaultClip != "idle_down" ||
+		len(hero.Clips) != 12 ||
+		len(hero.StateMap) != 12 {
+		t.Fatalf("hero sprite = %#v", hero)
+	}
+	var attack SpriteClip
+	for _, clip := range hero.Clips {
+		if clip.ID == "attack_right" {
+			attack = clip
+			break
+		}
+	}
+	if attack.FPS != 13 ||
+		attack.Loop ||
+		len(attack.Frames) != 4 ||
+		attack.Frames[0] != (SpriteFrame{Column: 5, Row: 12}) {
+		t.Fatalf("hero attack clip = %#v", attack)
+	}
+	if len(result.Presentation.Abilities) != 1 {
+		t.Fatalf(
+			"ability visuals = %#v",
+			result.Presentation.Abilities,
+		)
+	}
+	visual := result.Presentation.Abilities[0]
+	if visual.AbilityID != "ability.sword_slash" ||
+		visual.AssetID != "image.slash" ||
+		visual.Distance != 31 ||
+		visual.Scale != 1.2 ||
+		visual.RotationOffset != 0 {
+		t.Fatalf("sword slash visual = %#v", visual)
+	}
+
+	catalog := loadCatalog(t)
+	raw, found := catalog.Definition("actor.grove_guardian")
+	if !found {
+		t.Fatal("guardian actor is missing")
+	}
+	var definition map[string]any
+	if err := json.Unmarshal(raw, &definition); err != nil {
+		t.Fatal(err)
+	}
+	components := definition["components"].(map[string]any)
+	renderer := components["render.sprite"].(map[string]any)
+	if renderer["scale"] != float64(4) {
+		t.Fatalf("fixture renderer = %#v", renderer)
+	}
+	guardianResult, err := Build(catalog, Options{
+		StageID:  "stage.world_grove",
+		SpawnID:  "west_entry",
+		LocaleID: "locale.ko",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata, found := guardianResult.Presentation.Instance(
+		"boss.grove_guardian",
+	)
+	if !found ||
+		metadata.SpriteScale != 4 ||
+		!metadata.SpriteTintSet ||
+		metadata.SpriteTint != ([4]float64{0.76, 0.42, 1, 1}) {
+		t.Fatalf("guardian metadata = %#v, found=%v", metadata, found)
+	}
+}
+
 func TestBuildAppliesNamedEntrySpawnToControlledActor(t *testing.T) {
 	t.Parallel()
 
@@ -414,6 +510,22 @@ func TestValidateDefinitionSeparatesSchemaFromRuntimeCoverage(t *testing.T) {
 	if !fireBolt.SchemaValid || !fireBolt.FullyApplied ||
 		len(fireBolt.Warnings) != 0 {
 		t.Fatalf("fire bolt validation = %#v", fireBolt)
+	}
+	for _, id := range []string{
+		"ability.sword_slash",
+		"sprite.guide",
+		"sprite.hero",
+		"sprite.merchant",
+		"sprite.slime",
+	} {
+		result, err := ValidateDefinition(catalog, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !result.SchemaValid || !result.FullyApplied ||
+			len(result.Warnings) != 0 {
+			t.Fatalf("%s presentation validation = %#v", id, result)
+		}
 	}
 	for _, id := range []string{"projectile.fire_bolt", "status.burning"} {
 		result, err := ValidateDefinition(catalog, id)

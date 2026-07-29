@@ -13,9 +13,9 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 다만 `32_recreate`를 지금 삭제하거나 본 런타임을 즉시 교체하면 안 된다.
 현재는 프로세스 재시작을 포함한 샘플 캠페인의 headless 실행 계약과
 authored tilemap visual gate, secondary combat, platformer, encounter
-fixture까지 통과했다. 다만 sprite clip·ability visual·전체 오디오가
-아직 남아 있으므로 시각·기능 전체가 `32_recreate`와 동등하다는 뜻은
-아니다.
+fixture와 data-driven sprite clip·ability visual gate까지 통과했다.
+다만 전체 오디오가 아직 남아 있으므로 시각·기능 전체가
+`32_recreate`와 동등하다는 뜻은 아니다.
 콘솔도 일반 `go build` 대상이 아니며 각 제조사 승인, SDK, 개발기와
 비공개 Ebitengine 도구가 필요하다.
 
@@ -74,6 +74,12 @@ fixture까지 통과했다. 다만 sprite clip·ability visual·전체 오디오
 
 - Ubuntu 22.04 arm64 실제 창과 960×540 PNG 캡처
 - 기존 hero, slime, guide, merchant, slash, font 애셋 로딩
+- 네 sprite의 authored sheet geometry·clip FPS/loop·state map을
+  renderer registry로 변환하고 공격 clip은 공격 시작 tick부터 재생
+- sprite 기본 scale/tint와 actor별 override를 합성하며 실제 grove
+  보스의 `scale=4`, 보라 tint를 Ubuntu arm64 화면에서 확인
+- `ability.sword_slash.visual`의 asset·distance·scale·rotation offset을
+  actor ID 하드코딩 없이 active phase에 렌더링
 - catalog image manifest, stage background와 authored tilemap의
   `gamebuild → View → renderer` 변환
 - tile layer opacity·카메라 culling·Tiled horizontal/vertical/diagonal
@@ -187,7 +193,7 @@ fixture까지 통과했다. 다만 sprite clip·ability visual·전체 오디오
 
 다음 항목은 `32_recreate`가 계속 기준 명세여야 하는 이유다.
 
-- sprite clip·ability visual의 완전한 data-driven 렌더링과 전체 오디오
+- 전체 오디오와 audio cue의 data-driven 실행
 - 장비 공격력 이외의 확장 RPG stat·상태이상 계산
 - 실행 중 정의 반영과 stage/entity 생성 편집
 - 모바일·웹 패키징
@@ -211,7 +217,7 @@ fixture까지 통과했다. 다만 sprite clip·ability visual·전체 오디오
 7. 제조사 승인을 확보한 플랫폼만 별도 adapter·SDK branch에서
    개발기 acceptance를 수행한다.
 
-기능 fixture gate는 통과했다. 남은 sprite clip·ability visual·audio
+기능·sprite clip·ability visual gate는 통과했다. 남은 audio
 presentation과 Maker backend 선택 gate를 통과하기 전에는
 `33_ebitengine_spike`를 본 런타임으로 승격하지 않는다.
 

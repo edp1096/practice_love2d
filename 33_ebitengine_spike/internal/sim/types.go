@@ -713,10 +713,15 @@ type RenderEntity struct {
 	MaxHealth int
 	Dead      bool
 	Attack    AttackPhase
-	Staggered bool
-	Dodging   bool
-	Parrying  bool
-	Statuses  []StatusSnapshot
+	AbilityID string
+	// AttackTicks is elapsed deterministic world time across every attack
+	// phase. Presentation adapters can restart non-looping clips exactly when
+	// an attack begins without retaining mutable renderer state.
+	AttackTicks int
+	Staggered   bool
+	Dodging     bool
+	Parrying    bool
+	Statuses    []StatusSnapshot
 }
 
 type RenderProjectile struct {

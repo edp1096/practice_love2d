@@ -29,6 +29,65 @@ func (runtime *Runtime) ImageResources() []ebitapp.ImageResource {
 	return result
 }
 
+// SpriteResources exposes authored animation clips without leaking mutable
+// Presentation slices into the platform adapter.
+func (runtime *Runtime) SpriteResources() []ebitapp.SpriteResource {
+	runtime.mu.RLock()
+	defer runtime.mu.RUnlock()
+	result := make(
+		[]ebitapp.SpriteResource,
+		len(runtime.built.Presentation.Sprites),
+	)
+	for index, source := range runtime.built.Presentation.Sprites {
+		target := ebitapp.SpriteResource{
+			ID:          source.ID,
+			AssetID:     source.AssetID,
+			FrameWidth:  source.FrameWidth,
+			FrameHeight: source.FrameHeight,
+			OriginX:     source.OriginX,
+			OriginY:     source.OriginY,
+			Scale:       source.Scale,
+			Tint:        presentationColor(source.Tint),
+			TintSet:     source.TintSet,
+			DefaultClip: source.DefaultClip,
+			Clips: make(
+				[]ebitapp.SpriteClipResource,
+				len(source.Clips),
+			),
+			StateMap: make(
+				[]ebitapp.SpriteStateResource,
+				len(source.StateMap),
+			),
+		}
+		for clipIndex, clip := range source.Clips {
+			targetClip := ebitapp.SpriteClipResource{
+				ID:   clip.ID,
+				FPS:  clip.FPS,
+				Loop: clip.Loop,
+				Frames: make(
+					[]ebitapp.SpriteFrameResource,
+					len(clip.Frames),
+				),
+			}
+			for frameIndex, frame := range clip.Frames {
+				targetClip.Frames[frameIndex] = ebitapp.SpriteFrameResource{
+					Column: frame.Column,
+					Row:    frame.Row,
+				}
+			}
+			target.Clips[clipIndex] = targetClip
+		}
+		for stateIndex, mapping := range source.StateMap {
+			target.StateMap[stateIndex] = ebitapp.SpriteStateResource{
+				State: mapping.State,
+				Clip:  mapping.Clip,
+			}
+		}
+		result[index] = target
+	}
+	return result
+}
+
 func tilemapView(source *gamebuild.Tilemap) *ebitapp.TilemapView {
 	if source == nil {
 		return nil

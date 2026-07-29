@@ -1,15 +1,163 @@
 package ebitapp
 
-import "image"
+import (
+	"fmt"
+	"image"
+	"image/color"
+	"math"
+
+	"github.com/hajimehoshi/ebiten/v2"
+)
+
+const presentationTicksPerSecond = 60
 
 type frameSpec struct {
 	asset            string
 	source           image.Rectangle
 	originX, originY float64
 	scale            float64
+	tint             color.RGBA
+	tintSet          bool
 }
 
-func frameRect(
+type loadedSprite struct {
+	resource SpriteResource
+	clips    map[string]SpriteClipResource
+	states   map[string]string
+}
+
+func loadSpriteResources(
+	resources []SpriteResource,
+	images map[string]*ebiten.Image,
+) (map[string]loadedSprite, error) {
+	result := make(map[string]loadedSprite, len(resources))
+	for index, resource := range resources {
+		if resource.ID == "" {
+			return nil, fmt.Errorf("sprite resource %d has an empty ID", index)
+		}
+		if _, duplicate := result[resource.ID]; duplicate {
+			return nil, fmt.Errorf("sprite resource %q is duplicated", resource.ID)
+		}
+		source := images[resource.AssetID]
+		if source == nil {
+			return nil, fmt.Errorf(
+				"sprite resource %q references missing image %q",
+				resource.ID,
+				resource.AssetID,
+			)
+		}
+		if resource.FrameWidth <= 0 || resource.FrameHeight <= 0 {
+			return nil, fmt.Errorf(
+				"sprite resource %q has invalid frame dimensions",
+				resource.ID,
+			)
+		}
+		if !finiteSpriteNumber(resource.OriginX) ||
+			!finiteSpriteNumber(resource.OriginY) ||
+			!finiteSpriteNumber(resource.Scale) ||
+			resource.Scale <= 0 {
+			return nil, fmt.Errorf(
+				"sprite resource %q has invalid geometry",
+				resource.ID,
+			)
+		}
+		sprite := loadedSprite{
+			resource: resource,
+			clips:    make(map[string]SpriteClipResource, len(resource.Clips)),
+			states:   make(map[string]string, len(resource.StateMap)),
+		}
+		for clipIndex, clip := range resource.Clips {
+			if clip.ID == "" {
+				return nil, fmt.Errorf(
+					"sprite resource %q clip %d has an empty ID",
+					resource.ID,
+					clipIndex,
+				)
+			}
+			if _, duplicate := sprite.clips[clip.ID]; duplicate {
+				return nil, fmt.Errorf(
+					"sprite resource %q clip %q is duplicated",
+					resource.ID,
+					clip.ID,
+				)
+			}
+			if !finiteSpriteNumber(clip.FPS) ||
+				clip.FPS <= 0 ||
+				len(clip.Frames) == 0 {
+				return nil, fmt.Errorf(
+					"sprite resource %q clip %q is invalid",
+					resource.ID,
+					clip.ID,
+				)
+			}
+			detached := clip
+			detached.Frames = append(
+				[]SpriteFrameResource(nil),
+				clip.Frames...,
+			)
+			for frameIndex, frame := range detached.Frames {
+				rect := spriteFrameRect(
+					frame.Column,
+					frame.Row,
+					resource.FrameWidth,
+					resource.FrameHeight,
+				)
+				if frame.Column <= 0 ||
+					frame.Row <= 0 ||
+					!rect.In(source.Bounds()) {
+					return nil, fmt.Errorf(
+						"sprite resource %q clip %q frame %d is outside image %q",
+						resource.ID,
+						clip.ID,
+						frameIndex,
+						resource.AssetID,
+					)
+				}
+			}
+			sprite.clips[clip.ID] = detached
+		}
+		if _, exists := sprite.clips[resource.DefaultClip]; !exists {
+			return nil, fmt.Errorf(
+				"sprite resource %q default clip %q is missing",
+				resource.ID,
+				resource.DefaultClip,
+			)
+		}
+		for stateIndex, mapping := range resource.StateMap {
+			if mapping.State == "" {
+				return nil, fmt.Errorf(
+					"sprite resource %q state mapping %d has an empty state",
+					resource.ID,
+					stateIndex,
+				)
+			}
+			if _, duplicate := sprite.states[mapping.State]; duplicate {
+				return nil, fmt.Errorf(
+					"sprite resource %q state %q is duplicated",
+					resource.ID,
+					mapping.State,
+				)
+			}
+			if _, exists := sprite.clips[mapping.Clip]; !exists {
+				return nil, fmt.Errorf(
+					"sprite resource %q state %q references missing clip %q",
+					resource.ID,
+					mapping.State,
+					mapping.Clip,
+				)
+			}
+			sprite.states[mapping.State] = mapping.Clip
+		}
+		result[resource.ID] = sprite
+	}
+	return result, nil
+}
+
+func finiteSpriteNumber(value float64) bool {
+	return !math.IsNaN(value) && !math.IsInf(value, 0)
+}
+
+func spriteFrameRect(
 	column int,
 	row int,
 	width int,
@@ -23,113 +171,49 @@ func frameRect(
 	)
 }
 
-func spriteFrame(tick uint64, entity EntityView) (frameSpec, bool) {
-	switch entity.SpriteID {
-	case "sprite.hero":
-		column, row := heroFrame(tick, entity.State)
-		return frameSpec{
-			asset:   "image.player_sheet",
-			source:  frameRect(column, row, 48, 48),
-			originX: 24,
-			originY: 24,
-			scale:   2,
-		}, true
-	case "sprite.slime":
-		column, row := slimeFrame(tick, entity.State)
-		return frameSpec{
-			asset:   "image.slime_red_sheet",
-			source:  frameRect(column, row, 16, 32),
-			originX: 8,
-			originY: 24,
-			scale:   2.5,
-		}, true
-	case "sprite.guide", "sprite.merchant":
-		column, row := directionalIdleFrame(tick, entity.State)
-		asset := "image.guide_sheet"
-		if entity.SpriteID == "sprite.merchant" {
-			asset = "image.merchant_sheet"
-		}
-		return frameSpec{
-			asset:   asset,
-			source:  frameRect(column, row, 48, 48),
-			originX: 24,
-			originY: 24,
-			scale:   2,
-		}, true
-	default:
+func spriteFrame(
+	sprites map[string]loadedSprite,
+	entity EntityView,
+) (frameSpec, bool) {
+	sprite, exists := sprites[entity.SpriteID]
+	if !exists {
 		return frameSpec{}, false
 	}
-}
-
-func directionalIdleFrame(tick uint64, state string) (int, int) {
-	frame := int((tick/12)%4) + 1
-	switch state {
-	case "idle_up", "move_up":
-		return frame + 4, 1
-	case "idle_left", "move_left":
-		return frame, 2
-	case "idle_right", "move_right":
-		return frame + 4, 2
-	default:
-		return frame, 1
+	clipID := sprite.resource.DefaultClip
+	if mapped, exists := sprite.states[entity.State]; exists {
+		clipID = mapped
 	}
-}
-
-func heroFrame(tick uint64, state string) (int, int) {
-	if len(state) >= len("attack_") && state[:len("attack_")] == "attack_" {
-		frame := int((tick/5)%4) + 1
-		switch state {
-		case "attack_up":
-			return frame + 4, 11
-		case "attack_left":
-			return frame, 12
-		case "attack_right":
-			return frame + 4, 12
-		default:
-			return frame, 11
-		}
+	clip, exists := sprite.clips[clipID]
+	if !exists || len(clip.Frames) == 0 {
+		return frameSpec{}, false
 	}
-	if len(state) >= len("move_") && state[:len("move_")] == "move_" {
-		index := int((tick / 5) % 6)
-		switch state {
-		case "move_up":
-			frames := [][2]int{
-				{7, 6}, {8, 6}, {1, 7},
-				{2, 7}, {3, 7}, {4, 7},
-			}
-			return frames[index][0], frames[index][1]
-		case "move_left":
-			frames := [][2]int{
-				{5, 7}, {6, 7}, {7, 7},
-				{8, 7}, {1, 8}, {2, 8},
-			}
-			return frames[index][0], frames[index][1]
-		case "move_right":
-			frames := [][2]int{
-				{3, 8}, {4, 8}, {5, 8},
-				{6, 8}, {7, 8}, {8, 8},
-			}
-			return frames[index][0], frames[index][1]
-		default:
-			return index + 1, 6
-		}
+	frameIndex := int(
+		float64(entity.AnimationTick) *
+			clip.FPS /
+			presentationTicksPerSecond,
+	)
+	if clip.Loop {
+		frameIndex %= len(clip.Frames)
+	} else if frameIndex >= len(clip.Frames) {
+		frameIndex = len(clip.Frames) - 1
 	}
-	return directionalIdleFrame(tick, state)
-}
-
-func slimeFrame(tick uint64, state string) (int, int) {
-	row := 1
-	if state == "idle_left" ||
-		state == "move_left" ||
-		state == "attack_left" {
-		row = 2
+	frame := clip.Frames[frameIndex]
+	scale := sprite.resource.Scale
+	if entity.SpriteScale > 0 {
+		scale = entity.SpriteScale
 	}
-	switch state {
-	case "attack_left", "attack_right":
-		return 8 + int((tick/6)%4), row
-	case "move_left", "move_right", "move_up", "move_down":
-		return 4 + int((tick/7)%4), row
-	default:
-		return 1 + int((tick/12)%3), row
-	}
+	return frameSpec{
+		asset: sprite.resource.AssetID,
+		source: spriteFrameRect(
+			frame.Column,
+			frame.Row,
+			sprite.resource.FrameWidth,
+			sprite.resource.FrameHeight,
+		),
+		originX: sprite.resource.OriginX,
+		originY: sprite.resource.OriginY,
+		scale:   scale,
+		tint:    sprite.resource.Tint,
+		tintSet: sprite.resource.TintSet,
+	}, true
 }

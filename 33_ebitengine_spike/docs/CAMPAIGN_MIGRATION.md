@@ -80,7 +80,8 @@ automation pause를 게임의 pause menu와 합치지 않는다.
 - [x] projectile/status/secondary ability/multi-hit 전투 fixture
 - [x] actor-local platformer 이동과 authored shape presentation fixture
 - [x] authored encounter wave·boss phase·session fixture
-- [ ] sprite clip·ability visual·audio의 완전한 data-driven presentation
+- [x] sprite clip·instance override·ability visual의 data-driven presentation
+- [ ] audio cue와 전체 오디오의 data-driven presentation
 
 ## 현재 인수 근거
 
@@ -105,8 +106,11 @@ automation pause를 게임의 pause menu와 합치지 않는다.
 `gamebuild → gameapp View → Ebitengine renderer` 경계를 그대로 통과한다.
 실제 Ubuntu arm64 창을 2 tick만 실행해 960×540 PNG를 캡처하고 자동
 종료하는 visual acceptance로 타일 레이어, 카메라 변환, Tiled flip flag와
-충돌벽 overlay를 확인했다. sprite clip·ability visual·audio까지
-data-driven이라는 뜻은 아니며 해당 작업은 별도 gate로 남긴다.
+충돌벽 overlay를 확인했다. 같은 제한 실행에서 grove 보스의 authored
+`scale=4`와 보라 tint를 확인했다. sprite sheet geometry, clip FPS/loop,
+state map, non-looping 공격 시간과 `ability.sword_slash.visual`은 typed
+`gamebuild → View → Ebitengine` 경계를 사용한다. audio는 별도 gate로
+남긴다.
 
 `stage.action_room`은 실제 창을 실행한 채 protocol로 player와 slime
 좌표를 고정하고 `ability.fire_bolt`를 queue했다. 동일 tick의 화면에서

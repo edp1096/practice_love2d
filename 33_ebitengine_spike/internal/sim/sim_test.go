@@ -233,6 +233,47 @@ func TestAttackPhasesLockMovementAndApplyTransactionalImpactOnce(t *testing.T) {
 	}
 }
 
+func TestRenderFramePublishesContinuousAttackAnimationTime(t *testing.T) {
+	t.Parallel()
+
+	config := baseConfig()
+	config.Entities = config.Entities[:1]
+	config.Entities[0].Ability = &AbilityConfig{
+		ID:            "animation",
+		WindupTicks:   2,
+		ActiveTicks:   2,
+		RecoveryTicks: 2,
+		CooldownTicks: 8,
+		Reach:         Pixels(1),
+		ArcDegrees:    90,
+		Damage:        1,
+	}
+	simulation := mustNew(t, config)
+
+	for tick, want := range []int{0, 1, 2, 3, 4, 5} {
+		input := Input{}
+		if tick == 0 {
+			input.Attack = true
+		}
+		simulation.Tick(input)
+		actor := simulation.RenderFrame().Actors[0]
+		if actor.Attack == AttackIdle || actor.AttackTicks != want {
+			t.Fatalf(
+				"step %d attack=%q animation ticks=%d, want active/%d",
+				tick,
+				actor.Attack,
+				actor.AttackTicks,
+				want,
+			)
+		}
+	}
+	simulation.Tick(Input{})
+	actor := simulation.RenderFrame().Actors[0]
+	if actor.Attack != AttackIdle || actor.AttackTicks != 0 {
+		t.Fatalf("finished attack presentation = %#v", actor)
+	}
+}
+
 func TestAbilityIDUsesIndependentCooldownAndStableEvents(t *testing.T) {
 	config := baseConfig()
 	config.Entities[0].Combat = &CombatConfig{

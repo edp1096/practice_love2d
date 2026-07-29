@@ -35,20 +35,22 @@ func (s *Simulation) RenderFrame() RenderFrame {
 			phase = entity.attack.phase
 		}
 		actors = append(actors, RenderEntity{
-			ID:        entity.config.ID,
-			Kind:      entity.config.Kind,
-			Name:      entity.config.Name,
-			Position:  entity.position,
-			Body:      entity.config.Body,
-			Facing:    entity.facing,
-			Health:    entity.health,
-			MaxHealth: entity.config.MaxHealth,
-			Dead:      entity.dead,
-			Attack:    phase,
-			Staggered: entity.staggerTicks > 0,
-			Dodging:   entity.dodge.active(),
-			Parrying:  entity.parryTicks > 0,
-			Statuses:  s.statusSnapshots(entity),
+			ID:          entity.config.ID,
+			Kind:        entity.config.Kind,
+			Name:        entity.config.Name,
+			Position:    entity.position,
+			Body:        entity.config.Body,
+			Facing:      entity.facing,
+			Health:      entity.health,
+			MaxHealth:   entity.config.MaxHealth,
+			Dead:        entity.dead,
+			Attack:      phase,
+			AbilityID:   activeAbilityID(entity),
+			AttackTicks: s.attackElapsed(entity),
+			Staggered:   entity.staggerTicks > 0,
+			Dodging:     entity.dodge.active(),
+			Parrying:    entity.parryTicks > 0,
+			Statuses:    s.statusSnapshots(entity),
 		})
 	}
 	projectiles := make([]RenderProjectile, 0, len(s.projectileOrder))
@@ -74,6 +76,24 @@ func (s *Simulation) RenderFrame() RenderFrame {
 		Dialogue:    s.dialogueSnapshot(),
 		Quests:      s.questSnapshots(),
 		Hitstop:     s.hitstop > 0,
+	}
+}
+
+func (s *Simulation) attackElapsed(entity *entityRuntime) int {
+	ability := activeAbility(entity)
+	if entity == nil || entity.attack == nil || ability == nil {
+		return 0
+	}
+	elapsed := int(s.worldTick - entity.attack.phaseStartTick)
+	switch entity.attack.phase {
+	case AttackWindup:
+		return elapsed
+	case AttackActive:
+		return ability.WindupTicks + elapsed
+	case AttackRecovery:
+		return ability.WindupTicks + ability.ActiveTicks + elapsed
+	default:
+		return 0
 	}
 }
 

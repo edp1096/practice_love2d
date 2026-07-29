@@ -574,21 +574,28 @@ func (runtime *Runtime) View() ebitapp.View {
 			state = "move_" + direction
 		}
 		entityView := ebitapp.EntityView{
-			ID:        actor.ID,
-			SpriteID:  metadata.SpriteID,
-			State:     state,
-			X:         coordPixels(actor.Position.X),
-			Y:         coordPixels(actor.Position.Y),
-			Radius:    coordPixels(actor.Body.HalfWidth),
-			Width:     coordPixels(actor.Body.HalfWidth * 2),
-			Height:    coordPixels(actor.Body.HalfHeight * 2),
-			FacingX:   coordPixels(actor.Facing.X),
-			FacingY:   coordPixels(actor.Facing.Y),
-			Layer:     10,
-			Health:    float64(actor.Health),
-			MaxHealth: float64(actor.MaxHealth),
-			Flash:     flash[actor.ID],
-			Tint:      statusTint(actor.Statuses),
+			ID:            actor.ID,
+			SpriteID:      metadata.SpriteID,
+			State:         state,
+			AnimationTick: snapshot.WorldTick,
+			SpriteScale:   metadata.SpriteScale,
+			SpriteTint:    presentationColor(metadata.SpriteTint),
+			SpriteTintSet: metadata.SpriteTintSet,
+			X:             coordPixels(actor.Position.X),
+			Y:             coordPixels(actor.Position.Y),
+			Radius:        coordPixels(actor.Body.HalfWidth),
+			Width:         coordPixels(actor.Body.HalfWidth * 2),
+			Height:        coordPixels(actor.Body.HalfHeight * 2),
+			FacingX:       coordPixels(actor.Facing.X),
+			FacingY:       coordPixels(actor.Facing.Y),
+			Layer:         10,
+			Health:        float64(actor.Health),
+			MaxHealth:     float64(actor.MaxHealth),
+			Flash:         flash[actor.ID],
+			Tint:          statusTint(actor.Statuses),
+		}
+		if actor.Attack != sim.AttackIdle {
+			entityView.AnimationTick = uint64(max(0, actor.AttackTicks))
 		}
 		if metadata.Shape != nil {
 			entityView.Shape = metadata.Shape.Kind
@@ -606,19 +613,31 @@ func (runtime *Runtime) View() ebitapp.View {
 			}
 		}
 		view.Entities = append(view.Entities, entityView)
-		if actor.Attack == sim.AttackActive &&
-			metadata.SpriteID == "sprite.hero" {
+		if actor.Attack == sim.AttackActive {
+			visual, exists := runtime.built.Presentation.AbilityVisual(
+				actor.AbilityID,
+			)
+			if !exists {
+				continue
+			}
 			angle := math.Atan2(
 				coordPixels(actor.Facing.Y),
 				coordPixels(actor.Facing.X),
 			)
+			distance := visual.Distance
+			if distance == 0 {
+				distance = entityView.Radius * 0.55
+			}
 			view.Effects = append(view.Effects, ebitapp.EffectView{
-				Kind:     "slash",
-				X:        coordPixels(actor.Position.X) + math.Cos(angle)*31,
-				Y:        coordPixels(actor.Position.Y) + math.Sin(angle)*31,
-				Rotation: angle,
-				Scale:    1.2,
-				Opacity:  0.9,
+				Kind:    "ability",
+				AssetID: visual.AssetID,
+				X: coordPixels(actor.Position.X) +
+					math.Cos(angle)*distance,
+				Y: coordPixels(actor.Position.Y) +
+					math.Sin(angle)*distance,
+				Rotation: angle + visual.RotationOffset,
+				Scale:    visual.Scale,
+				Opacity:  0.95,
 			})
 		}
 	}

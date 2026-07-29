@@ -217,6 +217,7 @@ type Game struct {
 	canvas  *ebiten.Image
 	images  map[string]*ebiten.Image
 	filters map[string]ebiten.Filter
+	sprites map[string]loadedSprite
 	font    *text.GoTextFaceSource
 	capture chan captureRequest
 
@@ -248,6 +249,14 @@ func NewWithOptions(model Model, options Options) (*Game, error) {
 	if err != nil {
 		return nil, err
 	}
+	var spriteResources []SpriteResource
+	if provider, ok := model.(SpriteResourceProvider); ok {
+		spriteResources = provider.SpriteResources()
+	}
+	sprites, err := loadSpriteResources(spriteResources, images)
+	if err != nil {
+		return nil, err
+	}
 	fontData, err := gameassets.ReadFile(
 		"fonts/Hakgyoansim_ChaekgalpiR.ttf",
 	)
@@ -263,6 +272,7 @@ func NewWithOptions(model Model, options Options) (*Game, error) {
 		canvas:  ebiten.NewImage(ScreenWidth, ScreenHeight),
 		images:  images,
 		filters: filters,
+		sprites: sprites,
 		font:    font,
 		capture: make(chan captureRequest, 8),
 		options: options,
@@ -855,7 +865,7 @@ func wallPolygonScreenPoints(view View, wall RectView) []PointView {
 func (game *Game) drawEntity(view View, entity EntityView) {
 	x, y := game.screenPoint(view, entity.X, entity.Y)
 	zoom := cameraZoom(view)
-	spec, found := spriteFrame(view.Tick, entity)
+	spec, found := spriteFrame(game.sprites, entity)
 	if found {
 		source := game.images[spec.asset]
 		if source != nil {
@@ -868,6 +878,15 @@ func (game *Game) drawEntity(view View, entity EntityView) {
 			)
 			options.GeoM.Scale(spec.scale*zoom, spec.scale*zoom)
 			options.GeoM.Translate(x, y)
+			spriteTint := spec.tint
+			spriteTintSet := spec.tintSet
+			if entity.SpriteTintSet {
+				spriteTint = entity.SpriteTint
+				spriteTintSet = true
+			}
+			if spriteTintSet {
+				options.ColorScale.ScaleWithColor(spriteTint)
+			}
 			if entity.Tint.A != 0 {
 				options.ColorScale.ScaleWithColor(entity.Tint)
 			}
@@ -978,6 +997,24 @@ func (game *Game) drawEffect(view View, effect EffectView) {
 		opacity = 1
 	}
 	alpha := uint8(max(0, min(1, opacity)) * 255)
+	if effect.AssetID != "" {
+		source := game.images[effect.AssetID]
+		if source == nil {
+			return
+		}
+		options := &ebiten.DrawImageOptions{}
+		options.Filter = game.filters[effect.AssetID]
+		options.GeoM.Translate(
+			-float64(source.Bounds().Dx())/2,
+			-float64(source.Bounds().Dy())/2,
+		)
+		options.GeoM.Scale(scale*zoom, scale*zoom)
+		options.GeoM.Rotate(effect.Rotation)
+		options.GeoM.Translate(x, y)
+		options.ColorScale.ScaleAlpha(float32(opacity))
+		game.canvas.DrawImage(source, options)
+		return
+	}
 	switch effect.Kind {
 	case "parry":
 		radius := float32(28 * scale * zoom)
@@ -1010,25 +1047,9 @@ func (game *Game) drawEffect(view View, effect EffectView) {
 			true,
 		)
 		return
-	case "slash":
 	default:
 		return
 	}
-	source := game.images["image.slash"]
-	if source == nil {
-		return
-	}
-	options := &ebiten.DrawImageOptions{}
-	options.Filter = ebiten.FilterNearest
-	options.GeoM.Translate(
-		-float64(source.Bounds().Dx())/2,
-		-float64(source.Bounds().Dy())/2,
-	)
-	options.GeoM.Scale(scale*zoom, scale*zoom)
-	options.GeoM.Rotate(effect.Rotation)
-	options.GeoM.Translate(x, y)
-	options.ColorScale.ScaleAlpha(float32(opacity))
-	game.canvas.DrawImage(source, options)
 }
 
 func cameraZoom(view View) float64 {

@@ -90,11 +90,6 @@ func ValidateDefinition(
 				))
 			}
 		}
-		if _, exists := data["visual"]; exists {
-			unsupported(
-				"ability visual metadata is not data-driven yet",
-			)
-		}
 		for _, item := range effects {
 			effect, _ := item.(map[string]any)
 			switch effect["type"] {
@@ -275,9 +270,6 @@ func ValidateDefinition(
 		if err := validateSpriteSemantics(catalog, data, id); err != nil {
 			return DefinitionValidation{}, err
 		}
-		unsupported(
-			"sprite clips are currently mapped by the renderer adapter",
-		)
 
 	case "encounter":
 		if err := validateEncounterSemantics(catalog, data, id); err != nil {

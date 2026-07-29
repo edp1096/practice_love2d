@@ -21,12 +21,50 @@ type ImageResourceProvider interface {
 	ImageResources() []ImageResource
 }
 
+// SpriteResourceProvider optionally supplies authored animation resources.
+// Definitions are immutable copies and refer to ImageResource IDs.
+type SpriteResourceProvider interface {
+	SpriteResources() []SpriteResource
+}
+
 type ImageResource struct {
 	ID     string
 	Path   string
 	Width  int
 	Height int
 	Filter string
+}
+
+type SpriteResource struct {
+	ID          string
+	AssetID     string
+	FrameWidth  int
+	FrameHeight int
+	OriginX     float64
+	OriginY     float64
+	Scale       float64
+	Tint        color.RGBA
+	TintSet     bool
+	DefaultClip string
+	Clips       []SpriteClipResource
+	StateMap    []SpriteStateResource
+}
+
+type SpriteClipResource struct {
+	ID     string
+	FPS    float64
+	Loop   bool
+	Frames []SpriteFrameResource
+}
+
+type SpriteFrameResource struct {
+	Column int
+	Row    int
+}
+
+type SpriteStateResource struct {
+	State string
+	Clip  string
 }
 
 // View is an immutable render snapshot produced after a simulation tick.
@@ -110,9 +148,13 @@ type PointView struct {
 }
 
 type EntityView struct {
-	ID       string
-	SpriteID string
-	State    string
+	ID            string
+	SpriteID      string
+	State         string
+	AnimationTick uint64
+	SpriteScale   float64
+	SpriteTint    color.RGBA
+	SpriteTintSet bool
 
 	X       float64
 	Y       float64
@@ -133,6 +175,7 @@ type EntityView struct {
 
 type EffectView struct {
 	Kind     string
+	AssetID  string
 	X        float64
 	Y        float64
 	Rotation float64
