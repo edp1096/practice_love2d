@@ -101,7 +101,7 @@ func TestCLIMapsUsefulCommandsToProtocol(t *testing.T) {
 		{"pause", "true"},
 		{"step", "--frames", "4", "--dt", "0.0166666667"},
 		{"reload"},
-		{"new-game"},
+		{"new-game", "stage.world_hub", "village_entry", "locale.ko"},
 		{"save", "slot-1"},
 		{"load", "slot-1"},
 		{"quit"},
@@ -215,6 +215,12 @@ func TestCLIMapsUsefulCommandsToProtocol(t *testing.T) {
 	step := calls[27].Params.(protocol.StepParams)
 	if step.Frames != 4 || step.DT == nil {
 		t.Fatalf("unexpected step params: %+v", step)
+	}
+	newGame := calls[29].Params.(protocol.StartNewGameParams)
+	if newGame.StageID != "stage.world_hub" ||
+		newGame.SpawnID != "village_entry" ||
+		newGame.LocaleID != "locale.ko" {
+		t.Fatalf("unexpected new-game params: %+v", newGame)
 	}
 }
 
@@ -386,6 +392,7 @@ func TestCLIRejectsUnsafeOrMalformedInput(t *testing.T) {
 		{"equip", "item.sword", "extra"},
 		{"unequip"},
 		{"unequip", "weapon", "extra"},
+		{"new-game", "stage.village", "default", "locale.ko", "extra"},
 		{"pause", "maybe"},
 		{"validate", "actor.hero", "-"},
 		{"call", "Runtime.getState", "[]"},

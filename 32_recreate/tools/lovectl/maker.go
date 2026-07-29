@@ -1128,13 +1128,33 @@ func runMaker(
 		false,
 		"do not open the system browser",
 	)
+	backend := flags.String(
+		"backend",
+		makerBackendLove,
+		"preview runtime: love or ebitengine",
+	)
+	ebitenginePath := flags.String(
+		"ebitengine",
+		"",
+		"33_ebitengine_spike path (defaults to the project sibling)",
+	)
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
 	if len(flags.Args()) != 0 {
 		return errors.New(
-			"usage: lovectl maker [--listen 127.0.0.1:PORT] [--no-open]",
+			"usage: lovectl maker [--backend love|ebitengine] [--ebitengine PATH] [--listen 127.0.0.1:PORT] [--no-open]",
 		)
+	}
+	if *backend != makerBackendLove &&
+		*backend != makerBackendEbitengine {
+		return fmt.Errorf(
+			"unsupported Maker backend %q; use love or ebitengine",
+			*backend,
+		)
+	}
+	if *backend == makerBackendLove && *ebitenginePath != "" {
+		return errors.New("--ebitengine requires --backend ebitengine")
 	}
 	if err := validateMakerListenAddress(*listenAddress); err != nil {
 		return err
@@ -1151,7 +1171,13 @@ func runMaker(
 		return err
 	}
 	defer os.RemoveAll(runtimeDirectory)
-	logPath := filepath.Join(runtimeDirectory, "love.log")
+	runtimeName := "LÖVE"
+	logName := "love.log"
+	if *backend == makerBackendEbitengine {
+		runtimeName = "Ebitengine"
+		logName = "ebitengine.log"
+	}
+	logPath := filepath.Join(runtimeDirectory, logName)
 	logFile, err := os.Create(logPath)
 	if err != nil {
 		return err
@@ -1161,15 +1187,73 @@ func runMaker(
 	if err != nil {
 		return err
 	}
-	process, err := startLove(
-		options.lovePath,
-		projectPath,
-		debugPort,
-		logFile,
-		runtimeDirectory,
-	)
+	var process *loveProcess
+	var runtimeClient makerRuntime
+	if *backend == makerBackendLove {
+		process, err = startLove(
+			options.lovePath,
+			projectPath,
+			debugPort,
+			logFile,
+			runtimeDirectory,
+		)
+		runtimeClient = newProtocolClient(
+			"127.0.0.1",
+			debugPort,
+			20*time.Second,
+		)
+	} else {
+		var root string
+		root, err = resolveEbitengineRoot(
+			*ebitenginePath,
+			projectPath,
+		)
+		if err == nil {
+			var tools ebitMakerTools
+			tools, err = buildEbitMakerTools(
+				root,
+				runtimeDirectory,
+				logFile,
+			)
+			if err == nil {
+				compile := func() error {
+					return compileEbitMakerCatalog(
+						tools,
+						projectPath,
+						root,
+						logFile,
+					)
+				}
+				err = compile()
+				if err == nil {
+					process, err = startEbitMakerPreview(
+						tools,
+						root,
+						debugPort,
+						logFile,
+						runtimeDirectory,
+					)
+				}
+				if err == nil {
+					runtimeClient = &ebitMakerRuntime{
+						delegate: newProtocolClient(
+							"127.0.0.1",
+							debugPort,
+							20*time.Second,
+						),
+						compileCatalog: compile,
+					}
+				}
+			}
+		}
+	}
 	if err != nil {
-		return err
+		return fmt.Errorf(
+			"start %s Maker preview: %w (log: %s)",
+			runtimeName,
+			err,
+			logPath,
+		)
 	}
 	defer forceStop(process)
 	client := newProtocolClient(
@@ -1177,20 +1261,21 @@ func runMaker(
 		debugPort,
 		20*time.Second,
 	)
-	if err := waitForBridge(
+	if err := waitForMakerBridge(
 		client,
 		process,
+		runtimeName,
 		20*time.Second,
 	); err != nil {
-		return visualFailure(err, logPath)
+		return fmt.Errorf("%w (log: %s)", err, logPath)
 	}
 	var started map[string]any
-	if err := client.call(
+	if err := runtimeClient.call(
 		"App.startNewGame",
 		nil,
 		&started,
 	); err != nil {
-		return visualFailure(err, logPath)
+		return fmt.Errorf("%w (log: %s)", err, logPath)
 	}
 	token, err := newMakerToken()
 	if err != nil {
@@ -1199,13 +1284,13 @@ func runMaker(
 	maker := &makerServer{
 		projectPath: projectPath,
 		runtime: &synchronizedMakerRuntime{
-			delegate: client,
+			delegate: runtimeClient,
 		},
 		token:       token,
 		allowedHost: listener.Addr().String(),
 	}
 	if err := maker.refreshGraph(); err != nil {
-		return visualFailure(err, logPath)
+		return fmt.Errorf("%w (log: %s)", err, logPath)
 	}
 
 	httpServer := &http.Server{
@@ -1223,10 +1308,12 @@ func runMaker(
 	fmt.Printf(
 		"Recreate Maker: %s\n"+
 			"  project: %s\n"+
+			"  preview backend: %s\n"+
 			"  preview save data is isolated\n"+
 			"  press Ctrl+C to stop\n",
 		address,
 		projectPath,
+		runtimeName,
 	)
 	if !*noOpen {
 		command := exec.Command("xdg-open", address)
@@ -1255,7 +1342,8 @@ func runMaker(
 	case processError := <-process.done:
 		process.command = nil
 		runError = fmt.Errorf(
-			"LÖVE preview exited: %w (log: %s)",
+			"%s preview exited: %w (log: %s)",
+			runtimeName,
 			processError,
 			logPath,
 		)

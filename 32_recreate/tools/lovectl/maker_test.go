@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -145,6 +146,98 @@ func (runtime *blockingMakerRuntime) callSequence() []string {
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
 	return append([]string(nil), runtime.calls...)
+}
+
+type ebitAdapterTestRuntime struct {
+	calls       []string
+	startParams map[string]any
+}
+
+func (runtime *ebitAdapterTestRuntime) call(
+	method string,
+	params map[string]any,
+	target any,
+) error {
+	runtime.calls = append(runtime.calls, method)
+	switch method {
+	case "Campaign.getState":
+		return assignMakerTarget(target, map[string]any{
+			"current_stage_id": "stage.world_hub",
+			"entry_spawn_id":   "village_entry",
+			"locale":           "locale.ko",
+		})
+	case "App.startNewGame":
+		runtime.startParams = params
+		return assignMakerTarget(target, map[string]any{
+			"started": true,
+		})
+	case "Content.getGraph":
+		return assignMakerTarget(target, contentGraph{})
+	default:
+		return errors.New("unexpected method: " + method)
+	}
+}
+
+func TestEbitMakerRuntimeCompilesThenRebuildsTheCurrentPreview(t *testing.T) {
+	delegate := &ebitAdapterTestRuntime{}
+	compileCalls := 0
+	runtime := &ebitMakerRuntime{
+		delegate: delegate,
+		compileCatalog: func() error {
+			compileCalls++
+			return nil
+		},
+	}
+	var result map[string]any
+	if err := runtime.call("App.reloadContent", nil, &result); err != nil {
+		t.Fatal(err)
+	}
+	if compileCalls != 1 ||
+		!reflect.DeepEqual(
+			delegate.calls,
+			[]string{"Campaign.getState", "App.startNewGame"},
+		) ||
+		delegate.startParams["stageId"] != "stage.world_hub" ||
+		delegate.startParams["spawnId"] != "village_entry" ||
+		delegate.startParams["localeId"] != "locale.ko" ||
+		result["started"] != true {
+		t.Fatalf(
+			"Ebitengine Maker reload = compile %d calls %#v params %#v result %#v",
+			compileCalls,
+			delegate.calls,
+			delegate.startParams,
+			result,
+		)
+	}
+
+	if err := runtime.call("Content.getGraph", nil, &result); err != nil {
+		t.Fatal(err)
+	}
+	if compileCalls != 1 ||
+		delegate.calls[len(delegate.calls)-1] != "Content.getGraph" {
+		t.Fatalf("read-only call triggered compile: %#v", delegate.calls)
+	}
+}
+
+func TestEbitMakerRuntimeDoesNotMutatePreviewAfterCompileFailure(t *testing.T) {
+	delegate := &ebitAdapterTestRuntime{}
+	runtime := &ebitMakerRuntime{
+		delegate: delegate,
+		compileCatalog: func() error {
+			return errors.New("invalid source")
+		},
+	}
+	if err := runtime.call(
+		"App.reloadContent",
+		nil,
+		&map[string]any{},
+	); err == nil || !strings.Contains(err.Error(), "invalid source") {
+		t.Fatalf("compile failure = %v", err)
+	}
+	if !reflect.DeepEqual(delegate.calls, []string{"Campaign.getState"}) ||
+		delegate.startParams != nil {
+		t.Fatalf("compile failure mutated preview: %#v", delegate.calls)
+	}
 }
 
 type eofNotifyingReader struct {

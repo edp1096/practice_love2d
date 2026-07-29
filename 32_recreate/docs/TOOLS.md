@@ -9,6 +9,7 @@ semantic debug protocol과 transactional reload를 사용해 콘텐츠 제작을
 ```bash
 go run ./tools/lovectl maker
 go run ./tools/lovectl maker --no-open --listen 127.0.0.1:0
+go run ./tools/lovectl maker --backend ebitengine
 ```
 
 `maker`는 실제 프로젝트를 읽는 격리된 LÖVE 미리보기와 loopback 전용
@@ -30,6 +31,16 @@ stage는 읽기 전용이다. 저장 요청은 읽을 때 받은 SHA-256 revisio
 
 Maker 미리보기의 save identity와 XDG 디렉터리는 실제 플레이 데이터와
 분리된다. 타일맵 편집은 [MAPS.md](MAPS.md)의 Tiled 작업 흐름을 사용한다.
+
+기본 backend는 `love`다. `--backend ebitengine`은 프로젝트와 나란히
+있는 `33_ebitengine_spike`를 빌드하고 같은 Maker UI와 protocol v8
+계약에 연결한다. 다른 위치에 있으면
+`--ebitengine /path/to/33_ebitengine_spike`를 함께 지정한다.
+저장할 때 전체 Lua authoring source를 임시 canonical catalog로 먼저
+컴파일한 뒤, 현재 stage·spawn·locale을 새 Ebitengine World에서
+구축한다. 컴파일이나 구축이 실패하면 실행 중 화면을 바꾸지 않고 Maker가
+원본 source를 복구한다. stage, actor, ability, dialogue preview와 화면
+캡처는 두 backend에서 같은 HTTP API를 사용한다.
 
 ## 콘텐츠 생성
 

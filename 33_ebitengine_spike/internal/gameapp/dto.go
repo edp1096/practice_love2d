@@ -11,6 +11,9 @@ type runtimeStateDTO struct {
 	Engine      string `json:"engine"`
 	Go          string `json:"go"`
 	Protocol    int    `json:"protocol"`
+	Project     string `json:"project"`
+	Profile     string `json:"profile"`
+	Title       string `json:"title"`
 	StageID     string `json:"stage_id"`
 	StageName   string `json:"stage_name"`
 	Tick        uint64 `json:"tick"`

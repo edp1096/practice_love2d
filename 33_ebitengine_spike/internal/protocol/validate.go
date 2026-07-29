@@ -130,12 +130,30 @@ func parseCall(request Request, fixedStepSeconds float64) (Call, *Error) {
 		MethodShopClose,
 		MethodPageCaptureScreenshot,
 		MethodAppReloadContent,
-		MethodAppStartNewGame,
 		MethodAppQuit:
 		if err := decodeEmptyParams(request.Params); err != nil {
 			return Call{}, err
 		}
 		return Call{Method: request.Method, Params: EmptyParams{}}, nil
+
+	case MethodAppStartNewGame:
+		var params StartNewGameParams
+		if err := decodeParams(request.Params, &params); err != nil {
+			return Call{}, err
+		}
+		for name, value := range map[string]string{
+			"stageId":  params.StageID,
+			"spawnId":  params.SpawnID,
+			"localeId": params.LocaleID,
+		} {
+			if value == "" {
+				continue
+			}
+			if err := requireIdentifier(name, value); err != nil {
+				return Call{}, err
+			}
+		}
+		return Call{Method: request.Method, Params: params}, nil
 
 	case MethodContentGetDefinition:
 		var params ContentIDParams

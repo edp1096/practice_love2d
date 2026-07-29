@@ -32,10 +32,14 @@ func (runtime *Runtime) Call(
 	case protocol.MethodRuntimeGetState:
 		runtime.mu.RLock()
 		snapshot := runtime.simulation.Snapshot()
+		project := runtime.catalog.Project()
 		result := runtimeStateDTO{
 			Engine:      ebitengineVersion(),
 			Go:          goruntime.Version(),
 			Protocol:    protocol.Version,
+			Project:     project.ID,
+			Profile:     project.Profile,
+			Title:       project.Title,
 			StageID:     runtime.built.Presentation.StageID,
 			StageName:   runtime.built.Presentation.StageName,
 			Tick:        snapshot.Tick,
@@ -331,18 +335,40 @@ func (runtime *Runtime) Call(
 		}{true, snapshot.Tick, count}, nil
 
 	case protocol.MethodAppStartNewGame:
-		if err := runtime.startNewGame(ctx); err != nil {
+		var params protocol.StartNewGameParams
+		switch value := call.Params.(type) {
+		case protocol.StartNewGameParams:
+			params = value
+		case protocol.EmptyParams:
+			// Keep direct in-process v8 callers source-compatible. Wire calls
+			// are always normalized to StartNewGameParams by protocol.
+		default:
+			return nil, invalidBackendParams(call.Method)
+		}
+		if err := runtime.startNewGameAt(ctx, params); err != nil {
 			return nil, err
 		}
 		runtime.mu.RLock()
 		snapshot := runtime.simulation.Snapshot()
 		revision := runtime.revision
+		stageID := runtime.built.Stage.ID
+		location := runtime.campaign.Snapshot()
 		runtime.mu.RUnlock()
 		return struct {
 			Started  bool   `json:"started"`
+			StageID  string `json:"stage_id"`
+			SpawnID  string `json:"spawn_id"`
+			LocaleID string `json:"locale_id"`
 			Tick     uint64 `json:"tick"`
 			Revision uint64 `json:"revision"`
-		}{true, snapshot.Tick, revision}, nil
+		}{
+			Started:  true,
+			StageID:  stageID,
+			SpawnID:  location.EntrySpawnID,
+			LocaleID: location.Locale,
+			Tick:     snapshot.Tick,
+			Revision: revision,
+		}, nil
 
 	case protocol.MethodAppSave:
 		params, ok := call.Params.(protocol.SaveSlotParams)

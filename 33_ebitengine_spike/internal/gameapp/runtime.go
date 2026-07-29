@@ -19,6 +19,7 @@ import (
 	"practice_love2d/33_ebitengine_spike/internal/content"
 	"practice_love2d/33_ebitengine_spike/internal/ebitapp"
 	"practice_love2d/33_ebitengine_spike/internal/gamebuild"
+	"practice_love2d/33_ebitengine_spike/internal/protocol"
 	"practice_love2d/33_ebitengine_spike/internal/rulesruntime"
 	"practice_love2d/33_ebitengine_spike/internal/sim"
 	"practice_love2d/33_ebitengine_spike/internal/storage"
@@ -529,6 +530,37 @@ func restoreReloadedCampaign(
 }
 
 func (runtime *Runtime) startNewGame(ctx context.Context) error {
+	return runtime.startNewGameWithBuildOptions(
+		ctx,
+		runtime.buildOverrides,
+	)
+}
+
+func (runtime *Runtime) startNewGameAt(
+	ctx context.Context,
+	params protocol.StartNewGameParams,
+) error {
+	options := runtime.buildOverrides
+	if params.StageID != "" {
+		options.StageID = params.StageID
+		// A spawn override belongs to its original stage. Let the selected
+		// stage resolve its own authored entry unless Maker explicitly chose
+		// one for this request.
+		options.SpawnID = ""
+	}
+	if params.SpawnID != "" {
+		options.SpawnID = params.SpawnID
+	}
+	if params.LocaleID != "" {
+		options.LocaleID = params.LocaleID
+	}
+	return runtime.startNewGameWithBuildOptions(ctx, options)
+}
+
+func (runtime *Runtime) startNewGameWithBuildOptions(
+	ctx context.Context,
+	overrides gamebuild.Options,
+) error {
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
 
@@ -542,7 +574,7 @@ func (runtime *Runtime) startNewGame(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	resolved := resolveBuildOptions(catalog, runtime.buildOverrides)
+	resolved := resolveBuildOptions(catalog, overrides)
 	campaignConfig, err := gamebuild.BuildCampaignConfig(catalog)
 	if err != nil {
 		return err

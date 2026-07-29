@@ -1,6 +1,6 @@
 # Ebitengine 전환 검증
 
-기준일: 2026-07-29
+기준일: 2026-07-30
 
 ## 결론
 
@@ -141,6 +141,14 @@ presentation gate까지 통과했다. 다만 아래에 남은 runtime 편집·�
   World rebuild, UI, protocol에 일관되게 반영
 - `Flow.getState`, `Flow.move`, `Flow.activate`로 현재 게임 흐름 화면을
   의미 ID 기반으로 조회·제어
+- protocol v8 `App.startNewGame`의 선택형 stage·spawn·locale로 기존
+  LÖVE Maker와 같은 stage preview 계약 제공
+- 기존 브라우저 Maker의 `--backend love|ebitengine` 선택, 전체 Lua
+  source → 임시 canonical catalog 컴파일, 현재 preview 위치의 원자적
+  재구축, 실패 시 source/runtime 복구
+- Ebitengine Maker 실제 실행에서 정의 54개 graph 조회,
+  `stage.action_room/default` 전환, `actor.slime` 동적 생성과
+  960×540 screenshot을 확인한 뒤 정상 종료
 - project manifest의 master/music/SFX volume과 stage별 BGM,
   simulation·quest·UI semantic event별 cue를 typed presentation으로
   변환
@@ -206,7 +214,6 @@ presentation gate까지 통과했다. 다만 아래에 남은 runtime 편집·�
 다음 항목은 `32_recreate`가 계속 기준 명세여야 하는 이유다.
 
 - 장비 공격력 이외의 확장 RPG stat·상태이상 계산
-- 실행 중 정의 반영과 stage/entity 생성 편집
 - 모바일·웹 패키징
 - 콘솔별 storage, suspend/resume, safe-area, controller-user 정책
 
@@ -222,15 +229,16 @@ presentation gate까지 통과했다. 다만 아래에 남은 runtime 편집·�
 4. ~~secondary ability, projectile, status, multi-hit을 옮긴다.~~ 완료
    ~~platformer fixture stage와 encounter/wave/boss fixture도 옮긴다.~~
    완료
-5. Maker가 LÖVE/Ebitengine backend를 선택해 같은 프로젝트를 미리 볼
-   수 있게 한다.
+5. ~~Maker가 LÖVE/Ebitengine backend를 선택해 같은 프로젝트를 미리 볼
+   수 있게 한다.~~ 완료
 6. Windows 실기와 macOS 실기 패키징을 통과시킨다.
 7. 제조사 승인을 확보한 플랫폼만 별도 adapter·SDK branch에서
    개발기 acceptance를 수행한다.
 
-기능·sprite clip·ability visual·audio presentation gate는 통과했다.
-남은 runtime 편집과 Maker backend 선택 gate를 통과하기 전에는
-`33_ebitengine_spike`를 본 런타임으로 승격하지 않는다.
+기능·sprite clip·ability visual·audio presentation·runtime Maker
+editing gate는 통과했다. 남은 web/mobile packaging과 확장 RPG stat
+gate를 닫기 전에는 `33_ebitengine_spike`를 본 런타임으로 승격하지
+않는다.
 
 자동화의 `Emulation.step` 정지는 위 game-flow의 pause menu와 별도
 상태다. 전자는 테스트 clock만 멈추고, 후자는 게임 안의 UI/세션

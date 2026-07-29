@@ -104,6 +104,7 @@ go run ./cmd/recreatectl health quest.slime.1 1
 go run ./cmd/recreatectl save test-slot
 go run ./cmd/recreatectl load test-slot
 go run ./cmd/recreatectl new-game
+go run ./cmd/recreatectl new-game stage.action_room default locale.ko
 ```
 
 `dialogue`는 콘텐츠를 즉시 표시하는 Maker preview 명령이다. 실제 캠페인
@@ -138,6 +139,25 @@ go run ./cmd/recreatectl pause false
 `go test ./...` 경로를 사용한다. 실제 창 검증이 필요할 때만
 `-frames`를 지정한 단일 프로세스를 띄우며, 지정한 tick 뒤 자동으로
 종료한다.
+
+## Maker에서 편집
+
+기존 32의 브라우저 Maker가 같은 authoring source를 Ebitengine으로
+미리 볼 수 있다.
+
+```bash
+cd ../32_recreate
+go run ./tools/lovectl maker --backend ebitengine
+```
+
+종류별 정의 검색·참조 탐색·폼/JSON 편집·새 stage/actor/RPG 콘텐츠
+생성은 기존 Maker UI를 그대로 사용한다. 저장은 전체 source를 canonical
+catalog로 컴파일한 뒤 현재 stage·spawn·locale을 새 World에서 원자적으로
+구축한다. 실패하면 기존 실행 화면을 유지하고 source를 복구한다.
+stage 전환, actor 생성, ability/dialogue 실행과 실제 960×540 screenshot도
+동일한 semantic protocol을 사용한다. Ebitengine 경로가 프로젝트의
+형제 폴더가 아니면 `--ebitengine /path/to/33_ebitengine_spike`를
+지정한다.
 
 `step` 묶음은 취소되면 중간 프레임을 남기지 않고 전부 되돌린다.
 `screenshot` 출력에는 실제 렌더 tick과 revision이 함께 표시되어 상태

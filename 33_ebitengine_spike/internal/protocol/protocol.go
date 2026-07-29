@@ -341,6 +341,15 @@ type StepParams struct {
 	DT     *float64 `json:"dt,omitempty"`
 }
 
+// StartNewGameParams is empty for the normal authored start location. Maker
+// previews may select a stage, spawn, and locale without changing project
+// source or the runtime's command-line defaults.
+type StartNewGameParams struct {
+	StageID  string `json:"stageId,omitempty"`
+	SpawnID  string `json:"spawnId,omitempty"`
+	LocaleID string `json:"localeId,omitempty"`
+}
+
 type SaveSlotParams struct {
 	Slot string `json:"slot"`
 }

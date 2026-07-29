@@ -126,6 +126,92 @@ func TestExplicitStageDoesNotInheritManifestStartSpawn(t *testing.T) {
 	}
 }
 
+func TestMakerNewGameSelectsStageSpawnAndLocaleAtomically(t *testing.T) {
+	t.Parallel()
+	runtime := newTestRuntime(t)
+	callRuntime(
+		t,
+		runtime,
+		protocol.MethodAppStartNewGame,
+		protocol.StartNewGameParams{
+			StageID:  "stage.world_hub",
+			SpawnID:  "village_entry",
+			LocaleID: "locale.en",
+		},
+	)
+	world := runtime.worldSnapshotLocked()
+	player := worldEntity(t, world, "player")
+	if world.Stage.ID != "stage.world_hub" ||
+		player.X != 80 ||
+		player.Y != 288 ||
+		runtime.buildOptions.LocaleID != "locale.en" {
+		t.Fatalf(
+			"Maker stage preview = world %#v player %#v options %#v",
+			world.Stage,
+			player,
+			runtime.buildOptions,
+		)
+	}
+
+	beforeView := runtime.View()
+	beforeCampaign := runtime.CampaignState()
+	beforeOptions := runtime.buildOptions
+	beforeCatalog := runtime.catalog
+	_, err := runtime.Call(context.Background(), protocol.Call{
+		Method: protocol.MethodAppStartNewGame,
+		Params: protocol.StartNewGameParams{
+			StageID: "stage.missing",
+		},
+	})
+	if err == nil {
+		t.Fatal("Maker stage preview accepted a missing stage")
+	}
+	if !reflect.DeepEqual(runtime.View(), beforeView) ||
+		!reflect.DeepEqual(runtime.CampaignState(), beforeCampaign) ||
+		!reflect.DeepEqual(runtime.buildOptions, beforeOptions) ||
+		runtime.catalog != beforeCatalog {
+		t.Fatal("failed Maker stage preview mutated the active runtime")
+	}
+}
+
+func TestMakerNewGameAppliesAnEditedCanonicalDefinition(t *testing.T) {
+	t.Parallel()
+	catalogPath := filepath.Join(t.TempDir(), "catalog.json")
+	if err := os.WriteFile(catalogPath, gamecatalog.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store, err := storage.NewFileStore(filepath.Join(t.TempDir(), "saves"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime, err := New(Options{
+		CatalogPath: catalogPath,
+		Store:       store,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := worldEntity(
+		t,
+		runtime.worldSnapshotLocked(),
+		"player",
+	).MaxHealth; got != 100 {
+		t.Fatalf("initial player max health = %d", got)
+	}
+
+	writeCatalogActorMaxHealth(t, catalogPath, "actor.hero", 137)
+	callRuntime(
+		t,
+		runtime,
+		protocol.MethodAppStartNewGame,
+		protocol.StartNewGameParams{},
+	)
+	player := worldEntity(t, runtime.worldSnapshotLocked(), "player")
+	if player.MaxHealth != 137 || player.Health != 137 {
+		t.Fatalf("edited actor definition was not applied: %#v", player)
+	}
+}
+
 func TestNewGameAndReloadResolveCurrentManifestDefaults(t *testing.T) {
 	t.Parallel()
 	catalogPath := filepath.Join(t.TempDir(), "catalog.json")
@@ -253,6 +339,54 @@ func writeCatalogDefaultLocale(
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(path, encoded, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeCatalogActorMaxHealth(
+	t *testing.T,
+	path string,
+	actorID string,
+	maxHealth float64,
+) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document map[string]any
+	if err := json.Unmarshal(data, &document); err != nil {
+		t.Fatal(err)
+	}
+	definitions, ok := document["definitions"].([]any)
+	if !ok {
+		t.Fatal("catalog definitions are missing")
+	}
+	found := false
+	for _, raw := range definitions {
+		definition, _ := raw.(map[string]any)
+		value, _ := definition["data"].(map[string]any)
+		if value["id"] != actorID {
+			continue
+		}
+		components, _ := value["components"].(map[string]any)
+		health, _ := components["action.health"].(map[string]any)
+		if health == nil {
+			t.Fatalf("%s has no action.health component", actorID)
+		}
+		health["max"] = maxHealth
+		found = true
+		break
+	}
+	if !found {
+		t.Fatalf("catalog actor %q is missing", actorID)
+	}
+	encoded, err := json.MarshalIndent(document, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded = append(encoded, '\n')
 	if err := os.WriteFile(path, encoded, 0o600); err != nil {
 		t.Fatal(err)
 	}

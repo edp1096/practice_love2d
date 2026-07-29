@@ -307,7 +307,7 @@ Commands:
   smoke [--artifacts PATH]         Project-declared capability smoke test
   test [--artifacts PATH]          Full project acceptance scenario
   campaign [--artifacts PATH]      Complete sample-game acceptance scenario
-  maker [--listen ADDR] [--no-open]
+  maker [--backend love|ebitengine] [--ebitengine PATH] [--listen ADDR] [--no-open]
                                     Open the local visual Maker workspace
   map compile [SOURCE.tmx ...]     Compile canonical TMX into Lua stages
   map check [SOURCE.tmx ...]       Validate TMX and generated output

@@ -397,9 +397,22 @@ func run(
 			return call(protocol.MethodAppReloadContent, nil)
 		})
 	case "new-game":
-		return requireNoArgs(commandArguments, func() error {
-			return call(protocol.MethodAppStartNewGame, nil)
-		})
+		if len(commandArguments) > 3 {
+			return errors.New(
+				"usage: recreatectl new-game [STAGE_ID [SPAWN_ID [LOCALE_ID]]]",
+			)
+		}
+		var params protocol.StartNewGameParams
+		if len(commandArguments) >= 1 {
+			params.StageID = commandArguments[0]
+		}
+		if len(commandArguments) >= 2 {
+			params.SpawnID = commandArguments[1]
+		}
+		if len(commandArguments) == 3 {
+			params.LocaleID = commandArguments[2]
+		}
+		return call(protocol.MethodAppStartNewGame, params)
 	case "save":
 		if len(commandArguments) != 1 {
 			return errors.New("usage: recreatectl save SLOT")

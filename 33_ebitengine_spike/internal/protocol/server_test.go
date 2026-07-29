@@ -317,7 +317,16 @@ func TestProtocolV8DispatchesTypedCalls(t *testing.T) {
 		},
 		{MethodPageCaptureScreenshot, nil, EmptyParams{}, false},
 		{MethodAppReloadContent, nil, EmptyParams{}, true},
-		{MethodAppStartNewGame, nil, EmptyParams{}, true},
+		{
+			MethodAppStartNewGame,
+			StartNewGameParams{
+				StageID:  "stage.world_hub",
+				SpawnID:  "village_entry",
+				LocaleID: "locale.ko",
+			},
+			StartNewGameParams{},
+			true,
+		},
 		{
 			MethodAppSave,
 			SaveSlotParams{Slot: "slot-1"},
