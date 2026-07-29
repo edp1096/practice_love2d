@@ -35,7 +35,21 @@ const (
 	MethodEntitySetPosition         = "Entity.setPosition"
 	MethodEntitySetHealth           = "Entity.setHealth"
 	MethodEntityRequestAbility      = "Entity.requestAbility"
+	MethodFlowGetState              = "Flow.getState"
+	MethodFlowMove                  = "Flow.move"
+	MethodFlowActivate              = "Flow.activate"
 	MethodDialogueStart             = "Dialogue.start"
+	MethodDialogueGetState          = "Dialogue.getState"
+	MethodDialogueChoose            = "Dialogue.choose"
+	MethodDialogueAdvance           = "Dialogue.advance"
+	MethodCampaignGetState          = "Campaign.getState"
+	MethodShopGetState              = "Shop.getState"
+	MethodShopBuy                   = "Shop.buy"
+	MethodShopSell                  = "Shop.sell"
+	MethodShopClose                 = "Shop.close"
+	MethodInventoryUse              = "Inventory.use"
+	MethodEquipmentEquip            = "Equipment.equip"
+	MethodEquipmentUnequip          = "Equipment.unequip"
 	MethodInputAction               = "Input.action"
 	MethodEmulationSetPaused        = "Emulation.setPaused"
 	MethodEmulationStep             = "Emulation.step"
@@ -68,7 +82,21 @@ var methods = []string{
 	MethodEntitySetPosition,
 	MethodEntitySetHealth,
 	MethodEntityRequestAbility,
+	MethodFlowGetState,
+	MethodFlowMove,
+	MethodFlowActivate,
 	MethodDialogueStart,
+	MethodDialogueGetState,
+	MethodDialogueChoose,
+	MethodDialogueAdvance,
+	MethodCampaignGetState,
+	MethodShopGetState,
+	MethodShopBuy,
+	MethodShopSell,
+	MethodShopClose,
+	MethodInventoryUse,
+	MethodEquipmentEquip,
+	MethodEquipmentUnequip,
 	MethodInputAction,
 	MethodEmulationSetPaused,
 	MethodEmulationStep,
@@ -134,7 +162,17 @@ func IsMutating(method string) bool {
 		MethodEntitySetPosition,
 		MethodEntitySetHealth,
 		MethodEntityRequestAbility,
+		MethodFlowMove,
+		MethodFlowActivate,
 		MethodDialogueStart,
+		MethodDialogueChoose,
+		MethodDialogueAdvance,
+		MethodShopBuy,
+		MethodShopSell,
+		MethodShopClose,
+		MethodInventoryUse,
+		MethodEquipmentEquip,
+		MethodEquipmentUnequip,
 		MethodInputAction,
 		MethodEmulationSetPaused,
 		MethodEmulationStep,
@@ -233,12 +271,52 @@ type RequestAbilityParams struct {
 	AbilityID string `json:"abilityId"`
 }
 
-// StartDialogueParams mirrors 32_recreate's dialogue preview contract.
-// SpeakerID is optional: the runtime resolves the controlled player as the
-// interactor and may preview dialogue without a speaker entity.
+// FlowMoveParams moves the visible game-flow menu by one enabled option.
+// Positive moves down and negative moves up.
+type FlowMoveParams struct {
+	Delta int `json:"delta"`
+}
+
+// FlowActivateParams invokes one option from the currently visible game-flow
+// menu by stable semantic ID. The option need not already be selected.
+type FlowActivateParams struct {
+	OptionID string `json:"option_id"`
+}
+
+// StartDialogueParams mirrors 32_recreate's Maker preview contract. It does
+// not start or replace the active campaign dialogue exposed by
+// Dialogue.getState, Dialogue.choose, and Dialogue.advance. SpeakerID is
+// optional: the preview runtime resolves the controlled player as interactor
+// and may render dialogue without a speaker entity.
 type StartDialogueParams struct {
 	DialogueID string `json:"dialogueId"`
 	SpeakerID  string `json:"speakerId,omitempty"`
+}
+
+// ChooseDialogueParams selects one currently eligible authored choice from the
+// active campaign dialogue. The snake_case key matches campaign dialogue DTOs.
+type ChooseDialogueParams struct {
+	ChoiceID string `json:"choice_id"`
+}
+
+// ShopTradeParams identifies an authored item and the positive number of
+// copies to buy or sell. The wire parser defaults Quantity to one only when
+// the quantity member is omitted.
+type ShopTradeParams struct {
+	ItemID   string `json:"item_id"`
+	Quantity int64  `json:"quantity"`
+}
+
+type InventoryUseParams struct {
+	ItemID string `json:"item_id"`
+}
+
+type EquipmentEquipParams struct {
+	ItemID string `json:"item_id"`
+}
+
+type EquipmentUnequipParams struct {
+	SlotID string `json:"slot_id"`
 }
 
 type InputActionParams struct {

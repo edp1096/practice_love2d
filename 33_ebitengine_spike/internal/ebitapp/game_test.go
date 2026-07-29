@@ -2,7 +2,9 @@ package ebitapp
 
 import (
 	"reflect"
+	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestCaptureRequestsArrivingDuringDrawWaitForNextFrame(t *testing.T) {
@@ -67,5 +69,589 @@ func TestWallPolygonScreenPointsUsesExactVerticesAndCameraTransform(
 	}
 	if points := wallPolygonScreenPoints(view, RectView{}); points != nil {
 		t.Fatalf("rectangle produced polygon points: %#v", points)
+	}
+}
+
+func TestLayoutDialogueClampsSelectionAndKeepsEligibleOrder(
+	t *testing.T,
+) {
+	t.Parallel()
+
+	choices := []DialogueChoiceView{
+		{ID: "a", Text: "Alpha"},
+		{ID: "b", Text: "Bravo"},
+		{ID: "c", Text: "Charlie"},
+		{ID: "d", Text: "Delta"},
+		{ID: "e"},
+	}
+	layout := layoutDialogue(DialogueView{
+		Active:        true,
+		Text:          "Choose one.",
+		Choices:       choices,
+		SelectedIndex: 99,
+	})
+	if layout.Selected != 4 || !layout.HasEarlier || layout.HasLater {
+		t.Fatalf("selection/window flags = %#v", layout)
+	}
+	want := []dialogueChoiceLayout{
+		{Index: 2, ID: "c", Text: "Charlie"},
+		{Index: 3, ID: "d", Text: "Delta"},
+		{Index: 4, ID: "e", Text: "e", Selected: true},
+	}
+	if !reflect.DeepEqual(layout.Choices, want) {
+		t.Fatalf("visible choices = %#v, want %#v", layout.Choices, want)
+	}
+
+	first := layoutDialogue(DialogueView{
+		Choices:       choices,
+		SelectedIndex: -4,
+	})
+	if first.Selected != 0 || first.HasEarlier || !first.HasLater ||
+		len(first.Choices) != maxVisibleDialogueChoices ||
+		!first.Choices[0].Selected {
+		t.Fatalf("negative selection layout = %#v", first)
+	}
+}
+
+func TestLayoutDialogueWithoutChoicesHasNoSelection(t *testing.T) {
+	t.Parallel()
+
+	layout := layoutDialogue(DialogueView{Text: "Continue."})
+	if layout.Selected != -1 || len(layout.Choices) != 0 {
+		t.Fatalf("choice-free layout = %#v", layout)
+	}
+}
+
+func TestWrapTextHonorsRunesExplicitLinesAndEllipsis(
+	t *testing.T,
+) {
+	t.Parallel()
+
+	got := wrapText(
+		"alpha beta gamma\n가나다라마바사아자차카타파하",
+		10,
+		3,
+	)
+	want := []string{"alpha beta", "gamma", "가나다라마바사아자…"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("wrapped dialogue = %#v, want %#v", got, want)
+	}
+	for _, line := range got {
+		if utf8.RuneCountInString(line) > 10 {
+			t.Fatalf("wrapped line exceeds rune budget: %q", line)
+		}
+	}
+	if lines := wrapText("  \r\n ", 10, 2); lines != nil {
+		t.Fatalf("blank dialogue produced lines: %#v", lines)
+	}
+}
+
+func TestEllipsizeTextBoundsLongLabels(t *testing.T) {
+	t.Parallel()
+
+	got := ellipsizeText("가나다라마바사", 5)
+	if got != "가나다라…" || utf8.RuneCountInString(got) != 5 {
+		t.Fatalf("ellipsized label = %q", got)
+	}
+	if got := ellipsizeText(" short ", 10); got != "short" {
+		t.Fatalf("short label = %q", got)
+	}
+	if got := ellipsizeText("long", 1); got != "…" {
+		t.Fatalf("single-rune label = %q", got)
+	}
+}
+
+func TestDialogueBoxDoesNotCoverAutomationOverlay(t *testing.T) {
+	t.Parallel()
+
+	const automationOverlayBottom = ScreenHeight/2 + 54
+	if dialogueBoxY < automationOverlayBottom {
+		t.Fatalf(
+			"dialogue box y=%d overlaps automation overlay bottom=%d",
+			dialogueBoxY,
+			automationOverlayBottom,
+		)
+	}
+	if dialogueBoxY+dialogueBoxHeight > ScreenHeight {
+		t.Fatalf(
+			"dialogue box bottom=%d exceeds screen height=%d",
+			dialogueBoxY+dialogueBoxHeight,
+			ScreenHeight,
+		)
+	}
+	if dialogueChoiceHelp !=
+		"↑ / ↓  선택    Enter / E  확인    Esc  취소" {
+		t.Fatalf("dialogue choice help = %q", dialogueChoiceHelp)
+	}
+}
+
+func TestLayoutShopClampsSelectionAndKeepsAuthoredOrder(
+	t *testing.T,
+) {
+	t.Parallel()
+
+	longName := strings.Repeat("긴", maxShopOfferNameRunes+5)
+	offers := []ShopOfferView{
+		{ID: "a", Name: "Alpha"},
+		{ID: "b"},
+		{
+			ID:        "c",
+			Name:      longName,
+			Owned:     7,
+			CanBuy:    true,
+			BuyPrice:  25,
+			CanSell:   true,
+			SellPrice: 10,
+		},
+		{ID: "d", Name: "Delta"},
+		{},
+	}
+	layout := layoutShop(ShopView{
+		Name:          strings.Repeat("상", maxShopNameRunes+4),
+		Offers:        offers,
+		SelectedIndex: 99,
+		Status:        strings.Repeat("완", maxShopStatusRunes+8),
+	})
+	if layout.Selected != 4 || !layout.HasEarlier || layout.HasLater {
+		t.Fatalf("shop selection/window flags = %#v", layout)
+	}
+	if len(layout.Offers) != maxVisibleShopOffers {
+		t.Fatalf("visible shop offers = %d", len(layout.Offers))
+	}
+	for offset, wantIndex := range []int{2, 3, 4} {
+		if layout.Offers[offset].Index != wantIndex {
+			t.Fatalf(
+				"visible shop offer %d index = %d, want %d",
+				offset,
+				layout.Offers[offset].Index,
+				wantIndex,
+			)
+		}
+	}
+	first := layout.Offers[0]
+	if first.ID != "c" || first.Owned != 7 ||
+		!first.CanBuy || first.BuyPrice != 25 ||
+		!first.CanSell || first.SellPrice != 10 {
+		t.Fatalf("shop offer facts were lost: %#v", first)
+	}
+	if utf8.RuneCountInString(first.Name) > maxShopOfferNameRunes ||
+		!strings.HasSuffix(first.Name, "…") {
+		t.Fatalf("long offer name was not bounded: %q", first.Name)
+	}
+	if layout.Offers[2].Name != shopFallbackOfferName ||
+		!layout.Offers[2].Selected {
+		t.Fatalf("blank selected offer layout = %#v", layout.Offers[2])
+	}
+	if utf8.RuneCountInString(layout.Name) > maxShopNameRunes ||
+		utf8.RuneCountInString(layout.Status) > maxShopStatusRunes {
+		t.Fatalf("shop header/status exceeds bounds: %#v", layout)
+	}
+
+	firstWindow := layoutShop(ShopView{
+		Offers:        offers,
+		SelectedIndex: -8,
+	})
+	if firstWindow.Selected != 0 ||
+		firstWindow.HasEarlier ||
+		!firstWindow.HasLater ||
+		!firstWindow.Offers[0].Selected ||
+		firstWindow.Offers[1].Name != "b" {
+		t.Fatalf("negative shop selection layout = %#v", firstWindow)
+	}
+}
+
+func TestLayoutShopDefendsEmptyOffersAndNames(t *testing.T) {
+	t.Parallel()
+
+	layout := layoutShop(ShopView{
+		Name:          " ",
+		Offers:        nil,
+		SelectedIndex: 123,
+		Status:        " ",
+	})
+	if layout.Name != shopFallbackName ||
+		layout.Status != "" ||
+		layout.Selected != -1 ||
+		len(layout.Offers) != 0 ||
+		layout.HasEarlier ||
+		layout.HasLater {
+		t.Fatalf("empty shop layout = %#v", layout)
+	}
+}
+
+func TestShopPriceTextHonorsAvailability(t *testing.T) {
+	t.Parallel()
+
+	if got := shopPriceText(true, 25); got != "25 G" {
+		t.Fatalf("available shop price = %q", got)
+	}
+	if got := shopPriceText(false, 999); got != "—" {
+		t.Fatalf("unavailable shop price = %q", got)
+	}
+}
+
+func TestShopPanelFitsBelowAutomationOverlay(t *testing.T) {
+	t.Parallel()
+
+	const automationOverlayBottom = ScreenHeight/2 + 54
+	if shopPanelY < automationOverlayBottom {
+		t.Fatalf(
+			"shop panel y=%d overlaps automation overlay bottom=%d",
+			shopPanelY,
+			automationOverlayBottom,
+		)
+	}
+	if shopPanelY+shopPanelHeight > ScreenHeight {
+		t.Fatalf(
+			"shop panel bottom=%d exceeds screen height=%d",
+			shopPanelY+shopPanelHeight,
+			ScreenHeight,
+		)
+	}
+	if shopActionHelp !=
+		"↑ / ↓  선택    Enter / E  구매    Q  판매    Esc  닫기" {
+		t.Fatalf("shop action help = %q", shopActionHelp)
+	}
+}
+
+func TestLayoutInventoryBoundsLongKoreanAndKeepsItemFacts(
+	t *testing.T,
+) {
+	t.Parallel()
+
+	items := []InventoryItemView{
+		{ID: "zero", Name: "Zero", Quantity: 1},
+		{ID: "one", Name: "One", Quantity: 1},
+		{ID: "two", Name: "Two", Quantity: 2},
+		{ID: "three", Name: "Three", Quantity: 3},
+		{ID: "four", Name: "Four", Quantity: 4},
+		{ID: "empty", Name: "Empty", Quantity: 0},
+		{
+			ID:            "item.long",
+			Name:          strings.Repeat("긴", maxInventoryItemNameRunes+8),
+			Description:   strings.Repeat("설", maxInventoryDescriptionRunes*6),
+			Quantity:      7,
+			Consumable:    true,
+			EquipmentSlot: strings.Repeat("장", maxInventorySlotRunes+6),
+			Equipped:      true,
+			CanUse:        true,
+			CanEquip:      true,
+		},
+		{Quantity: -3},
+	}
+	layout := layoutInventory(InventoryView{
+		Title:         strings.Repeat("소", maxInventoryTitleRunes+7),
+		Items:         items,
+		SelectedIndex: 6,
+		Status:        strings.Repeat("상", maxInventoryStatusRunes*3),
+	})
+	if layout.Selected != 6 ||
+		!layout.HasEarlier ||
+		!layout.HasLater ||
+		len(layout.Items) != maxVisibleInventoryItems ||
+		!layout.HasDetail {
+		t.Fatalf("inventory selection/window = %#v", layout)
+	}
+	for offset, wantIndex := range []int{1, 2, 3, 4, 5, 6} {
+		if layout.Items[offset].Index != wantIndex {
+			t.Fatalf(
+				"visible inventory item %d index = %d, want %d",
+				offset,
+				layout.Items[offset].Index,
+				wantIndex,
+			)
+		}
+	}
+	detail := layout.Detail
+	if detail.ID != "item.long" ||
+		detail.Quantity != 7 ||
+		!detail.Consumable ||
+		!detail.Equipped ||
+		!detail.CanUse ||
+		!detail.CanEquip ||
+		!detail.Selected {
+		t.Fatalf("inventory item facts were lost: %#v", detail)
+	}
+	if utf8.RuneCountInString(detail.Name) > maxInventoryItemNameRunes ||
+		!strings.HasSuffix(detail.Name, "…") ||
+		utf8.RuneCountInString(detail.EquipmentSlot) >
+			maxInventorySlotRunes ||
+		!strings.HasSuffix(detail.EquipmentSlot, "…") {
+		t.Fatalf("inventory name/slot was not bounded: %#v", detail)
+	}
+	if len(detail.Description) != maxInventoryDescriptionLines ||
+		!strings.HasSuffix(
+			detail.Description[len(detail.Description)-1],
+			"…",
+		) {
+		t.Fatalf("inventory description was not bounded: %#v", detail)
+	}
+	for _, line := range detail.Description {
+		if utf8.RuneCountInString(line) >
+			maxInventoryDescriptionRunes {
+			t.Fatalf("inventory description exceeds bounds: %q", line)
+		}
+	}
+	if utf8.RuneCountInString(layout.Title) >
+		maxInventoryTitleRunes ||
+		!strings.HasSuffix(layout.Title, "…") {
+		t.Fatalf("inventory title was not bounded: %q", layout.Title)
+	}
+	if len(layout.Status) != maxInventoryStatusLines ||
+		!strings.HasSuffix(layout.Status[len(layout.Status)-1], "…") {
+		t.Fatalf("inventory status was not bounded: %#v", layout.Status)
+	}
+	if layout.Items[4].Quantity != 0 {
+		t.Fatalf("zero quantity changed: %#v", layout.Items[4])
+	}
+
+	last := layoutInventory(InventoryView{
+		Items:         items,
+		SelectedIndex: 99,
+	})
+	if last.Selected != 7 ||
+		!last.HasEarlier ||
+		last.HasLater ||
+		!last.HasDetail ||
+		last.Detail.Name != inventoryFallbackItemName ||
+		last.Detail.Quantity != 0 ||
+		!reflect.DeepEqual(
+			last.Detail.Description,
+			[]string{inventoryEmptyDescription},
+		) {
+		t.Fatalf("invalid inventory selection layout = %#v", last)
+	}
+}
+
+func TestLayoutInventoryDefendsEmptyItemsAndInvalidSelection(
+	t *testing.T,
+) {
+	t.Parallel()
+
+	layout := layoutInventory(InventoryView{
+		Title:         " ",
+		SelectedIndex: -100,
+		Status:        " ",
+	})
+	if layout.Title != inventoryFallbackTitle ||
+		layout.Selected != -1 ||
+		len(layout.Items) != 0 ||
+		len(layout.Status) != 0 ||
+		layout.HasDetail ||
+		layout.HasEarlier ||
+		layout.HasLater {
+		t.Fatalf("empty inventory layout = %#v", layout)
+	}
+}
+
+func TestInventoryDetailLabelsAndPanelFitScreen(t *testing.T) {
+	t.Parallel()
+
+	equipment := inventoryItemLayout{
+		Quantity:      1,
+		EquipmentSlot: "weapon",
+		Equipped:      true,
+		CanEquip:      true,
+	}
+	if kind := inventoryKindText(equipment); !strings.Contains(kind, inventoryEquipmentLabel) ||
+		!strings.Contains(kind, "weapon") ||
+		!strings.Contains(kind, "장착 중") {
+		t.Fatalf("inventory kind = %q", kind)
+	}
+	if availability := inventoryAvailabilityText(equipment); !strings.Contains(availability, "장착 가능") ||
+		!strings.Contains(availability, "장착 해제") {
+		t.Fatalf("inventory availability = %q", availability)
+	}
+	if got := inventoryAvailabilityText(
+		inventoryItemLayout{CanUse: true},
+	); got != "보유 수량 없음" {
+		t.Fatalf("zero quantity availability = %q", got)
+	}
+	if inventoryPanelX < 0 ||
+		inventoryPanelY < 0 ||
+		inventoryPanelX+inventoryPanelWidth > ScreenWidth ||
+		inventoryPanelY+inventoryPanelHeight > ScreenHeight {
+		t.Fatalf(
+			"inventory panel (%d,%d %dx%d) exceeds %dx%d screen",
+			inventoryPanelX,
+			inventoryPanelY,
+			inventoryPanelWidth,
+			inventoryPanelHeight,
+			ScreenWidth,
+			ScreenHeight,
+		)
+	}
+	const hudBottom = 92
+	if inventoryPanelY < hudBottom {
+		t.Fatalf(
+			"inventory panel y=%d overlaps HUD bottom=%d",
+			inventoryPanelY,
+			hudBottom,
+		)
+	}
+	if inventoryActionHelp !=
+		"↑ / ↓  선택    Enter / E  사용·장착    Q  해제    Esc / I  닫기" {
+		t.Fatalf("inventory action help = %q", inventoryActionHelp)
+	}
+}
+
+func TestHUDCurrencyUsesInt64(t *testing.T) {
+	t.Parallel()
+
+	if kind := reflect.TypeOf(HUDView{}.Currency).Kind(); kind != reflect.Int64 {
+		t.Fatalf("HUD currency kind = %s, want int64", kind)
+	}
+	const currency int64 = 1<<53 - 1
+	if got := (HUDView{Currency: currency}).Currency; got != currency {
+		t.Fatalf("HUD currency = %d, want %d", got, currency)
+	}
+}
+
+func TestLayoutFlowNormalizesModeSelectionAndLongKorean(
+	t *testing.T,
+) {
+	t.Parallel()
+
+	options := []FlowOptionView{
+		{ID: "zero", Label: "잠김", Enabled: false},
+		{ID: "one", Label: "계속", Enabled: true},
+		{
+			ID:      "two",
+			Label:   strings.Repeat("비", maxFlowOptionRunes+9),
+			Enabled: false,
+		},
+		{ID: "three", Label: "설정", Enabled: true},
+		{ID: "four"},
+		{ID: "five", Label: "타이틀로", Enabled: true},
+		{Enabled: true},
+	}
+	layout := layoutFlow(FlowView{
+		Mode:          " PAUSED ",
+		Heading:       strings.Repeat("제", maxFlowHeadingRunes+6),
+		Message:       strings.Repeat("한", maxFlowMessageRunes*5),
+		Options:       options,
+		SelectedIndex: 99,
+	})
+	if layout.Mode != "paused" ||
+		layout.Selected != 6 ||
+		!layout.HasEarlier ||
+		layout.HasLater {
+		t.Fatalf("flow mode/selection/window = %#v", layout)
+	}
+	if len(layout.Options) != maxVisibleFlowOptions {
+		t.Fatalf("visible flow options = %d", len(layout.Options))
+	}
+	for offset, wantIndex := range []int{2, 3, 4, 5, 6} {
+		if layout.Options[offset].Index != wantIndex {
+			t.Fatalf(
+				"visible flow option %d index = %d, want %d",
+				offset,
+				layout.Options[offset].Index,
+				wantIndex,
+			)
+		}
+	}
+	disabled := layout.Options[0]
+	if disabled.Enabled ||
+		disabled.Selected ||
+		!strings.HasSuffix(disabled.Label, flowDisabledIndicator) ||
+		utf8.RuneCountInString(disabled.Label) > maxFlowOptionRunes {
+		t.Fatalf("disabled flow option layout = %#v", disabled)
+	}
+	selected := layout.Options[len(layout.Options)-1]
+	if !selected.Enabled ||
+		!selected.Selected ||
+		selected.Label != flowFallbackOption {
+		t.Fatalf("blank selected flow option layout = %#v", selected)
+	}
+	if utf8.RuneCountInString(layout.Heading) > maxFlowHeadingRunes ||
+		!strings.HasSuffix(layout.Heading, "…") {
+		t.Fatalf("flow heading was not bounded: %q", layout.Heading)
+	}
+	if len(layout.Message) != maxFlowMessageLines ||
+		!strings.HasSuffix(layout.Message[len(layout.Message)-1], "…") {
+		t.Fatalf("flow message was not bounded: %#v", layout.Message)
+	}
+	for _, line := range layout.Message {
+		if utf8.RuneCountInString(line) > maxFlowMessageRunes {
+			t.Fatalf("flow message line exceeds bounds: %q", line)
+		}
+	}
+}
+
+func TestLayoutFlowDefendsDisabledAndEmptyOptions(t *testing.T) {
+	t.Parallel()
+
+	disabled := layoutFlow(FlowView{
+		Mode: "gameover",
+		Options: []FlowOptionView{
+			{ID: "retry", Label: "다시 하기"},
+			{},
+		},
+		SelectedIndex: -100,
+	})
+	if disabled.Selected != -1 ||
+		len(disabled.Options) != 2 ||
+		disabled.Options[0].Selected ||
+		disabled.Options[1].Selected {
+		t.Fatalf("all-disabled flow layout = %#v", disabled)
+	}
+	if disabled.Heading != flowGameOverHeading {
+		t.Fatalf("game-over fallback heading = %q", disabled.Heading)
+	}
+
+	empty := layoutFlow(FlowView{
+		Mode:          "ending",
+		SelectedIndex: 100,
+	})
+	if empty.Selected != -1 ||
+		len(empty.Options) != 0 ||
+		empty.HasEarlier ||
+		empty.HasLater ||
+		empty.Heading != flowEndingHeading {
+		t.Fatalf("empty flow layout = %#v", empty)
+	}
+}
+
+func TestFlowModePalettesAndPanelFitScreen(t *testing.T) {
+	t.Parallel()
+
+	pause := paletteForFlow("paused")
+	title := paletteForFlow("title")
+	gameOver := paletteForFlow("gameover")
+	ending := paletteForFlow("ending")
+	if pause.Backdrop.A >= title.Backdrop.A {
+		t.Fatalf(
+			"pause backdrop alpha=%d is not translucent against title=%d",
+			pause.Backdrop.A,
+			title.Backdrop.A,
+		)
+	}
+	if gameOver.Heading == title.Heading ||
+		ending.Heading == title.Heading {
+		t.Fatalf(
+			"flow mode palettes are not distinct: title=%#v gameover=%#v ending=%#v",
+			title,
+			gameOver,
+			ending,
+		)
+	}
+	if flowPanelX < 0 ||
+		flowPanelY < 0 ||
+		flowPanelX+flowPanelWidth > ScreenWidth ||
+		flowPanelY+flowPanelHeight > ScreenHeight {
+		t.Fatalf(
+			"flow panel (%d,%d %dx%d) exceeds %dx%d screen",
+			flowPanelX,
+			flowPanelY,
+			flowPanelWidth,
+			flowPanelHeight,
+			ScreenWidth,
+			ScreenHeight,
+		)
+	}
+	if flowActionHelp !=
+		"↑ / ↓  선택    Enter / E  확인    Esc  뒤로" {
+		t.Fatalf("flow action help = %q", flowActionHelp)
 	}
 }

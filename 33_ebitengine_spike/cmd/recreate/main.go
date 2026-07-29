@@ -106,6 +106,10 @@ func run(arguments []string) error {
 	runtime, err := gameapp.New(gameapp.Options{
 		CatalogPath: options.catalog,
 		Store:       store,
+		// Frame-limited runs retain the direct deterministic fixture entry
+		// used by screenshot automation; an interactive desktop boot starts
+		// at the authored title screen.
+		StartAtTitle: options.frames == 0,
 	})
 	if err != nil {
 		return err

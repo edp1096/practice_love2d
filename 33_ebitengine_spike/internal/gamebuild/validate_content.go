@@ -788,6 +788,15 @@ func validateItemSemantics(
 			return fmt.Errorf("%s.equipment.modifiers must not be empty", id)
 		}
 		for name, value := range modifiers {
+			if name == "attack" {
+				if _, err := ruleSignedInteger(
+					value,
+					id+".equipment.modifiers."+name,
+				); err != nil {
+					return err
+				}
+				continue
+			}
 			if _, err := requiredNumber(
 				value,
 				id+".equipment.modifiers."+name,

@@ -964,7 +964,7 @@ func (compiler *contentRuleCompiler) compileItemEquipment(
 			}
 		}
 	}
-	attack, err := requiredNumber(
+	attack, err := ruleSignedInteger(
 		modifiers["attack"],
 		path+".modifiers.attack",
 	)
@@ -973,7 +973,7 @@ func (compiler *contentRuleCompiler) compileItemEquipment(
 	}
 	return ItemEquipmentRule{
 		Slot:           slot,
-		AttackModifier: attack,
+		AttackModifier: float64(attack),
 	}, nil
 }
 
@@ -1493,6 +1493,27 @@ func ruleInteger(value any, path string, minimum int) (int, error) {
 	}
 	// int conversion at the positive boundary is implementation-dependent.
 	if number >= math.Ldexp(1, strconv.IntSize-1) {
+		return 0, fmt.Errorf("%s exceeds the supported integer range", path)
+	}
+	return int(number), nil
+}
+
+func ruleSignedInteger(value any, path string) (int, error) {
+	number, err := requiredNumber(value, path)
+	if err != nil {
+		return 0, err
+	}
+	if math.Trunc(number) != number {
+		return 0, fmt.Errorf("%s must be an integer", path)
+	}
+	if math.Abs(number) > float64(campaign.MaxJSONInteger) {
+		return 0, fmt.Errorf(
+			"%s exceeds the JSON-safe integer range",
+			path,
+		)
+	}
+	limit := math.Ldexp(1, strconv.IntSize-1)
+	if number >= limit || number < -limit {
 		return 0, fmt.Errorf("%s exceeds the supported integer range", path)
 	}
 	return int(number), nil

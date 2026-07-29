@@ -11,9 +11,11 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 하나의 실행본으로 연결했다.
 
 다만 `32_recreate`를 지금 삭제하거나 본 런타임을 즉시 교체하면 안 된다.
-이번 결과는 village vertical slice의 구조 검증이지 전체 샘플 게임의
-기능 동등성 검증이 아니다. 콘솔도 일반 `go build` 대상이 아니며 각
-제조사 승인, SDK, 개발기와 비공개 Ebitengine 도구가 필요하다.
+현재는 프로세스 재시작을 포함한 샘플 캠페인의 headless 실행 계약까지
+통과했다. 다만 tilemap·전체 오디오와 secondary combat fixture가 아직
+남아 있으므로 시각·기능 전체가 `32_recreate`와 동등하다는 뜻은 아니다.
+콘솔도 일반 `go build` 대상이 아니며 각 제조사 승인, SDK, 개발기와
+비공개 Ebitengine 도구가 필요하다.
 
 ## 콘솔 범용성의 정확한 의미
 
@@ -100,6 +102,16 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
   한 Campaign transaction으로 처리
 - 대화 세션이 선택 조건을 action과 같은 transaction에서 재검사하고
   `thanks` 진입의 `finish_game`까지 정확히 한 번 실행
+- 실제 키보드·게임패드 의미 입력과 같은 모델을 사용하는 dialogue,
+  shop, inventory, title, pause, gameover, ending 화면
+- item 사용·구매·판매·장착·해제와 장비 기반 파생 공격력을 Campaign,
+  World rebuild, UI, protocol에 일관되게 반영
+- `Flow.getState`, `Flow.move`, `Flow.activate`로 현재 게임 흐름 화면을
+  의미 ID 기반으로 조회·제어
+- title 또는 pause 같은 semantic flow가 활성화된 동안
+  `Emulation.step`을 거부해 숨은 World 진행 방지
+- 새 게임 → 퀘스트 수락 → 상점 → pause save → 새 Runtime의 continue
+  → 실제 전투 → portal 왕복 → 보상 → ending 전체 headless acceptance
 - 32 wire와 수명주기를 보존한 `Entity.spawn`, queued
   `Entity.remove`, optional-speaker `Dialogue.start`
 - 동적 actor의 sprite/tag/chase metadata까지 renderer, AI, snapshot에
@@ -143,11 +155,9 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 
 - platformer, arena 등 나머지 fixture stage
 - fire bolt, whirlwind, projectile와 다중 hit
-- shop, inventory, equipment, economy의 gameplay/UI 연결과 item use
-- 메뉴, 새 게임, 캠페인 완료와 ending
-- merchant interaction의 실제 shop 화면
-- tilemap 렌더링과 전체 오디오
-- status effect와 RPG stat 계산
+- authored tilemap·stage background 렌더링과 전체 오디오
+- projectile, status effect, secondary ability, multi-hit
+- 장비 공격력 이외의 확장 RPG stat·상태이상 계산
 - 실행 중 정의 반영과 stage/entity 생성 편집
 - 모바일·웹 패키징
 - 콘솔별 storage, suspend/resume, safe-area, controller-user 정책
@@ -155,17 +165,12 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 ## 다음 구현 gate
 
 1. ~~protocol에 Maker preview 생성·삭제·대화 계약을 추가한다.~~ 완료
-2. complete campaign 기반을 다음 의존 순서로 옮긴다.
-   - `game.lua`를 canonical project manifest로 컴파일한다.
-   - 장기 `CampaignState`와 스테이지별 전투 simulation을 분리한다.
-   - dialogue graph, 조건, action transaction과 다중 목표 quest를
-     gameplay 입력에 연결한다.
-   - inventory, equipment, stats, economy, shop을 gameplay/UI에
-     연결한다.
-   - 검증된 stage factory와 portal 위에 tilemap presentation을 옮긴다.
-   - title, pause menu, continue, gameover, ending을 옮긴다.
-3. `32_recreate`와 같은 **프로세스 재시작을 포함한** campaign
-   acceptance를 통과시킨다. 여기까지가 complete campaign gate다.
+2. complete campaign 기반의 manifest, Campaign/World 분리, dialogue,
+   quest, inventory, equipment, economy, shop, flow 이식은 완료했다.
+   검증된 stage factory와 portal 위에 tilemap presentation을 옮긴다.
+3. `32_recreate`와 같은 **프로세스 재시작을 포함한** headless campaign
+   acceptance는 통과했다. tilemap까지 이식하면 visual campaign gate가
+   닫힌다.
 4. secondary ability, projectile, status, multi-hit과 나머지 fixture
    stage를 옮긴다.
 5. Maker가 LÖVE/Ebitengine backend를 선택해 같은 프로젝트를 미리 볼
@@ -174,8 +179,8 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 7. 제조사 승인을 확보한 플랫폼만 별도 adapter·SDK branch에서
    개발기 acceptance를 수행한다.
 
-3번까지 통과하기 전에는 `33_ebitengine_spike`를 본 런타임으로
-승격하지 않는다.
+tilemap visual campaign gate와 4번 전투 fixture까지 통과하기 전에는
+`33_ebitengine_spike`를 본 런타임으로 승격하지 않는다.
 
 자동화의 `Emulation.step` 정지는 위 game-flow의 pause menu와 별도
 상태다. 전자는 테스트 clock만 멈추고, 후자는 게임 안의 UI/세션

@@ -8,8 +8,8 @@
 project manifest의 `stage.village/default`를 사용한다. 플레이어,
 실제 안내인·상인 sprite, 벽, 카메라가 보이며 전투 fixture와 Maker
 preview에서는 슬라임을 생성할 수 있다. 이동·충돌·공격·피해·경직·
-넉백·히트스톱·패링·퍼펙트 패링·회피·대화·퀘스트·세이브가 고정
-60 tick 시뮬레이션으로 동작한다.
+넉백·히트스톱·패링·퍼펙트 패링·회피·대화·퀘스트·상점·인벤토리·
+장비·세이브와 게임 흐름이 고정 60 tick 시뮬레이션으로 동작한다.
 
 ## 실행
 
@@ -26,8 +26,13 @@ go run ./cmd/recreate
 - `C`/`Ctrl`: 패링
 - `X`/`Shift`: 회피
 - `E`: 대화
+- `I`/`Tab`: 인벤토리
 - `P`/`Esc`: 일시정지
 - `R`: 재시작
+
+대화·상점·인벤토리·흐름 메뉴에서는 `W/S` 또는 방향키로 이동하고
+`Enter`/`E`로 결정한다. 상점의 `Q`는 판매, 인벤토리의 `Q`는 장착
+해제이며 `Esc`/`Backspace`는 닫기다.
 
 자동 화면 검증:
 
@@ -52,6 +57,20 @@ go run ./cmd/recreatectl screenshot /tmp/controlled.png
 go run ./cmd/recreatectl wall north 0 0 960 24
 go run ./cmd/recreatectl spawn actor.slime 520 270 preview.slime
 go run ./cmd/recreatectl dialogue dialogue.guide guide
+go run ./cmd/recreatectl dialogue-state
+go run ./cmd/recreatectl dialogue-choose accept
+go run ./cmd/recreatectl dialogue-advance
+go run ./cmd/recreatectl campaign-state
+go run ./cmd/recreatectl flow-state
+go run ./cmd/recreatectl flow-move down
+go run ./cmd/recreatectl flow-activate new_game
+go run ./cmd/recreatectl shop-state
+go run ./cmd/recreatectl shop-buy item.potion 2
+go run ./cmd/recreatectl shop-sell item.potion
+go run ./cmd/recreatectl shop-close
+go run ./cmd/recreatectl item-use item.potion
+go run ./cmd/recreatectl equip item.training_sword
+go run ./cmd/recreatectl unequip weapon
 go run ./cmd/recreatectl ability preview.slime ability.slime_bump
 go run ./cmd/recreatectl remove preview.slime
 go run ./cmd/recreatectl position quest.slime.1 190 270
@@ -61,8 +80,21 @@ go run ./cmd/recreatectl load test-slot
 go run ./cmd/recreatectl new-game
 ```
 
+`dialogue`는 콘텐츠를 즉시 표시하는 Maker preview 명령이다. 실제 캠페인
+대화는 `dialogue-state`로 활성 노드와 가능한 선택지를 조회하고,
+`dialogue-choose` 또는 선택지가 없는 노드의 `dialogue-advance`로 진행한다.
+`campaign-state`는 장기 진행 상태를, `shop-state`는 현재 열린 상점과
+거래 가능 항목을 조회한다. `shop-buy`와 `shop-sell`의 수량은 생략하면
+1이며, `item-use`, `equip`, `unequip`으로 inventory와 equipment 동작도
+같은 프로토콜을 통해 자동화할 수 있다. `flow-state`, `flow-move`,
+`flow-activate`는 title, pause, gameover, ending 화면을 순서나 번역
+문자열이 아닌 안정적인 option ID로 제어한다.
+
 `step`은 요청한 프레임을 원자적으로 진행한 뒤 실행 전 pause 상태를
 복원한다. 따라서 실행 중인 창에 `step`을 호출해도 멈춘 채 남지 않는다.
+title, 게임 pause, gameover, ending 중에는 `step`이 오류로 거부되어
+화면 뒤의 World가 진행되지 않는다. 먼저 `flow-activate`로 현재 흐름을
+전환해야 한다.
 결정적인 화면을 검사할 때만 다음처럼 명시적으로 pause–step–capture–
 resume 순서를 사용한다.
 

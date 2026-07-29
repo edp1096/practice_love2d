@@ -296,6 +296,101 @@ func TestObjectiveCompletionIsExactlyOnceAndRewardFailureRollsBack(
 	})
 }
 
+func TestObjectiveEventSkipsCappedActiveQuestWhenSharedQuestRemains(
+	t *testing.T,
+) {
+	t.Parallel()
+
+	config, rules := completeDefinitions(t)
+	config.Quests = append(config.Quests, campaign.QuestDefinition{
+		ID:              "quest.zz_shared_slimes",
+		InitiallyActive: true,
+		Objectives: []campaign.ObjectiveDefinition{{
+			ID:       "defeat_shared_slimes",
+			Required: 3,
+		}},
+	})
+	rules.Quests = append(rules.Quests, gamebuild.QuestRule{
+		ID:              "quest.zz_shared_slimes",
+		InitiallyActive: true,
+		Objectives: []gamebuild.QuestObjectiveRule{{
+			ID:      "defeat_shared_slimes",
+			Event:   "actor.killed",
+			ActorID: "actor.slime",
+			Count:   3,
+		}},
+		OnStart:    []gamebuild.RuleAction{},
+		OnComplete: []gamebuild.RuleAction{},
+	})
+	executor, err := New(config, rules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	live, err := campaign.NewGame(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	startGroveQuest(t, executor, live, rules)
+
+	event := ObjectiveEvent{
+		Event:   "actor.killed",
+		ActorID: "actor.slime",
+		Count:   1,
+	}
+	for range 2 {
+		if _, err := executor.ApplyObjectiveEvent(live, event); err != nil {
+			t.Fatal(err)
+		}
+	}
+	state := live.Snapshot()
+	assertObjective(
+		t,
+		state,
+		"quest.grove_guardian",
+		"defeat_slimes",
+		2,
+	)
+	assertObjective(
+		t,
+		state,
+		"quest.zz_shared_slimes",
+		"defeat_shared_slimes",
+		2,
+	)
+
+	result, err := executor.ApplyObjectiveEvent(live, event)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Progress) != 1 ||
+		result.Progress[0].QuestID != "quest.zz_shared_slimes" ||
+		result.Progress[0].Previous != 2 ||
+		result.Progress[0].Current != 3 ||
+		!reflect.DeepEqual(
+			result.CompletedQuestIDs,
+			[]string{"quest.zz_shared_slimes"},
+		) {
+		t.Fatalf("shared third event = %#v", result)
+	}
+	state = live.Snapshot()
+	assertObjective(
+		t,
+		state,
+		"quest.grove_guardian",
+		"defeat_slimes",
+		2,
+	)
+
+	before := live.Snapshot()
+	if _, err := executor.ApplyObjectiveEvent(live, event); err == nil ||
+		!strings.Contains(err.Error(), "duplicated") {
+		t.Fatalf("fully capped event error = %v", err)
+	}
+	if after := live.Snapshot(); !reflect.DeepEqual(after, before) {
+		t.Fatal("fully capped shared event mutated campaign")
+	}
+}
+
 func TestObjectiveEventsRejectOvercountUnknownAndInactive(t *testing.T) {
 	t.Parallel()
 

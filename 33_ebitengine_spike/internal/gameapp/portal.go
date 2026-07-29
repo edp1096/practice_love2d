@@ -53,7 +53,26 @@ func (runtime *Runtime) transitionPortalLocked(
 	options := runtime.buildOptions
 	options.StageID = portal.TargetStageID
 	options.SpawnID = portal.TargetSpawnID
-	built, simulation, err := buildSimulation(runtime.catalog, options)
+	nextCampaign, err := campaign.Restore(
+		runtime.campaignConfig,
+		runtime.campaign.Snapshot(),
+	)
+	if err != nil {
+		return fmt.Errorf("portal %q clone campaign: %w", portal.ID, err)
+	}
+	if err := nextCampaign.Transaction(func(state *campaign.State) error {
+		state.CurrentStageID = portal.TargetStageID
+		state.EntrySpawnID = portal.TargetSpawnID
+		return nil
+	}); err != nil {
+		return fmt.Errorf("portal %q update campaign location: %w", portal.ID, err)
+	}
+	built, simulation, err := buildCampaignSimulation(
+		runtime.catalog,
+		options,
+		nextCampaign.Snapshot(),
+		runtime.contentRules,
+	)
 	if err != nil {
 		return fmt.Errorf(
 			"portal %q transition to %s/%s: %w",
@@ -70,21 +89,6 @@ func (runtime *Runtime) transitionPortalLocked(
 			built.Stage.ID,
 			portal.TargetStageID,
 		)
-	}
-
-	nextCampaign, err := campaign.Restore(
-		runtime.campaignConfig,
-		runtime.campaign.Snapshot(),
-	)
-	if err != nil {
-		return fmt.Errorf("portal %q clone campaign: %w", portal.ID, err)
-	}
-	if err := nextCampaign.Transaction(func(state *campaign.State) error {
-		state.CurrentStageID = portal.TargetStageID
-		state.EntrySpawnID = portal.TargetSpawnID
-		return nil
-	}); err != nil {
-		return fmt.Errorf("portal %q update campaign location: %w", portal.ID, err)
 	}
 	portalInside, err := portalOverlaps(built, simulation)
 	if err != nil {
@@ -107,6 +111,8 @@ func (runtime *Runtime) transitionPortalLocked(
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
+	runtime.resetRulePresentationLocked()
+	runtime.resetFlowPresentationLocked()
 	runtime.portalCooldownTicks = portal.CooldownTicks
 	runtime.portalInside = portalInside
 	return nil

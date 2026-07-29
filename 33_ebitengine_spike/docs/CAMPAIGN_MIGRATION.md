@@ -69,15 +69,39 @@ automation pause를 게임의 pause menu와 합치지 않는다.
 - [x] typed condition/action evaluator
 - [x] 저장 가능한 Campaign과 저장하지 않는 World를 분리한 process restart
 - [x] dialogue graph·조건 재검사·원자적 세션 실행기
-- [ ] dialogue modal 입력과 화면 연결
+- [x] dialogue modal 입력과 화면 연결
 - [x] 다중 목표 quest와 commit-after-success 보상 실행기
-- [ ] simulation kill event와 Campaign quest 연결
+- [x] simulation kill event와 Campaign quest 연결
 - [x] inventory/equipment/economy/shop 도메인 transaction
-- [ ] stat 반영, item use와 shop/inventory 화면
-- [ ] title/pause/continue/gameover/ending
+- [x] stat 반영, item use와 shop/inventory 화면
+- [x] title/pause/continue/gameover/ending
 - [ ] tilemap과 data-driven presentation
-- [ ] 프로세스 재시작을 포함한 headless campaign acceptance
+- [x] 프로세스 재시작을 포함한 headless campaign acceptance
 - [ ] projectile/status/secondary ability 및 나머지 fixture
+
+## 현재 인수 근거
+
+`internal/gameapp/campaign_acceptance_test.go`의
+`TestCompleteAuthoredCampaignAcrossProcessRestart`가 위 완료 시나리오
+1~11을 하나의 실행 경로로 검증한다.
+
+- 저장 파일이 없는 title의 `new_game`부터 시작한다.
+- 실제 안내인·상인 interaction과 dialogue/shop protocol을 사용한다.
+- pause의 `save` 뒤 같은 파일 저장소로 새 `Runtime`을 생성한다.
+- 새 title의 `continue`로 quest, potion, currency, equipment를 복원한다.
+- 장착 검으로 체력 39인 slime을 한 번의 실제 공격으로 처치해 표시용
+  stat이 아니라 simulation 피해가 34에서 39로 바뀌었음을 검증한다.
+- village → field → grove → field → village portal을 모두 통과한다.
+- 두 목표, 즉시 보상, completed 대화와 ending을 확인한다.
+
+시나리오 12의 player death → gameover → retry는
+`TestPlayerDeathOpensGameOverAndRetryBuildsFreshWorld`가 별도로 검증한다.
+모든 테스트는 Ebitengine 창을 생성하지 않는다.
+
+`Flow.getState`, `Flow.move`, `Flow.activate`는 title/pause/gameover/ending
+화면을 외부 자동화가 의미 ID로 조회·제어하는 계약이다.
+`Emulation.step`은 이 화면들이 활성화된 동안 오류로 거부되므로 화면
+뒤의 World를 몰래 진행시킬 수 없다.
 
 ## 테스트 불변조건
 

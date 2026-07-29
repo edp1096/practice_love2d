@@ -24,10 +24,14 @@ type View struct {
 	Camera CameraView
 	World  WorldView
 
-	Entities []EntityView
-	Walls    []RectView
-	Effects  []EffectView
-	HUD      HUDView
+	Entities  []EntityView
+	Walls     []RectView
+	Effects   []EffectView
+	Flow      FlowView
+	Dialogue  DialogueView
+	Shop      ShopView
+	Inventory InventoryView
+	HUD       HUDView
 }
 
 type CameraView struct {
@@ -85,11 +89,98 @@ type EffectView struct {
 	Opacity  float64
 }
 
+// DialogueView is presentation-neutral modal dialogue state. Choices contains
+// only currently eligible entries and retains authored order. SelectedIndex is
+// interpreted defensively by the adapter, so a stale index cannot panic Draw.
+type DialogueView struct {
+	Active        bool
+	Speaker       string
+	Text          string
+	Choices       []DialogueChoiceView
+	SelectedIndex int
+}
+
+// DialogueChoiceView identifies one eligible authored choice.
+type DialogueChoiceView struct {
+	ID   string
+	Text string
+}
+
+// ShopView is presentation-neutral modal shop state. Offers retains authored
+// order. Affordability, stock, equipment, and all other domain rules are
+// resolved by the model into CanBuy and CanSell before reaching the adapter.
+type ShopView struct {
+	Active        bool
+	Name          string
+	Currency      int64
+	Offers        []ShopOfferView
+	SelectedIndex int
+	Status        string
+}
+
+// ShopOfferView is one authored offer with its current presentation facts.
+type ShopOfferView struct {
+	ID        string
+	Name      string
+	Owned     int64
+	CanBuy    bool
+	BuyPrice  int64
+	CanSell   bool
+	SellPrice int64
+}
+
+// InventoryView is presentation-neutral inventory modal state. The model owns
+// selection changes and decides whether InventoryActivate uses a consumable or
+// equips an item. The adapter only renders these resolved presentation facts
+// and forwards generic inventory intent.
+type InventoryView struct {
+	Active        bool
+	Title         string
+	Items         []InventoryItemView
+	SelectedIndex int
+	Status        string
+}
+
+// InventoryItemView is one owned inventory entry. CanUse and CanEquip are
+// model-resolved facts for presentation; they do not move gameplay rules into
+// the Ebitengine adapter.
+type InventoryItemView struct {
+	ID            string
+	Name          string
+	Description   string
+	Quantity      int64
+	Consumable    bool
+	EquipmentSlot string
+	Equipped      bool
+	CanUse        bool
+	CanEquip      bool
+}
+
+// FlowView is presentation-neutral state for title, pause, game-over, ending,
+// and other authored flow menus. Mode selects visual treatment; behavior stays
+// in the model.
+type FlowView struct {
+	Mode          string
+	Active        bool
+	Heading       string
+	Message       string
+	Options       []FlowOptionView
+	SelectedIndex int
+}
+
+// FlowOptionView is one authored flow action. Disabled options remain visible
+// but cannot become the adapter's effective selection.
+type FlowOptionView struct {
+	ID      string
+	Label   string
+	Enabled bool
+}
+
 type HUDView struct {
 	Title    string
 	Status   string
 	Help     string
 	Dialogue string
 	Quest    string
-	Currency int
+	Currency int64
 }

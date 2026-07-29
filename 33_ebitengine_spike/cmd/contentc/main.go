@@ -69,13 +69,15 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 	fmt.Fprintf(
 		stdout,
 		"compiled project %s, %d definitions, %d dependency paths, "+
-			"%d stages, %d entry builds across %d locales, "+
+			"%d stages, %d entry builds and %d derived campaign builds "+
+			"across %d locales, "+
 			"%d manifest warnings -> %s\n",
 		project.ID,
 		report.DefinitionCount,
 		catalog.DependencyGraph.EdgeCount,
 		report.StageCount,
 		report.EntryBuildCount,
+		report.DerivedBuildCount,
 		report.LocaleCount,
 		len(project.Warnings),
 		*output,

@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"practice_love2d/33_ebitengine_spike/internal/campaign"
 	"practice_love2d/33_ebitengine_spike/internal/protocol"
 )
 
@@ -248,6 +249,109 @@ func run(
 			params.SpeakerID = commandArguments[1]
 		}
 		return call(protocol.MethodDialogueStart, params)
+	case "dialogue-state":
+		return requireNoArgs(commandArguments, func() error {
+			return call(protocol.MethodDialogueGetState, nil)
+		})
+	case "dialogue-choose":
+		if len(commandArguments) != 1 {
+			return errors.New(
+				"usage: recreatectl dialogue-choose CHOICE_ID",
+			)
+		}
+		return call(
+			protocol.MethodDialogueChoose,
+			protocol.ChooseDialogueParams{
+				ChoiceID: commandArguments[0],
+			},
+		)
+	case "dialogue-advance":
+		return requireNoArgs(commandArguments, func() error {
+			return call(protocol.MethodDialogueAdvance, nil)
+		})
+	case "campaign-state":
+		return requireNoArgs(commandArguments, func() error {
+			return call(protocol.MethodCampaignGetState, nil)
+		})
+	case "flow-state":
+		return requireNoArgs(commandArguments, func() error {
+			return call(protocol.MethodFlowGetState, nil)
+		})
+	case "flow-move":
+		if len(commandArguments) != 1 {
+			return errors.New("usage: recreatectl flow-move up|down")
+		}
+		delta := 0
+		switch commandArguments[0] {
+		case "up":
+			delta = -1
+		case "down":
+			delta = 1
+		default:
+			return errors.New("flow-move expects up or down")
+		}
+		return call(
+			protocol.MethodFlowMove,
+			protocol.FlowMoveParams{Delta: delta},
+		)
+	case "flow-activate":
+		if len(commandArguments) != 1 {
+			return errors.New(
+				"usage: recreatectl flow-activate OPTION_ID",
+			)
+		}
+		return call(
+			protocol.MethodFlowActivate,
+			protocol.FlowActivateParams{
+				OptionID: commandArguments[0],
+			},
+		)
+	case "shop-state":
+		return requireNoArgs(commandArguments, func() error {
+			return call(protocol.MethodShopGetState, nil)
+		})
+	case "shop-buy":
+		return runShopTrade(
+			call,
+			protocol.MethodShopBuy,
+			command,
+			commandArguments,
+		)
+	case "shop-sell":
+		return runShopTrade(
+			call,
+			protocol.MethodShopSell,
+			command,
+			commandArguments,
+		)
+	case "shop-close":
+		return requireNoArgs(commandArguments, func() error {
+			return call(protocol.MethodShopClose, nil)
+		})
+	case "item-use":
+		if len(commandArguments) != 1 {
+			return errors.New("usage: recreatectl item-use ITEM_ID")
+		}
+		return call(
+			protocol.MethodInventoryUse,
+			protocol.InventoryUseParams{ItemID: commandArguments[0]},
+		)
+	case "equip":
+		if len(commandArguments) != 1 {
+			return errors.New("usage: recreatectl equip ITEM_ID")
+		}
+		return call(
+			protocol.MethodEquipmentEquip,
+			protocol.EquipmentEquipParams{ItemID: commandArguments[0]},
+		)
+	case "unequip":
+		if len(commandArguments) != 1 {
+			return errors.New("usage: recreatectl unequip SLOT_ID")
+		}
+		return call(
+			protocol.MethodEquipmentUnequip,
+			protocol.EquipmentUnequipParams{SlotID: commandArguments[0]},
+		)
 	case "action":
 		return runAction(call, commandArguments, stderr)
 	case "pause":
@@ -411,6 +515,37 @@ func runAction(
 		Action: arguments[0],
 		Value:  *value,
 		Frames: *frames,
+	})
+}
+
+func runShopTrade(
+	call func(string, any) error,
+	method string,
+	command string,
+	arguments []string,
+) error {
+	if len(arguments) < 1 || len(arguments) > 2 {
+		return fmt.Errorf(
+			"usage: recreatectl %s ITEM_ID [QUANTITY]",
+			command,
+		)
+	}
+	quantity := int64(1)
+	if len(arguments) == 2 {
+		parsed, err := strconv.ParseInt(arguments[1], 10, 64)
+		if err != nil ||
+			parsed < 1 ||
+			parsed > campaign.MaxJSONInteger {
+			return fmt.Errorf(
+				"QUANTITY must be an integer between 1 and %d",
+				campaign.MaxJSONInteger,
+			)
+		}
+		quantity = parsed
+	}
+	return call(method, protocol.ShopTradeParams{
+		ItemID:   arguments[0],
+		Quantity: quantity,
 	})
 }
 
@@ -661,7 +796,8 @@ Authentication:
   Use a mode-0600 token file or set RECREATE_DEBUG_TOKEN.
 
 Inspect:
-  ping | protocol | state | graph | world
+  ping | protocol | state | campaign-state | flow-state | shop-state
+  graph | world
   definition CONTENT_ID
   validate CONTENT_ID FILE.json|-
 
@@ -672,7 +808,18 @@ Control:
   position ENTITY_ID X Y
   health ENTITY_ID VALUE
   ability ENTITY_ID ABILITY_ID
-  dialogue DIALOGUE_ID [SPEAKER_ENTITY_ID]
+  dialogue DIALOGUE_ID [SPEAKER_ENTITY_ID]  (Maker preview)
+  dialogue-state
+  dialogue-choose CHOICE_ID
+  dialogue-advance
+  flow-move up|down
+  flow-activate OPTION_ID
+  shop-buy ITEM_ID [QUANTITY]
+  shop-sell ITEM_ID [QUANTITY]
+  shop-close
+  item-use ITEM_ID
+  equip ITEM_ID
+  unequip SLOT_ID
   action NAME [--value N] [--frames N]
   pause true|false
   step [--frames N] [--dt SECONDS]

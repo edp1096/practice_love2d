@@ -4,7 +4,8 @@
 // The content compiler proves that Lua sources form a canonical catalog.
 // Project validation goes further: it translates durable campaign and rule
 // topology, then constructs every authored stage entry in every configured
-// locale. No renderer or window is involved.
+// locale both directly and through canonical campaign equipment profiles. No
+// renderer or window is involved.
 package projectcheck
 
 import (
@@ -18,14 +19,20 @@ import (
 )
 
 // Report is a deterministic summary of the complete project surface checked
-// by Validate. EntryBuildCount includes each stage x entry spawn x locale
-// construction, including the implicit "default" entry used by legacy fixture
-// stages with one authored controlled-player spawn.
+// by Validate. EntryBuildCount includes each authored stage x entry spawn x
+// locale construction, including the implicit "default" entry used by legacy
+// fixture stages with one authored controlled-player spawn.
+//
+// DerivedBuildCount includes the corresponding BuildForCampaign construction
+// for every unique campaign equipment profile: pristine, modifier boundaries,
+// and each equippable item alone. A project without equipment has only the
+// pristine profile.
 type Report struct {
-	DefinitionCount int `json:"definition_count"`
-	StageCount      int `json:"stage_count"`
-	EntryBuildCount int `json:"entry_build_count"`
-	LocaleCount     int `json:"locale_count"`
+	DefinitionCount   int `json:"definition_count"`
+	StageCount        int `json:"stage_count"`
+	EntryBuildCount   int `json:"entry_build_count"`
+	DerivedBuildCount int `json:"derived_build_count"`
+	LocaleCount       int `json:"locale_count"`
 }
 
 type dependencies struct {
@@ -39,15 +46,22 @@ type dependencies struct {
 		*content.Catalog,
 		gamebuild.Options,
 	) (*gamebuild.Result, error)
+	buildStageForCampaign func(
+		*content.Catalog,
+		gamebuild.Options,
+		campaign.State,
+		gamebuild.ContentRules,
+	) (*gamebuild.Result, gamebuild.DerivedStats, error)
 	newSimulation func(sim.Config) (*sim.Simulation, error)
 }
 
 var productionDependencies = dependencies{
-	buildCampaignConfig: gamebuild.BuildCampaignConfig,
-	buildContentRules:   gamebuild.BuildContentRules,
-	newRulesRuntime:     rulesruntime.New,
-	buildStage:          gamebuild.Build,
-	newSimulation:       sim.New,
+	buildCampaignConfig:   gamebuild.BuildCampaignConfig,
+	buildContentRules:     gamebuild.BuildContentRules,
+	newRulesRuntime:       rulesruntime.New,
+	buildStage:            gamebuild.Build,
+	buildStageForCampaign: gamebuild.BuildForCampaign,
+	newSimulation:         sim.New,
 }
 
 // Validate rejects a catalog unless every definition, durable subsystem, rule
@@ -110,6 +124,10 @@ func validate(
 	if _, err := deps.newRulesRuntime(config, rules); err != nil {
 		return fail("campaign/rules topology", err)
 	}
+	profiles, err := campaignBuildProfiles(config, rules)
+	if err != nil {
+		return fail("campaign build profiles", err)
+	}
 
 	report := Report{
 		DefinitionCount: len(catalog.Definitions),
@@ -149,6 +167,39 @@ func validate(
 					)
 				}
 				report.EntryBuildCount++
+				for _, profile := range profiles {
+					derived, _, err := deps.buildStageForCampaign(
+						catalog,
+						options,
+						profile.state,
+						rules,
+					)
+					if err != nil {
+						return fail(
+							stageCampaignBuildPhase(
+								stage.ID,
+								stageSources[stage.ID],
+								entrySpawnID,
+								localeID,
+								profile.name,
+							),
+							err,
+						)
+					}
+					if _, err := deps.newSimulation(derived.Config); err != nil {
+						return fail(
+							stageCampaignSimulationPhase(
+								stage.ID,
+								stageSources[stage.ID],
+								entrySpawnID,
+								localeID,
+								profile.name,
+							),
+							err,
+						)
+					}
+					report.DerivedBuildCount++
+				}
 			}
 		}
 	}
@@ -197,5 +248,39 @@ func stageSimulationPhase(
 		source,
 		entrySpawnID,
 		localeID,
+	)
+}
+
+func stageCampaignBuildPhase(
+	stageID string,
+	source string,
+	entrySpawnID string,
+	localeID string,
+	profile string,
+) string {
+	return fmt.Sprintf(
+		"stage %q from %q entry %q locale %q campaign profile %q build",
+		stageID,
+		source,
+		entrySpawnID,
+		localeID,
+		profile,
+	)
+}
+
+func stageCampaignSimulationPhase(
+	stageID string,
+	source string,
+	entrySpawnID string,
+	localeID string,
+	profile string,
+) string {
+	return fmt.Sprintf(
+		"stage %q from %q entry %q locale %q campaign profile %q simulation",
+		stageID,
+		source,
+		entrySpawnID,
+		localeID,
+		profile,
 	)
 }

@@ -9,6 +9,8 @@ import (
 	"math"
 	"regexp"
 	"strings"
+
+	"practice_love2d/33_ebitengine_spike/internal/campaign"
 )
 
 const (
@@ -120,6 +122,12 @@ func parseCall(request Request, fixedStepSeconds float64) (Call, *Error) {
 	case MethodRuntimeGetState,
 		MethodContentGetGraph,
 		MethodWorldGetSnapshot,
+		MethodFlowGetState,
+		MethodDialogueGetState,
+		MethodDialogueAdvance,
+		MethodCampaignGetState,
+		MethodShopGetState,
+		MethodShopClose,
 		MethodPageCaptureScreenshot,
 		MethodAppReloadContent,
 		MethodAppStartNewGame,
@@ -329,6 +337,35 @@ func parseCall(request Request, fixedStepSeconds float64) (Call, *Error) {
 		}
 		return Call{Method: request.Method, Params: params}, nil
 
+	case MethodFlowMove:
+		type flowMoveWire struct {
+			Delta *int `json:"delta"`
+		}
+		var wire flowMoveWire
+		if err := decodeParams(request.Params, &wire); err != nil {
+			return Call{}, err
+		}
+		if wire.Delta == nil || (*wire.Delta != -1 && *wire.Delta != 1) {
+			return Call{}, rpcError(
+				CodeInvalidParams,
+				"delta must be -1 or 1",
+			)
+		}
+		return Call{
+			Method: request.Method,
+			Params: FlowMoveParams{Delta: *wire.Delta},
+		}, nil
+
+	case MethodFlowActivate:
+		var params FlowActivateParams
+		if err := decodeParams(request.Params, &params); err != nil {
+			return Call{}, err
+		}
+		if err := requireIdentifier("option_id", params.OptionID); err != nil {
+			return Call{}, err
+		}
+		return Call{Method: request.Method, Params: params}, nil
+
 	case MethodDialogueStart:
 		type dialogueWire struct {
 			DialogueID string  `json:"dialogueId"`
@@ -355,6 +392,53 @@ func parseCall(request Request, fixedStepSeconds float64) (Call, *Error) {
 				SpeakerID:  speakerID,
 			},
 		}, nil
+
+	case MethodDialogueChoose:
+		var params ChooseDialogueParams
+		if err := decodeParams(request.Params, &params); err != nil {
+			return Call{}, err
+		}
+		if err := requireIdentifier("choice_id", params.ChoiceID); err != nil {
+			return Call{}, err
+		}
+		return Call{Method: request.Method, Params: params}, nil
+
+	case MethodShopBuy, MethodShopSell:
+		params, err := parseShopTradeParams(request.Params)
+		if err != nil {
+			return Call{}, err
+		}
+		return Call{Method: request.Method, Params: params}, nil
+
+	case MethodInventoryUse:
+		var params InventoryUseParams
+		if err := decodeParams(request.Params, &params); err != nil {
+			return Call{}, err
+		}
+		if err := requireIdentifier("item_id", params.ItemID); err != nil {
+			return Call{}, err
+		}
+		return Call{Method: request.Method, Params: params}, nil
+
+	case MethodEquipmentEquip:
+		var params EquipmentEquipParams
+		if err := decodeParams(request.Params, &params); err != nil {
+			return Call{}, err
+		}
+		if err := requireIdentifier("item_id", params.ItemID); err != nil {
+			return Call{}, err
+		}
+		return Call{Method: request.Method, Params: params}, nil
+
+	case MethodEquipmentUnequip:
+		var params EquipmentUnequipParams
+		if err := decodeParams(request.Params, &params); err != nil {
+			return Call{}, err
+		}
+		if err := requireIdentifier("slot_id", params.SlotID); err != nil {
+			return Call{}, err
+		}
+		return Call{Method: request.Method, Params: params}, nil
 
 	case MethodInputAction:
 		type inputWire struct {
@@ -479,6 +563,47 @@ func parseCall(request Request, fixedStepSeconds float64) (Call, *Error) {
 			"unknown method: "+request.Method,
 		)
 	}
+}
+
+func parseShopTradeParams(raw []byte) (ShopTradeParams, *Error) {
+	type shopTradeWire struct {
+		ItemID   string          `json:"item_id"`
+		Quantity json.RawMessage `json:"quantity"`
+	}
+	var wire shopTradeWire
+	if err := decodeParams(raw, &wire); err != nil {
+		return ShopTradeParams{}, err
+	}
+	if err := requireIdentifier("item_id", wire.ItemID); err != nil {
+		return ShopTradeParams{}, err
+	}
+
+	quantity := int64(1)
+	if len(wire.Quantity) != 0 {
+		if bytes.Equal(bytes.TrimSpace(wire.Quantity), []byte("null")) {
+			return ShopTradeParams{}, invalidQuantityError()
+		}
+		if err := decodeStrictJSON(wire.Quantity, &quantity); err != nil {
+			return ShopTradeParams{}, invalidQuantityError()
+		}
+	}
+	if quantity < 1 || quantity > campaign.MaxJSONInteger {
+		return ShopTradeParams{}, invalidQuantityError()
+	}
+	return ShopTradeParams{
+		ItemID:   wire.ItemID,
+		Quantity: quantity,
+	}, nil
+}
+
+func invalidQuantityError() *Error {
+	return rpcError(
+		CodeInvalidParams,
+		fmt.Sprintf(
+			"quantity must be an integer between 1 and %d",
+			campaign.MaxJSONInteger,
+		),
+	)
 }
 
 func decodeEmptyParams(raw []byte) *Error {

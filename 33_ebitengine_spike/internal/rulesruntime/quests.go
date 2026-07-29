@@ -64,7 +64,6 @@ func (executor *Executor) ApplyObjectiveEvent(
 			if questState.Status != campaign.QuestActive {
 				continue
 			}
-			activeMatch = true
 
 			objectiveState, _, err := findObjectiveState(
 				questState,
@@ -81,6 +80,15 @@ func (executor *Executor) ApplyObjectiveEvent(
 				return err
 			}
 			remaining := required - objectiveState.Count
+			if remaining == 0 {
+				// Another active quest may share this event filter while this
+				// objective is already capped and waits on a different
+				// objective. Do not let the capped counter block the remaining
+				// quest. If every match is capped, activeMatch remains false
+				// and the existing duplicate-event error is returned.
+				continue
+			}
+			activeMatch = true
 			if event.Count > remaining {
 				return fmt.Errorf(
 					"quest %q objective %q event count %d exceeds "+

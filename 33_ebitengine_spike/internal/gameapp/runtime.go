@@ -19,6 +19,7 @@ import (
 	"practice_love2d/33_ebitengine_spike/internal/content"
 	"practice_love2d/33_ebitengine_spike/internal/ebitapp"
 	"practice_love2d/33_ebitengine_spike/internal/gamebuild"
+	"practice_love2d/33_ebitengine_spike/internal/rulesruntime"
 	"practice_love2d/33_ebitengine_spike/internal/sim"
 	"practice_love2d/33_ebitengine_spike/internal/storage"
 )
@@ -29,6 +30,9 @@ type Options struct {
 	CatalogPath string
 	Build       gamebuild.Options
 	Store       storage.Store
+	// StartAtTitle enables the authored game-flow entry screen. Fixture and
+	// low-level simulation tests may leave it false to enter Build directly.
+	StartAtTitle bool
 }
 
 type virtualAction struct {
@@ -47,6 +51,7 @@ type runtimeCheckpoint struct {
 	built        *gamebuild.Result
 	simulation   *sim.Simulation
 	campaign     *campaign.Campaign
+	dialogue     *rulesruntime.DialogueSession
 
 	virtual          map[string]virtualAction
 	pendingAbilities map[string]bool
@@ -55,6 +60,19 @@ type runtimeCheckpoint struct {
 
 	previewSequence uint64
 	previewEntities map[string]previewEntity
+
+	dialogueSpeakerID       string
+	dialogueChoiceIndex     int
+	activeShopID            string
+	shopSelectedIndex       int
+	shopStatus              string
+	inventoryOpen           bool
+	inventorySelected       int
+	inventoryStatus         string
+	equipmentRebuildPending bool
+	flowSelectedIndex       int
+	flowStatus              string
+	continueAvailable       bool
 
 	portalCooldownTicks int
 	portalInside        map[string]bool
@@ -72,13 +90,15 @@ type Runtime struct {
 	catalog        *content.Catalog
 	campaignConfig campaign.Config
 	campaign       *campaign.Campaign
+	contentRules   gamebuild.ContentRules
+	ruleExecutor   *rulesruntime.Executor
 	built          *gamebuild.Result
 	simulation     *sim.Simulation
 	store          storage.Store
 
-	// automationPaused is controlled only by Emulation.* and the physical
-	// debug pause key. Semantic title/pause/gameover UI belongs to the
-	// campaign flow controller and must never reuse this clock gate.
+	// automationPaused is controlled only by Emulation.*. Semantic
+	// title/pause/gameover UI belongs to the campaign flow controller and
+	// must never reuse this clock gate.
 	automationPaused bool
 	quit             bool
 	quitPending      bool
@@ -91,6 +111,20 @@ type Runtime struct {
 
 	previewSequence uint64
 	previewEntities map[string]previewEntity
+
+	dialogue                *rulesruntime.DialogueSession
+	dialogueSpeakerID       string
+	dialogueChoiceIndex     int
+	activeShopID            string
+	shopSelectedIndex       int
+	shopStatus              string
+	inventoryOpen           bool
+	inventorySelected       int
+	inventoryStatus         string
+	equipmentRebuildPending bool
+	flowSelectedIndex       int
+	flowStatus              string
+	continueAvailable       bool
 
 	portalCooldownTicks int
 	portalInside        map[string]bool
@@ -112,17 +146,41 @@ func New(options Options) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	built, simulation, err := buildSimulation(catalog, resolved)
-	if err != nil {
-		return nil, err
-	}
-	activeCampaign, err := newCampaignForWorld(
+	contentRules, ruleExecutor, err := buildRuleRuntime(
+		catalog,
 		campaignConfig,
-		built,
-		resolved,
 	)
 	if err != nil {
 		return nil, err
+	}
+	var seedCampaign *campaign.Campaign
+	if options.StartAtTitle {
+		seedCampaign, err = campaign.NewTitle(campaignConfig)
+	} else {
+		seedCampaign, err = campaign.NewGame(campaignConfig)
+	}
+	if err != nil {
+		return nil, err
+	}
+	built, simulation, err := buildCampaignSimulation(
+		catalog,
+		resolved,
+		seedCampaign.Snapshot(),
+		contentRules,
+	)
+	if err != nil {
+		return nil, err
+	}
+	activeCampaign := seedCampaign
+	if !options.StartAtTitle {
+		activeCampaign, err = newCampaignForWorld(
+			campaignConfig,
+			built,
+			resolved,
+		)
+		if err != nil {
+			return nil, err
+		}
 	}
 	portalInside, err := portalOverlaps(built, simulation)
 	if err != nil {
@@ -135,6 +193,8 @@ func New(options Options) (*Runtime, error) {
 		catalog:          catalog,
 		campaignConfig:   campaignConfig,
 		campaign:         activeCampaign,
+		contentRules:     contentRules,
+		ruleExecutor:     ruleExecutor,
 		built:            built,
 		simulation:       simulation,
 		store:            options.Store,
@@ -146,6 +206,7 @@ func New(options Options) (*Runtime, error) {
 		revision:         1,
 	}
 	runtime.resetPreviewLocked()
+	runtime.continueAvailable = runtime.hasValidContinueLocked()
 	return runtime, nil
 }
 
@@ -175,7 +236,9 @@ func resolveBuildOptions(
 	return resolved
 }
 
-func buildSimulation(
+// buildValidationSimulation constructs a stateless definition-validation
+// preview. Player-owned Worlds must use buildCampaignSimulation instead.
+func buildValidationSimulation(
 	catalog *content.Catalog,
 	options gamebuild.Options,
 ) (*gamebuild.Result, *sim.Simulation, error) {
@@ -312,6 +375,13 @@ func (runtime *Runtime) reloadContent(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	contentRules, ruleExecutor, err := buildRuleRuntime(
+		catalog,
+		campaignConfig,
+	)
+	if err != nil {
+		return err
+	}
 	campaignState := runtime.campaign.Snapshot()
 	if err := validateCampaignReloadTopology(
 		runtime.campaignConfig,
@@ -320,18 +390,19 @@ func (runtime *Runtime) reloadContent(ctx context.Context) error {
 		return err
 	}
 	resolved := runtime.buildOptions
-	resolved.StageID = campaignState.CurrentStageID
-	resolved.SpawnID = campaignState.EntrySpawnID
-	resolved.LocaleID = campaignState.Locale
+	if campaignState.Flow.Started {
+		resolved.StageID = campaignState.CurrentStageID
+		resolved.SpawnID = campaignState.EntrySpawnID
+		resolved.LocaleID = campaignState.Locale
+	} else {
+		resolved = resolveBuildOptions(catalog, runtime.buildOverrides)
+		resolved.LocaleID = campaignState.Locale
+	}
 	if campaignState.Locale == runtime.campaignConfig.DefaultLocale {
 		// A campaign still following the old project default follows a changed
 		// default during explicit developer reload. A user-selected locale is
 		// retained.
 		resolved.LocaleID = campaignConfig.DefaultLocale
-	}
-	built, candidate, err := buildSimulation(catalog, resolved)
-	if err != nil {
-		return err
 	}
 	activeCampaign, err := restoreReloadedCampaign(
 		campaignConfig,
@@ -341,7 +412,17 @@ func (runtime *Runtime) reloadContent(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	built, candidate, err := buildCampaignSimulation(
+		catalog,
+		resolved,
+		activeCampaign.Snapshot(),
+		contentRules,
+	)
+	if err != nil {
+		return err
+	}
 	state := runtime.simulation.SaveSession()
+	state.Dialogue = sim.DialogueSessionState{}
 	if err := candidate.LoadSession(state); err != nil {
 		return fmt.Errorf(
 			"reload is incompatible with the active session: %w",
@@ -356,6 +437,8 @@ func (runtime *Runtime) reloadContent(ctx context.Context) error {
 	runtime.buildOptions = resolved
 	runtime.campaignConfig = campaignConfig
 	runtime.campaign = activeCampaign
+	runtime.contentRules = contentRules
+	runtime.ruleExecutor = ruleExecutor
 	runtime.built = built
 	runtime.simulation = candidate
 	runtime.virtual = make(map[string]virtualAction)
@@ -363,6 +446,8 @@ func (runtime *Runtime) reloadContent(ctx context.Context) error {
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
+	runtime.resetRulePresentationLocked()
+	runtime.resetFlowPresentationLocked()
 	runtime.portalCooldownTicks = 0
 	runtime.portalInside = portalInside
 	runtime.revision++
@@ -450,7 +535,23 @@ func (runtime *Runtime) startNewGame(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	built, simulation, err := buildSimulation(catalog, resolved)
+	contentRules, ruleExecutor, err := buildRuleRuntime(
+		catalog,
+		campaignConfig,
+	)
+	if err != nil {
+		return err
+	}
+	seedCampaign, err := campaign.NewGame(campaignConfig)
+	if err != nil {
+		return err
+	}
+	built, simulation, err := buildCampaignSimulation(
+		catalog,
+		resolved,
+		seedCampaign.Snapshot(),
+		contentRules,
+	)
 	if err != nil {
 		return err
 	}
@@ -470,6 +571,8 @@ func (runtime *Runtime) startNewGame(ctx context.Context) error {
 	runtime.buildOptions = resolved
 	runtime.campaignConfig = campaignConfig
 	runtime.campaign = activeCampaign
+	runtime.contentRules = contentRules
+	runtime.ruleExecutor = ruleExecutor
 	runtime.built = built
 	runtime.simulation = simulation
 	runtime.virtual = make(map[string]virtualAction)
@@ -477,6 +580,8 @@ func (runtime *Runtime) startNewGame(ctx context.Context) error {
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
+	runtime.resetRulePresentationLocked()
+	runtime.resetFlowPresentationLocked()
 	runtime.portalCooldownTicks = 0
 	runtime.portalInside = portalInside
 	runtime.revision++
@@ -484,20 +589,33 @@ func (runtime *Runtime) startNewGame(ctx context.Context) error {
 }
 
 func (runtime *Runtime) resetLocked() error {
-	candidate, err := sim.New(runtime.built.Config)
+	built, candidate, err := buildCampaignSimulation(
+		runtime.catalog,
+		runtime.buildOptions,
+		runtime.campaign.Snapshot(),
+		runtime.contentRules,
+	)
 	if err != nil {
 		return err
 	}
-	portalInside, err := portalOverlaps(runtime.built, candidate)
+	built = mergeResetBuild(built, runtime.built)
+	candidate, err = sim.New(built.Config)
+	if err != nil {
+		return fmt.Errorf("construct reset simulation: %w", err)
+	}
+	portalInside, err := portalOverlaps(built, candidate)
 	if err != nil {
 		return fmt.Errorf("reset portal latch: %w", err)
 	}
+	runtime.built = built
 	runtime.simulation = candidate
 	runtime.virtual = make(map[string]virtualAction)
 	runtime.pendingAbilities = make(map[string]bool)
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
+	runtime.resetRulePresentationLocked()
+	runtime.resetFlowPresentationLocked()
 	runtime.portalCooldownTicks = 0
 	runtime.portalInside = portalInside
 	runtime.revision++
@@ -550,26 +668,57 @@ func (runtime *Runtime) allMetadataLocked() []gamebuild.InstanceMetadata {
 
 func (runtime *Runtime) checkpointLocked() runtimeCheckpoint {
 	return runtimeCheckpoint{
-		buildOptions:        runtime.buildOptions,
-		built:               runtime.built,
-		simulation:          runtime.simulation,
-		campaign:            runtime.campaign,
-		virtual:             runtime.virtual,
-		pendingAbilities:    runtime.pendingAbilities,
-		pendingRemovals:     runtime.pendingRemovals,
-		moving:              runtime.moving,
-		previewSequence:     runtime.previewSequence,
-		previewEntities:     runtime.previewEntities,
-		portalCooldownTicks: runtime.portalCooldownTicks,
-		portalInside:        runtime.portalInside,
-		revision:            runtime.revision,
+		buildOptions:            runtime.buildOptions,
+		built:                   runtime.built,
+		simulation:              runtime.simulation,
+		campaign:                runtime.campaign,
+		dialogue:                runtime.dialogue,
+		virtual:                 runtime.virtual,
+		pendingAbilities:        runtime.pendingAbilities,
+		pendingRemovals:         runtime.pendingRemovals,
+		moving:                  runtime.moving,
+		previewSequence:         runtime.previewSequence,
+		previewEntities:         runtime.previewEntities,
+		dialogueSpeakerID:       runtime.dialogueSpeakerID,
+		dialogueChoiceIndex:     runtime.dialogueChoiceIndex,
+		activeShopID:            runtime.activeShopID,
+		shopSelectedIndex:       runtime.shopSelectedIndex,
+		shopStatus:              runtime.shopStatus,
+		inventoryOpen:           runtime.inventoryOpen,
+		inventorySelected:       runtime.inventorySelected,
+		inventoryStatus:         runtime.inventoryStatus,
+		equipmentRebuildPending: runtime.equipmentRebuildPending,
+		flowSelectedIndex:       runtime.flowSelectedIndex,
+		flowStatus:              runtime.flowStatus,
+		continueAvailable:       runtime.continueAvailable,
+		portalCooldownTicks:     runtime.portalCooldownTicks,
+		portalInside:            runtime.portalInside,
+		revision:                runtime.revision,
 	}
 }
 
 func (runtime *Runtime) detachMutableLocked(
 	checkpoint runtimeCheckpoint,
-) {
+) error {
+	activeCampaign, err := campaign.Restore(
+		runtime.campaignConfig,
+		checkpoint.campaign.Snapshot(),
+	)
+	if err != nil {
+		return fmt.Errorf("detach campaign candidate: %w", err)
+	}
+	var activeDialogue *rulesruntime.DialogueSession
+	if checkpoint.dialogue != nil {
+		activeDialogue, err = checkpoint.dialogue.CloneForCampaign(
+			activeCampaign,
+		)
+		if err != nil {
+			return fmt.Errorf("detach dialogue candidate: %w", err)
+		}
+	}
 	runtime.simulation = checkpoint.simulation.Clone()
+	runtime.campaign = activeCampaign
+	runtime.dialogue = activeDialogue
 	runtime.virtual = cloneVirtualActions(checkpoint.virtual)
 	runtime.pendingAbilities = cloneBoolMap(checkpoint.pendingAbilities)
 	runtime.pendingRemovals = cloneBoolMap(checkpoint.pendingRemovals)
@@ -578,6 +727,7 @@ func (runtime *Runtime) detachMutableLocked(
 		checkpoint.previewEntities,
 	)
 	runtime.portalInside = cloneBoolMap(checkpoint.portalInside)
+	return nil
 }
 
 func (runtime *Runtime) restoreCheckpointLocked(
@@ -587,12 +737,25 @@ func (runtime *Runtime) restoreCheckpointLocked(
 	runtime.built = checkpoint.built
 	runtime.simulation = checkpoint.simulation
 	runtime.campaign = checkpoint.campaign
+	runtime.dialogue = checkpoint.dialogue
 	runtime.virtual = checkpoint.virtual
 	runtime.pendingAbilities = checkpoint.pendingAbilities
 	runtime.pendingRemovals = checkpoint.pendingRemovals
 	runtime.moving = checkpoint.moving
 	runtime.previewSequence = checkpoint.previewSequence
 	runtime.previewEntities = checkpoint.previewEntities
+	runtime.dialogueSpeakerID = checkpoint.dialogueSpeakerID
+	runtime.dialogueChoiceIndex = checkpoint.dialogueChoiceIndex
+	runtime.activeShopID = checkpoint.activeShopID
+	runtime.shopSelectedIndex = checkpoint.shopSelectedIndex
+	runtime.shopStatus = checkpoint.shopStatus
+	runtime.inventoryOpen = checkpoint.inventoryOpen
+	runtime.inventorySelected = checkpoint.inventorySelected
+	runtime.inventoryStatus = checkpoint.inventoryStatus
+	runtime.equipmentRebuildPending = checkpoint.equipmentRebuildPending
+	runtime.flowSelectedIndex = checkpoint.flowSelectedIndex
+	runtime.flowStatus = checkpoint.flowStatus
+	runtime.continueAvailable = checkpoint.continueAvailable
 	runtime.portalCooldownTicks = checkpoint.portalCooldownTicks
 	runtime.portalInside = checkpoint.portalInside
 	runtime.revision = checkpoint.revision

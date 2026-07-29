@@ -3,6 +3,7 @@ package gameapp
 import (
 	"math"
 
+	"practice_love2d/33_ebitengine_spike/internal/campaign"
 	"practice_love2d/33_ebitengine_spike/internal/sim"
 )
 
@@ -16,6 +17,7 @@ type runtimeStateDTO struct {
 	WorldTick   uint64 `json:"world_tick"`
 	Revision    uint64 `json:"revision"`
 	Paused      bool   `json:"paused"`
+	Mode        string `json:"mode"`
 	Quit        bool   `json:"quit"`
 	QuitPending bool   `json:"quit_pending"`
 	Hitstop     int    `json:"hitstop_ticks"`
@@ -96,20 +98,21 @@ type entityDTO struct {
 }
 
 type worldSnapshotDTO struct {
-	Available    bool                 `json:"available"`
-	Time         float64              `json:"time"`
-	Tick         uint64               `json:"tick"`
-	WorldTick    uint64               `json:"world_tick"`
-	Revision     uint64               `json:"revision"`
-	HitstopTicks int                  `json:"hitstop_ticks"`
-	Stage        stageDTO             `json:"stage"`
-	Walls        []wallDTO            `json:"walls"`
-	Camera       cameraDTO            `json:"camera"`
-	Count        int                  `json:"count"`
-	Entities     []entityDTO          `json:"entities"`
-	Quests       []sim.QuestSnapshot  `json:"quests"`
-	Dialogue     sim.DialogueSnapshot `json:"dialogue"`
-	RecentEvents []sim.Event          `json:"recent_events"`
+	Available    bool                `json:"available"`
+	Time         float64             `json:"time"`
+	Tick         uint64              `json:"tick"`
+	WorldTick    uint64              `json:"world_tick"`
+	Revision     uint64              `json:"revision"`
+	HitstopTicks int                 `json:"hitstop_ticks"`
+	Stage        stageDTO            `json:"stage"`
+	Walls        []wallDTO           `json:"walls"`
+	Camera       cameraDTO           `json:"camera"`
+	Count        int                 `json:"count"`
+	Entities     []entityDTO         `json:"entities"`
+	Quests       []sim.QuestSnapshot `json:"quests"`
+	Campaign     campaign.State      `json:"campaign"`
+	Dialogue     DialogueState       `json:"dialogue"`
+	RecentEvents []sim.Event         `json:"recent_events"`
 }
 
 func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
@@ -129,6 +132,14 @@ func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
 	)
 	shakeX := -coordPixels(frame.Camera.ShakeOffset.X)
 	shakeY := -coordPixels(frame.Camera.ShakeOffset.Y)
+	dialogue, dialogueErr := runtime.dialogueStateLocked()
+	if dialogueErr != nil {
+		dialogue = DialogueState{
+			Active:  true,
+			Text:    "dialogue state error: " + dialogueErr.Error(),
+			Choices: []DialogueChoiceState{},
+		}
+	}
 	result := worldSnapshotDTO{
 		Available:    true,
 		Time:         float64(snapshot.WorldTick) / sim.TicksPerSecond,
@@ -158,7 +169,8 @@ func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
 		},
 		Count:        len(snapshot.Entities),
 		Quests:       snapshot.Quests,
-		Dialogue:     snapshot.Dialogue,
+		Campaign:     runtime.campaign.Snapshot(),
+		Dialogue:     dialogue,
 		RecentEvents: snapshot.Events,
 		Walls:        make([]wallDTO, 0, len(frame.Walls)),
 		Entities:     make([]entityDTO, 0, len(snapshot.Entities)),

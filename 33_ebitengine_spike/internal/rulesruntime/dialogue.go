@@ -55,6 +55,41 @@ type DialogueSession struct {
 	closed   bool
 }
 
+// CloneForCampaign copies the transient node cursor and binds it to a detached
+// Campaign candidate. Hosts use this before a multi-part operation so both the
+// durable mutations and the dialogue cursor can be discarded together if a
+// later presentation intent fails.
+func (session *DialogueSession) CloneForCampaign(
+	live *campaign.Campaign,
+) (*DialogueSession, error) {
+	if session == nil {
+		return nil, errors.New("clone dialogue: session is nil")
+	}
+	if live == nil {
+		return nil, errors.New("clone dialogue: campaign is nil")
+	}
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	if err := session.requireValid("clone dialogue"); err != nil {
+		return nil, err
+	}
+	sourceState := session.live.Snapshot()
+	if err := session.executor.requireIdentity(&sourceState); err != nil {
+		return nil, fmt.Errorf("clone dialogue: source campaign: %w", err)
+	}
+	destinationState := live.Snapshot()
+	if err := session.executor.requireIdentity(&destinationState); err != nil {
+		return nil, fmt.Errorf("clone dialogue: destination campaign: %w", err)
+	}
+	return &DialogueSession{
+		executor: session.executor,
+		live:     live,
+		dialogue: session.dialogue,
+		nodeID:   session.nodeID,
+		closed:   session.closed,
+	}, nil
+}
+
 // StartDialogue enters a dialogue's authored start node. Its node actions are
 // executed exactly once before the session becomes observable. On failure, no
 // session or intent is returned and Executor.Execute rolls back the campaign.
@@ -316,14 +351,21 @@ func (session *DialogueSession) Closed() bool {
 }
 
 func (session *DialogueSession) requireOpen(operation string) error {
+	if err := session.requireValid(operation); err != nil {
+		return err
+	}
+	if session.closed {
+		return fmt.Errorf("%s: session is closed", operation)
+	}
+	return nil
+}
+
+func (session *DialogueSession) requireValid(operation string) error {
 	if session.executor == nil ||
 		session.live == nil ||
 		session.dialogue.ID == "" ||
 		session.nodeID == "" {
 		return fmt.Errorf("%s: session is invalid", operation)
-	}
-	if session.closed {
-		return fmt.Errorf("%s: session is closed", operation)
 	}
 	return nil
 }

@@ -295,7 +295,11 @@ func TestPortalRoundTripRebuildsWorldAndPreservesCampaign(t *testing.T) {
 	)
 	scheduleProtocolAction(t, runtime, "interact")
 	stepProtocol(t, runtime, 1)
-	if !runtime.simulation.Snapshot().Dialogue.Active {
+	dialogue, err := runtime.DialogueState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !dialogue.Active {
 		t.Fatal("authored village dialogue did not open before transition")
 	}
 	// Also mutate an NPC position so returning to the stage proves the whole
@@ -319,7 +323,15 @@ func TestPortalRoundTripRebuildsWorldAndPreservesCampaign(t *testing.T) {
 		t.Fatal(err)
 	}
 	beforeRevision := runtime.revision
-	stepProtocol(t, runtime, 1)
+	runtime.mu.Lock()
+	err = runtime.transitionPortalLocked(runtime.built.Stage.Portals[0])
+	if err == nil {
+		runtime.revision++
+	}
+	runtime.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if runtime.revision != beforeRevision+1 {
 		t.Fatalf(
 			"successful transition revision = %d, want %d",
@@ -329,7 +341,11 @@ func TestPortalRoundTripRebuildsWorldAndPreservesCampaign(t *testing.T) {
 	}
 	assertLocation(t, runtime, "stage.world_hub", "village_entry")
 	assertFreshWorld(t, runtime, 80, 288)
-	if runtime.simulation.Snapshot().Dialogue.Active {
+	dialogue, err = runtime.DialogueState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dialogue.Active {
 		t.Fatal("village dialogue crossed into field World")
 	}
 	if runtime.simulation.Snapshot().Camera.ShakeTicks != 0 {

@@ -42,6 +42,7 @@ func (runtime *Runtime) Call(
 			WorldTick:   snapshot.WorldTick,
 			Revision:    runtime.revision,
 			Paused:      runtime.automationPaused,
+			Mode:        string(runtime.campaign.Snapshot().Mode),
 			Quit:        runtime.quit,
 			QuitPending: runtime.quitPending,
 			Hitstop:     snapshot.HitstopTicks,
@@ -145,12 +146,104 @@ func (runtime *Runtime) Call(
 		}
 		return runtime.requestAbility(params)
 
+	case protocol.MethodFlowGetState:
+		if _, ok := call.Params.(protocol.EmptyParams); !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.FlowState()
+
+	case protocol.MethodFlowMove:
+		params, ok := call.Params.(protocol.FlowMoveParams)
+		if !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.MoveFlowSelection(params.Delta)
+
+	case protocol.MethodFlowActivate:
+		params, ok := call.Params.(protocol.FlowActivateParams)
+		if !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.ActivateFlowOption(params.OptionID)
+
 	case protocol.MethodDialogueStart:
 		params, ok := call.Params.(protocol.StartDialogueParams)
 		if !ok {
 			return nil, invalidBackendParams(call.Method)
 		}
 		return runtime.startDialogue(params)
+
+	case protocol.MethodDialogueGetState:
+		if _, ok := call.Params.(protocol.EmptyParams); !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.DialogueState()
+
+	case protocol.MethodDialogueChoose:
+		params, ok := call.Params.(protocol.ChooseDialogueParams)
+		if !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.ChooseDialogue(params.ChoiceID)
+
+	case protocol.MethodDialogueAdvance:
+		if _, ok := call.Params.(protocol.EmptyParams); !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.AdvanceDialogue()
+
+	case protocol.MethodCampaignGetState:
+		if _, ok := call.Params.(protocol.EmptyParams); !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.CampaignGetState()
+
+	case protocol.MethodShopGetState:
+		if _, ok := call.Params.(protocol.EmptyParams); !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.ShopState()
+
+	case protocol.MethodShopBuy:
+		params, ok := call.Params.(protocol.ShopTradeParams)
+		if !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.BuyShopItem(params.ItemID, params.Quantity)
+
+	case protocol.MethodShopSell:
+		params, ok := call.Params.(protocol.ShopTradeParams)
+		if !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.SellShopItem(params.ItemID, params.Quantity)
+
+	case protocol.MethodShopClose:
+		if _, ok := call.Params.(protocol.EmptyParams); !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.CloseShop()
+
+	case protocol.MethodInventoryUse:
+		params, ok := call.Params.(protocol.InventoryUseParams)
+		if !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.UseInventoryItem(params.ItemID)
+
+	case protocol.MethodEquipmentEquip:
+		params, ok := call.Params.(protocol.EquipmentEquipParams)
+		if !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.EquipCampaignItem(params.ItemID)
+
+	case protocol.MethodEquipmentUnequip:
+		params, ok := call.Params.(protocol.EquipmentUnequipParams)
+		if !ok {
+			return nil, invalidBackendParams(call.Method)
+		}
+		return runtime.UnequipCampaignItem(params.SlotID)
 
 	case protocol.MethodInputAction:
 		params, ok := call.Params.(protocol.InputActionParams)
@@ -314,7 +407,10 @@ func (runtime *Runtime) validateDefinition(
 		return nil, err
 	}
 
-	built, simulation, buildErr := buildSimulation(candidate, options)
+	built, simulation, buildErr := buildValidationSimulation(
+		candidate,
+		options,
+	)
 	runtimeCompatible := buildErr == nil
 	runtimeError := ""
 	entities := 0
@@ -401,6 +497,11 @@ func (runtime *Runtime) setWall(
 
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
+	if err := runtime.rejectMakerMutationWhileEquipmentPendingLocked(
+		"set wall",
+	); err != nil {
+		return nil, err
+	}
 	if err := runtime.simulation.SetWall(params.WallID, replacement); err != nil {
 		return nil, fmt.Errorf("set wall: %w", err)
 	}
@@ -656,19 +757,41 @@ func (runtime *Runtime) step(ctx context.Context, frames int) (any, error) {
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
 
+	if mode := runtime.campaign.Snapshot().Mode; mode != campaign.ModePlaying {
+		return nil, fmt.Errorf(
+			"Emulation.step is unavailable while game flow mode %q is active; use Flow.getState and Flow.activate",
+			mode,
+		)
+	}
 	checkpoint := runtime.checkpointLocked()
 	originalPaused := runtime.automationPaused
 
-	runtime.detachMutableLocked(checkpoint)
+	// mergeVirtualInputLocked consumes this map before tickLocked creates its
+	// own candidate. Detach just this pre-tick mutable so the outer batch
+	// checkpoint remains intact without rebinding an active DialogueSession.
+	runtime.virtual = cloneVirtualActions(checkpoint.virtual)
 	runtime.automationPaused = true
-	for range frames {
+	for frame := range frames {
 		if err := ctx.Err(); err != nil {
 			runtime.restoreCheckpointLocked(checkpoint)
 			runtime.automationPaused = originalPaused
 			return nil, err
 		}
+		if mode := runtime.campaign.Snapshot().Mode; mode != campaign.ModePlaying {
+			runtime.restoreCheckpointLocked(checkpoint)
+			runtime.automationPaused = originalPaused
+			return nil, fmt.Errorf(
+				"Emulation.step frame %d entered game flow mode %q before the requested batch completed",
+				frame,
+				mode,
+			)
+		}
 		input := sim.Input{}
-		runtime.mergeVirtualInputLocked(&input)
+		if runtime.dialogue == nil &&
+			runtime.activeShopID == "" &&
+			!runtime.inventoryOpen {
+			runtime.mergeVirtualInputLocked(&input)
+		}
 		if err := runtime.tickLocked(input); err != nil {
 			runtime.restoreCheckpointLocked(checkpoint)
 			runtime.automationPaused = originalPaused
@@ -731,6 +854,12 @@ type campaignLoadResult struct {
 
 func (runtime *Runtime) save(ctx context.Context, slot string) (any, error) {
 	runtime.mu.RLock()
+	if runtime.equipmentRebuildPending {
+		runtime.mu.RUnlock()
+		return nil, errors.New(
+			"save is unavailable while an authored equipment rebuild is pending",
+		)
+	}
 	if runtime.simulation.HasTemporaryPreview() ||
 		len(runtime.pendingRemovals) != 0 {
 		runtime.mu.RUnlock()
@@ -769,6 +898,12 @@ func (runtime *Runtime) save(ctx context.Context, slot string) (any, error) {
 	if err := runtime.store.Save(slot, data); err != nil {
 		return nil, err
 	}
+	runtime.mu.Lock()
+	if !runtime.continueAvailable {
+		runtime.continueAvailable = true
+		runtime.revision++
+	}
+	runtime.mu.Unlock()
 	return campaignSaveResult{
 		Slot:   slot,
 		Saved:  true,
@@ -819,7 +954,12 @@ func (runtime *Runtime) load(ctx context.Context, slot string) (any, error) {
 	resolved.StageID = state.CurrentStageID
 	resolved.SpawnID = state.EntrySpawnID
 	resolved.LocaleID = state.Locale
-	built, candidate, err := buildSimulation(runtime.catalog, resolved)
+	built, candidate, err := buildCampaignSimulation(
+		runtime.catalog,
+		resolved,
+		state,
+		runtime.contentRules,
+	)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"load save slot %q stage %s/%s: %w",
@@ -873,6 +1013,8 @@ func (runtime *Runtime) load(ctx context.Context, slot string) (any, error) {
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
+	runtime.resetRulePresentationLocked()
+	runtime.resetFlowPresentationLocked()
 	runtime.portalCooldownTicks = 0
 	runtime.portalInside = portalInside
 	runtime.revision++

@@ -7,28 +7,139 @@ import (
 	"sort"
 	"strings"
 
+	"practice_love2d/33_ebitengine_spike/internal/campaign"
 	"practice_love2d/33_ebitengine_spike/internal/ebitapp"
 	"practice_love2d/33_ebitengine_spike/internal/sim"
 )
 
 func (runtime *Runtime) Tick(actions ebitapp.Actions) error {
 	runtime.mu.Lock()
+	if runtime.quit {
+		runtime.mu.Unlock()
+		return nil
+	}
+	if runtime.automationPaused {
+		runtime.mu.Unlock()
+		return nil
+	}
+	if runtime.campaign.Snapshot().Mode != campaign.ModePlaying {
+		command, err := runtime.consumeFlowActionsLocked(actions)
+		runtime.mu.Unlock()
+		if err != nil {
+			return err
+		}
+		return runtime.executeFlowCommand(command)
+	}
 	defer runtime.mu.Unlock()
 
-	if runtime.quit {
-		return nil
+	if err := runtime.publishPendingEquipmentRebuildLocked(); err != nil {
+		return err
+	}
+	if actions.Pause {
+		return runtime.pauseFlowLocked()
 	}
 	if actions.Restart {
 		if err := runtime.resetLocked(); err != nil {
 			return err
 		}
 	}
-	if actions.Pause {
-		runtime.automationPaused = !runtime.automationPaused
-		runtime.revision++
+	if runtime.dialogue != nil {
+		switch {
+		case actions.DialogueCancel:
+			_, err := runtime.cancelDialogueLocked()
+			return err
+		case actions.DialogueConfirm:
+			_, err := runtime.confirmDialogueLocked()
+			return err
+		case actions.DialogueUp != actions.DialogueDown:
+			delta := 1
+			if actions.DialogueUp {
+				delta = -1
+			}
+			_, err := runtime.moveDialogueSelectionLocked(delta)
+			return err
+		default:
+			return nil
+		}
 	}
-	if runtime.automationPaused {
-		return nil
+	if runtime.activeShopID != "" {
+		switch {
+		case actions.ShopCancel:
+			_, err := runtime.closeShopLocked()
+			return err
+		case actions.ShopBuy:
+			itemID, err := runtime.selectedShopItemLocked()
+			if err != nil {
+				runtime.shopStatus = err.Error()
+				runtime.revision++
+				return nil
+			}
+			if _, err := runtime.buyShopItemLocked(itemID, 1); err != nil {
+				runtime.shopStatus = err.Error()
+				runtime.revision++
+			}
+			return nil
+		case actions.ShopSell:
+			itemID, err := runtime.selectedShopItemLocked()
+			if err != nil {
+				runtime.shopStatus = err.Error()
+				runtime.revision++
+				return nil
+			}
+			if _, err := runtime.sellShopItemLocked(itemID, 1); err != nil {
+				runtime.shopStatus = err.Error()
+				runtime.revision++
+			}
+			return nil
+		case actions.ShopUp != actions.ShopDown:
+			delta := 1
+			if actions.ShopUp {
+				delta = -1
+			}
+			_, err := runtime.moveShopSelectionLocked(delta)
+			return err
+		default:
+			return nil
+		}
+	}
+	if runtime.inventoryOpen {
+		switch {
+		case actions.InventoryCancel || actions.InventoryToggle:
+			runtime.closeInventoryLocked()
+			return nil
+		case actions.InventoryActivate:
+			if err := runtime.activateInventorySelectionLocked(); err != nil {
+				runtime.setInventoryFailureLocked(err)
+			}
+			return nil
+		case actions.InventoryUnequip:
+			if err := runtime.unequipInventorySelectionLocked(); err != nil {
+				runtime.setInventoryFailureLocked(err)
+			}
+			return nil
+		case actions.InventoryUp != actions.InventoryDown:
+			delta := 1
+			if actions.InventoryUp {
+				delta = -1
+			}
+			if err := runtime.moveInventorySelectionLocked(delta); err != nil {
+				runtime.setInventoryFailureLocked(err)
+			}
+			return nil
+		default:
+			return nil
+		}
+	}
+	if actions.InventoryToggle {
+		return runtime.openInventoryLocked()
+	}
+	legacyDialogue := runtime.simulation.Snapshot().Dialogue.Active
+	if legacyDialogue {
+		if actions.DialogueConfirm || actions.DialogueCancel {
+			actions.Interact = true
+		} else {
+			return nil
+		}
 	}
 	input := sim.Input{
 		MoveX:    digitalAxis(actions.MoveX),
@@ -114,8 +225,22 @@ func (runtime *Runtime) advanceVirtualLocked() {
 }
 
 func (runtime *Runtime) tickLocked(input sim.Input) error {
+	if runtime.campaign.Snapshot().Mode == campaign.ModePlaying {
+		if err := runtime.publishPendingEquipmentRebuildLocked(); err != nil {
+			return err
+		}
+	}
+	// Authored dialogue and shops are modal: raw world steps remain no-ops
+	// until an explicit modal operation resolves them.
+	if runtime.dialogue != nil ||
+		runtime.activeShopID != "" ||
+		runtime.inventoryOpen {
+		return nil
+	}
 	checkpoint := runtime.checkpointLocked()
-	runtime.detachMutableLocked(checkpoint)
+	if err := runtime.detachMutableLocked(checkpoint); err != nil {
+		return err
+	}
 	if len(runtime.pendingRemovals) != 0 {
 		// Removal wins over interaction on its flush tick. This prevents a
 		// queued speaker from becoming a new strong dialogue reference after
@@ -130,6 +255,23 @@ func (runtime *Runtime) tickLocked(input sim.Input) error {
 	entities := make(map[string]sim.EntitySnapshot, len(snapshot.Entities))
 	for _, entity := range snapshot.Entities {
 		entities[entity.ID] = entity
+	}
+	if input.Interact && len(runtime.pendingRemovals) == 0 {
+		handled, err := runtime.handleDomainInteractionLocked(snapshot)
+		if err != nil {
+			runtime.restoreCheckpointLocked(checkpoint)
+			return err
+		}
+		if handled {
+			// The domain interaction consumed this semantic edge. The legacy
+			// simulation dialogue/quest layer remains available only for Maker
+			// preview compatibility and cannot duplicate the authored action.
+			input.Interact = false
+			if runtime.campaign.Snapshot().Mode != campaign.ModePlaying {
+				runtime.revision++
+				return nil
+			}
+		}
 	}
 
 	for _, metadata := range runtime.allMetadataLocked() {
@@ -208,6 +350,23 @@ func (runtime *Runtime) tickLocked(input sim.Input) error {
 		input.Commands = append(input.Commands, command)
 	}
 	events := runtime.simulation.Tick(input)
+	if err := runtime.applyObjectiveEventsLocked(events); err != nil {
+		runtime.restoreCheckpointLocked(checkpoint)
+		return err
+	}
+	if err := runtime.reconcileEquipmentChangeLocked(
+		checkpoint.campaign,
+		true,
+	); err != nil {
+		runtime.restoreCheckpointLocked(checkpoint)
+		return err
+	}
+	if runtime.controlledActorKilledLocked(events) {
+		if err := runtime.enterGameOverLocked(); err != nil {
+			runtime.restoreCheckpointLocked(checkpoint)
+			return err
+		}
+	}
 	for _, event := range events {
 		if event.Type == sim.EventAttackStarted {
 			delete(runtime.pendingAbilities, event.EntityID)
@@ -222,9 +381,11 @@ func (runtime *Runtime) tickLocked(input sim.Input) error {
 		runtime.restoreCheckpointLocked(checkpoint)
 		return err
 	}
-	if err := runtime.updatePortalsLocked(); err != nil {
-		runtime.restoreCheckpointLocked(checkpoint)
-		return err
+	if runtime.campaign.Snapshot().Mode == campaign.ModePlaying {
+		if err := runtime.updatePortalsLocked(); err != nil {
+			runtime.restoreCheckpointLocked(checkpoint)
+			return err
+		}
 	}
 	runtime.revision++
 	return nil
@@ -336,6 +497,7 @@ func (runtime *Runtime) View() ebitapp.View {
 	} else {
 		view.HUD.Status = fmt.Sprintf("tick %d · Ebitengine", frame.Tick)
 	}
+	view.Flow = runtime.flowViewLocked()
 	for _, wall := range frame.Walls {
 		rect := wall.Rect
 		points := make([]ebitapp.PointView, len(wall.Points))
@@ -426,26 +588,133 @@ func (runtime *Runtime) View() ebitapp.View {
 			})
 		}
 	}
-	if frame.Dialogue.Active {
-		view.HUD.Dialogue = frame.Dialogue.Speaker + "\n" +
-			frame.Dialogue.Text
+	dialogue, dialogueErr := runtime.dialogueStateLocked()
+	if dialogueErr != nil {
+		message := "대화 오류: " + dialogueErr.Error()
+		view.Dialogue = ebitapp.DialogueView{
+			Active:  true,
+			Speaker: "System",
+			Text:    message,
+			Choices: []ebitapp.DialogueChoiceView{},
+		}
+		view.HUD.Dialogue = message
+	} else if dialogue.Active {
+		view.Dialogue = ebitapp.DialogueView{
+			Active:        true,
+			Speaker:       dialogue.Speaker,
+			Text:          dialogue.Text,
+			SelectedIndex: dialogue.SelectedIndex,
+			Choices: make(
+				[]ebitapp.DialogueChoiceView,
+				len(dialogue.Choices),
+			),
+		}
+		for index, choice := range dialogue.Choices {
+			view.Dialogue.Choices[index] = ebitapp.DialogueChoiceView{
+				ID:   choice.ID,
+				Text: choice.Text,
+			}
+		}
+		view.HUD.Dialogue = dialogue.Speaker + "\n" + dialogue.Text
 	}
-	for _, quest := range frame.Quests {
-		if quest.Status == sim.QuestInactive {
+	shop, shopErr := runtime.shopStateLocked()
+	if shopErr != nil {
+		if runtime.activeShopID != "" {
+			view.Shop = ebitapp.ShopView{
+				Active:        true,
+				Name:          "Shop error",
+				Offers:        []ebitapp.ShopOfferView{},
+				SelectedIndex: -1,
+				Status:        shopErr.Error(),
+			}
+		}
+	} else if shop.Active {
+		view.Shop = ebitapp.ShopView{
+			Active:        true,
+			Name:          shop.Name,
+			Currency:      shop.Balance,
+			Offers:        make([]ebitapp.ShopOfferView, len(shop.Offers)),
+			SelectedIndex: shop.SelectedIndex,
+			Status:        shop.Status,
+		}
+		for index, offer := range shop.Offers {
+			presentation := ebitapp.ShopOfferView{
+				ID:      offer.ItemID,
+				Name:    offer.Name,
+				Owned:   offer.Owned,
+				CanBuy:  offer.CanBuy,
+				CanSell: offer.CanSell,
+			}
+			if offer.BuyPrice != nil {
+				presentation.BuyPrice = *offer.BuyPrice
+			}
+			if offer.SellPrice != nil {
+				presentation.SellPrice = *offer.SellPrice
+			}
+			view.Shop.Offers[index] = presentation
+		}
+	}
+	inventory, inventoryErr := runtime.inventoryViewLocked()
+	if inventoryErr != nil {
+		if runtime.inventoryOpen {
+			view.Inventory = ebitapp.InventoryView{
+				Active:        true,
+				Title:         "소지품 오류",
+				Items:         []ebitapp.InventoryItemView{},
+				SelectedIndex: -1,
+				Status:        inventoryErr.Error(),
+			}
+		}
+	} else {
+		view.Inventory = inventory
+	}
+	campaignState := runtime.campaign.Snapshot()
+	view.HUD.Currency = campaignState.Currency
+	for _, quest := range campaignState.Quests {
+		if quest.Status == campaign.QuestInactive {
 			continue
 		}
 		label := "진행"
-		if quest.Status == sim.QuestCompleted {
+		if quest.Status == campaign.QuestCompleted {
 			label = "완료"
+		}
+		progress := int64(0)
+		required := 0
+		for _, objective := range quest.Objectives {
+			progress += objective.Count
+		}
+		if rule, exists := runtime.contentRules.Quest(quest.ID); exists {
+			for _, objective := range rule.Objectives {
+				required += objective.Count
+			}
 		}
 		view.HUD.Quest = fmt.Sprintf(
 			"%s [%s] %d/%d",
 			quest.ID,
 			label,
-			quest.Progress,
-			quest.Required,
+			progress,
+			required,
 		)
 		break
+	}
+	if view.HUD.Quest == "" {
+		for _, quest := range frame.Quests {
+			if quest.Status == sim.QuestInactive {
+				continue
+			}
+			label := "진행"
+			if quest.Status == sim.QuestCompleted {
+				label = "완료"
+			}
+			view.HUD.Quest = fmt.Sprintf(
+				"%s [%s] %d/%d",
+				quest.ID,
+				label,
+				quest.Progress,
+				quest.Required,
+			)
+			break
+		}
 	}
 	return view
 }

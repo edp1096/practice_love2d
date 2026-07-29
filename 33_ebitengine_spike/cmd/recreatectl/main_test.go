@@ -82,6 +82,20 @@ func TestCLIMapsUsefulCommandsToProtocol(t *testing.T) {
 		{"health", "player", "7"},
 		{"ability", "player", "ability.parry"},
 		{"dialogue", "dialogue.guide", "guide"},
+		{"dialogue-state"},
+		{"dialogue-choose", "accept"},
+		{"dialogue-advance"},
+		{"campaign-state"},
+		{"flow-state"},
+		{"flow-move", "up"},
+		{"flow-activate", "new_game"},
+		{"shop-state"},
+		{"shop-buy", "item.potion"},
+		{"shop-sell", "item.potion", "2"},
+		{"shop-close"},
+		{"item-use", "item.potion"},
+		{"equip", "item.sword"},
+		{"unequip", "weapon"},
 		{"action", "attack", "--value", "0.5", "--frames", "3"},
 		{"pause", "true"},
 		{"step", "--frames", "4", "--dt", "0.0166666667"},
@@ -102,6 +116,20 @@ func TestCLIMapsUsefulCommandsToProtocol(t *testing.T) {
 		protocol.MethodEntitySetHealth,
 		protocol.MethodEntityRequestAbility,
 		protocol.MethodDialogueStart,
+		protocol.MethodDialogueGetState,
+		protocol.MethodDialogueChoose,
+		protocol.MethodDialogueAdvance,
+		protocol.MethodCampaignGetState,
+		protocol.MethodFlowGetState,
+		protocol.MethodFlowMove,
+		protocol.MethodFlowActivate,
+		protocol.MethodShopGetState,
+		protocol.MethodShopBuy,
+		protocol.MethodShopSell,
+		protocol.MethodShopClose,
+		protocol.MethodInventoryUse,
+		protocol.MethodEquipmentEquip,
+		protocol.MethodEquipmentUnequip,
 		protocol.MethodInputAction,
 		protocol.MethodEmulationSetPaused,
 		protocol.MethodEmulationStep,
@@ -154,11 +182,35 @@ func TestCLIMapsUsefulCommandsToProtocol(t *testing.T) {
 		dialogue.SpeakerID != "guide" {
 		t.Fatalf("unexpected dialogue params: %+v", dialogue)
 	}
-	action := calls[10].Params.(protocol.InputActionParams)
+	choice := calls[11].Params.(protocol.ChooseDialogueParams)
+	if choice.ChoiceID != "accept" {
+		t.Fatalf("unexpected dialogue choice params: %+v", choice)
+	}
+	flowMove := calls[15].Params.(protocol.FlowMoveParams)
+	if flowMove.Delta != -1 {
+		t.Fatalf("unexpected flow move params: %+v", flowMove)
+	}
+	flowActivate := calls[16].Params.(protocol.FlowActivateParams)
+	if flowActivate.OptionID != "new_game" {
+		t.Fatalf("unexpected flow activation params: %+v", flowActivate)
+	}
+	buy := calls[18].Params.(protocol.ShopTradeParams)
+	if buy.ItemID != "item.potion" || buy.Quantity != 1 {
+		t.Fatalf("unexpected shop buy params: %+v", buy)
+	}
+	sell := calls[19].Params.(protocol.ShopTradeParams)
+	if sell.ItemID != "item.potion" || sell.Quantity != 2 {
+		t.Fatalf("unexpected shop sell params: %+v", sell)
+	}
+	equip := calls[22].Params.(protocol.EquipmentEquipParams)
+	if equip.ItemID != "item.sword" {
+		t.Fatalf("unexpected equipment params: %+v", equip)
+	}
+	action := calls[24].Params.(protocol.InputActionParams)
 	if action.Value != 0.5 || action.Frames != 3 {
 		t.Fatalf("unexpected action params: %+v", action)
 	}
-	step := calls[12].Params.(protocol.StepParams)
+	step := calls[26].Params.(protocol.StepParams)
 	if step.Frames != 4 || step.DT == nil {
 		t.Fatalf("unexpected step params: %+v", step)
 	}
@@ -304,6 +356,34 @@ func TestCLIRejectsUnsafeOrMalformedInput(t *testing.T) {
 		{"remove"},
 		{"dialogue"},
 		{"dialogue", "dialogue.guide", "guide", "extra"},
+		{"dialogue-state", "extra"},
+		{"dialogue-choose"},
+		{"dialogue-choose", "accept", "extra"},
+		{"dialogue-advance", "extra"},
+		{"campaign-state", "extra"},
+		{"flow-state", "extra"},
+		{"flow-move"},
+		{"flow-move", "left"},
+		{"flow-move", "up", "extra"},
+		{"flow-activate"},
+		{"flow-activate", "new_game", "extra"},
+		{"shop-state", "extra"},
+		{"shop-buy"},
+		{"shop-buy", "item.potion", "1", "extra"},
+		{"shop-buy", "item.potion", "null"},
+		{"shop-buy", "item.potion", "1.5"},
+		{"shop-buy", "item.potion", "0"},
+		{"shop-buy", "item.potion", "-1"},
+		{"shop-buy", "item.potion", "9007199254740992"},
+		{"shop-sell"},
+		{"shop-sell", "item.potion", "1.5"},
+		{"shop-close", "extra"},
+		{"item-use"},
+		{"item-use", "item.potion", "extra"},
+		{"equip"},
+		{"equip", "item.sword", "extra"},
+		{"unequip"},
+		{"unequip", "weapon", "extra"},
 		{"pause", "maybe"},
 		{"validate", "actor.hero", "-"},
 		{"call", "Runtime.getState", "[]"},

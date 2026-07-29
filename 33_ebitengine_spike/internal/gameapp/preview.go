@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 
+	"practice_love2d/33_ebitengine_spike/internal/campaign"
 	"practice_love2d/33_ebitengine_spike/internal/gamebuild"
 	"practice_love2d/33_ebitengine_spike/internal/protocol"
 	"practice_love2d/33_ebitengine_spike/internal/sim"
@@ -15,6 +16,11 @@ func (runtime *Runtime) spawnEntity(
 ) (any, error) {
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
+	if err := runtime.rejectMakerMutationWhileEquipmentPendingLocked(
+		"spawn entity",
+	); err != nil {
+		return nil, err
+	}
 
 	entityID, nextSequence := runtime.previewEntityIDLocked(
 		params.ActorID,
@@ -90,6 +96,11 @@ func (runtime *Runtime) queueEntityRemoval(
 ) (any, error) {
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
+	if err := runtime.rejectMakerMutationWhileEquipmentPendingLocked(
+		"remove entity",
+	); err != nil {
+		return nil, err
+	}
 
 	if runtime.pendingRemovals[params.EntityID] {
 		return removeEntityResult{
@@ -140,7 +151,24 @@ func (runtime *Runtime) startDialogue(
 ) (any, error) {
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
+	if err := runtime.rejectMakerMutationWhileEquipmentPendingLocked(
+		"start dialogue",
+	); err != nil {
+		return nil, err
+	}
 
+	if runtime.campaign.Snapshot().Mode != campaign.ModePlaying {
+		return nil, errors.New(
+			"start dialogue: game flow is modal",
+		)
+	}
+	if runtime.dialogue != nil ||
+		runtime.activeShopID != "" ||
+		runtime.inventoryOpen {
+		return nil, errors.New(
+			"start dialogue: another modal is active",
+		)
+	}
 	if params.SpeakerID != "" &&
 		runtime.pendingRemovals[params.SpeakerID] {
 		return nil, fmt.Errorf(

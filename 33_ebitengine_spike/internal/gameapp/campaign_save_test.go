@@ -11,6 +11,7 @@ import (
 	"practice_love2d/33_ebitengine_spike/internal/content"
 	"practice_love2d/33_ebitengine_spike/internal/gamebuild"
 	"practice_love2d/33_ebitengine_spike/internal/protocol"
+	"practice_love2d/33_ebitengine_spike/internal/rulesruntime"
 	"practice_love2d/33_ebitengine_spike/internal/sim"
 	"practice_love2d/33_ebitengine_spike/internal/storage"
 )
@@ -29,7 +30,11 @@ func TestCampaignSaveRestoresDurableStateIntoFreshProcessWorld(t *testing.T) {
 	)
 	scheduleProtocolAction(t, processA, "interact")
 	stepProtocol(t, processA, 1)
-	if !processA.simulation.Snapshot().Dialogue.Active {
+	dialogue, err := processA.DialogueState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !dialogue.Active {
 		t.Fatal("authored dialogue did not become active")
 	}
 	callRuntime(
@@ -424,6 +429,21 @@ func TestCampaignLoadFailuresAreFullyAtomic(t *testing.T) {
 				protocol.MethodEntitySetPosition,
 				protocol.SetPositionParams{
 					EntityID: "player",
+					X:        350,
+					Y:        240,
+				},
+			)
+			scheduleProtocolAction(t, runtime, "interact")
+			stepProtocol(t, runtime, 1)
+			if _, err := runtime.MoveDialogueSelection(1); err != nil {
+				t.Fatal(err)
+			}
+			callRuntime(
+				t,
+				runtime,
+				protocol.MethodEntitySetPosition,
+				protocol.SetPositionParams{
+					EntityID: "player",
 					X:        410,
 					Y:        330,
 				},
@@ -529,6 +549,7 @@ func assertCampaignJSONExcludesTransientState(t *testing.T, data []byte) {
 		`"combat"`,
 		`"camera"`,
 		`"dialogue"`,
+		`"shop"`,
 		`"portal"`,
 		`"cooldown"`,
 		`"preview"`,
@@ -609,8 +630,11 @@ type loadAtomicState struct {
 	catalog          *content.Catalog
 	campaignConfig   campaign.Config
 	campaign         *campaign.Campaign
+	contentRules     gamebuild.ContentRules
+	ruleExecutor     *rulesruntime.Executor
 	built            *gamebuild.Result
 	simulation       *sim.Simulation
+	dialogue         *rulesruntime.DialogueSession
 	campaignJSON     []byte
 	sessionJSON      []byte
 	buildOverrides   gamebuild.Options
@@ -621,6 +645,11 @@ type loadAtomicState struct {
 	moving           map[string]bool
 	preview          map[string]previewEntity
 	previewSequence  uint64
+	dialogueSpeaker  string
+	dialogueChoice   int
+	activeShop       string
+	shopSelected     int
+	shopStatus       string
 	portalCooldown   int
 	portalInside     map[string]bool
 	automationPaused bool
@@ -646,8 +675,11 @@ func captureLoadAtomicState(
 		catalog:          runtime.catalog,
 		campaignConfig:   runtime.campaignConfig.Clone(),
 		campaign:         runtime.campaign,
+		contentRules:     runtime.contentRules,
+		ruleExecutor:     runtime.ruleExecutor,
 		built:            runtime.built,
 		simulation:       runtime.simulation,
+		dialogue:         runtime.dialogue,
 		campaignJSON:     campaignJSON,
 		sessionJSON:      sessionJSON,
 		buildOverrides:   runtime.buildOverrides,
@@ -658,6 +690,11 @@ func captureLoadAtomicState(
 		moving:           cloneBoolMap(runtime.moving),
 		preview:          clonePreviewEntities(runtime.previewEntities),
 		previewSequence:  runtime.previewSequence,
+		dialogueSpeaker:  runtime.dialogueSpeakerID,
+		dialogueChoice:   runtime.dialogueChoiceIndex,
+		activeShop:       runtime.activeShopID,
+		shopSelected:     runtime.shopSelectedIndex,
+		shopStatus:       runtime.shopStatus,
 		portalCooldown:   runtime.portalCooldownTicks,
 		portalInside:     cloneBoolMap(runtime.portalInside),
 		automationPaused: runtime.automationPaused,
@@ -675,8 +712,10 @@ func assertLoadAtomicStateUnchanged(
 	t.Helper()
 	if runtime.catalog != before.catalog ||
 		runtime.campaign != before.campaign ||
+		runtime.ruleExecutor != before.ruleExecutor ||
 		runtime.built != before.built ||
-		runtime.simulation != before.simulation {
+		runtime.simulation != before.simulation ||
+		runtime.dialogue != before.dialogue {
 		t.Fatal(
 			"failed load changed live catalog, Campaign, build, or World identity",
 		)
@@ -694,6 +733,7 @@ func assertLoadAtomicStateUnchanged(
 		t.Fatal("failed load changed live campaign or World bytes")
 	}
 	if !reflect.DeepEqual(runtime.campaignConfig, before.campaignConfig) ||
+		!reflect.DeepEqual(runtime.contentRules, before.contentRules) ||
 		!reflect.DeepEqual(runtime.buildOverrides, before.buildOverrides) ||
 		!reflect.DeepEqual(runtime.buildOptions, before.buildOptions) ||
 		!reflect.DeepEqual(runtime.virtual, before.virtual) ||
@@ -705,6 +745,11 @@ func assertLoadAtomicStateUnchanged(
 		!reflect.DeepEqual(runtime.moving, before.moving) ||
 		!reflect.DeepEqual(runtime.previewEntities, before.preview) ||
 		runtime.previewSequence != before.previewSequence ||
+		runtime.dialogueSpeakerID != before.dialogueSpeaker ||
+		runtime.dialogueChoiceIndex != before.dialogueChoice ||
+		runtime.activeShopID != before.activeShop ||
+		runtime.shopSelectedIndex != before.shopSelected ||
+		runtime.shopStatus != before.shopStatus ||
 		runtime.portalCooldownTicks != before.portalCooldown ||
 		!reflect.DeepEqual(runtime.portalInside, before.portalInside) ||
 		runtime.automationPaused != before.automationPaused ||

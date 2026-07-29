@@ -196,12 +196,99 @@ func TestProtocolV8DispatchesTypedCalls(t *testing.T) {
 			true,
 		},
 		{
+			MethodFlowGetState,
+			nil,
+			EmptyParams{},
+			false,
+		},
+		{
+			MethodFlowMove,
+			FlowMoveParams{Delta: -1},
+			FlowMoveParams{},
+			true,
+		},
+		{
+			MethodFlowActivate,
+			FlowActivateParams{OptionID: "new_game"},
+			FlowActivateParams{},
+			true,
+		},
+		{
 			MethodDialogueStart,
 			StartDialogueParams{
 				DialogueID: "dialogue.guide",
 				SpeakerID:  "guide",
 			},
 			StartDialogueParams{},
+			true,
+		},
+		{
+			MethodDialogueGetState,
+			nil,
+			EmptyParams{},
+			false,
+		},
+		{
+			MethodDialogueChoose,
+			ChooseDialogueParams{ChoiceID: "accept"},
+			ChooseDialogueParams{},
+			true,
+		},
+		{
+			MethodDialogueAdvance,
+			nil,
+			EmptyParams{},
+			true,
+		},
+		{
+			MethodCampaignGetState,
+			nil,
+			EmptyParams{},
+			false,
+		},
+		{
+			MethodShopGetState,
+			nil,
+			EmptyParams{},
+			false,
+		},
+		{
+			MethodShopBuy,
+			map[string]any{"item_id": "item.potion"},
+			ShopTradeParams{},
+			true,
+		},
+		{
+			MethodShopSell,
+			ShopTradeParams{
+				ItemID:   "item.potion",
+				Quantity: 2,
+			},
+			ShopTradeParams{},
+			true,
+		},
+		{
+			MethodShopClose,
+			nil,
+			EmptyParams{},
+			true,
+		},
+		{
+			MethodInventoryUse,
+			InventoryUseParams{ItemID: "item.potion"},
+			InventoryUseParams{},
+			true,
+		},
+		{
+			MethodEquipmentEquip,
+			EquipmentEquipParams{ItemID: "item.sword"},
+			EquipmentEquipParams{},
+			true,
+		},
+		{
+			MethodEquipmentUnequip,
+			EquipmentUnequipParams{SlotID: "weapon"},
+			EquipmentUnequipParams{},
 			true,
 		},
 		{
@@ -298,16 +385,35 @@ func TestProtocolV8DispatchesTypedCalls(t *testing.T) {
 		}
 	}
 
-	spawn := calls[6].Params.(SpawnEntityParams)
+	callFor := func(method string) Call {
+		t.Helper()
+		for _, call := range calls {
+			if call.Method == method {
+				return call
+			}
+		}
+		t.Fatalf("backend call %q was not recorded", method)
+		return Call{}
+	}
+	spawn := callFor(MethodEntitySpawn).Params.(SpawnEntityParams)
 	if spawn.X == nil || spawn.Y == nil ||
 		*spawn.X != spawnX || *spawn.Y != spawnY {
 		t.Fatalf("spawn coordinates were not preserved: %+v", spawn)
 	}
-	input := calls[12].Params.(InputActionParams)
+	buy := callFor(MethodShopBuy).Params.(ShopTradeParams)
+	if buy.ItemID != "item.potion" || buy.Quantity != 1 {
+		t.Fatalf("shop buy defaults were not normalized: %+v", buy)
+	}
+	sell := callFor(MethodShopSell).Params.(ShopTradeParams)
+	if sell.ItemID != "item.potion" || sell.Quantity != 2 {
+		t.Fatalf("shop sell params were not preserved: %+v", sell)
+	}
+	input := callFor(MethodInputAction).Params.(InputActionParams)
 	if input.Value != 1 || input.Frames != 1 {
 		t.Fatalf("input defaults were not normalized: %+v", input)
 	}
-	validated := calls[3].Params.(ValidateDefinitionParams)
+	validated := callFor(MethodContentValidateDefinition).
+		Params.(ValidateDefinitionParams)
 	if string(validated.Definition) != string(definition) {
 		t.Fatalf("definition changed: %s", validated.Definition)
 	}
@@ -635,6 +741,186 @@ func TestProtocolRejectsInvalidRequestsAndStrictParams(t *testing.T) {
 			"dialogue rejects unknown npc context",
 			`{"id":139,"method":"Dialogue.start","params":{"dialogueId":"dialogue.guide","npcId":"guide"}}`,
 			139,
+			CodeInvalidParams,
+		},
+		{
+			"dialogue state rejects params",
+			`{"id":1391,"method":"Dialogue.getState","params":{"extra":true}}`,
+			1391,
+			CodeInvalidParams,
+		},
+		{
+			"dialogue choose missing choice",
+			`{"id":1392,"method":"Dialogue.choose","params":{}}`,
+			1392,
+			CodeInvalidParams,
+		},
+		{
+			"dialogue choose blank choice",
+			`{"id":1393,"method":"Dialogue.choose","params":{"choice_id":"  "}}`,
+			1393,
+			CodeInvalidParams,
+		},
+		{
+			"dialogue choose rejects camel case",
+			`{"id":1394,"method":"Dialogue.choose","params":{"choiceId":"accept"}}`,
+			1394,
+			CodeInvalidParams,
+		},
+		{
+			"dialogue choose rejects unknown context",
+			`{"id":1395,"method":"Dialogue.choose","params":{"choice_id":"accept","node_id":"greeting"}}`,
+			1395,
+			CodeInvalidParams,
+		},
+		{
+			"dialogue advance rejects params",
+			`{"id":1396,"method":"Dialogue.advance","params":{"choice_id":"accept"}}`,
+			1396,
+			CodeInvalidParams,
+		},
+		{
+			"campaign state rejects params",
+			`{"id":1401,"method":"Campaign.getState","params":{"extra":true}}`,
+			1401,
+			CodeInvalidParams,
+		},
+		{
+			"flow state rejects params",
+			`{"id":14011,"method":"Flow.getState","params":{"extra":true}}`,
+			14011,
+			CodeInvalidParams,
+		},
+		{
+			"flow move requires delta",
+			`{"id":14012,"method":"Flow.move","params":{}}`,
+			14012,
+			CodeInvalidParams,
+		},
+		{
+			"flow move rejects zero",
+			`{"id":14013,"method":"Flow.move","params":{"delta":0}}`,
+			14013,
+			CodeInvalidParams,
+		},
+		{
+			"flow move rejects fractional delta",
+			`{"id":14014,"method":"Flow.move","params":{"delta":1.5}}`,
+			14014,
+			CodeInvalidParams,
+		},
+		{
+			"flow activate requires option",
+			`{"id":14015,"method":"Flow.activate","params":{}}`,
+			14015,
+			CodeInvalidParams,
+		},
+		{
+			"flow activate rejects blank option",
+			`{"id":14016,"method":"Flow.activate","params":{"option_id":"  "}}`,
+			14016,
+			CodeInvalidParams,
+		},
+		{
+			"flow activate rejects camel case",
+			`{"id":14017,"method":"Flow.activate","params":{"optionId":"new_game"}}`,
+			14017,
+			CodeInvalidParams,
+		},
+		{
+			"shop state rejects params",
+			`{"id":1402,"method":"Shop.getState","params":{"shop_id":"shop.village"}}`,
+			1402,
+			CodeInvalidParams,
+		},
+		{
+			"shop buy requires item",
+			`{"id":1403,"method":"Shop.buy","params":{}}`,
+			1403,
+			CodeInvalidParams,
+		},
+		{
+			"shop buy rejects null quantity",
+			`{"id":1404,"method":"Shop.buy","params":{"item_id":"item.potion","quantity":null}}`,
+			1404,
+			CodeInvalidParams,
+		},
+		{
+			"shop buy rejects fractional quantity",
+			`{"id":1405,"method":"Shop.buy","params":{"item_id":"item.potion","quantity":1.5}}`,
+			1405,
+			CodeInvalidParams,
+		},
+		{
+			"shop buy rejects zero quantity",
+			`{"id":1406,"method":"Shop.buy","params":{"item_id":"item.potion","quantity":0}}`,
+			1406,
+			CodeInvalidParams,
+		},
+		{
+			"shop buy rejects negative quantity",
+			`{"id":1407,"method":"Shop.buy","params":{"item_id":"item.potion","quantity":-1}}`,
+			1407,
+			CodeInvalidParams,
+		},
+		{
+			"shop buy rejects quantity above max JSON integer",
+			`{"id":1408,"method":"Shop.buy","params":{"item_id":"item.potion","quantity":9007199254740992}}`,
+			1408,
+			CodeInvalidParams,
+		},
+		{
+			"shop buy rejects unknown field",
+			`{"id":1409,"method":"Shop.buy","params":{"item_id":"item.potion","discount":1}}`,
+			1409,
+			CodeInvalidParams,
+		},
+		{
+			"shop sell rejects blank item",
+			`{"id":1410,"method":"Shop.sell","params":{"item_id":"  "}}`,
+			1410,
+			CodeInvalidParams,
+		},
+		{
+			"shop close rejects params",
+			`{"id":1411,"method":"Shop.close","params":{"force":true}}`,
+			1411,
+			CodeInvalidParams,
+		},
+		{
+			"inventory use requires item",
+			`{"id":1412,"method":"Inventory.use","params":{}}`,
+			1412,
+			CodeInvalidParams,
+		},
+		{
+			"inventory use rejects unknown field",
+			`{"id":1413,"method":"Inventory.use","params":{"item_id":"item.potion","quantity":1}}`,
+			1413,
+			CodeInvalidParams,
+		},
+		{
+			"equipment equip requires item",
+			`{"id":1414,"method":"Equipment.equip","params":{}}`,
+			1414,
+			CodeInvalidParams,
+		},
+		{
+			"equipment equip rejects unknown field",
+			`{"id":1415,"method":"Equipment.equip","params":{"item_id":"item.sword","slot_id":"weapon"}}`,
+			1415,
+			CodeInvalidParams,
+		},
+		{
+			"equipment unequip requires slot",
+			`{"id":1416,"method":"Equipment.unequip","params":{}}`,
+			1416,
+			CodeInvalidParams,
+		},
+		{
+			"equipment unequip rejects unknown field",
+			`{"id":1417,"method":"Equipment.unequip","params":{"slot_id":"weapon","item_id":"item.sword"}}`,
+			1417,
 			CodeInvalidParams,
 		},
 		{
