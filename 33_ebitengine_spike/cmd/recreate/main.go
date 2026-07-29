@@ -32,6 +32,7 @@ type options struct {
 	tokenFile     string
 	noDebug       bool
 	fullscreen    bool
+	startAtTitle  bool
 	frames        uint64
 	screenshot    string
 	action        string
@@ -105,6 +106,12 @@ func run(arguments []string) error {
 		false,
 		"start in fullscreen mode",
 	)
+	flags.BoolVar(
+		&options.startAtTitle,
+		"start-at-title",
+		false,
+		"retain the authored title flow during a frame-limited run",
+	)
 	flags.Uint64Var(
 		&options.frames,
 		"frames",
@@ -147,8 +154,9 @@ func run(arguments []string) error {
 		Store: store,
 		// Frame-limited runs retain the direct deterministic fixture entry
 		// used by screenshot automation; an interactive desktop boot starts
-		// at the authored title screen.
-		StartAtTitle: options.frames == 0,
+		// at the authored title screen. Explicit title capture keeps that
+		// flow while still allowing a bounded process.
+		StartAtTitle: shouldStartAtTitle(options),
 	})
 	if err != nil {
 		return err
@@ -165,10 +173,7 @@ func run(arguments []string) error {
 			return fmt.Errorf("queue initial action: %w", err)
 		}
 	}
-	game, err := ebitapp.NewWithOptions(runtime, ebitapp.Options{
-		StopAfterTicks: options.frames,
-		ScreenshotPath: options.screenshot,
-	})
+	game, err := ebitapp.NewWithOptions(runtime, automationOptions(options))
 	if err != nil {
 		return err
 	}
@@ -227,6 +232,20 @@ func run(arguments []string) error {
 		return nil
 	}
 	return runErr
+}
+
+func shouldStartAtTitle(options options) bool {
+	return options.frames == 0 || options.startAtTitle
+}
+
+func automationOptions(options options) ebitapp.Options {
+	result := ebitapp.Options{ScreenshotPath: options.screenshot}
+	if options.startAtTitle {
+		result.StopAfterUpdates = options.frames
+	} else {
+		result.StopAfterTicks = options.frames
+	}
+	return result
 }
 
 func userSaveDirectory() (string, error) {

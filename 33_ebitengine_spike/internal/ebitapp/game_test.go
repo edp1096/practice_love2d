@@ -183,6 +183,28 @@ func TestCaptureRequestsArrivingDuringDrawWaitForNextFrame(t *testing.T) {
 	}
 }
 
+func TestAutomaticLimitCanUseWorldTicksOrModalUpdates(t *testing.T) {
+	t.Parallel()
+
+	tickLimited := &Game{options: Options{StopAfterTicks: 2}}
+	if tickLimited.automaticLimitReached(View{Tick: 1}) ||
+		!tickLimited.automaticLimitReached(View{Tick: 2}) {
+		t.Fatal("tick limit did not follow the semantic World tick")
+	}
+
+	updateLimited := &Game{
+		options: Options{StopAfterUpdates: 2},
+		updates: 1,
+	}
+	if updateLimited.automaticLimitReached(View{Tick: 0}) {
+		t.Fatal("modal update limit fired early")
+	}
+	updateLimited.updates = 2
+	if !updateLimited.automaticLimitReached(View{Tick: 0}) {
+		t.Fatal("modal update limit depended on a frozen World tick")
+	}
+}
+
 func TestWallPolygonScreenPointsUsesExactVerticesAndCameraTransform(
 	t *testing.T,
 ) {

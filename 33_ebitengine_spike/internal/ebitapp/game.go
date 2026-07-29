@@ -208,8 +208,9 @@ type Capture struct {
 // Options controls deterministic desktop automation. Console builds leave this
 // zero-valued and use the debug protocol instead.
 type Options struct {
-	StopAfterTicks uint64
-	ScreenshotPath string
+	StopAfterTicks   uint64
+	StopAfterUpdates uint64
+	ScreenshotPath   string
 }
 
 // Game adapts a pure fixed-tick Model to Ebitengine.
@@ -225,6 +226,7 @@ type Game struct {
 	capture chan captureRequest
 
 	options      Options
+	updates      uint64
 	autoCaptured bool
 	autoError    error
 }
@@ -239,9 +241,16 @@ func NewWithOptions(model Model, options Options) (*Game, error) {
 	if model == nil {
 		return nil, errors.New("ebitapp model is required")
 	}
-	if options.ScreenshotPath != "" && options.StopAfterTicks == 0 {
+	if options.StopAfterTicks > 0 && options.StopAfterUpdates > 0 {
 		return nil, errors.New(
-			"a screenshot path requires a non-zero stop tick",
+			"stop tick and stop update limits are mutually exclusive",
+		)
+	}
+	if options.ScreenshotPath != "" &&
+		options.StopAfterTicks == 0 &&
+		options.StopAfterUpdates == 0 {
+		return nil, errors.New(
+			"a screenshot path requires a non-zero stop limit",
 		)
 	}
 	resources := defaultImageResources()
@@ -433,8 +442,7 @@ func (game *Game) Update() error {
 	if err := game.audio.Sync(view.Audio); err != nil {
 		return err
 	}
-	if game.options.StopAfterTicks > 0 &&
-		view.Tick >= game.options.StopAfterTicks {
+	if game.automaticLimitReached(view) {
 		if game.options.ScreenshotPath == "" || game.autoCaptured {
 			return ebiten.Termination
 		}
@@ -443,6 +451,7 @@ func (game *Game) Update() error {
 	if err := game.model.Tick(actionsForView(PollActions(), view)); err != nil {
 		return err
 	}
+	game.updates++
 	updated := game.model.View()
 	if err := game.audio.Sync(updated.Audio); err != nil {
 		return err
@@ -451,6 +460,14 @@ func (game *Game) Update() error {
 		return ebiten.Termination
 	}
 	return nil
+}
+
+func (game *Game) automaticLimitReached(view View) bool {
+	if game.options.StopAfterTicks > 0 {
+		return view.Tick >= game.options.StopAfterTicks
+	}
+	return game.options.StopAfterUpdates > 0 &&
+		game.updates >= game.options.StopAfterUpdates
 }
 
 func (game *Game) Draw(screen *ebiten.Image) {
@@ -518,7 +535,7 @@ func (game *Game) finishCaptures(
 func (game *Game) finishAutomaticCapture(view View) {
 	if game.autoCaptured ||
 		game.options.ScreenshotPath == "" ||
-		view.Tick < game.options.StopAfterTicks {
+		!game.automaticLimitReached(view) {
 		return
 	}
 	data, err := game.encodeCanvas()

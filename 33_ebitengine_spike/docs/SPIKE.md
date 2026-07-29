@@ -144,6 +144,9 @@ presentation, runtime Maker editing, WebAssembly packaging gate까지
   일관되게 반영
 - `Flow.getState`, `Flow.move`, `Flow.activate`로 현재 게임 흐름 화면을
   의미 ID 기반으로 조회·제어
+- 일반 데스크톱은 title에서 의미 입력을 기다리되, 제한 캡처는
+  `-start-at-title`일 때 World tick 대신 Ebitengine update를 세어
+  modal 화면에서도 결정적으로 캡처하고 종료
 - protocol v8 `App.startNewGame`의 선택형 stage·spawn·locale로 기존
   LÖVE Maker와 같은 stage preview 계약 제공
 - 기존 브라우저 Maker의 `--backend love|ebitengine` 선택, 전체 Lua

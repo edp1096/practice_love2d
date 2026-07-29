@@ -66,6 +66,11 @@ image 크기·runtime 경로 이탈은 실행 전에 거부된다.
 `-action`은 `-frames` 제한 실행의 첫 tick에 공격·점프 같은 의미 입력
 하나를 주입한다. 위 명령은 공격 clip, slash visual, stage BGM,
 `attack.started` cue를 같은 제한 실행에서 통과시키고 자동 종료한다.
+일반 데스크톱 실행은 authored title에서 입력을 기다린다. title 자체를
+창에 남겨 두지 않고 검사하려면 `-start-at-title -frames 2
+-screenshot /tmp/recreate-title.png`처럼 제한 캡처를 사용한다. 이때
+`-frames`는 World tick이 멈추는 modal 화면에서도 종료되도록 Ebitengine
+update 횟수를 센다.
 
 ## 웹 빌드
 

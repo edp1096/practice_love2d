@@ -151,34 +151,34 @@ TMX compile은 모든 source를 메모리와 임시 디렉터리에서 먼저 �
 
 ### M1. 정확성 기반
 
-- [ ] 공통 atomic action batch와 transactional event 구현
-- [ ] trigger, item, interaction, dialogue, quest, encounter, combat,
+- [x] 공통 atomic action batch와 transactional event 구현
+- [x] trigger, item, interaction, dialogue, quest, encounter, combat,
   projectile와 status를 공통 batch로 이전
-- [ ] 실패·중첩·재진입 회귀 테스트
-- [ ] entity order 정리와 결정적 removal 테스트
-- [ ] 사망·회복·부활 계약과 debug mutation 통일
+- [x] 실패·중첩·재진입 회귀 테스트
+- [x] entity order 정리와 결정적 removal 테스트
+- [x] 사망·회복·부활 계약과 debug mutation 통일
 
 완료 조건: 중간 action 실패 뒤 session/world/event snapshot이 실행
 전과 같고, 보상과 완료 이벤트를 재시도로 중복 획득할 수 없다.
 
 ### M2. 액션 판정
 
-- [ ] projectile wall/actor 통합 time-of-impact 정렬
-- [ ] 가까운 대상, 벽 앞 대상, 관통과 동률 판정 테스트
-- [ ] 동적 body 지원 범위 schema와 runtime 일치
-- [ ] trigger/portal에서 hurtbox offset과 body extents 반영
-- [ ] status callback 재진입 안전성 테스트
+- [x] projectile wall/actor 통합 time-of-impact 정렬
+- [x] 가까운 대상, 벽 앞 대상, 관통과 동률 판정 테스트
+- [x] 동적 body 지원 범위 schema와 runtime 일치
+- [x] trigger/portal에서 hurtbox offset과 body extents 반영
+- [x] status callback 재진입 안전성 테스트
 
 완료 조건: 동일 입력과 fixed tick에서 충돌 및 event 순서가 반복 실행마다
 동일하며 지원하지 않는 body 조합은 실행 전에 정확한 필드에서 실패한다.
 
 ### M3. 제작 파이프라인
 
-- [ ] 모든 object schema의 알 수 없는 key 거부
-- [ ] 실제 runtime asset metadata 검사
-- [ ] TMX generated output의 원자적 교체와 orphan 정리
-- [ ] 전체 compile과 선택 compile/check의 의미 분리
-- [ ] 오류 출력에 source와 field path 유지
+- [x] 모든 object schema의 알 수 없는 key 거부
+- [x] 실제 runtime asset metadata 검사
+- [x] TMX generated output의 원자적 교체와 orphan 정리
+- [x] 전체 compile과 선택 compile/check의 의미 분리
+- [x] 오류 출력에 source와 field path 유지
 
 완료 조건: 오타, 잘못된 애셋 크기, 삭제된 맵과 깨진 참조가 게임 실행
 전에 `lovectl check`에서 발견되고 compile 실패 시 기존 generated
@@ -186,35 +186,45 @@ TMX compile은 모든 source를 메모리와 임시 디렉터리에서 먼저 �
 
 ### M4. 자동화
 
-- [ ] test identity/save 완전 격리
-- [ ] engine fixture와 sample scenario 분리
-- [ ] fixed tick과 `step` 계약 통일
-- [ ] debug client disconnect, 입력 크기와 screenshot 요청 정리
-- [ ] Go 단위·통합 테스트 보강
+- [x] test identity/save 완전 격리
+- [x] engine fixture와 sample scenario 분리
+- [x] fixed tick과 `step` 계약 통일
+- [x] debug client disconnect, 입력 크기와 screenshot 요청 정리
+- [x] Go 단위·통합 테스트 보강
 
 완료 조건: 실제 사용자 save가 있는 상태에서도 test 전후 파일 목록과
 내용이 같고, 샘플 콘텐츠 ID를 바꿔도 engine fixture 검사가 통과한다.
 
 ### M5. Maker 프로젝트
 
-- [ ] `lovectl init --profile rpg|action-rpg|action`
-- [ ] profile별 최소 실행 프로젝트와 콘텐츠 template
-- [ ] project capability와 scenario manifest 검증
-- [ ] actor/ability/RPG 콘텐츠 scaffold 개선
-- [ ] 처음부터 실행·검사·패키지하는 제작자 안내서
+- [x] `lovectl init --profile rpg|action-rpg|action`
+- [x] profile별 최소 실행 프로젝트와 콘텐츠 template
+- [x] project capability와 scenario manifest 검증
+- [x] actor/ability/RPG 콘텐츠 scaffold 개선
+- [x] 처음부터 실행·검사·패키지하는 제작자 안내서
 
 완료 조건: 빈 임시 디렉터리에서 각 profile을 생성한 뒤 추가 엔진 코드
 없이 `check`, smoke test와 deterministic package가 통과한다.
 
 ### M6. 전체 인수
 
-- [ ] Lua unit와 syntax
-- [ ] Go unit, integration, race와 vet
-- [ ] RPG 실제 화면 수직 단면
-- [ ] 액션 실제 화면 수직 단면
-- [ ] 액션 RPG save/load 수직 단면
-- [ ] 장시간 spawn/remove와 반복 action stress
-- [ ] 문서의 완료 표시와 실제 검사 결과 일치
+- [x] Lua unit와 syntax
+- [x] Go unit, integration, race와 vet
+- [x] RPG 실제 화면 수직 단면
+- [x] 액션 실제 화면 수직 단면
+- [x] 액션 RPG save/load 수직 단면
+- [x] 장시간 spawn/remove와 반복 action stress
+- [x] 문서의 완료 표시와 실제 검사 결과 일치
+
+2026-07-30 인수에서는 `lovectl check`의 Lua 96개 테스트와 콘텐츠
+56개 정의, Go race/vet를 다시 통과했다. 빈 임시 디렉터리에서 세
+profile을 각각 생성해 `check`, 격리된 실제 화면 `smoke`, 동일 SHA의
+두 `.love` 패키지를 확인했다. 루트 `lovectl test`는 액션·패링·회피·
+투사체·status·다단 히트·보스 phase·플랫포머·RPG·저장 화면 15개와
+370 fixed tick을, `lovectl campaign`은 타이틀부터 프로세스 재시작
+이어하기·엔딩·게임오버까지 화면 13개와 198 fixed tick을 통과했다.
+두 명령이 만든 런타임은 종료 뒤 남지 않았으며 사용자 save 경로를
+사용하지 않았다.
 
 ## 범위 경계
 
