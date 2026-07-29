@@ -10,6 +10,8 @@ project manifest의 `stage.village/default`를 사용한다. 플레이어,
 preview에서는 슬라임을 생성할 수 있다. 이동·충돌·공격·피해·경직·
 넉백·히트스톱·패링·퍼펙트 패링·회피·대화·퀘스트·상점·인벤토리·
 장비·세이브와 게임 흐름이 고정 60 tick 시뮬레이션으로 동작한다.
+작성 데이터의 보조 능력, 연속 다중 hit, 연속 충돌 투사체와
+중첩·주기 피해·배율·면역 상태이상도 같은 경계를 사용한다.
 
 ## 실행
 
@@ -23,6 +25,8 @@ go run ./cmd/recreate
 
 - `WASD`/방향키: 이동
 - `Space`/`Z`: 공격
+- `F`: 특수 능력
+- `Q`: 기술
 - `C`/`Ctrl`: 패링
 - `X`/`Shift`: 회피
 - `E`: 대화
@@ -79,6 +83,7 @@ go run ./cmd/recreatectl shop-close
 go run ./cmd/recreatectl item-use item.potion
 go run ./cmd/recreatectl equip item.training_sword
 go run ./cmd/recreatectl unequip weapon
+go run ./cmd/recreatectl ability player ability.fire_bolt
 go run ./cmd/recreatectl ability preview.slime ability.slime_bump
 go run ./cmd/recreatectl remove preview.slime
 go run ./cmd/recreatectl position quest.slime.1 190 270
@@ -134,10 +139,13 @@ action만 적용한다. 선택지 안의 quest action은 선택 전에는 실행
 않는다.
 
 `world`는 ID가 보존된 stage 벽뿐 아니라 모든 entity의 월드 좌표,
-논리 화면
-좌표, 가시성, 체력, 방향, 공격·경직·패링·회피 상태, 카메라와 최근
-이벤트를 반환한다. 변이는 전체 상태를 검증한 뒤 원자적으로 반영된다.
-벽 ID는 렌더 좌표에서 역산하지 않고 simulation까지 직접 보존된다.
+논리 화면 좌표, 가시성, 체력, 방향, 정확한 활성 ability와 개별
+cooldown, 상태이상, 공격·경직·패링·회피 상태를 반환한다. 살아 있는
+투사체도 별도 목록에서 source·ability·이전/현재 월드 좌표·화면 좌표·
+관통 hit 수·남은 수명까지 조회할 수 있다. 카메라와 최근 이벤트도
+같은 응답에 있으며, 변이는 전체 상태를 검증한 뒤 원자적으로
+반영된다. 벽 ID는 렌더 좌표에서 역산하지 않고 simulation까지 직접
+보존된다.
 
 `save`/`load`는 stage와 진입 spawn, locale, 게임 진행, flag, inventory,
 equipment, quest, 재화를 담은 versioned campaign 저장이다. 체력·위치·

@@ -559,7 +559,7 @@ func TestInvalidPortalTargetRollsBackWholeTick(t *testing.T) {
 	runtime := newCampaignRuntime(t)
 	moveEntityToPortal(t, runtime, "player", "to_field")
 	runtime.built.Stage.Portals[0].TargetStageID = "stage.missing"
-	runtime.pendingAbilities["player"] = true
+	runtime.pendingAbilities["player"] = "ability.sword_slash"
 	runtime.virtual["attack"] = virtualAction{
 		value:     1,
 		remaining: 2,
@@ -573,7 +573,7 @@ func TestInvalidPortalTargetRollsBackWholeTick(t *testing.T) {
 	beforeSession := runtime.simulation.SaveSession()
 	beforeOptions := runtime.buildOptions
 	beforeVirtual := cloneVirtualActions(runtime.virtual)
-	beforePendingAbilities := cloneBoolMap(runtime.pendingAbilities)
+	beforePendingAbilities := cloneStringMap(runtime.pendingAbilities)
 	beforePendingRemovals := cloneBoolMap(runtime.pendingRemovals)
 	beforeMoving := cloneBoolMap(runtime.moving)
 	beforePreview := clonePreviewEntities(runtime.previewEntities)

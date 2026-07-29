@@ -530,7 +530,7 @@ func (runtime *Runtime) returnToTitle() error {
 	runtime.simulation = candidate
 	runtime.campaign = title
 	runtime.virtual = make(map[string]virtualAction)
-	runtime.pendingAbilities = make(map[string]bool)
+	runtime.pendingAbilities = make(map[string]string)
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
@@ -589,7 +589,7 @@ func (runtime *Runtime) retryStage() error {
 	runtime.simulation = candidate
 	runtime.campaign = candidateCampaign
 	runtime.virtual = make(map[string]virtualAction)
-	runtime.pendingAbilities = make(map[string]bool)
+	runtime.pendingAbilities = make(map[string]string)
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()

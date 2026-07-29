@@ -14,6 +14,7 @@ import (
 	"practice_love2d/33_ebitengine_spike/internal/ebitapp"
 	"practice_love2d/33_ebitengine_spike/internal/gamebuild"
 	"practice_love2d/33_ebitengine_spike/internal/protocol"
+	"practice_love2d/33_ebitengine_spike/internal/sim"
 	"practice_love2d/33_ebitengine_spike/internal/storage"
 )
 
@@ -863,9 +864,17 @@ func TestQueuedControlledAbilityMergesWithPlayerInput(t *testing.T) {
 		if !config.Entities[index].Controlled {
 			continue
 		}
-		ability := *config.Entities[index].Ability
-		ability.LockMovement = false
-		config.Entities[index].Ability = &ability
+		combat := *config.Entities[index].Combat
+		combat.Abilities = append(
+			[]sim.AbilityConfig(nil),
+			config.Entities[index].Combat.Abilities...,
+		)
+		combat.Bindings = append(
+			[]sim.AbilityBinding(nil),
+			config.Entities[index].Combat.Bindings...,
+		)
+		config.Entities[index].Combat = &combat
+		config.Entities[index].PrimaryAbility().LockMovement = false
 	}
 	built := *runtime.built
 	built.Config = config
@@ -874,7 +883,7 @@ func TestQueuedControlledAbilityMergesWithPlayerInput(t *testing.T) {
 		runtime.mu.Unlock()
 		t.Fatal(err)
 	}
-	runtime.pendingAbilities["player"] = true
+	runtime.pendingAbilities["player"] = "ability.sword_slash"
 	before := runtime.worldSnapshotLocked()
 	runtime.mu.Unlock()
 

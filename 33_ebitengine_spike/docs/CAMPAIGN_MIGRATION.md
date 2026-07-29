@@ -77,8 +77,9 @@ automation pause를 게임의 pause menu와 합치지 않는다.
 - [x] title/pause/continue/gameover/ending
 - [x] authored tilemap·background·image resource presentation
 - [x] 프로세스 재시작을 포함한 headless campaign acceptance
+- [x] projectile/status/secondary ability/multi-hit 전투 fixture
 - [ ] sprite clip·ability visual·audio의 완전한 data-driven presentation
-- [ ] projectile/status/secondary ability 및 나머지 fixture
+- [ ] encounter/platformer 및 나머지 fixture
 
 ## 현재 인수 근거
 
@@ -105,6 +106,14 @@ automation pause를 게임의 pause menu와 합치지 않는다.
 종료하는 visual acceptance로 타일 레이어, 카메라 변환, Tiled flip flag와
 충돌벽 overlay를 확인했다. sprite clip·ability visual·audio까지
 data-driven이라는 뜻은 아니며 해당 작업은 별도 gate로 남긴다.
+
+`stage.action_room`은 실제 창을 실행한 채 protocol로 player와 slime
+좌표를 고정하고 `ability.fire_bolt`를 queue했다. 동일 tick의 화면에서
+투사체를, `world` 응답에서 source·ability·이전/현재 위치를 확인했으며
+명중 후에는 체력 감소와 `status.burning` 남은 시간·주기 시간을
+대조했다. `internal/gameapp/combat_runtime_test.go`는 이 경로와
+special/technique 의미 입력, 정확한 ability ID queue, whirlwind 3회
+적중을 창 없이 반복 검증한다.
 
 `Flow.getState`, `Flow.move`, `Flow.activate`는 title/pause/gameover/ending
 화면을 외부 자동화가 의미 ID로 조회·제어하는 계약이다.

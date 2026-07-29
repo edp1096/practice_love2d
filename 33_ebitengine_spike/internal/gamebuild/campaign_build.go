@@ -79,7 +79,7 @@ func BuildForCampaign(
 			err,
 		)
 	}
-	ability := built.Config.Entities[controlledIndex].Ability
+	ability := built.Config.Entities[controlledIndex].PrimaryAbility()
 	if ability == nil {
 		return built, DerivedStats{
 			AttackModifier: int(modifier),

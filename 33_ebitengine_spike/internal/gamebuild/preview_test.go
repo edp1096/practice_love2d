@@ -67,8 +67,8 @@ func TestBuildEntityPreviewAppliesInstanceOverrides(t *testing.T) {
 		t.Fatalf("component overrides = %#v", result.Entity)
 	}
 	if result.Entity.Body.HalfWidth != pixels(13) ||
-		result.Entity.Ability == nil ||
-		result.Entity.Ability.ID != "ability.slime_bump" {
+		result.Entity.PrimaryAbility() == nil ||
+		result.Entity.PrimaryAbility().ID != "ability.slime_bump" {
 		t.Fatalf("actor defaults were not retained: %#v", result.Entity)
 	}
 	if got, want := result.Metadata.Tags, []string{"boss", "enemy"}; !reflect.DeepEqual(got, want) {

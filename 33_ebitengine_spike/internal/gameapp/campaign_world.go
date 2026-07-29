@@ -131,11 +131,30 @@ func (runtime *Runtime) requireCampaignRebuildSafeLocked(
 			true,
 		)
 	}
+	if len(snapshot.Projectiles) != 0 {
+		return campaignRebuildBlocked(
+			"equipment change is unavailable while projectiles are active",
+			true,
+		)
+	}
 	for _, entity := range snapshot.Entities {
 		if entity.Attack.Phase != sim.AttackIdle {
 			return campaignRebuildBlocked(
 				fmt.Sprintf(
 					"equipment change is unavailable while entity %q is attacking",
+					entity.ID,
+				),
+				true,
+			)
+		}
+		if len(entity.Statuses) != 0 ||
+			entity.StaggerTicks != 0 ||
+			entity.KnockbackTicks != 0 ||
+			entity.DodgeTicks != 0 ||
+			entity.ParryTicks != 0 {
+			return campaignRebuildBlocked(
+				fmt.Sprintf(
+					"equipment change is unavailable while entity %q has transient combat state",
 					entity.ID,
 				),
 				true,
@@ -173,7 +192,7 @@ func simulationWallsEqual(left, right []sim.Wall) bool {
 }
 
 func virtualAttackPending(actions map[string]virtualAction) bool {
-	for _, name := range []string{"attack"} {
+	for _, name := range []string{"attack", "special", "technique"} {
 		action, exists := actions[name]
 		if exists && action.value > 0 && action.remaining > 0 {
 			return true
@@ -305,19 +324,27 @@ func mergeResetBuild(
 	)
 	freshDamage := make(map[string]int)
 	for _, entity := range fresh.Config.Entities {
-		if entity.Ability != nil {
-			freshDamage[entity.ID] = entity.Ability.Damage
+		if ability := entity.PrimaryAbility(); ability != nil {
+			freshDamage[entity.ID] = ability.Damage
 		}
 	}
 	for index := range result.Config.Entities {
 		entity := &result.Config.Entities[index]
 		damage, exists := freshDamage[entity.ID]
-		if !exists || entity.Ability == nil {
+		if !exists || entity.PrimaryAbility() == nil {
 			continue
 		}
-		ability := *entity.Ability
-		ability.Damage = damage
-		entity.Ability = &ability
+		combat := *entity.Combat
+		combat.Abilities = append(
+			[]sim.AbilityConfig(nil),
+			entity.Combat.Abilities...,
+		)
+		combat.Bindings = append(
+			[]sim.AbilityBinding(nil),
+			entity.Combat.Bindings...,
+		)
+		entity.Combat = &combat
+		entity.PrimaryAbility().Damage = damage
 	}
 	return &result
 }

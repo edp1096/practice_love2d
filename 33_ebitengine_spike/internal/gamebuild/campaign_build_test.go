@@ -64,7 +64,7 @@ func TestBuildForCampaignAllowsNonCombatProfileWithoutModifier(
 	if err != nil {
 		t.Fatal(err)
 	}
-	if campaignBuildControlledEntity(t, want).Ability != nil {
+	if campaignBuildControlledEntity(t, want).PrimaryAbility() != nil {
 		t.Fatal("platformer fixture unexpectedly has a primary ability")
 	}
 
@@ -133,7 +133,7 @@ func TestBuildForCampaignAppliesSwordOnceToFreshDetachedResult(
 
 	// Mutating a returned result must not affect the next build. Starting from
 	// the prior effective damage would incorrectly produce 44 here.
-	campaignBuildControlledEntity(t, first).Ability.Damage = 999
+	campaignBuildControlledEntity(t, first).PrimaryAbility().Damage = 999
 	first.Presentation.Instances[0].Tags = append(
 		first.Presentation.Instances[0].Tags,
 		"mutated",
@@ -702,10 +702,10 @@ func campaignBuildControlledEntity(
 func campaignBuildDamage(t *testing.T, result *Result) int {
 	t.Helper()
 	entity := campaignBuildControlledEntity(t, result)
-	if entity.Ability == nil {
+	if entity.PrimaryAbility() == nil {
 		t.Fatal("controlled entity has no ability")
 	}
-	return entity.Ability.Damage
+	return entity.PrimaryAbility().Damage
 }
 
 func assertCampaignBuildFailure(

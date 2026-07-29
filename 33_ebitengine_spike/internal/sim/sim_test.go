@@ -233,6 +233,100 @@ func TestAttackPhasesLockMovementAndApplyTransactionalImpactOnce(t *testing.T) {
 	}
 }
 
+func TestAbilityIDUsesIndependentCooldownAndStableEvents(t *testing.T) {
+	config := baseConfig()
+	config.Entities[0].Combat = &CombatConfig{
+		PrimaryAbilityID: "slash",
+		Abilities: []AbilityConfig{
+			{
+				ID:            "bolt",
+				ActiveTicks:   1,
+				CooldownTicks: 9,
+				Reach:         Pixels(30),
+				ArcDegrees:    180,
+				Damage:        2,
+			},
+			{
+				ID:            "slash",
+				ActiveTicks:   1,
+				CooldownTicks: 4,
+				Reach:         Pixels(30),
+				ArcDegrees:    180,
+				Damage:        1,
+			},
+		},
+		Bindings: []AbilityBinding{
+			{Input: "attack", AbilityID: "slash"},
+			{Input: "special", AbilityID: "bolt"},
+		},
+	}
+	simulation := mustNew(t, config)
+
+	events := simulation.Tick(Input{AbilityID: "bolt"})
+	started := requireEvent(t, events, EventAttackStarted)
+	if started.AbilityID != "bolt" {
+		t.Fatalf("started ability = %q, want bolt", started.AbilityID)
+	}
+	boltHit := requireEvent(t, events, EventDamageApplied)
+	if boltHit.AbilityID != "bolt" || boltHit.Amount != 2 {
+		t.Fatalf("bolt hit = %#v", boltHit)
+	}
+	simulation.Tick(Input{})
+	events = simulation.Tick(Input{Attack: true})
+	started = requireEvent(t, events, EventAttackStarted)
+	if started.AbilityID != "slash" {
+		t.Fatalf("primary ability = %q, want slash", started.AbilityID)
+	}
+	hero := entityByID(t, simulation.Snapshot(), "hero")
+	if len(hero.AbilityCooldowns) != 2 ||
+		hero.AbilityCooldowns[0].AbilityID != "bolt" ||
+		hero.AbilityCooldowns[1].AbilityID != "slash" {
+		t.Fatalf("independent cooldowns = %#v", hero.AbilityCooldowns)
+	}
+}
+
+func TestMultiHitHonorsRepeatIntervalAndMaximumPerTarget(t *testing.T) {
+	config := baseConfig()
+	config.Entities[1].Reaction.HitInvulnerabilityTicks = 0
+	config.Entities[0].Combat = &CombatConfig{
+		PrimaryAbilityID: "whirlwind",
+		Abilities: []AbilityConfig{{
+			ID:                  "whirlwind",
+			ActiveTicks:         7,
+			Reach:               Pixels(30),
+			ArcDegrees:          360,
+			Damage:              6,
+			MaxHits:             3,
+			RepeatIntervalTicks: 2,
+		}},
+		Bindings: []AbilityBinding{{
+			Input:     "technique",
+			AbilityID: "whirlwind",
+		}},
+	}
+	simulation := mustNew(t, config)
+
+	hitTicks := make([]uint64, 0, 3)
+	for tick := 0; tick < 8; tick++ {
+		input := Input{}
+		if tick == 0 {
+			input.AbilityID = "whirlwind"
+		}
+		for _, event := range simulation.Tick(input) {
+			if event.Type == EventDamageApplied {
+				hitTicks = append(hitTicks, event.Tick)
+			}
+		}
+	}
+	if want := []uint64{1, 3, 5}; !reflect.DeepEqual(hitTicks, want) {
+		t.Fatalf("multi-hit ticks = %v, want %v", hitTicks, want)
+	}
+	enemy := entityByID(t, simulation.Snapshot(), "enemy")
+	if enemy.Health != 82 {
+		t.Fatalf("multi-hit health = %d, want 82", enemy.Health)
+	}
+}
+
 func TestPerfectParryChecksFacingAndStaggersAttacker(t *testing.T) {
 	config := parryConfig()
 	simulation := mustNew(t, config)

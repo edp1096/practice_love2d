@@ -20,6 +20,7 @@ func (s *Simulation) SpawnEntity(definition EntityConfig) error {
 // ID; a preview cannot shadow authored content.
 func (s *Simulation) SpawnEntityPreview(preview EntityPreviewConfig) error {
 	preview = cloneEntityPreviewConfig(preview)
+	normalizeEntityCombat(&preview.Entity)
 	definition := preview.Entity
 	if definition.ID == "" {
 		return errors.New("entity ID is required")
@@ -105,9 +106,16 @@ func (s *Simulation) RemoveEntity(id string) error {
 		if source.attack == nil {
 			continue
 		}
-		if _, referenced := source.attack.hitTargets[id]; referenced {
+		if record, referenced := source.attack.hitTargets[id]; referenced {
 			delete(source.attack.hitTargets, id)
-			source.attack.hitCount--
+			source.attack.hitCount -= record.count
+		}
+	}
+	for _, projectileID := range s.projectileOrder {
+		projectile := s.projectiles[projectileID]
+		if _, referenced := projectile.hitTargets[id]; referenced {
+			delete(projectile.hitTargets, id)
+			projectile.hits--
 		}
 	}
 	delete(s.entities, id)
@@ -385,10 +393,12 @@ func newEntityRuntime(definition EntityConfig) *entityRuntime {
 		facing = Vec{X: UnitsPerPixel}
 	}
 	return &entityRuntime{
-		config:   cloneEntityConfig(definition),
-		position: definition.Position,
-		facing:   facing,
-		health:   definition.MaxHealth,
+		config:           cloneEntityConfig(definition),
+		position:         definition.Position,
+		facing:           facing,
+		health:           definition.MaxHealth,
+		abilityCooldowns: make(map[string]int),
+		statuses:         make(map[string]*statusRuntime),
 	}
 }
 

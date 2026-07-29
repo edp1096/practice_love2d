@@ -10,10 +10,16 @@ import (
 const maxAbsCoord Coord = 1 << 29
 
 type attackRuntime struct {
+	abilityID      string
 	phase          AttackPhase
 	phaseStartTick uint64
-	hitTargets     map[string]struct{}
+	hitTargets     map[string]attackHitRuntime
 	hitCount       int
+}
+
+type attackHitRuntime struct {
+	count           int
+	repeatRemaining int
 }
 
 type burstRuntime struct {
@@ -54,8 +60,8 @@ type entityRuntime struct {
 	health   int
 	dead     bool
 
-	attack         *attackRuntime
-	attackCooldown int
+	attack           *attackRuntime
+	abilityCooldowns map[string]int
 
 	staggerTicks      int
 	invulnerableTicks int
@@ -68,6 +74,30 @@ type entityRuntime struct {
 	parryTicks       int
 	parryCooldown    int
 	parryLastPerfect bool
+
+	statuses map[string]*statusRuntime
+}
+
+type statusRuntime struct {
+	id            string
+	sourceID      string
+	stacks        int
+	remaining     int
+	tickRemaining int
+}
+
+type projectileRuntime struct {
+	id           string
+	definitionID string
+	abilityID    string
+	sourceID     string
+	team         string
+	position     Vec
+	previous     Vec
+	direction    Vec
+	remaining    int
+	hits         int
+	hitTargets   map[string]struct{}
 }
 
 type questRuntime struct {
@@ -104,26 +134,32 @@ type Simulation struct {
 	worldTick uint64
 	hitstop   int
 
-	entities         map[string]*entityRuntime
-	entityOrder      []string
-	controlledID     string
-	authoredIDs      map[string]struct{}
-	dynamicIDs       map[string]struct{}
-	removedIDs       map[string]struct{}
-	previewDefs      map[string]EntityPreviewConfig
-	interactionRange Coord
-	directQuestDefs  map[string]QuestDefinition
-	dialogues        map[string]DialogueDefinition
-	quests           map[string]*questRuntime
-	questOrder       []string
-	dialogue         dialogueRuntime
-	camera           cameraRuntime
-	lastEvents       []Event
+	entities              map[string]*entityRuntime
+	entityOrder           []string
+	controlledID          string
+	authoredIDs           map[string]struct{}
+	dynamicIDs            map[string]struct{}
+	removedIDs            map[string]struct{}
+	previewDefs           map[string]EntityPreviewConfig
+	interactionRange      Coord
+	directQuestDefs       map[string]QuestDefinition
+	dialogues             map[string]DialogueDefinition
+	quests                map[string]*questRuntime
+	questOrder            []string
+	dialogue              dialogueRuntime
+	camera                cameraRuntime
+	projectileDefinitions map[string]ProjectileConfig
+	statusDefinitions     map[string]StatusConfig
+	projectiles           map[string]*projectileRuntime
+	projectileOrder       []string
+	projectileSequence    uint64
+	lastEvents            []Event
 }
 
 // New validates and deep-copies content before constructing a simulation.
 func New(config Config) (*Simulation, error) {
 	copied := cloneConfig(config)
+	normalizeCombatConfig(&copied)
 	if err := validateConfig(copied); err != nil {
 		return nil, err
 	}
@@ -142,6 +178,21 @@ func New(config Config) (*Simulation, error) {
 		directQuestDefs:  make(map[string]QuestDefinition),
 		entityOrder:      make([]string, 0, len(copied.Entities)),
 		questOrder:       make([]string, 0, len(copied.Quests)),
+		projectileDefinitions: make(
+			map[string]ProjectileConfig,
+			len(copied.Projectiles),
+		),
+		statusDefinitions: make(
+			map[string]StatusConfig,
+			len(copied.Statuses),
+		),
+		projectiles: make(map[string]*projectileRuntime),
+	}
+	for _, definition := range copied.Projectiles {
+		simulation.projectileDefinitions[definition.ID] = definition
+	}
+	for _, definition := range copied.Statuses {
+		simulation.statusDefinitions[definition.ID] = definition
 	}
 	for _, definition := range copied.Dialogues {
 		simulation.dialogues[definition.ID] = definition
@@ -193,7 +244,14 @@ func (s *Simulation) Clone() *Simulation {
 		questOrder:       append([]string(nil), s.questOrder...),
 		dialogue:         s.dialogue,
 		camera:           s.camera,
-		lastEvents:       cloneEvents(s.lastEvents),
+		projectileDefinitions: cloneProjectileDefinitions(
+			s.projectileDefinitions,
+		),
+		statusDefinitions:  cloneStatusDefinitions(s.statusDefinitions),
+		projectiles:        cloneProjectiles(s.projectiles),
+		projectileOrder:    append([]string(nil), s.projectileOrder...),
+		projectileSequence: s.projectileSequence,
+		lastEvents:         cloneEvents(s.lastEvents),
 	}
 	for id, entity := range s.entities {
 		result.entities[id] = cloneEntityRuntime(entity)
@@ -223,11 +281,13 @@ func (s *Simulation) Tick(input Input) []Event {
 
 	s.worldTick++
 	s.advanceTimers()
+	s.advanceStatuses()
 	commands, interactions := s.resolveInput(input)
 	s.processActions(commands)
 	s.processInteraction(interactions)
 	s.integrateMotion(commands)
 	s.advanceAttacks()
+	s.advanceProjectiles()
 	s.refreshCameraCenter()
 	return cloneEvents(s.lastEvents)
 }
@@ -298,13 +358,14 @@ func (s *Simulation) resolveInput(input Input) (map[string]EntityInput, []string
 	commands := make(map[string]EntityInput, len(input.Commands)+1)
 	if s.controlledID != "" {
 		commands[s.controlledID] = EntityInput{
-			EntityID: s.controlledID,
-			MoveX:    clampAxis(input.MoveX),
-			MoveY:    clampAxis(input.MoveY),
-			Attack:   input.Attack,
-			Parry:    input.Parry,
-			Dodge:    input.Dodge,
-			Interact: input.Interact,
+			EntityID:  s.controlledID,
+			MoveX:     clampAxis(input.MoveX),
+			MoveY:     clampAxis(input.MoveY),
+			Attack:    input.Attack,
+			AbilityID: input.AbilityID,
+			Parry:     input.Parry,
+			Dodge:     input.Dodge,
+			Interact:  input.Interact,
 		}
 	}
 	for _, item := range input.Commands {
@@ -354,8 +415,10 @@ func (s *Simulation) processActions(commands map[string]EntityInput) {
 		if command.Dodge {
 			s.tryStartDodge(entity, command)
 		}
-		if command.Attack {
-			s.tryStartAttack(entity)
+		if command.AbilityID != "" {
+			s.tryStartAttack(entity, command.AbilityID)
+		} else if command.Attack {
+			s.tryStartAttack(entity, "")
 		}
 	}
 }
@@ -394,9 +457,17 @@ func (s *Simulation) tryStartDodge(entity *entityRuntime, command EntityInput) {
 	s.emit(Event{Type: EventDodgeStarted, EntityID: entity.config.ID})
 }
 
-func (s *Simulation) tryStartAttack(entity *entityRuntime) {
-	ability := entity.config.Ability
-	if ability == nil || entity.attack != nil || entity.attackCooldown > 0 ||
+func (s *Simulation) tryStartAttack(entity *entityRuntime, abilityID string) {
+	combat := entity.config.Combat
+	if combat == nil {
+		return
+	}
+	if abilityID == "" {
+		abilityID = combat.PrimaryAbilityID
+	}
+	ability := combat.Ability(abilityID)
+	if ability == nil || entity.attack != nil ||
+		entity.abilityCooldowns[abilityID] > 0 ||
 		!canAct(entity) {
 		return
 	}
@@ -405,20 +476,24 @@ func (s *Simulation) tryStartAttack(entity *entityRuntime) {
 		phase = AttackActive
 	}
 	entity.attack = &attackRuntime{
+		abilityID:      ability.ID,
 		phase:          phase,
 		phaseStartTick: s.worldTick,
-		hitTargets:     make(map[string]struct{}),
+		hitTargets:     make(map[string]attackHitRuntime),
 	}
-	entity.attackCooldown = ability.CooldownTicks
+	entity.abilityCooldowns[abilityID] = ability.CooldownTicks
 	s.emit(Event{
-		Type:     EventAttackStarted,
-		EntityID: entity.config.ID,
+		Type:      EventAttackStarted,
+		EntityID:  entity.config.ID,
+		AbilityID: ability.ID,
 	})
 	if phase == AttackActive {
 		s.emit(Event{
-			Type:     EventAttackActive,
-			EntityID: entity.config.ID,
+			Type:      EventAttackActive,
+			EntityID:  entity.config.ID,
+			AbilityID: ability.ID,
 		})
+		s.activateAbility(entity, ability)
 	}
 }
 
@@ -509,18 +584,48 @@ func (s *Simulation) integrateMotion(commands map[string]EntityInput) {
 			continue
 		}
 		entity.facing = direction
+		movePerTick := s.modifiedMovePerTick(entity)
 		delta := Vec{
-			X: direction.X * entity.config.MovePerTick / UnitsPerPixel,
-			Y: direction.Y * entity.config.MovePerTick / UnitsPerPixel,
+			X: direction.X * movePerTick / UnitsPerPixel,
+			Y: direction.Y * movePerTick / UnitsPerPixel,
 		}
 		s.moveEntity(entity, delta)
 	}
 }
 
+func (s *Simulation) modifiedMovePerTick(entity *entityRuntime) Coord {
+	result := entity.config.MovePerTick
+	statusIDs := make([]string, 0, len(entity.statuses))
+	for statusID := range entity.statuses {
+		statusIDs = append(statusIDs, statusID)
+	}
+	sort.Strings(statusIDs)
+	for _, statusID := range statusIDs {
+		status := entity.statuses[statusID]
+		multiplier := s.statusDefinitions[statusID].MoveSpeed
+		if multiplier == 0 {
+			multiplier = UnitsPerPixel
+		}
+		for stack := 0; stack < status.stacks; stack++ {
+			result = Coord(scaleFixedSaturated(
+				int64(result),
+				multiplier,
+				int64(maxAbsCoord),
+			))
+			if result == maxAbsCoord {
+				break
+			}
+		}
+	}
+	return result
+}
+
 func (s *Simulation) advanceTimers() {
 	for _, id := range s.entityOrder {
 		entity := s.entities[id]
-		entity.attackCooldown = countdown(entity.attackCooldown)
+		for abilityID, ticks := range entity.abilityCooldowns {
+			entity.abilityCooldowns[abilityID] = countdown(ticks)
+		}
 		entity.dodgeCooldown = countdown(entity.dodgeCooldown)
 		entity.staggerTicks = countdown(entity.staggerTicks)
 		entity.invulnerableTicks = countdown(entity.invulnerableTicks)
@@ -533,6 +638,225 @@ func (s *Simulation) advanceTimers() {
 			}
 		}
 	}
+}
+
+func (s *Simulation) applyStatus(
+	sourceID string,
+	target *entityRuntime,
+	statusID string,
+	stacks int,
+) error {
+	definition, exists := s.statusDefinitions[statusID]
+	if !exists {
+		return fmt.Errorf("unknown status %q", statusID)
+	}
+	if target == nil || target.dead || target.config.Status == nil {
+		return fmt.Errorf("target cannot receive status %q", statusID)
+	}
+	for _, immune := range target.config.Status.Immune {
+		if immune == statusID {
+			s.emit(Event{
+				Type:     EventStatusResisted,
+				SourceID: sourceID,
+				TargetID: target.config.ID,
+				StatusID: statusID,
+			})
+			return nil
+		}
+	}
+	if stacks <= 0 {
+		return errors.New("status stacks must be positive")
+	}
+	current := target.statuses[statusID]
+	eventType := EventStatusApplied
+	if current == nil {
+		current = &statusRuntime{
+			id:            statusID,
+			sourceID:      sourceID,
+			stacks:        minInt(stacks, definition.MaxStacks),
+			remaining:     definition.DurationTicks,
+			tickRemaining: definition.TickIntervalTicks,
+		}
+		target.statuses[statusID] = current
+	} else {
+		previousStacks := current.stacks
+		if definition.Stacking == StatusStack {
+			current.stacks = minInt(
+				definition.MaxStacks,
+				current.stacks+stacks,
+			)
+		} else {
+			current.stacks = 1
+		}
+		current.remaining = definition.DurationTicks
+		current.sourceID = sourceID
+		if current.stacks > previousStacks {
+			eventType = EventStatusStacked
+		} else {
+			eventType = EventStatusRefreshed
+		}
+	}
+	s.emit(Event{
+		Type:     eventType,
+		SourceID: sourceID,
+		TargetID: target.config.ID,
+		StatusID: statusID,
+		Stacks:   current.stacks,
+	})
+	return nil
+}
+
+func (s *Simulation) advanceStatuses() {
+	for _, entityID := range s.entityOrder {
+		entity := s.entities[entityID]
+		if entity.dead || len(entity.statuses) == 0 {
+			continue
+		}
+		statusIDs := make([]string, 0, len(entity.statuses))
+		for statusID := range entity.statuses {
+			statusIDs = append(statusIDs, statusID)
+		}
+		sort.Strings(statusIDs)
+		for _, statusID := range statusIDs {
+			status := entity.statuses[statusID]
+			if status == nil || entity.dead {
+				break
+			}
+			definition := s.statusDefinitions[statusID]
+			status.remaining = countdown(status.remaining)
+			if definition.TickIntervalTicks > 0 {
+				status.tickRemaining = countdown(status.tickRemaining)
+				if status.tickRemaining == 0 {
+					damage := saturatingProductInt(
+						definition.TickDamage,
+						status.stacks,
+					)
+					if damage > 0 {
+						if err := s.applyImpact(
+							status.sourceID,
+							entity.position,
+							entity.facing,
+							entity.config.ID,
+							entity,
+							"",
+							ImpactConfig{Damage: damage},
+							true,
+						); err != nil {
+							continue
+						}
+					}
+					s.emit(Event{
+						Type:     EventStatusTicked,
+						SourceID: status.sourceID,
+						TargetID: entity.config.ID,
+						StatusID: statusID,
+						Stacks:   status.stacks,
+						Amount:   damage,
+					})
+					if entity.dead {
+						break
+					}
+					status.tickRemaining = definition.TickIntervalTicks
+				}
+			}
+			if status.remaining == 0 {
+				delete(entity.statuses, statusID)
+				s.emit(Event{
+					Type:     EventStatusExpired,
+					SourceID: status.sourceID,
+					TargetID: entity.config.ID,
+					StatusID: statusID,
+					Stacks:   status.stacks,
+				})
+			}
+		}
+	}
+}
+
+func (s *Simulation) modifiedDamage(
+	sourceID string,
+	target *entityRuntime,
+	base int,
+) int {
+	result := base
+	if source := s.entities[sourceID]; source != nil {
+		result = applyStatusModifier(
+			result,
+			source.statuses,
+			s.statusDefinitions,
+			func(definition StatusConfig) Coord {
+				return definition.DamageDealt
+			},
+		)
+	}
+	return applyStatusModifier(
+		result,
+		target.statuses,
+		s.statusDefinitions,
+		func(definition StatusConfig) Coord {
+			return definition.DamageTaken
+		},
+	)
+}
+
+func applyStatusModifier(
+	value int,
+	statuses map[string]*statusRuntime,
+	definitions map[string]StatusConfig,
+	selectMultiplier func(StatusConfig) Coord,
+) int {
+	ids := make([]string, 0, len(statuses))
+	for id := range statuses {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	result := int64(value)
+	for _, id := range ids {
+		status := statuses[id]
+		multiplier := selectMultiplier(definitions[id])
+		if multiplier == 0 {
+			multiplier = UnitsPerPixel
+		}
+		for stack := 0; stack < status.stacks; stack++ {
+			result = scaleFixedSaturated(
+				result,
+				multiplier,
+				maxInt64Value(),
+			)
+			if result == maxInt64Value() {
+				break
+			}
+		}
+	}
+	return int(result)
+}
+
+func scaleFixedSaturated(value int64, multiplier Coord, limit int64) int64 {
+	if value <= 0 || multiplier <= 0 || limit <= 0 {
+		return 0
+	}
+	factor := int64(multiplier)
+	half := int64(UnitsPerPixel) / 2
+	if value > (maxInt64Value()-half)/factor {
+		return limit
+	}
+	result := (value*factor + half) / int64(UnitsPerPixel)
+	return min(result, limit)
+}
+
+func saturatingProductInt(left, right int) int {
+	if left <= 0 || right <= 0 {
+		return 0
+	}
+	limit := maxInt64Value()
+	if int64(left) > limit/int64(right) {
+		return int(limit)
+	}
+	return left * right
+}
+
+func maxInt64Value() int64 {
+	return int64(^uint(0) >> 1)
 }
 
 func (s *Simulation) advanceAttacks() {
@@ -549,12 +873,17 @@ func (s *Simulation) advanceAttacks() {
 		if source.attack == nil || source.attack.phase != AttackActive {
 			continue
 		}
+		s.advanceAttackHitTimers(source.attack)
 		s.applyActiveHits(source)
 	}
 }
 
 func (s *Simulation) transitionAttack(entity *entityRuntime) {
-	ability := entity.config.Ability
+	ability := activeAbility(entity)
+	if ability == nil {
+		s.interruptAttack(entity, "unknown active ability")
+		return
+	}
 	for entity.attack != nil {
 		elapsed := int(s.worldTick - entity.attack.phaseStartTick)
 		switch entity.attack.phase {
@@ -564,7 +893,12 @@ func (s *Simulation) transitionAttack(entity *entityRuntime) {
 			}
 			entity.attack.phase = AttackActive
 			entity.attack.phaseStartTick = s.worldTick
-			s.emit(Event{Type: EventAttackActive, EntityID: entity.config.ID})
+			s.emit(Event{
+				Type:      EventAttackActive,
+				EntityID:  entity.config.ID,
+				AbilityID: ability.ID,
+			})
+			s.activateAbility(entity, ability)
 		case AttackActive:
 			if elapsed < ability.ActiveTicks {
 				return
@@ -590,24 +924,39 @@ func (s *Simulation) finishAttack(entity *entityRuntime) {
 	if entity.attack == nil {
 		return
 	}
+	abilityID := entity.attack.abilityID
 	entity.attack = nil
-	s.emit(Event{Type: EventAttackFinished, EntityID: entity.config.ID})
+	s.emit(Event{
+		Type:      EventAttackFinished,
+		EntityID:  entity.config.ID,
+		AbilityID: abilityID,
+	})
 }
 
 func (s *Simulation) interruptAttack(entity *entityRuntime, reason string) {
 	if entity.attack == nil {
 		return
 	}
+	abilityID := entity.attack.abilityID
 	entity.attack = nil
 	s.emit(Event{
-		Type:     EventAttackInterrupted,
-		EntityID: entity.config.ID,
-		Reason:   reason,
+		Type:      EventAttackInterrupted,
+		EntityID:  entity.config.ID,
+		AbilityID: abilityID,
+		Reason:    reason,
 	})
 }
 
 func (s *Simulation) applyActiveHits(source *entityRuntime) {
-	ability := source.config.Ability
+	ability := activeAbility(source)
+	if ability == nil {
+		s.interruptAttack(source, "unknown active ability")
+		return
+	}
+	// Projectile-only abilities do their work on the transition into active.
+	if ability.Reach <= 0 {
+		return
+	}
 	for _, targetID := range s.entityOrder {
 		if source.attack == nil {
 			return
@@ -617,7 +966,7 @@ func (s *Simulation) applyActiveHits(source *entityRuntime) {
 			target.config.Team == source.config.Team {
 			continue
 		}
-		if _, alreadyHit := source.attack.hitTargets[targetID]; alreadyHit {
+		if !attackTargetCanBeHit(source.attack, targetID, ability) {
 			continue
 		}
 		if !s.attackContains(source, target, ability) {
@@ -665,10 +1014,17 @@ func (s *Simulation) applyHitTransactional(
 	if source.attack == nil {
 		return errors.New("attack ended before hit resolution")
 	}
-	if _, duplicate := source.attack.hitTargets[target.config.ID]; duplicate {
-		return errors.New("target was already resolved by this attack")
+	if !attackTargetCanBeHit(source.attack, target.config.ID, ability) {
+		return errors.New("target cannot be hit again by this attack")
 	}
-	source.attack.hitTargets[target.config.ID] = struct{}{}
+	record := source.attack.hitTargets[target.config.ID]
+	record.count++
+	if ability.RepeatIntervalTicks > 0 {
+		record.repeatRemaining = ability.RepeatIntervalTicks
+	} else {
+		record.repeatRemaining = MaxTickCount
+	}
+	source.attack.hitTargets[target.config.ID] = record
 	source.attack.hitCount++
 	if target.config.Parry != nil && target.parryTicks > 0 {
 		if s.inFacingArc(target, source, target.config.Parry.ArcDegrees) {
@@ -678,76 +1034,128 @@ func (s *Simulation) applyHitTransactional(
 		target.parryTicks = 0
 		target.parryCooldown = target.config.Parry.CooldownTicks
 	}
-	if target.invulnerableTicks > 0 {
+	return s.applyImpact(
+		source.config.ID,
+		source.position,
+		source.facing,
+		target.config.ID,
+		target,
+		ability.ID,
+		ImpactConfig{
+			Damage:           ability.Damage,
+			StaggerTicks:     ability.StaggerTicks,
+			Knockback:        ability.Knockback,
+			KnockbackTicks:   ability.KnockbackTicks,
+			HitstopTicks:     ability.HitstopTicks,
+			CameraShake:      ability.CameraShake,
+			CameraShakeTicks: ability.CameraShakeTicks,
+		},
+		false,
+	)
+}
+
+func (s *Simulation) applyImpact(
+	sourceID string,
+	sourcePosition Vec,
+	sourceFacing Vec,
+	targetID string,
+	target *entityRuntime,
+	abilityID string,
+	impact ImpactConfig,
+	periodic bool,
+) error {
+	if target == nil || target.dead || impact.Damage <= 0 {
+		return errors.New("invalid impact")
+	}
+	if !periodic && target.invulnerableTicks > 0 {
 		s.emit(Event{
-			Type:     EventDamageBlocked,
-			SourceID: source.config.ID,
-			TargetID: target.config.ID,
-			Blocked:  true,
-			Reason:   "invulnerable",
+			Type:      EventDamageBlocked,
+			SourceID:  sourceID,
+			TargetID:  targetID,
+			AbilityID: abilityID,
+			Blocked:   true,
+			Reason:    "invulnerable",
 		})
 		return nil
 	}
 
-	damage := minInt(ability.Damage, target.health)
-	newHealth := target.health - damage
-	target.health = newHealth
+	damage := s.modifiedDamage(sourceID, target, impact.Damage)
+	damage = minInt(maxInt(1, damage), target.health)
+	target.health -= damage
 	s.emit(Event{
-		Type:     EventDamageApplied,
-		SourceID: source.config.ID,
-		TargetID: target.config.ID,
-		Amount:   damage,
+		Type:      EventDamageApplied,
+		SourceID:  sourceID,
+		TargetID:  targetID,
+		AbilityID: abilityID,
+		Amount:    damage,
 	})
+	if target.health == 0 {
+		s.killEntity(sourceID, target)
+		return nil
+	}
+	if periodic {
+		return nil
+	}
 
-	if newHealth == 0 {
-		s.killEntity(source, target)
-	} else {
-		target.invulnerableTicks = maxInt(
-			target.invulnerableTicks,
-			target.config.Reaction.HitInvulnerabilityTicks,
-		)
-		target.flashTicks = maxInt(
-			target.flashTicks,
-			target.config.Reaction.FlashTicks,
-		)
-		if ability.StaggerTicks > 0 {
-			target.staggerTicks = maxInt(target.staggerTicks, ability.StaggerTicks)
-			s.interruptAttack(target, "staggered")
-			s.emit(Event{
-				Type:     EventActorStaggered,
-				SourceID: source.config.ID,
-				TargetID: target.config.ID,
-			})
-		}
-		if ability.Knockback > 0 && ability.KnockbackTicks > 0 {
-			direction := directionBetween(source.position, target.position)
-			if direction == (Vec{}) {
-				direction = source.facing
-			}
-			target.knockback = makeBurst(
-				direction,
-				ability.Knockback,
-				ability.KnockbackTicks,
-			)
-			s.emit(Event{
-				Type:     EventKnockbackStarted,
-				SourceID: source.config.ID,
-				TargetID: target.config.ID,
-			})
+	target.invulnerableTicks = maxInt(
+		target.invulnerableTicks,
+		target.config.Reaction.HitInvulnerabilityTicks,
+	)
+	target.flashTicks = maxInt(
+		target.flashTicks,
+		target.config.Reaction.FlashTicks,
+	)
+	if impact.StaggerTicks > 0 {
+		target.staggerTicks = maxInt(target.staggerTicks, impact.StaggerTicks)
+		s.interruptAttack(target, "staggered")
+		s.emit(Event{
+			Type:      EventActorStaggered,
+			SourceID:  sourceID,
+			TargetID:  targetID,
+			AbilityID: abilityID,
+		})
+	}
+	if impact.ApplyStatusID != "" {
+		if err := s.applyStatus(
+			sourceID,
+			target,
+			impact.ApplyStatusID,
+			1,
+		); err != nil {
+			return err
 		}
 	}
+	if impact.Knockback > 0 && impact.KnockbackTicks > 0 {
+		direction := directionBetween(sourcePosition, target.position)
+		if direction == (Vec{}) {
+			direction = sourceFacing
+		}
+		target.knockback = makeBurst(
+			direction,
+			impact.Knockback,
+			impact.KnockbackTicks,
+		)
+		s.emit(Event{
+			Type:      EventKnockbackStarted,
+			SourceID:  sourceID,
+			TargetID:  targetID,
+			AbilityID: abilityID,
+		})
+	}
 	s.startImpact(
-		ability.HitstopTicks,
-		ability.CameraShake,
-		ability.CameraShakeTicks,
-		source.config.ID,
-		target.config.ID,
+		impact.HitstopTicks,
+		impact.CameraShake,
+		impact.CameraShakeTicks,
+		sourceID,
+		targetID,
 	)
 	return nil
 }
 
 func (s *Simulation) resolveParry(source, target *entityRuntime) {
 	config := target.config.Parry
+	abilityID := activeAbilityID(source)
+	abilityDamage := activeAbilityDamage(source)
 	elapsed := config.WindowTicks - target.parryTicks
 	perfect := elapsed <= config.PerfectWindowTicks
 	target.parryTicks = 0
@@ -769,12 +1177,13 @@ func (s *Simulation) resolveParry(source, target *entityRuntime) {
 		Perfect:  perfect,
 	})
 	s.emit(Event{
-		Type:     EventAttackParried,
-		SourceID: source.config.ID,
-		TargetID: target.config.ID,
-		Amount:   source.config.Ability.Damage,
-		Blocked:  true,
-		Perfect:  perfect,
+		Type:      EventAttackParried,
+		SourceID:  source.config.ID,
+		TargetID:  target.config.ID,
+		AbilityID: abilityID,
+		Amount:    abilityDamage,
+		Blocked:   true,
+		Perfect:   perfect,
 	})
 	s.startImpact(
 		hitstop,
@@ -785,7 +1194,7 @@ func (s *Simulation) resolveParry(source, target *entityRuntime) {
 	)
 }
 
-func (s *Simulation) killEntity(source, target *entityRuntime) {
+func (s *Simulation) killEntity(sourceID string, target *entityRuntime) {
 	target.dead = true
 	target.health = 0
 	target.attack = nil
@@ -795,9 +1204,10 @@ func (s *Simulation) killEntity(source, target *entityRuntime) {
 	target.knockback = burstRuntime{}
 	target.dodge = burstRuntime{}
 	target.parryTicks = 0
+	target.statuses = make(map[string]*statusRuntime)
 	s.emit(Event{
 		Type:     EventActorKilled,
-		SourceID: source.config.ID,
+		SourceID: sourceID,
 		TargetID: target.config.ID,
 	})
 	if s.dialogue.active && s.dialogue.npcID == target.config.ID {
@@ -805,7 +1215,7 @@ func (s *Simulation) killEntity(source, target *entityRuntime) {
 		s.dialogue = dialogueRuntime{}
 		s.emit(Event{
 			Type:       EventDialogueClosed,
-			EntityID:   source.config.ID,
+			EntityID:   sourceID,
 			TargetID:   target.config.ID,
 			DialogueID: closed.definitionID,
 			Reason:     "speaker killed",
@@ -988,6 +1398,54 @@ func (s *Simulation) attackContains(
 	return withinArc(source.facing, delta, ability.ArcDegrees)
 }
 
+func activeAbility(entity *entityRuntime) *AbilityConfig {
+	if entity == nil || entity.attack == nil || entity.config.Combat == nil {
+		return nil
+	}
+	return entity.config.Combat.Ability(entity.attack.abilityID)
+}
+
+func activeAbilityID(entity *entityRuntime) string {
+	if entity == nil || entity.attack == nil {
+		return ""
+	}
+	return entity.attack.abilityID
+}
+
+func activeAbilityDamage(entity *entityRuntime) int {
+	ability := activeAbility(entity)
+	if ability == nil {
+		return 0
+	}
+	return ability.Damage
+}
+
+func attackTargetCanBeHit(
+	attack *attackRuntime,
+	targetID string,
+	ability *AbilityConfig,
+) bool {
+	if attack == nil || ability == nil {
+		return false
+	}
+	record, exists := attack.hitTargets[targetID]
+	if !exists {
+		return true
+	}
+	return record.count < maxInt(1, ability.MaxHits) &&
+		record.repeatRemaining <= 0
+}
+
+func (s *Simulation) advanceAttackHitTimers(attack *attackRuntime) {
+	if attack == nil {
+		return
+	}
+	for targetID, record := range attack.hitTargets {
+		record.repeatRemaining = countdown(record.repeatRemaining)
+		attack.hitTargets[targetID] = record
+	}
+}
+
 func (s *Simulation) inFacingArc(
 	target *entityRuntime,
 	source *entityRuntime,
@@ -1024,9 +1482,8 @@ func canMove(entity *entityRuntime) bool {
 	if !canActIgnoringAttack(entity) {
 		return false
 	}
-	return entity.attack == nil ||
-		entity.config.Ability == nil ||
-		!entity.config.Ability.LockMovement
+	ability := activeAbility(entity)
+	return entity.attack == nil || ability == nil || !ability.LockMovement
 }
 
 func validateConfig(config Config) error {
@@ -1086,6 +1543,73 @@ func validateConfig(config Config) error {
 			return fmt.Errorf("duplicate quest %q", definition.ID)
 		}
 		quests[definition.ID] = struct{}{}
+	}
+	statuses := make(map[string]struct{}, len(config.Statuses))
+	for _, definition := range config.Statuses {
+		if _, duplicate := statuses[definition.ID]; duplicate {
+			return fmt.Errorf("duplicate status %q", definition.ID)
+		}
+		if definition.ID == "" ||
+			definition.DurationTicks <= 0 ||
+			(definition.Stacking != StatusRefresh &&
+				definition.Stacking != StatusStack) ||
+			definition.MaxStacks <= 0 ||
+			definition.MaxStacks > MaxStatusStacks ||
+			(definition.Stacking == StatusRefresh &&
+				definition.MaxStacks != 1) ||
+			definition.TickIntervalTicks < 0 ||
+			definition.TickDamage < 0 ||
+			(definition.TickIntervalTicks > 0) !=
+				(definition.TickDamage > 0) ||
+			!validTickCount(
+				definition.DurationTicks,
+				definition.TickIntervalTicks,
+			) ||
+			!validStatusMultiplier(definition.MoveSpeed) ||
+			!validStatusMultiplier(definition.DamageDealt) ||
+			!validStatusMultiplier(definition.DamageTaken) {
+			return fmt.Errorf("status %q has invalid configuration", definition.ID)
+		}
+		statuses[definition.ID] = struct{}{}
+	}
+	projectiles := make(map[string]struct{}, len(config.Projectiles))
+	for _, definition := range config.Projectiles {
+		if _, duplicate := projectiles[definition.ID]; duplicate {
+			return fmt.Errorf("duplicate projectile %q", definition.ID)
+		}
+		if definition.ID == "" || definition.ActorKind == "" ||
+			definition.SpeedPerTick <= 0 ||
+			!validCoord(definition.SpeedPerTick) ||
+			definition.LifetimeTicks <= 0 ||
+			definition.SpawnOffset < 0 ||
+			!validCoord(definition.SpawnOffset) ||
+			definition.Pierce < 0 ||
+			!validTickCount(definition.LifetimeTicks) ||
+			definition.Impact.Damage <= 0 {
+			return fmt.Errorf(
+				"projectile %q has invalid configuration",
+				definition.ID,
+			)
+		}
+		if err := validateBody(
+			definition.Body,
+			fmt.Sprintf("projectile %q body", definition.ID),
+		); err != nil {
+			return err
+		}
+		if err := validateImpact(definition.Impact); err != nil {
+			return fmt.Errorf("projectile %q: %w", definition.ID, err)
+		}
+		if definition.Impact.ApplyStatusID != "" {
+			if _, exists := statuses[definition.Impact.ApplyStatusID]; !exists {
+				return fmt.Errorf(
+					"projectile %q references unknown status %q",
+					definition.ID,
+					definition.Impact.ApplyStatusID,
+				)
+			}
+		}
+		projectiles[definition.ID] = struct{}{}
 	}
 
 	entities := make(map[string]struct{}, len(config.Entities))
@@ -1147,6 +1671,41 @@ func validateConfig(config Config) error {
 		); err != nil {
 			return err
 		}
+		if definition.Status != nil {
+			seenImmune := make(map[string]struct{}, len(definition.Status.Immune))
+			for _, statusID := range definition.Status.Immune {
+				if _, exists := statuses[statusID]; !exists {
+					return fmt.Errorf(
+						"entity %q is immune to unknown status %q",
+						definition.ID,
+						statusID,
+					)
+				}
+				if _, duplicate := seenImmune[statusID]; duplicate {
+					return fmt.Errorf(
+						"entity %q duplicates status immunity %q",
+						definition.ID,
+						statusID,
+					)
+				}
+				seenImmune[statusID] = struct{}{}
+			}
+		}
+		if definition.Combat != nil {
+			for _, ability := range definition.Combat.Abilities {
+				if ability.ProjectileID == "" {
+					continue
+				}
+				if _, exists := projectiles[ability.ProjectileID]; !exists {
+					return fmt.Errorf(
+						"entity %q ability %q references unknown projectile %q",
+						definition.ID,
+						ability.ID,
+						ability.ProjectileID,
+					)
+				}
+			}
+		}
 	}
 	if hasInteractable && config.InteractionRange == 0 {
 		return errors.New("interactable entities require a positive interaction range")
@@ -1170,6 +1729,33 @@ func validateConfig(config Config) error {
 				)
 			}
 		}
+	}
+	return nil
+}
+
+func validStatusMultiplier(value Coord) bool {
+	return value > 0 && value <= UnitsPerPixel*16 && validCoord(value)
+}
+
+func validateImpact(impact ImpactConfig) error {
+	if impact.Damage <= 0 ||
+		impact.StaggerTicks < 0 ||
+		impact.Knockback < 0 ||
+		!validCoord(impact.Knockback) ||
+		impact.KnockbackTicks < 0 ||
+		(impact.Knockback > 0) != (impact.KnockbackTicks > 0) ||
+		impact.HitstopTicks < 0 ||
+		impact.CameraShake < 0 ||
+		!validCoord(impact.CameraShake) ||
+		impact.CameraShakeTicks < 0 ||
+		(impact.CameraShake > 0) != (impact.CameraShakeTicks > 0) ||
+		!validTickCount(
+			impact.StaggerTicks,
+			impact.KnockbackTicks,
+			impact.HitstopTicks,
+			impact.CameraShakeTicks,
+		) {
+		return errors.New("invalid impact configuration")
 	}
 	return nil
 }
@@ -1263,31 +1849,56 @@ func validateEntityDefinitionWithPlacement(
 }
 
 func validateEntityActionConfig(definition EntityConfig) error {
-	if ability := definition.Ability; ability != nil {
-		if ability.ID == "" || ability.ActiveTicks <= 0 ||
-			ability.WindupTicks < 0 || ability.RecoveryTicks < 0 ||
-			ability.CooldownTicks < 0 || ability.Reach <= 0 ||
-			!validCoord(ability.Reach) ||
-			ability.ArcDegrees < 1 || ability.ArcDegrees > 360 ||
-			ability.Damage <= 0 || ability.StaggerTicks < 0 ||
-			ability.Knockback < 0 || !validCoord(ability.Knockback) ||
-			ability.KnockbackTicks < 0 ||
-			(ability.Knockback > 0) != (ability.KnockbackTicks > 0) ||
-			ability.HitstopTicks < 0 ||
-			ability.CameraShake < 0 || !validCoord(ability.CameraShake) ||
-			ability.CameraShakeTicks < 0 ||
-			!validTickCount(
-				ability.WindupTicks,
-				ability.ActiveTicks,
-				ability.RecoveryTicks,
-				ability.CooldownTicks,
-				ability.StaggerTicks,
-				ability.KnockbackTicks,
-				ability.HitstopTicks,
-				ability.CameraShakeTicks,
-			) ||
-			(ability.CameraShake > 0) != (ability.CameraShakeTicks > 0) {
-			return fmt.Errorf("entity %q has invalid ability configuration", definition.ID)
+	if definition.Combat != nil {
+		if definition.Team == "" ||
+			definition.Combat.PrimaryAbilityID == "" ||
+			len(definition.Combat.Abilities) == 0 {
+			return fmt.Errorf("entity %q has invalid combat loadout", definition.ID)
+		}
+		seenAbilities := make(map[string]struct{}, len(definition.Combat.Abilities))
+		for index := range definition.Combat.Abilities {
+			ability := &definition.Combat.Abilities[index]
+			if _, duplicate := seenAbilities[ability.ID]; duplicate {
+				return fmt.Errorf(
+					"entity %q duplicates ability %q",
+					definition.ID,
+					ability.ID,
+				)
+			}
+			seenAbilities[ability.ID] = struct{}{}
+			if err := validateAbilityConfig(ability); err != nil {
+				return fmt.Errorf(
+					"entity %q ability %q: %w",
+					definition.ID,
+					ability.ID,
+					err,
+				)
+			}
+		}
+		if definition.Combat.PrimaryAbility() == nil {
+			return fmt.Errorf(
+				"entity %q has unknown primary ability %q",
+				definition.ID,
+				definition.Combat.PrimaryAbilityID,
+			)
+		}
+		seenInputs := make(map[string]struct{}, len(definition.Combat.Bindings))
+		for _, binding := range definition.Combat.Bindings {
+			if binding.Input == "" ||
+				definition.Combat.Ability(binding.AbilityID) == nil {
+				return fmt.Errorf(
+					"entity %q has invalid ability binding",
+					definition.ID,
+				)
+			}
+			if _, duplicate := seenInputs[binding.Input]; duplicate {
+				return fmt.Errorf(
+					"entity %q duplicates ability input %q",
+					definition.ID,
+					binding.Input,
+				)
+			}
+			seenInputs[binding.Input] = struct{}{}
 		}
 	}
 	if reaction := definition.Reaction; reaction.HitInvulnerabilityTicks < 0 ||
@@ -1339,6 +1950,48 @@ func validateEntityActionConfig(definition EntityConfig) error {
 	return nil
 }
 
+func validateAbilityConfig(ability *AbilityConfig) error {
+	if ability == nil {
+		return errors.New("configuration is required")
+	}
+	hasMelee := ability.Reach > 0
+	hasProjectile := ability.ProjectileID != ""
+	maxHits := maxInt(1, ability.MaxHits)
+	if ability.ID == "" || ability.ActiveTicks <= 0 ||
+		ability.WindupTicks < 0 || ability.RecoveryTicks < 0 ||
+		ability.CooldownTicks < 0 ||
+		(!hasMelee && !hasProjectile) ||
+		ability.Reach < 0 || !validCoord(ability.Reach) ||
+		(hasMelee && (ability.ArcDegrees < 1 ||
+			ability.ArcDegrees > 360 || ability.Damage <= 0)) ||
+		(!hasMelee && (ability.ArcDegrees != 0 || ability.Damage != 0)) ||
+		ability.StaggerTicks < 0 ||
+		ability.Knockback < 0 || !validCoord(ability.Knockback) ||
+		ability.KnockbackTicks < 0 ||
+		(ability.Knockback > 0) != (ability.KnockbackTicks > 0) ||
+		ability.HitstopTicks < 0 ||
+		ability.CameraShake < 0 || !validCoord(ability.CameraShake) ||
+		ability.CameraShakeTicks < 0 ||
+		ability.MaxHits < 0 ||
+		ability.RepeatIntervalTicks < 0 ||
+		(maxHits > 1) != (ability.RepeatIntervalTicks > 0) ||
+		!validTickCount(
+			ability.WindupTicks,
+			ability.ActiveTicks,
+			ability.RecoveryTicks,
+			ability.CooldownTicks,
+			ability.StaggerTicks,
+			ability.KnockbackTicks,
+			ability.HitstopTicks,
+			ability.CameraShakeTicks,
+			ability.RepeatIntervalTicks,
+		) ||
+		(ability.CameraShake > 0) != (ability.CameraShakeTicks > 0) {
+		return errors.New("invalid configuration")
+	}
+	return nil
+}
+
 func validateRect(rect Rect, label string) error {
 	if rect.MinX >= rect.MaxX || rect.MinY >= rect.MaxY {
 		return fmt.Errorf("%s must have positive dimensions", label)
@@ -1355,6 +2008,8 @@ func cloneConfig(config Config) Config {
 	result.Walls = cloneWalls(config.Walls)
 	result.Dialogues = append([]DialogueDefinition(nil), config.Dialogues...)
 	result.Quests = append([]QuestDefinition(nil), config.Quests...)
+	result.Projectiles = append([]ProjectileConfig(nil), config.Projectiles...)
+	result.Statuses = append([]StatusConfig(nil), config.Statuses...)
 	result.Entities = make([]EntityConfig, len(config.Entities))
 	for index, entity := range config.Entities {
 		result.Entities[index] = cloneEntityConfig(entity)
@@ -1364,9 +2019,15 @@ func cloneConfig(config Config) Config {
 
 func cloneEntityConfig(config EntityConfig) EntityConfig {
 	result := config
+	if config.Combat != nil {
+		combat := *config.Combat
+		combat.Abilities = append([]AbilityConfig(nil), config.Combat.Abilities...)
+		combat.Bindings = append([]AbilityBinding(nil), config.Combat.Bindings...)
+		result.Combat = &combat
+	}
 	if config.Ability != nil {
-		copied := *config.Ability
-		result.Ability = &copied
+		ability := *config.Ability
+		result.Ability = &ability
 	}
 	if config.Dodge != nil {
 		copied := *config.Dodge
@@ -1376,7 +2037,36 @@ func cloneEntityConfig(config EntityConfig) EntityConfig {
 		copied := *config.Parry
 		result.Parry = &copied
 	}
+	if config.Status != nil {
+		status := *config.Status
+		status.Immune = append([]string(nil), config.Status.Immune...)
+		result.Status = &status
+	}
 	return result
+}
+
+func normalizeCombatConfig(config *Config) {
+	for index := range config.Entities {
+		normalizeEntityCombat(&config.Entities[index])
+	}
+}
+
+func normalizeEntityCombat(entity *EntityConfig) {
+	if entity == nil || entity.Ability == nil {
+		return
+	}
+	if entity.Combat == nil {
+		ability := *entity.Ability
+		entity.Combat = &CombatConfig{
+			PrimaryAbilityID: ability.ID,
+			Abilities:        []AbilityConfig{ability},
+			Bindings: []AbilityBinding{{
+				Input:     "attack",
+				AbilityID: ability.ID,
+			}},
+		}
+	}
+	entity.Ability = nil
 }
 
 func sortConfig(config *Config) {
@@ -1387,12 +2077,35 @@ func sortConfig(config *Config) {
 	sort.Slice(config.Entities, func(left, right int) bool {
 		return config.Entities[left].ID < config.Entities[right].ID
 	})
+	for index := range config.Entities {
+		combat := config.Entities[index].Combat
+		if combat == nil {
+			continue
+		}
+		sort.Slice(combat.Abilities, func(left, right int) bool {
+			return combat.Abilities[left].ID < combat.Abilities[right].ID
+		})
+		sort.Slice(combat.Bindings, func(left, right int) bool {
+			return combat.Bindings[left].Input < combat.Bindings[right].Input
+		})
+	}
 	sort.Slice(config.Dialogues, func(left, right int) bool {
 		return config.Dialogues[left].ID < config.Dialogues[right].ID
 	})
 	sort.Slice(config.Quests, func(left, right int) bool {
 		return config.Quests[left].ID < config.Quests[right].ID
 	})
+	sort.Slice(config.Projectiles, func(left, right int) bool {
+		return config.Projectiles[left].ID < config.Projectiles[right].ID
+	})
+	sort.Slice(config.Statuses, func(left, right int) bool {
+		return config.Statuses[left].ID < config.Statuses[right].ID
+	})
+	for index := range config.Entities {
+		if config.Entities[index].Status != nil {
+			sort.Strings(config.Entities[index].Status.Immune)
+		}
+	}
 }
 
 func cloneEntityRuntime(source *entityRuntime) *entityRuntime {
@@ -1400,13 +2113,35 @@ func cloneEntityRuntime(source *entityRuntime) *entityRuntime {
 	result.config = cloneEntityConfig(source.config)
 	if source.attack != nil {
 		attack := *source.attack
-		attack.hitTargets = make(map[string]struct{}, len(source.attack.hitTargets))
-		for id := range source.attack.hitTargets {
-			attack.hitTargets[id] = struct{}{}
+		attack.hitTargets = make(
+			map[string]attackHitRuntime,
+			len(source.attack.hitTargets),
+		)
+		for id, record := range source.attack.hitTargets {
+			attack.hitTargets[id] = record
 		}
 		result.attack = &attack
 	}
+	result.abilityCooldowns = cloneCooldowns(source.abilityCooldowns)
+	result.statuses = cloneStatuses(source.statuses)
 	return &result
+}
+
+func cloneCooldowns(source map[string]int) map[string]int {
+	result := make(map[string]int, len(source))
+	for id, ticks := range source {
+		result[id] = ticks
+	}
+	return result
+}
+
+func cloneStatuses(source map[string]*statusRuntime) map[string]*statusRuntime {
+	result := make(map[string]*statusRuntime, len(source))
+	for id, status := range source {
+		copy := *status
+		result[id] = &copy
+	}
+	return result
 }
 
 func (s *Simulation) cloneQuestRuntime() map[string]questRuntime {

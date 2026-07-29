@@ -105,7 +105,7 @@ func TestCampaignSaveRestoresDurableStateIntoFreshProcessWorld(t *testing.T) {
 		remaining: 20,
 		fresh:     true,
 	}
-	processB.pendingAbilities["player"] = true
+	processB.pendingAbilities["player"] = "ability.sword_slash"
 	processB.moving["player"] = true
 	processB.portalCooldownTicks = 37
 	processB.portalInside["transient"] = true
@@ -453,7 +453,7 @@ func TestCampaignLoadFailuresAreFullyAtomic(t *testing.T) {
 				remaining: 9,
 				fresh:     true,
 			}
-			runtime.pendingAbilities["player"] = true
+			runtime.pendingAbilities["player"] = "ability.sword_slash"
 			runtime.moving["player"] = true
 			runtime.portalCooldownTicks = 8
 			runtime.portalInside["sentinel"] = true
@@ -640,7 +640,7 @@ type loadAtomicState struct {
 	buildOverrides   gamebuild.Options
 	buildOptions     gamebuild.Options
 	virtual          map[string]virtualAction
-	pendingAbilities map[string]bool
+	pendingAbilities map[string]string
 	pendingRemovals  map[string]bool
 	moving           map[string]bool
 	preview          map[string]previewEntity
@@ -685,7 +685,7 @@ func captureLoadAtomicState(
 		buildOverrides:   runtime.buildOverrides,
 		buildOptions:     runtime.buildOptions,
 		virtual:          cloneVirtualActions(runtime.virtual),
-		pendingAbilities: cloneBoolMap(runtime.pendingAbilities),
+		pendingAbilities: cloneStringMap(runtime.pendingAbilities),
 		pendingRemovals:  cloneBoolMap(runtime.pendingRemovals),
 		moving:           cloneBoolMap(runtime.moving),
 		preview:          clonePreviewEntities(runtime.previewEntities),

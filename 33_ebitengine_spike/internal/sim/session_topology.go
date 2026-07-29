@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
+	"strings"
 )
 
 type sessionTopology struct {
@@ -20,17 +22,20 @@ type sessionTopology struct {
 }
 
 type preparedSession struct {
-	topology sessionTopology
-	entities map[string]*entityRuntime
-	quests   map[string]*questRuntime
-	dialogue dialogueRuntime
-	camera   cameraRuntime
+	topology        sessionTopology
+	entities        map[string]*entityRuntime
+	quests          map[string]*questRuntime
+	dialogue        dialogueRuntime
+	camera          cameraRuntime
+	projectiles     map[string]*projectileRuntime
+	projectileOrder []string
 }
 
 func (s *Simulation) prepareSession(
 	state SessionState,
 ) (preparedSession, error) {
 	if state.Version != SessionVersion &&
+		state.Version != topologySessionVersion &&
 		state.Version != legacySessionVersion {
 		return preparedSession{},
 			fmt.Errorf("unsupported session version %d", state.Version)
@@ -42,6 +47,11 @@ func (s *Simulation) prepareSession(
 			state.Dialogue.Definition != nil) {
 		return preparedSession{},
 			errors.New("legacy session contains preview topology")
+	}
+	if state.Version < SessionVersion &&
+		(state.ProjectileSequence != 0 || len(state.Projectiles) != 0) {
+		return preparedSession{},
+			errors.New("legacy session contains projectiles")
 	}
 	if state.WorldTick > state.Tick {
 		return preparedSession{},
@@ -90,6 +100,7 @@ func (s *Simulation) prepareSession(
 			definition,
 			saved,
 			state.WorldTick,
+			state.Version,
 		)
 		if err != nil {
 			return preparedSession{},
@@ -148,13 +159,134 @@ func (s *Simulation) prepareSession(
 	if err != nil {
 		return preparedSession{}, err
 	}
+	projectiles, projectileOrder, err := s.prepareSessionProjectiles(
+		state,
+		entities,
+	)
+	if err != nil {
+		return preparedSession{}, err
+	}
 	return preparedSession{
-		topology: topology,
-		entities: entities,
-		quests:   quests,
-		dialogue: dialogue,
-		camera:   camera,
+		topology:        topology,
+		entities:        entities,
+		quests:          quests,
+		dialogue:        dialogue,
+		camera:          camera,
+		projectiles:     projectiles,
+		projectileOrder: projectileOrder,
 	}, nil
+}
+
+func (s *Simulation) prepareSessionProjectiles(
+	state SessionState,
+	entities map[string]*entityRuntime,
+) (map[string]*projectileRuntime, []string, error) {
+	result := make(map[string]*projectileRuntime, len(state.Projectiles))
+	order := make([]string, 0, len(state.Projectiles))
+	for _, saved := range state.Projectiles {
+		definition, exists := s.projectileDefinitions[saved.DefinitionID]
+		if !exists || saved.ID == "" || saved.AbilityID == "" ||
+			saved.SourceID == "" || saved.Team == "" ||
+			saved.Remaining <= 0 ||
+			saved.Remaining > definition.LifetimeTicks ||
+			saved.Hits < 0 || saved.Hits > definition.Pierce ||
+			saved.Hits != len(saved.HitTargets) ||
+			!validCoord(saved.Position.X) ||
+			!validCoord(saved.Position.Y) ||
+			!validCoord(saved.Previous.X) ||
+			!validCoord(saved.Previous.Y) ||
+			!containsRect(
+				s.config.StageBounds,
+				entityRect(saved.Position, definition.Body),
+			) ||
+			!containsRect(
+				s.config.StageBounds,
+				entityRect(saved.Previous, definition.Body),
+			) {
+			return nil, nil, fmt.Errorf(
+				"projectile %q has invalid session state",
+				saved.ID,
+			)
+		}
+		if _, duplicate := result[saved.ID]; duplicate {
+			return nil, nil, fmt.Errorf(
+				"session duplicates projectile %q",
+				saved.ID,
+			)
+		}
+		separator := strings.LastIndex(saved.ID, ".projectile.")
+		if separator <= 0 {
+			return nil, nil, fmt.Errorf(
+				"projectile %q has an invalid sequence",
+				saved.ID,
+			)
+		}
+		sequence, sequenceErr := strconv.ParseUint(
+			saved.ID[separator+len(".projectile."):],
+			10,
+			64,
+		)
+		if sequenceErr != nil || sequence == 0 ||
+			sequence > state.ProjectileSequence {
+			return nil, nil, fmt.Errorf(
+				"projectile %q has an invalid sequence",
+				saved.ID,
+			)
+		}
+		directionMagnitude := int64(integerSqrt(
+			uint64(squaredMagnitude(saved.Direction)),
+		))
+		if saved.Direction == (Vec{}) ||
+			directionMagnitude < int64(UnitsPerPixel)-2 ||
+			directionMagnitude > int64(UnitsPerPixel)+2 {
+			return nil, nil, fmt.Errorf(
+				"projectile %q direction is invalid",
+				saved.ID,
+			)
+		}
+		hitTargets := make(map[string]struct{}, len(saved.HitTargets))
+		for _, targetID := range saved.HitTargets {
+			if targetID == "" {
+				return nil, nil, fmt.Errorf(
+					"projectile %q has an empty hit target",
+					saved.ID,
+				)
+			}
+			if _, duplicate := hitTargets[targetID]; duplicate {
+				return nil, nil, fmt.Errorf(
+					"projectile %q duplicates hit target %q",
+					saved.ID,
+					targetID,
+				)
+			}
+			hitTargets[targetID] = struct{}{}
+		}
+		// A live source must retain its authored team. A removed preview source
+		// remains a safe string identity and is allowed to be absent.
+		if source := entities[saved.SourceID]; source != nil &&
+			source.config.Team != saved.Team {
+			return nil, nil, fmt.Errorf(
+				"projectile %q source team is inconsistent",
+				saved.ID,
+			)
+		}
+		result[saved.ID] = &projectileRuntime{
+			id:           saved.ID,
+			definitionID: saved.DefinitionID,
+			abilityID:    saved.AbilityID,
+			sourceID:     saved.SourceID,
+			team:         saved.Team,
+			position:     saved.Position,
+			previous:     saved.Previous,
+			direction:    saved.Direction,
+			remaining:    saved.Remaining,
+			hits:         saved.Hits,
+			hitTargets:   hitTargets,
+		}
+		order = append(order, saved.ID)
+	}
+	sort.Strings(order)
+	return result, order, nil
 }
 
 func (s *Simulation) prepareSessionTopology(
@@ -235,6 +367,7 @@ func (s *Simulation) prepareSessionTopology(
 	// definition and their serialized order must not change resolution.
 	for _, source := range state.PreviewEntities {
 		preview := cloneEntityPreviewConfig(source)
+		normalizeEntityCombat(&preview.Entity)
 		id := preview.Entity.ID
 		if id == "" {
 			return sessionTopology{}, errors.New("preview entity ID is required")
@@ -309,6 +442,7 @@ func (s *Simulation) prepareSessionTopology(
 	}
 	for _, source := range state.PreviewEntities {
 		preview := cloneEntityPreviewConfig(source)
+		normalizeEntityCombat(&preview.Entity)
 		// Definition.Position is the original preview spawn. A wall may have
 		// been edited over that vacated point; restoreEntitySession validates
 		// the authoritative saved runtime position below.

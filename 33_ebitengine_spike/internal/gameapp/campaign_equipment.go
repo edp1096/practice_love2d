@@ -126,10 +126,11 @@ func (runtime *Runtime) controlledAttackDamageLocked() int {
 		if entity.ID != controlledID && !entity.Controlled {
 			continue
 		}
-		if entity.Ability == nil {
+		ability := entity.PrimaryAbility()
+		if ability == nil {
 			return 0
 		}
-		return entity.Ability.Damage
+		return ability.Damage
 	}
 	return 0
 }

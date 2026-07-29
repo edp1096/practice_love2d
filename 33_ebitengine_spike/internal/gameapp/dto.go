@@ -62,57 +62,84 @@ type cameraDTO struct {
 }
 
 type entityDTO struct {
-	ID                    string          `json:"id"`
-	ActorID               string          `json:"actor_id"`
-	Name                  string          `json:"name"`
-	Tags                  []string        `json:"tags"`
-	Team                  string          `json:"team,omitempty"`
-	Dead                  bool            `json:"dead"`
-	X                     float64         `json:"x"`
-	Y                     float64         `json:"y"`
-	ScreenX               float64         `json:"screen_x"`
-	ScreenY               float64         `json:"screen_y"`
-	Visible               bool            `json:"visible"`
-	InViewport            bool            `json:"in_viewport"`
-	RadiusX               float64         `json:"radius_x"`
-	RadiusY               float64         `json:"radius_y"`
-	Health                int             `json:"health"`
-	MaxHealth             int             `json:"max_health"`
-	FacingX               float64         `json:"facing_x"`
-	FacingY               float64         `json:"facing_y"`
-	AttackPhase           sim.AttackPhase `json:"attack_phase"`
-	AttackRemaining       int             `json:"attack_remaining"`
-	AttackCooldown        int             `json:"attack_cooldown"`
-	AttackHitCount        int             `json:"attack_hit_count"`
-	StaggerRemaining      int             `json:"stagger_remaining"`
-	InvulnerableRemaining int             `json:"invulnerable_remaining"`
-	FlashRemaining        int             `json:"flash_remaining"`
-	KnockbackRemaining    int             `json:"knockback_remaining"`
-	ParryActive           bool            `json:"parry_active"`
-	ParryRemaining        int             `json:"parry_remaining"`
-	ParryCooldown         int             `json:"parry_cooldown"`
-	ParryPerfect          bool            `json:"parry_perfect"`
-	DodgeActive           bool            `json:"dodge_active"`
-	DodgeRemaining        int             `json:"dodge_remaining"`
-	DodgeCooldown         int             `json:"dodge_cooldown"`
+	ID                    string                        `json:"id"`
+	ActorID               string                        `json:"actor_id"`
+	Name                  string                        `json:"name"`
+	Tags                  []string                      `json:"tags"`
+	Team                  string                        `json:"team,omitempty"`
+	Dead                  bool                          `json:"dead"`
+	X                     float64                       `json:"x"`
+	Y                     float64                       `json:"y"`
+	ScreenX               float64                       `json:"screen_x"`
+	ScreenY               float64                       `json:"screen_y"`
+	Visible               bool                          `json:"visible"`
+	InViewport            bool                          `json:"in_viewport"`
+	RadiusX               float64                       `json:"radius_x"`
+	RadiusY               float64                       `json:"radius_y"`
+	Health                int                           `json:"health"`
+	MaxHealth             int                           `json:"max_health"`
+	FacingX               float64                       `json:"facing_x"`
+	FacingY               float64                       `json:"facing_y"`
+	AttackPhase           sim.AttackPhase               `json:"attack_phase"`
+	AbilityID             string                        `json:"ability_id,omitempty"`
+	AttackRemaining       int                           `json:"attack_remaining"`
+	AttackCooldown        int                           `json:"attack_cooldown"`
+	AbilityCooldowns      []sim.AbilityCooldownSnapshot `json:"ability_cooldowns,omitempty"`
+	AttackHitCount        int                           `json:"attack_hit_count"`
+	Statuses              []sim.StatusSnapshot          `json:"statuses,omitempty"`
+	StaggerRemaining      int                           `json:"stagger_remaining"`
+	InvulnerableRemaining int                           `json:"invulnerable_remaining"`
+	FlashRemaining        int                           `json:"flash_remaining"`
+	KnockbackRemaining    int                           `json:"knockback_remaining"`
+	ParryActive           bool                          `json:"parry_active"`
+	ParryRemaining        int                           `json:"parry_remaining"`
+	ParryCooldown         int                           `json:"parry_cooldown"`
+	ParryPerfect          bool                          `json:"parry_perfect"`
+	DodgeActive           bool                          `json:"dodge_active"`
+	DodgeRemaining        int                           `json:"dodge_remaining"`
+	DodgeCooldown         int                           `json:"dodge_cooldown"`
+}
+
+type projectileDTO struct {
+	ID             string  `json:"id"`
+	ProjectileID   string  `json:"projectile_id"`
+	ActorID        string  `json:"actor_id"`
+	SourceID       string  `json:"source_id"`
+	AbilityID      string  `json:"ability_id"`
+	Team           string  `json:"team"`
+	X              float64 `json:"x"`
+	Y              float64 `json:"y"`
+	PreviousX      float64 `json:"previous_x"`
+	PreviousY      float64 `json:"previous_y"`
+	ScreenX        float64 `json:"screen_x"`
+	ScreenY        float64 `json:"screen_y"`
+	Visible        bool    `json:"visible"`
+	RadiusX        float64 `json:"radius_x"`
+	RadiusY        float64 `json:"radius_y"`
+	DirectionX     float64 `json:"direction_x"`
+	DirectionY     float64 `json:"direction_y"`
+	RemainingTicks int     `json:"remaining_ticks"`
+	Hits           int     `json:"hits"`
 }
 
 type worldSnapshotDTO struct {
-	Available    bool                `json:"available"`
-	Time         float64             `json:"time"`
-	Tick         uint64              `json:"tick"`
-	WorldTick    uint64              `json:"world_tick"`
-	Revision     uint64              `json:"revision"`
-	HitstopTicks int                 `json:"hitstop_ticks"`
-	Stage        stageDTO            `json:"stage"`
-	Walls        []wallDTO           `json:"walls"`
-	Camera       cameraDTO           `json:"camera"`
-	Count        int                 `json:"count"`
-	Entities     []entityDTO         `json:"entities"`
-	Quests       []sim.QuestSnapshot `json:"quests"`
-	Campaign     campaign.State      `json:"campaign"`
-	Dialogue     DialogueState       `json:"dialogue"`
-	RecentEvents []sim.Event         `json:"recent_events"`
+	Available       bool                `json:"available"`
+	Time            float64             `json:"time"`
+	Tick            uint64              `json:"tick"`
+	WorldTick       uint64              `json:"world_tick"`
+	Revision        uint64              `json:"revision"`
+	HitstopTicks    int                 `json:"hitstop_ticks"`
+	Stage           stageDTO            `json:"stage"`
+	Walls           []wallDTO           `json:"walls"`
+	Camera          cameraDTO           `json:"camera"`
+	Count           int                 `json:"count"`
+	Entities        []entityDTO         `json:"entities"`
+	ProjectileCount int                 `json:"projectile_count"`
+	Projectiles     []projectileDTO     `json:"projectiles"`
+	Quests          []sim.QuestSnapshot `json:"quests"`
+	Campaign        campaign.State      `json:"campaign"`
+	Dialogue        DialogueState       `json:"dialogue"`
+	RecentEvents    []sim.Event         `json:"recent_events"`
 }
 
 func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
@@ -167,13 +194,19 @@ func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
 			ViewportHeight: viewportHeight,
 			Zoom:           zoom,
 		},
-		Count:        len(snapshot.Entities),
-		Quests:       snapshot.Quests,
-		Campaign:     runtime.campaign.Snapshot(),
-		Dialogue:     dialogue,
-		RecentEvents: snapshot.Events,
-		Walls:        make([]wallDTO, 0, len(frame.Walls)),
-		Entities:     make([]entityDTO, 0, len(snapshot.Entities)),
+		Count:           len(snapshot.Entities),
+		Quests:          snapshot.Quests,
+		Campaign:        runtime.campaign.Snapshot(),
+		Dialogue:        dialogue,
+		RecentEvents:    snapshot.Events,
+		Walls:           make([]wallDTO, 0, len(frame.Walls)),
+		Entities:        make([]entityDTO, 0, len(snapshot.Entities)),
+		ProjectileCount: len(snapshot.Projectiles),
+		Projectiles: make(
+			[]projectileDTO,
+			0,
+			len(snapshot.Projectiles),
+		),
 	}
 	for _, wall := range frame.Walls {
 		rect := wall.Rect
@@ -206,28 +239,37 @@ func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
 			screenY+radiusY*zoom >= 0 &&
 			screenY-radiusY*zoom <= 540
 		result.Entities = append(result.Entities, entityDTO{
-			ID:                    entity.ID,
-			ActorID:               entity.Kind,
-			Name:                  entity.Name,
-			Tags:                  append([]string(nil), metadata.Tags...),
-			Team:                  entity.Team,
-			Dead:                  entity.Dead,
-			X:                     x,
-			Y:                     y,
-			ScreenX:               screenX,
-			ScreenY:               screenY,
-			Visible:               !entity.Dead && inViewport,
-			InViewport:            inViewport,
-			RadiusX:               radiusX,
-			RadiusY:               radiusY,
-			Health:                entity.Health,
-			MaxHealth:             entity.MaxHealth,
-			FacingX:               coordPixels(entity.Facing.X),
-			FacingY:               coordPixels(entity.Facing.Y),
-			AttackPhase:           entity.Attack.Phase,
-			AttackRemaining:       entity.Attack.RemainingTicks,
-			AttackCooldown:        entity.Attack.CooldownTicks,
-			AttackHitCount:        entity.Attack.HitCount,
+			ID:              entity.ID,
+			ActorID:         entity.Kind,
+			Name:            entity.Name,
+			Tags:            append([]string(nil), metadata.Tags...),
+			Team:            entity.Team,
+			Dead:            entity.Dead,
+			X:               x,
+			Y:               y,
+			ScreenX:         screenX,
+			ScreenY:         screenY,
+			Visible:         !entity.Dead && inViewport,
+			InViewport:      inViewport,
+			RadiusX:         radiusX,
+			RadiusY:         radiusY,
+			Health:          entity.Health,
+			MaxHealth:       entity.MaxHealth,
+			FacingX:         coordPixels(entity.Facing.X),
+			FacingY:         coordPixels(entity.Facing.Y),
+			AttackPhase:     entity.Attack.Phase,
+			AbilityID:       entity.Attack.AbilityID,
+			AttackRemaining: entity.Attack.RemainingTicks,
+			AttackCooldown:  entity.Attack.CooldownTicks,
+			AbilityCooldowns: append(
+				[]sim.AbilityCooldownSnapshot(nil),
+				entity.AbilityCooldowns...,
+			),
+			AttackHitCount: entity.Attack.HitCount,
+			Statuses: append(
+				[]sim.StatusSnapshot(nil),
+				entity.Statuses...,
+			),
 			StaggerRemaining:      entity.StaggerTicks,
 			InvulnerableRemaining: entity.InvulnerableTicks,
 			FlashRemaining:        entity.FlashTicks,
@@ -239,6 +281,39 @@ func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
 			DodgeActive:           entity.DodgeTicks > 0,
 			DodgeRemaining:        entity.DodgeTicks,
 			DodgeCooldown:         entity.DodgeCooldownTicks,
+		})
+	}
+	for _, projectile := range snapshot.Projectiles {
+		x := coordPixels(projectile.Position.X)
+		y := coordPixels(projectile.Position.Y)
+		screenX := (x - topLeftX + shakeX) * zoom
+		screenY := (y - topLeftY + shakeY) * zoom
+		radiusX := coordPixels(projectile.Body.HalfWidth)
+		radiusY := coordPixels(projectile.Body.HalfHeight)
+		visible := screenX+radiusX*zoom >= 0 &&
+			screenX-radiusX*zoom <= 960 &&
+			screenY+radiusY*zoom >= 0 &&
+			screenY-radiusY*zoom <= 540
+		result.Projectiles = append(result.Projectiles, projectileDTO{
+			ID:             projectile.ID,
+			ProjectileID:   projectile.DefinitionID,
+			ActorID:        projectile.ActorKind,
+			SourceID:       projectile.SourceID,
+			AbilityID:      projectile.AbilityID,
+			Team:           projectile.Team,
+			X:              x,
+			Y:              y,
+			PreviousX:      coordPixels(projectile.Previous.X),
+			PreviousY:      coordPixels(projectile.Previous.Y),
+			ScreenX:        screenX,
+			ScreenY:        screenY,
+			Visible:        visible,
+			RadiusX:        radiusX,
+			RadiusY:        radiusY,
+			DirectionX:     coordPixels(projectile.Direction.X),
+			DirectionY:     coordPixels(projectile.Direction.Y),
+			RemainingTicks: projectile.RemainingTicks,
+			Hits:           projectile.Hits,
 		})
 	}
 	return result

@@ -607,6 +607,7 @@ func (runtime *Runtime) setHealth(
 			state.Entities[index].Knockback = sim.BurstSessionState{}
 			state.Entities[index].Dodge = sim.BurstSessionState{}
 			state.Entities[index].ParryTicks = 0
+			state.Entities[index].Statuses = nil
 			if state.Dialogue.Active &&
 				state.Dialogue.NPCID == params.EntityID {
 				state.Dialogue = sim.DialogueSessionState{}
@@ -686,15 +687,15 @@ func (runtime *Runtime) requestAbility(
 	if !exists {
 		return nil, fmt.Errorf("unknown entity %q", params.EntityID)
 	}
-	if definition.Ability == nil ||
-		definition.Ability.ID != params.AbilityID {
+	if definition.Combat == nil ||
+		definition.Combat.Ability(params.AbilityID) == nil {
 		return nil, fmt.Errorf(
 			"entity %q cannot request ability %q",
 			params.EntityID,
 			params.AbilityID,
 		)
 	}
-	runtime.pendingAbilities[params.EntityID] = true
+	runtime.pendingAbilities[params.EntityID] = params.AbilityID
 	return struct {
 		EntityID  string `json:"entity_id"`
 		AbilityID string `json:"ability_id"`
@@ -706,7 +707,8 @@ var supportedActions = map[string]struct{}{
 	"left": {}, "right": {}, "up": {}, "down": {},
 	"move_left": {}, "move_right": {}, "move_up": {}, "move_down": {},
 	"move_x": {}, "move_y": {},
-	"attack": {}, "parry": {}, "dodge": {}, "interact": {},
+	"attack": {}, "special": {}, "technique": {},
+	"parry": {}, "dodge": {}, "interact": {},
 }
 
 func (runtime *Runtime) scheduleAction(
@@ -827,6 +829,14 @@ func cloneVirtualActions(
 
 func cloneBoolMap(source map[string]bool) map[string]bool {
 	result := make(map[string]bool, len(source))
+	for id, value := range source {
+		result[id] = value
+	}
+	return result
+}
+
+func cloneStringMap(source map[string]string) map[string]string {
+	result := make(map[string]string, len(source))
 	for id, value := range source {
 		result[id] = value
 	}
@@ -1009,7 +1019,7 @@ func (runtime *Runtime) load(ctx context.Context, slot string) (any, error) {
 	runtime.simulation = candidate
 	runtime.campaign = activeCampaign
 	runtime.virtual = make(map[string]virtualAction)
-	runtime.pendingAbilities = make(map[string]bool)
+	runtime.pendingAbilities = make(map[string]string)
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()

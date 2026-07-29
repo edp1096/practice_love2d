@@ -1,5 +1,7 @@
 package sim
 
+import "sort"
+
 // Snapshot returns a complete detached debug model. The ordering of Entities
 // and Quests is stable by ID.
 func (s *Simulation) Snapshot() Snapshot {
@@ -17,6 +19,7 @@ func (s *Simulation) Snapshot() Snapshot {
 		Dialogue:     s.dialogueSnapshot(),
 		Camera:       s.cameraSnapshot(),
 		Events:       cloneEvents(s.lastEvents),
+		Projectiles:  s.projectileSnapshots(),
 	}
 }
 
@@ -44,27 +47,67 @@ func (s *Simulation) RenderFrame() RenderFrame {
 			Staggered: entity.staggerTicks > 0,
 			Dodging:   entity.dodge.active(),
 			Parrying:  entity.parryTicks > 0,
+			Statuses:  s.statusSnapshots(entity),
+		})
+	}
+	projectiles := make([]RenderProjectile, 0, len(s.projectileOrder))
+	for _, id := range s.projectileOrder {
+		projectile := s.projectiles[id]
+		definition := s.projectileDefinitions[projectile.definitionID]
+		projectiles = append(projectiles, RenderProjectile{
+			ID:        projectile.id,
+			Kind:      definition.ActorKind,
+			Position:  projectile.position,
+			Direction: projectile.direction,
+			Body:      definition.Body,
+			Tint:      definition.Tint,
 		})
 	}
 	return RenderFrame{
-		Tick:     s.rawTick,
-		Stage:    s.config.StageBounds,
-		Walls:    cloneWalls(s.config.Walls),
-		Camera:   s.cameraSnapshot(),
-		Actors:   actors,
-		Dialogue: s.dialogueSnapshot(),
-		Quests:   s.questSnapshots(),
-		Hitstop:  s.hitstop > 0,
+		Tick:        s.rawTick,
+		Stage:       s.config.StageBounds,
+		Walls:       cloneWalls(s.config.Walls),
+		Camera:      s.cameraSnapshot(),
+		Actors:      actors,
+		Projectiles: projectiles,
+		Dialogue:    s.dialogueSnapshot(),
+		Quests:      s.questSnapshots(),
+		Hitstop:     s.hitstop > 0,
 	}
 }
 
 func (s *Simulation) entitySnapshot(entity *entityRuntime) EntitySnapshot {
-	attack := AttackSnapshot{CooldownTicks: entity.attackCooldown}
+	attack := AttackSnapshot{}
 	if entity.attack != nil {
+		attack.AbilityID = entity.attack.abilityID
 		attack.Phase = entity.attack.phase
 		attack.RemainingTicks = s.attackRemaining(entity)
 		attack.HitCount = entity.attack.hitCount
 	}
+	if entity.config.Combat != nil {
+		cooldownID := entity.config.Combat.PrimaryAbilityID
+		if attack.AbilityID != "" {
+			cooldownID = attack.AbilityID
+		}
+		attack.CooldownTicks = entity.abilityCooldowns[cooldownID]
+	}
+	cooldowns := make(
+		[]AbilityCooldownSnapshot,
+		0,
+		len(entity.abilityCooldowns),
+	)
+	for abilityID, remaining := range entity.abilityCooldowns {
+		if remaining <= 0 {
+			continue
+		}
+		cooldowns = append(cooldowns, AbilityCooldownSnapshot{
+			AbilityID:      abilityID,
+			RemainingTicks: remaining,
+		})
+	}
+	sort.Slice(cooldowns, func(left, right int) bool {
+		return cooldowns[left].AbilityID < cooldowns[right].AbilityID
+	})
 	return EntitySnapshot{
 		ID:                 entity.config.ID,
 		Kind:               entity.config.Kind,
@@ -77,6 +120,8 @@ func (s *Simulation) entitySnapshot(entity *entityRuntime) EntitySnapshot {
 		MaxHealth:          entity.config.MaxHealth,
 		Dead:               entity.dead,
 		Attack:             attack,
+		AbilityCooldowns:   cooldowns,
+		Statuses:           s.statusSnapshots(entity),
 		StaggerTicks:       entity.staggerTicks,
 		InvulnerableTicks:  entity.invulnerableTicks,
 		FlashTicks:         entity.flashTicks,
@@ -89,18 +134,64 @@ func (s *Simulation) entitySnapshot(entity *entityRuntime) EntitySnapshot {
 	}
 }
 
+func (s *Simulation) statusSnapshots(
+	entity *entityRuntime,
+) []StatusSnapshot {
+	result := make([]StatusSnapshot, 0, len(entity.statuses))
+	for statusID, status := range entity.statuses {
+		definition := s.statusDefinitions[statusID]
+		result = append(result, StatusSnapshot{
+			ID:             statusID,
+			SourceID:       status.sourceID,
+			Stacks:         status.stacks,
+			RemainingTicks: status.remaining,
+			TickRemaining:  status.tickRemaining,
+			Color:          definition.Color,
+		})
+	}
+	sort.Slice(result, func(left, right int) bool {
+		return result[left].ID < result[right].ID
+	})
+	return result
+}
+
+func (s *Simulation) projectileSnapshots() []ProjectileSnapshot {
+	result := make([]ProjectileSnapshot, 0, len(s.projectileOrder))
+	for _, id := range s.projectileOrder {
+		projectile := s.projectiles[id]
+		definition := s.projectileDefinitions[projectile.definitionID]
+		result = append(result, ProjectileSnapshot{
+			ID:             projectile.id,
+			DefinitionID:   projectile.definitionID,
+			ActorKind:      definition.ActorKind,
+			SourceID:       projectile.sourceID,
+			AbilityID:      projectile.abilityID,
+			Team:           projectile.team,
+			Position:       projectile.position,
+			Previous:       projectile.previous,
+			Direction:      projectile.direction,
+			Body:           definition.Body,
+			Tint:           definition.Tint,
+			RemainingTicks: projectile.remaining,
+			Hits:           projectile.hits,
+		})
+	}
+	return result
+}
+
 func (s *Simulation) attackRemaining(entity *entityRuntime) int {
-	if entity.attack == nil || entity.config.Ability == nil {
+	ability := activeAbility(entity)
+	if entity.attack == nil || ability == nil {
 		return 0
 	}
 	var duration int
 	switch entity.attack.phase {
 	case AttackWindup:
-		duration = entity.config.Ability.WindupTicks
+		duration = ability.WindupTicks
 	case AttackActive:
-		duration = entity.config.Ability.ActiveTicks
+		duration = ability.ActiveTicks
 	case AttackRecovery:
-		duration = entity.config.Ability.RecoveryTicks
+		duration = ability.RecoveryTicks
 	default:
 		return 0
 	}

@@ -149,6 +149,12 @@ func (runtime *Runtime) Tick(actions ebitapp.Actions) error {
 		Dodge:    actions.Dodge,
 		Interact: actions.Interact,
 	}
+	switch {
+	case actions.Technique:
+		input.AbilityID = runtime.controlledAbilityForInputLocked("technique")
+	case actions.Special:
+		input.AbilityID = runtime.controlledAbilityForInputLocked("special")
+	}
 	originalVirtual := cloneVirtualActions(runtime.virtual)
 	runtime.mergeVirtualInputLocked(&input)
 	if err := runtime.tickLocked(input); err != nil {
@@ -201,6 +207,12 @@ func (runtime *Runtime) mergeVirtualInputLocked(input *sim.Input) {
 			int(digitalAxis(value("move_y"))),
 	)
 	input.Attack = input.Attack || runtime.virtualPressed("attack")
+	switch {
+	case runtime.virtualPressed("technique"):
+		input.AbilityID = runtime.controlledAbilityForInputLocked("technique")
+	case runtime.virtualPressed("special"):
+		input.AbilityID = runtime.controlledAbilityForInputLocked("special")
+	}
 	input.Parry = input.Parry || runtime.virtualPressed("parry")
 	input.Dodge = input.Dodge || runtime.virtualPressed("dodge")
 	input.Interact = input.Interact || runtime.virtualPressed("interact")
@@ -298,8 +310,8 @@ func (runtime *Runtime) tickLocked(input sim.Input) error {
 		}
 		attackDistance := pixelsCoord(metadata.Chase.AttackDistance)
 		if definition, exists := runtime.entityConfig(metadata.ID); exists &&
-			definition.Ability != nil {
-			simulationReach := definition.Ability.Reach +
+			definition.PrimaryAbility() != nil {
+			simulationReach := definition.PrimaryAbility().Reach +
 				max(target.Body.HalfWidth, target.Body.HalfHeight)
 			attackDistance = min(attackDistance, simulationReach)
 		}
@@ -319,17 +331,17 @@ func (runtime *Runtime) tickLocked(input sim.Input) error {
 			break
 		}
 	}
-	for id := range runtime.pendingAbilities {
+	for id, abilityID := range runtime.pendingAbilities {
 		if id == controlledID {
 			// The controlled actor's semantic input lives in the top-level
 			// fields. Adding a duplicate EntityInput would replace movement,
 			// parry, dodge, and interaction in sim.resolveInput.
-			input.Attack = true
+			input.AbilityID = abilityID
 			continue
 		}
 		command := commands[id]
 		command.EntityID = id
-		command.Attack = true
+		command.AbilityID = abilityID
 		commands[id] = command
 	}
 
@@ -369,7 +381,9 @@ func (runtime *Runtime) tickLocked(input sim.Input) error {
 	}
 	for _, event := range events {
 		if event.Type == sim.EventAttackStarted {
-			delete(runtime.pendingAbilities, event.EntityID)
+			if queued := runtime.pendingAbilities[event.EntityID]; queued == event.AbilityID {
+				delete(runtime.pendingAbilities, event.EntityID)
+			}
 		}
 	}
 	for _, entity := range runtime.simulation.Snapshot().Entities {
@@ -389,6 +403,21 @@ func (runtime *Runtime) tickLocked(input sim.Input) error {
 	}
 	runtime.revision++
 	return nil
+}
+
+func (runtime *Runtime) controlledAbilityForInputLocked(input string) string {
+	for index := range runtime.built.Config.Entities {
+		entity := &runtime.built.Config.Entities[index]
+		if !entity.Controlled {
+			continue
+		}
+		ability := entity.Combat.AbilityForInput(input)
+		if ability != nil {
+			return ability.ID
+		}
+		return ""
+	}
+	return ""
 }
 
 func pixelsCoord(value float64) sim.Coord {
@@ -492,7 +521,8 @@ func (runtime *Runtime) View() ebitapp.View {
 		},
 		HUD: ebitapp.HUDView{
 			Title: runtime.built.Presentation.StageName,
-			Help:  "WASD 이동 · Space 공격 · C 패링 · X 회피 · E 대화",
+			Help: "WASD 이동 · Space 공격 · F 특수 · Q 기술 · " +
+				"C 패링 · X 회피 · E 대화",
 		},
 	}
 	view.Tilemap = tilemapView(runtime.built.Presentation.Tilemap)
@@ -547,6 +577,7 @@ func (runtime *Runtime) View() ebitapp.View {
 			Health:    float64(actor.Health),
 			MaxHealth: float64(actor.MaxHealth),
 			Flash:     flash[actor.ID],
+			Tint:      statusTint(actor.Statuses),
 		})
 		if actor.Attack == sim.AttackActive &&
 			metadata.SpriteID == "sprite.hero" {
@@ -563,6 +594,24 @@ func (runtime *Runtime) View() ebitapp.View {
 				Opacity:  0.9,
 			})
 		}
+	}
+	for _, projectile := range frame.Projectiles {
+		view.Entities = append(view.Entities, ebitapp.EntityView{
+			ID:      projectile.ID,
+			State:   "projectile",
+			X:       coordPixels(projectile.Position.X),
+			Y:       coordPixels(projectile.Position.Y),
+			Radius:  coordPixels(projectile.Body.HalfWidth),
+			FacingX: coordPixels(projectile.Direction.X),
+			FacingY: coordPixels(projectile.Direction.Y),
+			Layer:   20,
+			Tint: color.RGBA{
+				R: projectile.Tint[0],
+				G: projectile.Tint[1],
+				B: projectile.Tint[2],
+				A: projectile.Tint[3],
+			},
+		})
 	}
 	for _, event := range snapshot.Events {
 		position, exists := positions[event.TargetID]
@@ -721,6 +770,19 @@ func (runtime *Runtime) View() ebitapp.View {
 		}
 	}
 	return view
+}
+
+func statusTint(statuses []sim.StatusSnapshot) color.RGBA {
+	if len(statuses) == 0 {
+		return color.RGBA{}
+	}
+	rgba := statuses[0].Color
+	return color.RGBA{
+		R: rgba[0],
+		G: rgba[1],
+		B: rgba[2],
+		A: max(uint8(128), rgba[3]),
+	}
 }
 
 func facingDirection(facing sim.Vec) string {

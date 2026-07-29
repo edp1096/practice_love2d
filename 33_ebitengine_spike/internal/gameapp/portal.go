@@ -107,7 +107,7 @@ func (runtime *Runtime) transitionPortalLocked(
 	runtime.simulation = simulation
 	runtime.campaign = nextCampaign
 	runtime.virtual = make(map[string]virtualAction)
-	runtime.pendingAbilities = make(map[string]bool)
+	runtime.pendingAbilities = make(map[string]string)
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()

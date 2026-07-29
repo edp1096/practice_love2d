@@ -84,10 +84,20 @@ func TestBuildUsesAuthoredActionRPGContent(t *testing.T) {
 	if got, want := hero.MovePerTick, rateToCoord(190); got != want {
 		t.Fatalf("hero speed = %d, want %d", got, want)
 	}
-	if hero.Ability == nil ||
-		hero.Ability.ID != "ability.sword_slash" ||
-		hero.Ability.Damage != 34 {
-		t.Fatalf("hero ability = %#v", hero.Ability)
+	if hero.PrimaryAbility() == nil ||
+		hero.PrimaryAbility().ID != "ability.sword_slash" ||
+		hero.PrimaryAbility().Damage != 34 {
+		t.Fatalf("hero combat = %#v", hero.Combat)
+	}
+	if hero.Combat == nil || len(hero.Combat.Abilities) != 3 ||
+		hero.Combat.AbilityForInput("special") == nil ||
+		hero.Combat.AbilityForInput("special").ProjectileID !=
+			"projectile.fire_bolt" ||
+		hero.Combat.AbilityForInput("technique") == nil ||
+		hero.Combat.AbilityForInput("technique").MaxHits != 3 ||
+		hero.Combat.AbilityForInput("technique").RepeatIntervalTicks !=
+			secondsToTicks(0.15) {
+		t.Fatalf("hero authored loadout = %#v", hero.Combat)
 	}
 	if hero.Parry == nil || hero.Dodge == nil {
 		t.Fatal("hero parry/dodge were not authored")
@@ -313,8 +323,9 @@ func TestBuildReflectsCatalogMutation(t *testing.T) {
 	}
 	for _, entity := range result.Config.Entities {
 		if entity.Kind == "actor.hero" {
-			if entity.Ability == nil || entity.Ability.Damage != 41 {
-				t.Fatalf("mutated damage was not translated: %#v", entity.Ability)
+			if entity.PrimaryAbility() == nil ||
+				entity.PrimaryAbility().Damage != 41 {
+				t.Fatalf("mutated damage was not translated: %#v", entity.Combat)
 			}
 			return
 		}
@@ -400,9 +411,19 @@ func TestValidateDefinitionSeparatesSchemaFromRuntimeCoverage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !fireBolt.SchemaValid || fireBolt.FullyApplied ||
-		len(fireBolt.Warnings) == 0 {
+	if !fireBolt.SchemaValid || !fireBolt.FullyApplied ||
+		len(fireBolt.Warnings) != 0 {
 		t.Fatalf("fire bolt validation = %#v", fireBolt)
+	}
+	for _, id := range []string{"projectile.fire_bolt", "status.burning"} {
+		result, err := ValidateDefinition(catalog, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !result.SchemaValid || !result.FullyApplied ||
+			len(result.Warnings) != 0 {
+			t.Fatalf("%s validation = %#v", id, result)
+		}
 	}
 	worldHub, err := ValidateDefinition(catalog, "stage.world_hub")
 	if err != nil {

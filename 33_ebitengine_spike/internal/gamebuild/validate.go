@@ -74,28 +74,25 @@ func ValidateDefinition(
 		}
 		hitbox, _ := data["hitbox"].(map[string]any)
 		effects, _ := data["effects"].([]any)
-		if hitbox == nil || len(effects) == 0 {
+		activation, _ := data["activation"].([]any)
+		if (hitbox == nil || len(effects) == 0) && len(activation) == 0 {
 			unsupported(
-				"runtime executes arc hitbox/effects abilities only",
+				"ability has no executable hitbox/effects or activation",
 			)
 		}
-		if _, exists := data["activation"]; exists {
-			unsupported(
-				"ability activation/projectile actions are not executed",
-			)
+		for _, item := range activation {
+			action, _ := item.(map[string]any)
+			if action["type"] != "spawn_projectile" {
+				unsupported(fmt.Sprintf(
+					"ability activation %q is not executed",
+					action["type"],
+				))
+			}
 		}
 		if _, exists := data["visual"]; exists {
 			unsupported(
 				"ability visual metadata is not data-driven yet",
 			)
-		}
-		if hitbox != nil {
-			if _, exists := hitbox["max_hits"]; exists {
-				unsupported("multi-hit ability metadata is not executed")
-			}
-			if _, exists := hitbox["repeat_interval"]; exists {
-				unsupported("repeat_interval is not executed")
-			}
 		}
 		for _, item := range effects {
 			effect, _ := item.(map[string]any)
@@ -118,20 +115,22 @@ func ValidateDefinition(
 			unsupported("Ebitengine adapter requires an actor body")
 		}
 		supported := map[string]bool{
-			"transform":         true,
-			"body":              true,
-			"control.player":    true,
-			"motion.facing":     true,
-			"motion.kinematics": true,
-			"movement.topdown":  true,
-			"render.sprite":     true,
-			"action.health":     true,
-			"action.reaction":   true,
-			"action.dodge":      true,
-			"action.parry":      true,
-			"action.combat":     true,
-			"action.chase_ai":   true,
-			"rpg.interactable":  true,
+			"transform":           true,
+			"body":                true,
+			"control.player":      true,
+			"motion.facing":       true,
+			"motion.kinematics":   true,
+			"movement.topdown":    true,
+			"render.sprite":       true,
+			"action.health":       true,
+			"action.reaction":     true,
+			"action.dodge":        true,
+			"action.parry":        true,
+			"action.combat":       true,
+			"action.combat_input": true,
+			"action.status":       true,
+			"action.chase_ai":     true,
+			"rpg.interactable":    true,
 		}
 		for component := range components {
 			if !supported[component] {
@@ -140,9 +139,6 @@ func ValidateDefinition(
 					component,
 				))
 			}
-		}
-		if _, exists := components["action.combat_input"]; exists {
-			unsupported("secondary combat input bindings are not executed")
 		}
 		if interaction, ok := components["rpg.interactable"].(map[string]any); ok {
 			if interaction["range"] == nil {
@@ -164,9 +160,6 @@ func ValidateDefinition(
 			}
 		}
 		if combat, ok := components["action.combat"].(map[string]any); ok {
-			if abilities := anySlice(combat["abilities"]); len(abilities) > 1 {
-				unsupported("only the primary ability is executed")
-			}
 			if combat["primary"] == nil {
 				unsupported(
 					"Ebitengine adapter does not apply the default primary ability",
@@ -303,9 +296,17 @@ func ValidateDefinition(
 		if err := validateProjectileSemantics(catalog, data, id); err != nil {
 			return DefinitionValidation{}, err
 		}
-		unsupported(
-			"projectile definitions are catalogued but not executed",
-		)
+		for _, item := range anySlice(data["effects"]) {
+			effect, _ := item.(map[string]any)
+			switch effect["type"] {
+			case "damage", "stagger", "apply_status", "knockback", "hitstop":
+			default:
+				unsupported(fmt.Sprintf(
+					"projectile effect %q is not executed",
+					effect["type"],
+				))
+			}
+		}
 
 	case "shop":
 		if err := validateShopSemantics(catalog, data, id); err != nil {
@@ -317,10 +318,23 @@ func ValidateDefinition(
 		if err := validateStatusSemantics(catalog, data, id); err != nil {
 			return DefinitionValidation{}, err
 		}
-		unsupported(fmt.Sprintf(
-			"%s definitions are catalogued but not executed",
-			kind,
-		))
+		for _, field := range []string{"on_apply", "on_expire"} {
+			if len(anySlice(data[field])) != 0 {
+				unsupported(fmt.Sprintf(
+					"status field %q is not executed",
+					field,
+				))
+			}
+		}
+		for _, item := range anySlice(data["tick_actions"]) {
+			action, _ := item.(map[string]any)
+			if action["type"] != "damage" {
+				unsupported(fmt.Sprintf(
+					"status tick action %q is not executed",
+					action["type"],
+				))
+			}
+		}
 
 	default:
 		return DefinitionValidation{}, fmt.Errorf(

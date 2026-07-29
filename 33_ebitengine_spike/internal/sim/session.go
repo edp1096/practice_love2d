@@ -7,9 +7,10 @@ import (
 )
 
 // SessionVersion is the current deterministic save-state schema.
-const SessionVersion = 2
+const SessionVersion = 3
 
 const legacySessionVersion = 1
+const topologySessionVersion = 2
 
 // BurstSessionState is the serialized form of a fixed-duration motion burst.
 type BurstSessionState struct {
@@ -19,12 +20,49 @@ type BurstSessionState struct {
 	Elapsed  int   `json:"elapsed"`
 }
 
-// AttackSessionState is the serialized primary attack state.
+// AttackHitSessionState preserves per-target multi-hit timing.
+type AttackHitSessionState struct {
+	TargetID        string `json:"target_id"`
+	Count           int    `json:"count"`
+	RepeatRemaining int    `json:"repeat_remaining"`
+}
+
+// AttackSessionState is the serialized active ability state.
 type AttackSessionState struct {
+	AbilityID      string      `json:"ability_id,omitempty"`
 	Phase          AttackPhase `json:"phase"`
 	PhaseStartTick uint64      `json:"phase_start_tick"`
-	HitTargets     []string    `json:"hit_targets"`
-	HitCount       int         `json:"hit_count"`
+	// HitTargets is retained only to load version 1/2 sessions.
+	HitTargets []string                `json:"hit_targets,omitempty"`
+	Hits       []AttackHitSessionState `json:"hits,omitempty"`
+	HitCount   int                     `json:"hit_count"`
+}
+
+type AbilityCooldownSessionState struct {
+	AbilityID      string `json:"ability_id"`
+	RemainingTicks int    `json:"remaining_ticks"`
+}
+
+type StatusSessionState struct {
+	ID            string `json:"id"`
+	SourceID      string `json:"source_id,omitempty"`
+	Stacks        int    `json:"stacks"`
+	Remaining     int    `json:"remaining"`
+	TickRemaining int    `json:"tick_remaining,omitempty"`
+}
+
+type ProjectileSessionState struct {
+	ID           string   `json:"id"`
+	DefinitionID string   `json:"definition_id"`
+	AbilityID    string   `json:"ability_id"`
+	SourceID     string   `json:"source_id"`
+	Team         string   `json:"team"`
+	Position     Vec      `json:"position"`
+	Previous     Vec      `json:"previous"`
+	Direction    Vec      `json:"direction"`
+	Remaining    int      `json:"remaining"`
+	Hits         int      `json:"hits"`
+	HitTargets   []string `json:"hit_targets,omitempty"`
 }
 
 // EntitySessionState stores only mutable entity state. Immutable definitions
@@ -36,17 +74,20 @@ type EntitySessionState struct {
 	Health   int    `json:"health"`
 	Dead     bool   `json:"dead"`
 
-	Attack            *AttackSessionState `json:"attack,omitempty"`
-	AttackCooldown    int                 `json:"attack_cooldown"`
-	StaggerTicks      int                 `json:"stagger_ticks"`
-	InvulnerableTicks int                 `json:"invulnerable_ticks"`
-	FlashTicks        int                 `json:"flash_ticks"`
-	Knockback         BurstSessionState   `json:"knockback"`
-	Dodge             BurstSessionState   `json:"dodge"`
-	DodgeCooldown     int                 `json:"dodge_cooldown"`
-	ParryTicks        int                 `json:"parry_ticks"`
-	ParryCooldown     int                 `json:"parry_cooldown"`
-	ParryLastPerfect  bool                `json:"parry_last_perfect"`
+	Attack *AttackSessionState `json:"attack,omitempty"`
+	// AttackCooldown is retained only to load version 1/2 sessions.
+	AttackCooldown    int                           `json:"attack_cooldown,omitempty"`
+	AbilityCooldowns  []AbilityCooldownSessionState `json:"ability_cooldowns,omitempty"`
+	Statuses          []StatusSessionState          `json:"statuses,omitempty"`
+	StaggerTicks      int                           `json:"stagger_ticks"`
+	InvulnerableTicks int                           `json:"invulnerable_ticks"`
+	FlashTicks        int                           `json:"flash_ticks"`
+	Knockback         BurstSessionState             `json:"knockback"`
+	Dodge             BurstSessionState             `json:"dodge"`
+	DodgeCooldown     int                           `json:"dodge_cooldown"`
+	ParryTicks        int                           `json:"parry_ticks"`
+	ParryCooldown     int                           `json:"parry_cooldown"`
+	ParryLastPerfect  bool                          `json:"parry_last_perfect"`
 }
 
 // QuestSessionState stores mutable quest progress.
@@ -76,33 +117,37 @@ type CameraSessionState struct {
 	ShakeSequence  uint64 `json:"shake_sequence"`
 }
 
-// SessionState is a JSON-safe, detached full simulation save. Version 2 can
-// round-trip temporary preview topology for transactions and tests; player-save
-// policy remains a caller concern.
+// SessionState is a JSON-safe, detached full simulation save. Version 3
+// round-trips temporary preview topology, multi-ability cooldowns, projectiles,
+// and statuses for transactions and tests; player-save policy remains a caller
+// concern.
 type SessionState struct {
-	Version   int    `json:"version"`
-	Tick      uint64 `json:"tick"`
-	WorldTick uint64 `json:"world_tick"`
-	Hitstop   int    `json:"hitstop"`
+	Version            int    `json:"version"`
+	Tick               uint64 `json:"tick"`
+	WorldTick          uint64 `json:"world_tick"`
+	Hitstop            int    `json:"hitstop"`
+	ProjectileSequence uint64 `json:"projectile_sequence,omitempty"`
 
-	PreviewEntities  []EntityPreviewConfig `json:"preview_entities,omitempty"`
-	PreviewQuests    []QuestDefinition     `json:"preview_quests,omitempty"`
-	RemovedEntityIDs []string              `json:"removed_entity_ids,omitempty"`
-	Entities         []EntitySessionState  `json:"entities"`
-	Quests           []QuestSessionState   `json:"quests"`
-	Dialogue         DialogueSessionState  `json:"dialogue"`
-	Camera           CameraSessionState    `json:"camera"`
+	PreviewEntities  []EntityPreviewConfig    `json:"preview_entities,omitempty"`
+	PreviewQuests    []QuestDefinition        `json:"preview_quests,omitempty"`
+	RemovedEntityIDs []string                 `json:"removed_entity_ids,omitempty"`
+	Entities         []EntitySessionState     `json:"entities"`
+	Projectiles      []ProjectileSessionState `json:"projectiles,omitempty"`
+	Quests           []QuestSessionState      `json:"quests"`
+	Dialogue         DialogueSessionState     `json:"dialogue"`
+	Camera           CameraSessionState       `json:"camera"`
 }
 
 // SaveSession returns a detached, deterministic full-session save value.
 func (s *Simulation) SaveSession() SessionState {
 	state := SessionState{
-		Version:   SessionVersion,
-		Tick:      s.rawTick,
-		WorldTick: s.worldTick,
-		Hitstop:   s.hitstop,
-		Entities:  make([]EntitySessionState, 0, len(s.entityOrder)),
-		Quests:    make([]QuestSessionState, 0, len(s.questOrder)),
+		Version:            SessionVersion,
+		Tick:               s.rawTick,
+		WorldTick:          s.worldTick,
+		Hitstop:            s.hitstop,
+		ProjectileSequence: s.projectileSequence,
+		Entities:           make([]EntitySessionState, 0, len(s.entityOrder)),
+		Quests:             make([]QuestSessionState, 0, len(s.questOrder)),
 		Dialogue: DialogueSessionState{
 			Active:       s.dialogue.active,
 			DefinitionID: s.dialogue.definitionID,
@@ -151,7 +196,6 @@ func (s *Simulation) SaveSession() SessionState {
 			Facing:            entity.facing,
 			Health:            entity.health,
 			Dead:              entity.dead,
-			AttackCooldown:    entity.attackCooldown,
 			StaggerTicks:      entity.staggerTicks,
 			InvulnerableTicks: entity.invulnerableTicks,
 			FlashTicks:        entity.flashTicks,
@@ -162,20 +206,86 @@ func (s *Simulation) SaveSession() SessionState {
 			ParryCooldown:     entity.parryCooldown,
 			ParryLastPerfect:  entity.parryLastPerfect,
 		}
-		if entity.attack != nil {
-			hitTargets := make([]string, 0, len(entity.attack.hitTargets))
-			for targetID := range entity.attack.hitTargets {
-				hitTargets = append(hitTargets, targetID)
+		for abilityID, remaining := range entity.abilityCooldowns {
+			if remaining <= 0 {
+				continue
 			}
-			sort.Strings(hitTargets)
+			saved.AbilityCooldowns = append(
+				saved.AbilityCooldowns,
+				AbilityCooldownSessionState{
+					AbilityID:      abilityID,
+					RemainingTicks: remaining,
+				},
+			)
+		}
+		sort.Slice(saved.AbilityCooldowns, func(left, right int) bool {
+			return saved.AbilityCooldowns[left].AbilityID <
+				saved.AbilityCooldowns[right].AbilityID
+		})
+		if entity.attack != nil {
+			hits := make(
+				[]AttackHitSessionState,
+				0,
+				len(entity.attack.hitTargets),
+			)
+			for targetID, record := range entity.attack.hitTargets {
+				hits = append(hits, AttackHitSessionState{
+					TargetID:        targetID,
+					Count:           record.count,
+					RepeatRemaining: record.repeatRemaining,
+				})
+			}
+			sort.Slice(hits, func(left, right int) bool {
+				return hits[left].TargetID < hits[right].TargetID
+			})
 			saved.Attack = &AttackSessionState{
+				AbilityID:      entity.attack.abilityID,
 				Phase:          entity.attack.phase,
 				PhaseStartTick: entity.attack.phaseStartTick,
-				HitTargets:     hitTargets,
+				Hits:           hits,
 				HitCount:       entity.attack.hitCount,
 			}
 		}
+		statusIDs := make([]string, 0, len(entity.statuses))
+		for statusID := range entity.statuses {
+			statusIDs = append(statusIDs, statusID)
+		}
+		sort.Strings(statusIDs)
+		for _, statusID := range statusIDs {
+			status := entity.statuses[statusID]
+			saved.Statuses = append(saved.Statuses, StatusSessionState{
+				ID:            statusID,
+				SourceID:      status.sourceID,
+				Stacks:        status.stacks,
+				Remaining:     status.remaining,
+				TickRemaining: status.tickRemaining,
+			})
+		}
 		state.Entities = append(state.Entities, saved)
+	}
+	for _, id := range s.projectileOrder {
+		projectile := s.projectiles[id]
+		hitTargets := make([]string, 0, len(projectile.hitTargets))
+		for targetID := range projectile.hitTargets {
+			hitTargets = append(hitTargets, targetID)
+		}
+		sort.Strings(hitTargets)
+		state.Projectiles = append(
+			state.Projectiles,
+			ProjectileSessionState{
+				ID:           projectile.id,
+				DefinitionID: projectile.definitionID,
+				AbilityID:    projectile.abilityID,
+				SourceID:     projectile.sourceID,
+				Team:         projectile.team,
+				Position:     projectile.position,
+				Previous:     projectile.previous,
+				Direction:    projectile.direction,
+				Remaining:    projectile.remaining,
+				Hits:         projectile.hits,
+				HitTargets:   hitTargets,
+			},
+		)
 	}
 	for _, id := range s.questOrder {
 		quest := s.quests[id]
@@ -211,6 +321,9 @@ func (s *Simulation) LoadSession(state SessionState) error {
 	s.questOrder = prepared.topology.questOrder
 	s.dialogue = prepared.dialogue
 	s.camera = prepared.camera
+	s.projectiles = prepared.projectiles
+	s.projectileOrder = prepared.projectileOrder
+	s.projectileSequence = state.ProjectileSequence
 	s.lastEvents = nil
 	s.refreshCameraCenter()
 	return nil
@@ -220,6 +333,7 @@ func (s *Simulation) restoreEntitySession(
 	config EntityConfig,
 	saved EntitySessionState,
 	worldTick uint64,
+	sessionVersion int,
 ) (*entityRuntime, error) {
 	if !validCoord(saved.Position.X) || !validCoord(saved.Position.Y) ||
 		!containsRect(
@@ -252,7 +366,6 @@ func (s *Simulation) restoreEntitySession(
 		return nil, errors.New("health/dead state is inconsistent")
 	}
 	for label, timer := range map[string]int{
-		"attack cooldown": saved.AttackCooldown,
 		"stagger":         saved.StaggerTicks,
 		"invulnerability": saved.InvulnerableTicks,
 		"flash":           saved.FlashTicks,
@@ -262,6 +375,33 @@ func (s *Simulation) restoreEntitySession(
 	} {
 		if timer < 0 || timer > 1_000_000 {
 			return nil, fmt.Errorf("%s timer is invalid", label)
+		}
+	}
+	abilityCooldowns := make(map[string]int)
+	if sessionVersion < SessionVersion {
+		if saved.AttackCooldown < 0 || saved.AttackCooldown > MaxTickCount {
+			return nil, errors.New("attack cooldown timer is invalid")
+		}
+		if primary := config.PrimaryAbility(); primary != nil &&
+			saved.AttackCooldown > 0 {
+			abilityCooldowns[primary.ID] = saved.AttackCooldown
+		}
+	} else {
+		for _, cooldown := range saved.AbilityCooldowns {
+			if cooldown.AbilityID == "" ||
+				config.Combat == nil ||
+				config.Combat.Ability(cooldown.AbilityID) == nil ||
+				cooldown.RemainingTicks <= 0 ||
+				cooldown.RemainingTicks > MaxTickCount {
+				return nil, errors.New("ability cooldown is invalid")
+			}
+			if _, duplicate := abilityCooldowns[cooldown.AbilityID]; duplicate {
+				return nil, errors.New("ability cooldown is duplicated")
+			}
+			abilityCooldowns[cooldown.AbilityID] = cooldown.RemainingTicks
+		}
+		if saved.AttackCooldown != 0 {
+			return nil, errors.New("current session contains legacy attack cooldown")
 		}
 	}
 	knockback, err := restoreBurst(saved.Knockback)
@@ -274,7 +414,8 @@ func (s *Simulation) restoreEntitySession(
 	}
 	if saved.Dead && (saved.Attack != nil || knockback.active() ||
 		dodge.active() || saved.StaggerTicks > 0 ||
-		saved.InvulnerableTicks > 0 || saved.ParryTicks > 0) {
+		saved.InvulnerableTicks > 0 || saved.ParryTicks > 0 ||
+		len(saved.Statuses) != 0) {
 		return nil, errors.New("dead entity contains active action state")
 	}
 	if saved.ParryTicks > 0 &&
@@ -302,7 +443,7 @@ func (s *Simulation) restoreEntitySession(
 		facing:            saved.Facing,
 		health:            saved.Health,
 		dead:              saved.Dead,
-		attackCooldown:    saved.AttackCooldown,
+		abilityCooldowns:  abilityCooldowns,
 		staggerTicks:      saved.StaggerTicks,
 		invulnerableTicks: saved.InvulnerableTicks,
 		flashTicks:        saved.FlashTicks,
@@ -312,40 +453,116 @@ func (s *Simulation) restoreEntitySession(
 		parryTicks:        saved.ParryTicks,
 		parryCooldown:     saved.ParryCooldown,
 		parryLastPerfect:  saved.ParryLastPerfect,
+		statuses:          make(map[string]*statusRuntime),
+	}
+	if sessionVersion < SessionVersion && len(saved.Statuses) != 0 {
+		return nil, errors.New("legacy entity contains statuses")
+	}
+	for _, status := range saved.Statuses {
+		definition, exists := s.statusDefinitions[status.ID]
+		if !exists || config.Status == nil ||
+			status.Stacks <= 0 ||
+			status.Stacks > definition.MaxStacks ||
+			status.Remaining <= 0 ||
+			status.Remaining > definition.DurationTicks ||
+			status.TickRemaining < 0 ||
+			status.TickRemaining > definition.TickIntervalTicks {
+			return nil, errors.New("status state is invalid")
+		}
+		if definition.TickIntervalTicks == 0 && status.TickRemaining != 0 {
+			return nil, errors.New("unticked status has a tick timer")
+		}
+		if _, duplicate := entity.statuses[status.ID]; duplicate {
+			return nil, errors.New("status state is duplicated")
+		}
+		for _, immune := range config.Status.Immune {
+			if immune == status.ID {
+				return nil, errors.New("entity retains an immune status")
+			}
+		}
+		entity.statuses[status.ID] = &statusRuntime{
+			id:            status.ID,
+			sourceID:      status.SourceID,
+			stacks:        status.Stacks,
+			remaining:     status.Remaining,
+			tickRemaining: status.TickRemaining,
+		}
 	}
 	if saved.Attack != nil {
-		if config.Ability == nil ||
+		abilityID := saved.Attack.AbilityID
+		if sessionVersion < SessionVersion {
+			abilityID = config.Combat.PrimaryAbilityID
+		}
+		ability := config.Combat.Ability(abilityID)
+		if ability == nil ||
 			(saved.Attack.Phase != AttackWindup &&
 				saved.Attack.Phase != AttackActive &&
 				saved.Attack.Phase != AttackRecovery) ||
-			saved.Attack.PhaseStartTick > worldTick ||
-			saved.Attack.HitCount != len(saved.Attack.HitTargets) {
+			saved.Attack.PhaseStartTick > worldTick {
 			return nil, errors.New("attack state is invalid")
 		}
 		var phaseDuration int
 		switch saved.Attack.Phase {
 		case AttackWindup:
-			phaseDuration = config.Ability.WindupTicks
+			phaseDuration = ability.WindupTicks
 		case AttackActive:
-			phaseDuration = config.Ability.ActiveTicks
+			phaseDuration = ability.ActiveTicks
 		case AttackRecovery:
-			phaseDuration = config.Ability.RecoveryTicks
+			phaseDuration = ability.RecoveryTicks
 		}
 		if phaseDuration <= 0 ||
 			worldTick-saved.Attack.PhaseStartTick >= uint64(phaseDuration) {
 			return nil, errors.New("attack phase has already expired")
 		}
-		hitTargets := make(map[string]struct{}, len(saved.Attack.HitTargets))
-		for _, id := range saved.Attack.HitTargets {
-			if s.entities[id] == nil {
-				return nil, fmt.Errorf("attack references unknown target %q", id)
+		hitTargets := make(map[string]attackHitRuntime)
+		if sessionVersion < SessionVersion {
+			for _, id := range saved.Attack.HitTargets {
+				if s.entities[id] == nil {
+					return nil, fmt.Errorf(
+						"attack references unknown target %q",
+						id,
+					)
+				}
+				if _, duplicate := hitTargets[id]; duplicate {
+					return nil, fmt.Errorf("attack duplicates target %q", id)
+				}
+				hitTargets[id] = attackHitRuntime{
+					count:           1,
+					repeatRemaining: MaxTickCount,
+				}
 			}
-			if _, duplicate := hitTargets[id]; duplicate {
-				return nil, fmt.Errorf("attack duplicates target %q", id)
+			if saved.Attack.HitCount != len(saved.Attack.HitTargets) {
+				return nil, errors.New("attack hit count is invalid")
 			}
-			hitTargets[id] = struct{}{}
+		} else {
+			totalHits := 0
+			for _, hit := range saved.Attack.Hits {
+				if hit.TargetID == "" || s.entities[hit.TargetID] == nil ||
+					hit.Count <= 0 ||
+					hit.Count > maxInt(1, ability.MaxHits) ||
+					hit.RepeatRemaining < 0 ||
+					hit.RepeatRemaining > MaxTickCount {
+					return nil, errors.New("attack hit record is invalid")
+				}
+				if _, duplicate := hitTargets[hit.TargetID]; duplicate {
+					return nil, fmt.Errorf(
+						"attack duplicates target %q",
+						hit.TargetID,
+					)
+				}
+				hitTargets[hit.TargetID] = attackHitRuntime{
+					count:           hit.Count,
+					repeatRemaining: hit.RepeatRemaining,
+				}
+				totalHits += hit.Count
+			}
+			if len(saved.Attack.HitTargets) != 0 ||
+				saved.Attack.HitCount != totalHits {
+				return nil, errors.New("attack hit count is invalid")
+			}
 		}
 		entity.attack = &attackRuntime{
+			abilityID:      abilityID,
 			phase:          saved.Attack.Phase,
 			phaseStartTick: saved.Attack.PhaseStartTick,
 			hitTargets:     hitTargets,

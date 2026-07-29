@@ -628,7 +628,7 @@ func TestRemovedAuthoredEntityCannotQueueAbility(t *testing.T) {
 	runtime.mu.RLock()
 	queued := runtime.pendingAbilities["quest.slime.1"]
 	runtime.mu.RUnlock()
-	if queued {
+	if queued != "" {
 		t.Fatal("removed authored entity left a permanently queued ability")
 	}
 }

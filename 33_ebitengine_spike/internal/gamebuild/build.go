@@ -208,8 +208,18 @@ type movementComponent struct {
 }
 
 type combatComponent struct {
-	Primary string `json:"primary"`
-	Team    string `json:"team"`
+	Primary   string   `json:"primary"`
+	Team      string   `json:"team"`
+	Abilities []string `json:"abilities"`
+}
+
+type combatInputComponent struct {
+	Bindings []abilityBindingDefinition `json:"bindings"`
+}
+
+type abilityBindingDefinition struct {
+	Input   string `json:"input"`
+	Ability string `json:"ability"`
 }
 
 type chaseAIComponent struct {
@@ -246,6 +256,14 @@ type renderSpriteComponent struct {
 	Sprite string `json:"sprite"`
 }
 
+type renderShapeComponent struct {
+	Color []float64 `json:"color"`
+}
+
+type statusReceiverComponent struct {
+	Immune []string `json:"immune"`
+}
+
 type interactableComponent struct {
 	Range   float64         `json:"range"`
 	Actions []contentAction `json:"actions"`
@@ -258,22 +276,30 @@ type contentAction struct {
 }
 
 type abilityDefinition struct {
-	SchemaVersion int             `json:"schema_version"`
-	Kind          string          `json:"kind"`
-	ID            string          `json:"id"`
-	Windup        float64         `json:"windup"`
-	Duration      float64         `json:"duration"`
-	Recovery      float64         `json:"recovery"`
-	Cooldown      float64         `json:"cooldown"`
-	LockMovement  bool            `json:"lock_movement"`
-	Hitbox        abilityHitbox   `json:"hitbox"`
-	Effects       []abilityEffect `json:"effects"`
+	SchemaVersion int                 `json:"schema_version"`
+	Kind          string              `json:"kind"`
+	ID            string              `json:"id"`
+	Windup        float64             `json:"windup"`
+	Duration      float64             `json:"duration"`
+	Recovery      float64             `json:"recovery"`
+	Cooldown      float64             `json:"cooldown"`
+	LockMovement  bool                `json:"lock_movement"`
+	Hitbox        abilityHitbox       `json:"hitbox"`
+	Effects       []abilityEffect     `json:"effects"`
+	Activation    []abilityActivation `json:"activation"`
 }
 
 type abilityHitbox struct {
-	Shape      string  `json:"shape"`
-	Reach      float64 `json:"reach"`
-	ArcDegrees int     `json:"arc_degrees"`
+	Shape          string  `json:"shape"`
+	Reach          float64 `json:"reach"`
+	ArcDegrees     int     `json:"arc_degrees"`
+	RepeatInterval float64 `json:"repeat_interval"`
+	MaxHits        int     `json:"max_hits"`
+}
+
+type abilityActivation struct {
+	Type       string `json:"type"`
+	Projectile string `json:"projectile"`
 }
 
 type abilityEffect struct {
@@ -281,6 +307,37 @@ type abilityEffect struct {
 	Amount   int     `json:"amount"`
 	Duration float64 `json:"duration"`
 	Distance float64 `json:"distance"`
+	Status   string  `json:"status"`
+}
+
+type projectileDefinition struct {
+	SchemaVersion int             `json:"schema_version"`
+	Kind          string          `json:"kind"`
+	ID            string          `json:"id"`
+	Actor         string          `json:"actor"`
+	Speed         float64         `json:"speed"`
+	Lifetime      float64         `json:"lifetime"`
+	SpawnOffset   float64         `json:"spawn_offset"`
+	Pierce        int             `json:"pierce"`
+	DestroyOnWall *bool           `json:"destroy_on_wall"`
+	Effects       []abilityEffect `json:"effects"`
+}
+
+type statusDefinition struct {
+	SchemaVersion int             `json:"schema_version"`
+	Kind          string          `json:"kind"`
+	ID            string          `json:"id"`
+	Duration      float64         `json:"duration"`
+	Stacking      string          `json:"stacking"`
+	MaxStacks     int             `json:"max_stacks"`
+	TickInterval  float64         `json:"tick_interval"`
+	TickActions   []abilityEffect `json:"tick_actions"`
+	Modifiers     struct {
+		MoveSpeed   float64 `json:"move_speed"`
+		DamageDealt float64 `json:"damage_dealt"`
+		DamageTaken float64 `json:"damage_taken"`
+	} `json:"modifiers"`
+	Color []float64 `json:"color"`
 }
 
 type dialogueDefinition struct {
@@ -396,6 +453,11 @@ func Build(catalog *content.Catalog, options Options) (*Result, error) {
 	)
 	if err != nil {
 		return nil, fmt.Errorf("%s tilemap: %w", stage.ID, err)
+	}
+	result.Config.Statuses, result.Config.Projectiles, err =
+		buildRuntimeCombatContent(catalog, options.Impact)
+	if err != nil {
+		return nil, fmt.Errorf("%s action content: %w", stage.ID, err)
 	}
 	for index := range min(len(stage.Background), 4) {
 		value := stage.Background[index]
@@ -980,6 +1042,16 @@ func buildEntity(
 			CameraShakeTicks:     secondsToTicks(impact.ParryShakeSeconds),
 		}
 	}
+	if raw := actor.Components["action.status"]; raw != nil {
+		var receiver statusReceiverComponent
+		if err := json.Unmarshal(raw, &receiver); err != nil {
+			return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
+				fmt.Errorf("invalid action.status")
+		}
+		entity.Status = &sim.StatusReceiverConfig{
+			Immune: append([]string(nil), receiver.Immune...),
+		}
+	}
 	if raw := actor.Components["action.combat"]; raw != nil {
 		var combat combatComponent
 		if err := json.Unmarshal(raw, &combat); err != nil ||
@@ -987,12 +1059,41 @@ func buildEntity(
 			return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
 				fmt.Errorf("invalid action.combat")
 		}
-		ability, err := buildAbility(catalog, combat.Primary, impact)
-		if err != nil {
-			return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0, err
+		abilityIDs := append([]string(nil), combat.Abilities...)
+		if len(abilityIDs) == 0 {
+			abilityIDs = []string{combat.Primary}
+		}
+		loadout := &sim.CombatConfig{
+			PrimaryAbilityID: combat.Primary,
+		}
+		for _, abilityID := range abilityIDs {
+			ability, err := buildAbility(catalog, abilityID, impact)
+			if err != nil {
+				return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0, err
+			}
+			loadout.Abilities = append(loadout.Abilities, *ability)
+		}
+		if raw := actor.Components["action.combat_input"]; raw != nil {
+			var input combatInputComponent
+			if err := json.Unmarshal(raw, &input); err != nil {
+				return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
+					fmt.Errorf("invalid action.combat_input")
+			}
+			for _, binding := range input.Bindings {
+				loadout.Bindings = append(loadout.Bindings, sim.AbilityBinding{
+					Input:     binding.Input,
+					AbilityID: binding.Ability,
+				})
+			}
+		}
+		if len(loadout.Bindings) == 0 {
+			loadout.Bindings = []sim.AbilityBinding{{
+				Input:     "attack",
+				AbilityID: combat.Primary,
+			}}
 		}
 		entity.Team = combat.Team
-		entity.Ability = ability
+		entity.Combat = loadout
 		metadata.PrimaryAbility = combat.Primary
 		if combat.Team == "enemy" {
 			entity.Facing = sim.Vec{X: -sim.UnitsPerPixel}
@@ -1064,12 +1165,6 @@ func buildAbility(
 		"ability", id); err != nil {
 		return nil, err
 	}
-	if ability.Hitbox.Shape != "arc" ||
-		!positiveFinite(ability.Hitbox.Reach) ||
-		ability.Hitbox.ArcDegrees < 1 ||
-		ability.Hitbox.ArcDegrees > 360 {
-		return nil, fmt.Errorf("%s has unsupported hitbox", id)
-	}
 	result := &sim.AbilityConfig{
 		ID:               id,
 		WindupTicks:      secondsToTicks(ability.Windup),
@@ -1077,10 +1172,49 @@ func buildAbility(
 		RecoveryTicks:    secondsToTicks(ability.Recovery),
 		CooldownTicks:    secondsToTicks(ability.Cooldown),
 		LockMovement:     ability.LockMovement,
-		Reach:            pixels(ability.Hitbox.Reach),
-		ArcDegrees:       ability.Hitbox.ArcDegrees,
 		CameraShake:      pixels(impact.DamageShakePixels),
 		CameraShakeTicks: secondsToTicks(impact.DamageShakeSeconds),
+		MaxHits:          1,
+	}
+	if ability.Hitbox.Shape != "" {
+		if ability.Hitbox.Shape != "arc" ||
+			!positiveFinite(ability.Hitbox.Reach) ||
+			ability.Hitbox.ArcDegrees < 1 ||
+			ability.Hitbox.ArcDegrees > 360 {
+			return nil, fmt.Errorf("%s has unsupported hitbox", id)
+		}
+		result.Reach = pixels(ability.Hitbox.Reach)
+		result.ArcDegrees = ability.Hitbox.ArcDegrees
+		if ability.Hitbox.MaxHits > 0 {
+			result.MaxHits = ability.Hitbox.MaxHits
+		}
+		if ability.Hitbox.RepeatInterval > 0 {
+			result.RepeatIntervalTicks = secondsToTicks(
+				ability.Hitbox.RepeatInterval,
+			)
+		}
+	}
+	for _, activation := range ability.Activation {
+		if activation.Type != "spawn_projectile" ||
+			activation.Projectile == "" ||
+			result.ProjectileID != "" {
+			return nil, fmt.Errorf("%s has unsupported activation", id)
+		}
+		var header struct {
+			Kind string `json:"kind"`
+			ID   string `json:"id"`
+		}
+		if err := catalog.Decode(activation.Projectile, &header); err != nil {
+			return nil, err
+		}
+		if header.Kind != "projectile" || header.ID != activation.Projectile {
+			return nil, fmt.Errorf(
+				"%s references invalid projectile %q",
+				id,
+				activation.Projectile,
+			)
+		}
+		result.ProjectileID = activation.Projectile
 	}
 	for _, effect := range ability.Effects {
 		switch effect.Type {
@@ -1095,8 +1229,9 @@ func buildAbility(
 			result.HitstopTicks = secondsToTicks(effect.Duration)
 		}
 	}
-	if result.Damage <= 0 || result.ActiveTicks <= 0 {
-		return nil, fmt.Errorf("%s has no positive damage or active duration", id)
+	if (result.Damage <= 0 && result.ProjectileID == "") ||
+		result.ActiveTicks <= 0 {
+		return nil, fmt.Errorf("%s has no executable effect or active duration", id)
 	}
 	return result, nil
 }

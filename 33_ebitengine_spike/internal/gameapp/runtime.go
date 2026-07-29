@@ -54,7 +54,7 @@ type runtimeCheckpoint struct {
 	dialogue     *rulesruntime.DialogueSession
 
 	virtual          map[string]virtualAction
-	pendingAbilities map[string]bool
+	pendingAbilities map[string]string
 	pendingRemovals  map[string]bool
 	moving           map[string]bool
 
@@ -105,7 +105,7 @@ type Runtime struct {
 	revision         uint64
 
 	virtual          map[string]virtualAction
-	pendingAbilities map[string]bool
+	pendingAbilities map[string]string
 	pendingRemovals  map[string]bool
 	moving           map[string]bool
 
@@ -199,7 +199,7 @@ func New(options Options) (*Runtime, error) {
 		simulation:       simulation,
 		store:            options.Store,
 		virtual:          make(map[string]virtualAction),
-		pendingAbilities: make(map[string]bool),
+		pendingAbilities: make(map[string]string),
 		pendingRemovals:  make(map[string]bool),
 		moving:           make(map[string]bool),
 		portalInside:     portalInside,
@@ -442,7 +442,7 @@ func (runtime *Runtime) reloadContent(ctx context.Context) error {
 	runtime.built = built
 	runtime.simulation = candidate
 	runtime.virtual = make(map[string]virtualAction)
-	runtime.pendingAbilities = make(map[string]bool)
+	runtime.pendingAbilities = make(map[string]string)
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
@@ -576,7 +576,7 @@ func (runtime *Runtime) startNewGame(ctx context.Context) error {
 	runtime.built = built
 	runtime.simulation = simulation
 	runtime.virtual = make(map[string]virtualAction)
-	runtime.pendingAbilities = make(map[string]bool)
+	runtime.pendingAbilities = make(map[string]string)
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
@@ -610,7 +610,7 @@ func (runtime *Runtime) resetLocked() error {
 	runtime.built = built
 	runtime.simulation = candidate
 	runtime.virtual = make(map[string]virtualAction)
-	runtime.pendingAbilities = make(map[string]bool)
+	runtime.pendingAbilities = make(map[string]string)
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
@@ -720,7 +720,7 @@ func (runtime *Runtime) detachMutableLocked(
 	runtime.campaign = activeCampaign
 	runtime.dialogue = activeDialogue
 	runtime.virtual = cloneVirtualActions(checkpoint.virtual)
-	runtime.pendingAbilities = cloneBoolMap(checkpoint.pendingAbilities)
+	runtime.pendingAbilities = cloneStringMap(checkpoint.pendingAbilities)
 	runtime.pendingRemovals = cloneBoolMap(checkpoint.pendingRemovals)
 	runtime.moving = cloneBoolMap(checkpoint.moving)
 	runtime.previewEntities = clonePreviewEntities(
