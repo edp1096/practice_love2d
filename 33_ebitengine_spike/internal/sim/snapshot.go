@@ -108,6 +108,11 @@ func (s *Simulation) entitySnapshot(entity *entityRuntime) EntitySnapshot {
 	sort.Slice(cooldowns, func(left, right int) bool {
 		return cooldowns[left].AbilityID < cooldowns[right].AbilityID
 	})
+	var platformer *PlatformerConfig
+	if entity.config.Platformer != nil {
+		copied := *entity.config.Platformer
+		platformer = &copied
+	}
 	return EntitySnapshot{
 		ID:                 entity.config.ID,
 		Kind:               entity.config.Kind,
@@ -131,6 +136,11 @@ func (s *Simulation) entitySnapshot(entity *entityRuntime) EntitySnapshot {
 		ParryTicks:         entity.parryTicks,
 		ParryCooldownTicks: entity.parryCooldown,
 		LastParryPerfect:   entity.parryLastPerfect,
+		Velocity:           entity.velocity,
+		Grounded:           entity.grounded,
+		CoyoteTicks:        entity.coyoteTicks,
+		JumpBufferTicks:    entity.jumpBufferTicks,
+		Platformer:         platformer,
 	}
 }
 

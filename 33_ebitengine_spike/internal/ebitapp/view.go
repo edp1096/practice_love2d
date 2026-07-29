@@ -117,6 +117,9 @@ type EntityView struct {
 	X       float64
 	Y       float64
 	Radius  float64
+	Width   float64
+	Height  float64
+	Shape   string
 	FacingX float64
 	FacingY float64
 	Layer   int
@@ -125,6 +128,7 @@ type EntityView struct {
 	MaxHealth float64
 	Flash     bool
 	Tint      color.RGBA
+	Outline   color.RGBA
 }
 
 type EffectView struct {

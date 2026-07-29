@@ -7,10 +7,11 @@ import (
 )
 
 // SessionVersion is the current deterministic save-state schema.
-const SessionVersion = 3
+const SessionVersion = 4
 
 const legacySessionVersion = 1
 const topologySessionVersion = 2
+const actionSessionVersion = 3
 
 // BurstSessionState is the serialized form of a fixed-duration motion burst.
 type BurstSessionState struct {
@@ -88,6 +89,10 @@ type EntitySessionState struct {
 	ParryTicks        int                           `json:"parry_ticks"`
 	ParryCooldown     int                           `json:"parry_cooldown"`
 	ParryLastPerfect  bool                          `json:"parry_last_perfect"`
+	Velocity          Vec                           `json:"velocity"`
+	Grounded          bool                          `json:"grounded"`
+	CoyoteTicks       int                           `json:"coyote_ticks"`
+	JumpBufferTicks   int                           `json:"jump_buffer_ticks"`
 }
 
 // QuestSessionState stores mutable quest progress.
@@ -117,10 +122,10 @@ type CameraSessionState struct {
 	ShakeSequence  uint64 `json:"shake_sequence"`
 }
 
-// SessionState is a JSON-safe, detached full simulation save. Version 3
+// SessionState is a JSON-safe, detached full simulation save. Version 4
 // round-trips temporary preview topology, multi-ability cooldowns, projectiles,
-// and statuses for transactions and tests; player-save policy remains a caller
-// concern.
+// statuses, and platformer physics for transactions and tests; player-save
+// policy remains a caller concern.
 type SessionState struct {
 	Version            int    `json:"version"`
 	Tick               uint64 `json:"tick"`
@@ -205,6 +210,10 @@ func (s *Simulation) SaveSession() SessionState {
 			ParryTicks:        entity.parryTicks,
 			ParryCooldown:     entity.parryCooldown,
 			ParryLastPerfect:  entity.parryLastPerfect,
+			Velocity:          entity.velocity,
+			Grounded:          entity.grounded,
+			CoyoteTicks:       entity.coyoteTicks,
+			JumpBufferTicks:   entity.jumpBufferTicks,
 		}
 		for abilityID, remaining := range entity.abilityCooldowns {
 			if remaining <= 0 {
@@ -378,7 +387,7 @@ func (s *Simulation) restoreEntitySession(
 		}
 	}
 	abilityCooldowns := make(map[string]int)
-	if sessionVersion < SessionVersion {
+	if sessionVersion < actionSessionVersion {
 		if saved.AttackCooldown < 0 || saved.AttackCooldown > MaxTickCount {
 			return nil, errors.New("attack cooldown timer is invalid")
 		}
@@ -455,7 +464,7 @@ func (s *Simulation) restoreEntitySession(
 		parryLastPerfect:  saved.ParryLastPerfect,
 		statuses:          make(map[string]*statusRuntime),
 	}
-	if sessionVersion < SessionVersion && len(saved.Statuses) != 0 {
+	if sessionVersion < actionSessionVersion && len(saved.Statuses) != 0 {
 		return nil, errors.New("legacy entity contains statuses")
 	}
 	for _, status := range saved.Statuses {
@@ -490,7 +499,7 @@ func (s *Simulation) restoreEntitySession(
 	}
 	if saved.Attack != nil {
 		abilityID := saved.Attack.AbilityID
-		if sessionVersion < SessionVersion {
+		if sessionVersion < actionSessionVersion {
 			abilityID = config.Combat.PrimaryAbilityID
 		}
 		ability := config.Combat.Ability(abilityID)
@@ -515,7 +524,7 @@ func (s *Simulation) restoreEntitySession(
 			return nil, errors.New("attack phase has already expired")
 		}
 		hitTargets := make(map[string]attackHitRuntime)
-		if sessionVersion < SessionVersion {
+		if sessionVersion < actionSessionVersion {
 			for _, id := range saved.Attack.HitTargets {
 				if s.entities[id] == nil {
 					return nil, fmt.Errorf(
@@ -575,6 +584,35 @@ func (s *Simulation) restoreEntitySession(
 		(entity.dodge.active() && (entity.parryTicks > 0 || blocked)) ||
 		(entity.parryTicks > 0 && blocked) {
 		return nil, errors.New("mutually exclusive action states overlap")
+	}
+	if sessionVersion < SessionVersion {
+		if saved.Velocity != (Vec{}) || saved.Grounded ||
+			saved.CoyoteTicks != 0 || saved.JumpBufferTicks != 0 {
+			return nil, errors.New(
+				"legacy entity contains platformer state",
+			)
+		}
+	} else if config.Platformer == nil {
+		if saved.Velocity != (Vec{}) || saved.Grounded ||
+			saved.CoyoteTicks != 0 || saved.JumpBufferTicks != 0 {
+			return nil, errors.New(
+				"non-platformer entity contains platformer state",
+			)
+		}
+	} else {
+		if !validCoord(saved.Velocity.X) ||
+			!validCoord(saved.Velocity.Y) ||
+			saved.CoyoteTicks < 0 ||
+			saved.CoyoteTicks > config.Platformer.CoyoteTicks ||
+			saved.JumpBufferTicks < 0 ||
+			saved.JumpBufferTicks > config.Platformer.JumpBufferTicks ||
+			(saved.Grounded && saved.Velocity.Y != 0) {
+			return nil, errors.New("platformer state is invalid")
+		}
+		entity.velocity = saved.Velocity
+		entity.grounded = saved.Grounded
+		entity.coyoteTicks = saved.CoyoteTicks
+		entity.jumpBufferTicks = saved.JumpBufferTicks
 	}
 	return entity, nil
 }

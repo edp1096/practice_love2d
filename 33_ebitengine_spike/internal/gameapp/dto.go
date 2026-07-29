@@ -98,6 +98,15 @@ type entityDTO struct {
 	DodgeActive           bool                          `json:"dodge_active"`
 	DodgeRemaining        int                           `json:"dodge_remaining"`
 	DodgeCooldown         int                           `json:"dodge_cooldown"`
+	Platformer            bool                          `json:"platformer"`
+	VelocityX             float64                       `json:"velocity_x"`
+	VelocityY             float64                       `json:"velocity_y"`
+	Grounded              bool                          `json:"grounded"`
+	CoyoteRemaining       int                           `json:"coyote_remaining"`
+	JumpBufferRemaining   int                           `json:"jump_buffer_remaining"`
+	PlatformerSpeed       float64                       `json:"platformer_speed_per_tick,omitempty"`
+	PlatformerGravity     float64                       `json:"platformer_gravity_per_tick,omitempty"`
+	PlatformerJumpSpeed   float64                       `json:"platformer_jump_speed_per_tick,omitempty"`
 }
 
 type projectileDTO struct {
@@ -238,7 +247,7 @@ func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
 			screenX-radiusX*zoom <= 960 &&
 			screenY+radiusY*zoom >= 0 &&
 			screenY-radiusY*zoom <= 540
-		result.Entities = append(result.Entities, entityDTO{
+		dto := entityDTO{
 			ID:              entity.ID,
 			ActorID:         entity.Kind,
 			Name:            entity.Name,
@@ -281,7 +290,25 @@ func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
 			DodgeActive:           entity.DodgeTicks > 0,
 			DodgeRemaining:        entity.DodgeTicks,
 			DodgeCooldown:         entity.DodgeCooldownTicks,
-		})
+			Platformer:            entity.Platformer != nil,
+			VelocityX:             coordPixels(entity.Velocity.X),
+			VelocityY:             coordPixels(entity.Velocity.Y),
+			Grounded:              entity.Grounded,
+			CoyoteRemaining:       entity.CoyoteTicks,
+			JumpBufferRemaining:   entity.JumpBufferTicks,
+		}
+		if entity.Platformer != nil {
+			dto.PlatformerSpeed = coordPixels(
+				entity.Platformer.MaxSpeedPerTick,
+			)
+			dto.PlatformerGravity = coordPixels(
+				entity.Platformer.GravityPerTick,
+			)
+			dto.PlatformerJumpSpeed = coordPixels(
+				entity.Platformer.JumpSpeedPerTick,
+			)
+		}
+		result.Entities = append(result.Entities, dto)
 	}
 	for _, projectile := range snapshot.Projectiles {
 		x := coordPixels(projectile.Position.X)

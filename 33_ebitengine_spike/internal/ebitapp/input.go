@@ -23,6 +23,7 @@ type Actions struct {
 	Technique bool
 	Parry     bool
 	Dodge     bool
+	Jump      bool
 	Interact  bool
 
 	MenuUp      bool
@@ -63,26 +64,26 @@ type rawInput struct {
 	left, right, up, down bool
 	stickX, stickY        float64
 
-	attack, special, technique bool
-	parry, dodge, interact     bool
-	confirm, cancel, pause     bool
-	restart                    bool
-	menuUp, menuDown           bool
-	menuLeft, menuRight        bool
-	dialogueUp, dialogueDown   bool
-	dialogueConfirm            bool
-	dialogueCancel             bool
-	shopUp, shopDown           bool
-	shopBuy, shopSell          bool
-	shopCancel                 bool
-	inventoryToggle            bool
-	inventoryUp, inventoryDown bool
-	inventoryActivate          bool
-	inventoryUnequip           bool
-	inventoryCancel            bool
-	flowUp, flowDown           bool
-	flowConfirm                bool
-	flowCancel                 bool
+	attack, special, technique   bool
+	parry, dodge, jump, interact bool
+	confirm, cancel, pause       bool
+	restart                      bool
+	menuUp, menuDown             bool
+	menuLeft, menuRight          bool
+	dialogueUp, dialogueDown     bool
+	dialogueConfirm              bool
+	dialogueCancel               bool
+	shopUp, shopDown             bool
+	shopBuy, shopSell            bool
+	shopCancel                   bool
+	inventoryToggle              bool
+	inventoryUp, inventoryDown   bool
+	inventoryActivate            bool
+	inventoryUnequip             bool
+	inventoryCancel              bool
+	flowUp, flowDown             bool
+	flowConfirm                  bool
+	flowCancel                   bool
 }
 
 func mapRawInput(raw rawInput) Actions {
@@ -115,6 +116,7 @@ func mapRawInput(raw rawInput) Actions {
 		Technique: raw.technique,
 		Parry:     raw.parry,
 		Dodge:     raw.dodge,
+		Jump:      raw.jump,
 		Interact:  raw.interact,
 
 		MenuUp:      raw.menuUp,
@@ -341,6 +343,8 @@ func PollActions() Actions {
 		dodge: inpututil.IsKeyJustPressed(ebiten.KeyX) ||
 			inpututil.IsKeyJustPressed(ebiten.KeyShiftLeft) ||
 			inpututil.IsKeyJustPressed(ebiten.KeyShiftRight),
+		jump: inpututil.IsKeyJustPressed(ebiten.KeyW) ||
+			inpututil.IsKeyJustPressed(ebiten.KeyArrowUp),
 		interact: inpututil.IsKeyJustPressed(ebiten.KeyE),
 		confirm: inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
 			inpututil.IsKeyJustPressed(ebiten.KeySpace),
@@ -428,6 +432,8 @@ func PollActions() Actions {
 		pressed(ebiten.StandardGamepadButtonFrontTopLeft)
 	raw.dodge = raw.dodge ||
 		pressed(ebiten.StandardGamepadButtonRightRight)
+	raw.jump = raw.jump ||
+		pressed(ebiten.StandardGamepadButtonRightBottom)
 	raw.interact = raw.interact ||
 		pressed(ebiten.StandardGamepadButtonRightLeft)
 	raw.confirm = raw.confirm ||

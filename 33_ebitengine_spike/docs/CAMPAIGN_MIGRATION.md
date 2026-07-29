@@ -78,8 +78,9 @@ automation pause를 게임의 pause menu와 합치지 않는다.
 - [x] authored tilemap·background·image resource presentation
 - [x] 프로세스 재시작을 포함한 headless campaign acceptance
 - [x] projectile/status/secondary ability/multi-hit 전투 fixture
+- [x] actor-local platformer 이동과 authored shape presentation fixture
 - [ ] sprite clip·ability visual·audio의 완전한 data-driven presentation
-- [ ] encounter/platformer 및 나머지 fixture
+- [ ] encounter 및 나머지 fixture
 
 ## 현재 인수 근거
 
@@ -114,6 +115,14 @@ data-driven이라는 뜻은 아니며 해당 작업은 별도 gate로 남긴다.
 대조했다. `internal/gameapp/combat_runtime_test.go`는 이 경로와
 special/technique 의미 입력, 정확한 ability ID queue, whirlwind 3회
 적중을 창 없이 반복 검증한다.
+
+`stage.platformer_room`도 실제 창에서 move/jump 의미 입력으로 구동해
+공중 위치·속도·접지 DTO와 화면을 대조하고, 180×24 authored 사각 발판의
+중심 Y=375에 착지하는 것을 확인했다.
+`internal/gameapp/platformer_runtime_test.go`는 동일한 작성 콘텐츠의
+상승 높이·수평 이동·발판 착지와 shape View를 반복 검증하며,
+`internal/sim/platformer_test.go`는 코요테 타임·점프 버퍼·session v4를
+렌더러 없이 검증한다.
 
 `Flow.getState`, `Flow.move`, `Flow.activate`는 title/pause/gameover/ending
 화면을 외부 자동화가 의미 ID로 조회·제어하는 계약이다.

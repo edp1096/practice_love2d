@@ -608,6 +608,10 @@ func (runtime *Runtime) setHealth(
 			state.Entities[index].Dodge = sim.BurstSessionState{}
 			state.Entities[index].ParryTicks = 0
 			state.Entities[index].Statuses = nil
+			state.Entities[index].Velocity = sim.Vec{}
+			state.Entities[index].Grounded = false
+			state.Entities[index].CoyoteTicks = 0
+			state.Entities[index].JumpBufferTicks = 0
 			if state.Dialogue.Active &&
 				state.Dialogue.NPCID == params.EntityID {
 				state.Dialogue = sim.DialogueSessionState{}
@@ -708,7 +712,7 @@ var supportedActions = map[string]struct{}{
 	"move_left": {}, "move_right": {}, "move_up": {}, "move_down": {},
 	"move_x": {}, "move_y": {},
 	"attack": {}, "special": {}, "technique": {},
-	"parry": {}, "dodge": {}, "interact": {},
+	"parry": {}, "dodge": {}, "jump": {}, "interact": {},
 }
 
 func (runtime *Runtime) scheduleAction(

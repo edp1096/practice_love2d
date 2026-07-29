@@ -71,10 +71,17 @@ type InstanceMetadata struct {
 	ID             string         `json:"id"`
 	ActorID        string         `json:"actor_id"`
 	SpriteID       string         `json:"sprite_id,omitempty"`
+	Shape          *ShapeMetadata `json:"shape,omitempty"`
 	PrimaryAbility string         `json:"primary_ability,omitempty"`
 	Controlled     bool           `json:"controlled,omitempty"`
 	Chase          *ChaseMetadata `json:"chase,omitempty"`
 	Tags           []string       `json:"tags,omitempty"`
+}
+
+type ShapeMetadata struct {
+	Kind    string   `json:"kind"`
+	Color   [4]uint8 `json:"color"`
+	Outline [4]uint8 `json:"outline"`
 }
 
 type ChaseMetadata struct {
@@ -102,6 +109,10 @@ func (presentation Presentation) Instance(id string) (InstanceMetadata, bool) {
 	}
 	item := presentation.Instances[index]
 	item.Tags = append([]string(nil), item.Tags...)
+	if item.Shape != nil {
+		shape := *item.Shape
+		item.Shape = &shape
+	}
 	return item, true
 }
 
@@ -207,6 +218,18 @@ type movementComponent struct {
 	Speed float64 `json:"speed"`
 }
 
+type platformerComponent struct {
+	Speed           float64 `json:"speed"`
+	Acceleration    float64 `json:"acceleration"`
+	AirAcceleration float64 `json:"air_acceleration"`
+	Deceleration    float64 `json:"deceleration"`
+	Gravity         float64 `json:"gravity"`
+	JumpSpeed       float64 `json:"jump_speed"`
+	MaxFallSpeed    float64 `json:"max_fall_speed"`
+	CoyoteTime      float64 `json:"coyote_time"`
+	JumpBuffer      float64 `json:"jump_buffer"`
+}
+
 type combatComponent struct {
 	Primary   string   `json:"primary"`
 	Team      string   `json:"team"`
@@ -257,7 +280,8 @@ type renderSpriteComponent struct {
 }
 
 type renderShapeComponent struct {
-	Color []float64 `json:"color"`
+	Color   []float64 `json:"color"`
+	Outline []float64 `json:"outline"`
 }
 
 type statusReceiverComponent struct {
@@ -988,6 +1012,39 @@ func buildEntity(
 		}
 		entity.MovePerTick = rateToCoord(movement.Speed)
 	}
+	if raw := actor.Components["movement.platformer"]; raw != nil {
+		var movement platformerComponent
+		if err := json.Unmarshal(raw, &movement); err != nil ||
+			!positiveFinite(movement.Speed) ||
+			!positiveFinite(movement.Acceleration) ||
+			!positiveFinite(movement.AirAcceleration) ||
+			!positiveFinite(movement.Deceleration) ||
+			!positiveFinite(movement.Gravity) ||
+			!positiveFinite(movement.JumpSpeed) ||
+			!positiveFinite(movement.MaxFallSpeed) ||
+			!durationFitsPortableTicks(movement.CoyoteTime) ||
+			!durationFitsPortableTicks(movement.JumpBuffer) {
+			return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
+				fmt.Errorf("invalid movement.platformer")
+		}
+		if entity.MovePerTick != 0 {
+			return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
+				fmt.Errorf(
+					"actor cannot combine movement.topdown and movement.platformer",
+				)
+		}
+		entity.Platformer = &sim.PlatformerConfig{
+			MaxSpeedPerTick:     rateToCoord(movement.Speed),
+			AccelerationPerTick: accelerationToCoord(movement.Acceleration),
+			AirAcceleration:     accelerationToCoord(movement.AirAcceleration),
+			DecelerationPerTick: accelerationToCoord(movement.Deceleration),
+			GravityPerTick:      accelerationToCoord(movement.Gravity),
+			JumpSpeedPerTick:    rateToCoord(movement.JumpSpeed),
+			MaxFallSpeedPerTick: rateToCoord(movement.MaxFallSpeed),
+			CoyoteTicks:         secondsToTicks(movement.CoyoteTime),
+			JumpBufferTicks:     secondsToTicks(movement.JumpBuffer),
+		}
+	}
 	if raw := actor.Components["render.sprite"]; raw != nil {
 		var renderer renderSpriteComponent
 		if err := json.Unmarshal(raw, &renderer); err != nil ||
@@ -1000,6 +1057,31 @@ func buildEntity(
 				fmt.Errorf("unknown sprite %q", renderer.Sprite)
 		}
 		metadata.SpriteID = renderer.Sprite
+	}
+	if raw := actor.Components["render.shape"]; raw != nil {
+		var renderer renderShapeComponent
+		if err := json.Unmarshal(raw, &renderer); err != nil {
+			return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
+				fmt.Errorf("invalid render.shape")
+		}
+		fill, err := rgba8(renderer.Color)
+		if err != nil {
+			return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
+				fmt.Errorf("invalid render.shape color: %w", err)
+		}
+		outline := [4]uint8{}
+		if len(renderer.Outline) != 0 {
+			outline, err = rgba8(renderer.Outline)
+			if err != nil {
+				return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
+					fmt.Errorf("invalid render.shape outline: %w", err)
+			}
+		}
+		metadata.Shape = &ShapeMetadata{
+			Kind:    body.Shape,
+			Color:   fill,
+			Outline: outline,
+		}
 	}
 	if raw := actor.Components["action.reaction"]; raw != nil {
 		var reaction reactionComponent
@@ -1480,6 +1562,13 @@ func durationFitsPortableTicks(seconds float64) bool {
 func rateToCoord(pixelsPerSecond float64) sim.Coord {
 	return sim.Coord(math.Round(
 		pixelsPerSecond * float64(sim.UnitsPerPixel) / sim.TicksPerSecond,
+	))
+}
+
+func accelerationToCoord(pixelsPerSecondSquared float64) sim.Coord {
+	ticks := float64(sim.TicksPerSecond * sim.TicksPerSecond)
+	return sim.Coord(math.Round(
+		pixelsPerSecondSquared * float64(sim.UnitsPerPixel) / ticks,
 	))
 }
 

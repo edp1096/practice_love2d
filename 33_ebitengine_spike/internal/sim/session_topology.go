@@ -35,6 +35,7 @@ func (s *Simulation) prepareSession(
 	state SessionState,
 ) (preparedSession, error) {
 	if state.Version != SessionVersion &&
+		state.Version != actionSessionVersion &&
 		state.Version != topologySessionVersion &&
 		state.Version != legacySessionVersion {
 		return preparedSession{},
@@ -48,7 +49,7 @@ func (s *Simulation) prepareSession(
 		return preparedSession{},
 			errors.New("legacy session contains preview topology")
 	}
-	if state.Version < SessionVersion &&
+	if state.Version < actionSessionVersion &&
 		(state.ProjectileSequence != 0 || len(state.Projectiles) != 0) {
 		return preparedSession{},
 			errors.New("legacy session contains projectiles")

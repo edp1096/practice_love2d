@@ -147,6 +147,7 @@ func (runtime *Runtime) Tick(actions ebitapp.Actions) error {
 		Attack:   actions.Attack,
 		Parry:    actions.Parry,
 		Dodge:    actions.Dodge,
+		Jump:     actions.Jump,
 		Interact: actions.Interact,
 	}
 	switch {
@@ -215,6 +216,7 @@ func (runtime *Runtime) mergeVirtualInputLocked(input *sim.Input) {
 	}
 	input.Parry = input.Parry || runtime.virtualPressed("parry")
 	input.Dodge = input.Dodge || runtime.virtualPressed("dodge")
+	input.Jump = input.Jump || runtime.virtualPressed("jump")
 	input.Interact = input.Interact || runtime.virtualPressed("interact")
 	runtime.advanceVirtualLocked()
 }
@@ -525,6 +527,13 @@ func (runtime *Runtime) View() ebitapp.View {
 				"C 패링 · X 회피 · E 대화",
 		},
 	}
+	for _, entity := range runtime.built.Config.Entities {
+		if entity.Controlled && entity.Platformer != nil {
+			view.HUD.Help = "A/D 이동 · W/↑ 점프 · Space 공격 · " +
+				"F 특수 · Q 기술"
+			break
+		}
+	}
 	view.Tilemap = tilemapView(runtime.built.Presentation.Tilemap)
 	if runtime.automationPaused {
 		view.HUD.Status = fmt.Sprintf("일시정지 · tick %d", frame.Tick)
@@ -564,13 +573,15 @@ func (runtime *Runtime) View() ebitapp.View {
 		} else if runtime.moving[actor.ID] {
 			state = "move_" + direction
 		}
-		view.Entities = append(view.Entities, ebitapp.EntityView{
+		entityView := ebitapp.EntityView{
 			ID:        actor.ID,
 			SpriteID:  metadata.SpriteID,
 			State:     state,
 			X:         coordPixels(actor.Position.X),
 			Y:         coordPixels(actor.Position.Y),
 			Radius:    coordPixels(actor.Body.HalfWidth),
+			Width:     coordPixels(actor.Body.HalfWidth * 2),
+			Height:    coordPixels(actor.Body.HalfHeight * 2),
 			FacingX:   coordPixels(actor.Facing.X),
 			FacingY:   coordPixels(actor.Facing.Y),
 			Layer:     10,
@@ -578,7 +589,23 @@ func (runtime *Runtime) View() ebitapp.View {
 			MaxHealth: float64(actor.MaxHealth),
 			Flash:     flash[actor.ID],
 			Tint:      statusTint(actor.Statuses),
-		})
+		}
+		if metadata.Shape != nil {
+			entityView.Shape = metadata.Shape.Kind
+			entityView.Tint = color.RGBA{
+				R: metadata.Shape.Color[0],
+				G: metadata.Shape.Color[1],
+				B: metadata.Shape.Color[2],
+				A: metadata.Shape.Color[3],
+			}
+			entityView.Outline = color.RGBA{
+				R: metadata.Shape.Outline[0],
+				G: metadata.Shape.Outline[1],
+				B: metadata.Shape.Outline[2],
+				A: metadata.Shape.Outline[3],
+			}
+		}
+		view.Entities = append(view.Entities, entityView)
 		if actor.Attack == sim.AttackActive &&
 			metadata.SpriteID == "sprite.hero" {
 			angle := math.Atan2(

@@ -121,6 +121,7 @@ func ValidateDefinition(
 			"motion.facing":       true,
 			"motion.kinematics":   true,
 			"movement.topdown":    true,
+			"movement.platformer": true,
 			"render.sprite":       true,
 			"action.health":       true,
 			"action.reaction":     true,

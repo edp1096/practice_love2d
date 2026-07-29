@@ -885,14 +885,54 @@ func (game *Game) drawEntity(view View, entity EntityView) {
 		if fill.A == 0 {
 			fill = color.RGBA{R: 207, G: 213, B: 224, A: 255}
 		}
-		vector.DrawFilledCircle(
-			game.canvas,
-			float32(x),
-			float32(y),
-			float32(radius*zoom),
-			fill,
-			true,
-		)
+		if entity.Shape == "rectangle" &&
+			entity.Width > 0 && entity.Height > 0 {
+			left := float32(x - entity.Width*zoom/2)
+			top := float32(y - entity.Height*zoom/2)
+			width := float32(entity.Width * zoom)
+			height := float32(entity.Height * zoom)
+			vector.DrawFilledRect(
+				game.canvas,
+				left,
+				top,
+				width,
+				height,
+				fill,
+				true,
+			)
+			if entity.Outline.A != 0 {
+				vector.StrokeRect(
+					game.canvas,
+					left,
+					top,
+					width,
+					height,
+					float32(max(1, zoom)),
+					entity.Outline,
+					true,
+				)
+			}
+		} else {
+			vector.DrawFilledCircle(
+				game.canvas,
+				float32(x),
+				float32(y),
+				float32(radius*zoom),
+				fill,
+				true,
+			)
+			if entity.Outline.A != 0 {
+				vector.StrokeCircle(
+					game.canvas,
+					float32(x),
+					float32(y),
+					float32(radius*zoom),
+					float32(max(1, zoom)),
+					entity.Outline,
+					true,
+				)
+			}
+		}
 	}
 	if entity.MaxHealth > 0 && entity.Health < entity.MaxHealth {
 		game.drawHealthBar(x, y-(entity.Radius+15)*zoom, entity)

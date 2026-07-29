@@ -76,6 +76,11 @@ type entityRuntime struct {
 	parryLastPerfect bool
 
 	statuses map[string]*statusRuntime
+
+	velocity        Vec
+	grounded        bool
+	coyoteTicks     int
+	jumpBufferTicks int
 }
 
 type statusRuntime struct {
@@ -365,6 +370,7 @@ func (s *Simulation) resolveInput(input Input) (map[string]EntityInput, []string
 			AbilityID: input.AbilityID,
 			Parry:     input.Parry,
 			Dodge:     input.Dodge,
+			Jump:      input.Jump,
 			Interact:  input.Interact,
 		}
 	}
@@ -573,6 +579,10 @@ func (s *Simulation) integrateMotion(commands map[string]EntityInput) {
 			continue
 		}
 		command, commanded := commands[id]
+		if entity.config.Platformer != nil {
+			s.integratePlatformer(entity, command, commanded)
+			continue
+		}
 		if !commanded || !canMove(entity) {
 			continue
 		}
@@ -593,8 +603,106 @@ func (s *Simulation) integrateMotion(commands map[string]EntityInput) {
 	}
 }
 
+func (s *Simulation) integratePlatformer(
+	entity *entityRuntime,
+	command EntityInput,
+	commanded bool,
+) {
+	config := entity.config.Platformer
+	if config == nil {
+		return
+	}
+	canControl := commanded && canMove(entity)
+	if canControl && command.Jump {
+		entity.jumpBufferTicks = config.JumpBufferTicks
+	} else {
+		entity.jumpBufferTicks = countdown(entity.jumpBufferTicks)
+	}
+	if entity.grounded {
+		entity.coyoteTicks = config.CoyoteTicks
+	} else {
+		entity.coyoteTicks = countdown(entity.coyoteTicks)
+	}
+	if canControl && entity.jumpBufferTicks > 0 &&
+		entity.coyoteTicks > 0 {
+		entity.velocity.Y = -config.JumpSpeedPerTick
+		entity.grounded = false
+		entity.coyoteTicks = 0
+		entity.jumpBufferTicks = 0
+		s.emit(Event{
+			Type:     EventPlatformerJumped,
+			EntityID: entity.config.ID,
+		})
+	}
+
+	targetX := Coord(0)
+	if canControl && command.MoveX != 0 {
+		targetX = Coord(command.MoveX) *
+			s.modifiedSpeed(entity, config.MaxSpeedPerTick)
+		entity.facing = Vec{
+			X: Coord(command.MoveX) * UnitsPerPixel,
+		}
+	}
+	acceleration := config.AccelerationPerTick
+	if !entity.grounded {
+		acceleration = config.AirAcceleration
+	}
+	if targetX == 0 {
+		acceleration = config.DecelerationPerTick
+	}
+	entity.velocity.X = approachCoord(
+		entity.velocity.X,
+		targetX,
+		acceleration,
+	)
+	entity.velocity.Y = minCoord(
+		entity.velocity.Y+config.GravityPerTick,
+		config.MaxFallSpeedPerTick,
+	)
+
+	requested := entity.velocity
+	actual := s.moveEntity(entity, requested)
+	if actual.X != requested.X {
+		entity.velocity.X = 0
+	}
+	wasGrounded := entity.grounded
+	if requested.Y > 0 && actual.Y != requested.Y {
+		entity.grounded = true
+		entity.coyoteTicks = config.CoyoteTicks
+		entity.velocity.Y = 0
+		if !wasGrounded {
+			s.emit(Event{
+				Type:     EventPlatformerLanded,
+				EntityID: entity.config.ID,
+			})
+		}
+		if canControl && entity.jumpBufferTicks > 0 {
+			entity.velocity.Y = -config.JumpSpeedPerTick
+			entity.grounded = false
+			entity.coyoteTicks = 0
+			entity.jumpBufferTicks = 0
+			s.emit(Event{
+				Type:     EventPlatformerJumped,
+				EntityID: entity.config.ID,
+			})
+		}
+	} else {
+		entity.grounded = false
+		if actual.Y != requested.Y {
+			entity.velocity.Y = 0
+		}
+	}
+}
+
 func (s *Simulation) modifiedMovePerTick(entity *entityRuntime) Coord {
-	result := entity.config.MovePerTick
+	return s.modifiedSpeed(entity, entity.config.MovePerTick)
+}
+
+func (s *Simulation) modifiedSpeed(
+	entity *entityRuntime,
+	base Coord,
+) Coord {
+	result := base
 	statusIDs := make([]string, 0, len(entity.statuses))
 	for statusID := range entity.statuses {
 		statusIDs = append(statusIDs, statusID)
@@ -1205,6 +1313,10 @@ func (s *Simulation) killEntity(sourceID string, target *entityRuntime) {
 	target.dodge = burstRuntime{}
 	target.parryTicks = 0
 	target.statuses = make(map[string]*statusRuntime)
+	target.velocity = Vec{}
+	target.grounded = false
+	target.coyoteTicks = 0
+	target.jumpBufferTicks = 0
 	s.emit(Event{
 		Type:     EventActorKilled,
 		SourceID: sourceID,
@@ -1333,7 +1445,8 @@ func (s *Simulation) refreshCameraCenter() {
 	}
 }
 
-func (s *Simulation) moveEntity(entity *entityRuntime, delta Vec) {
+func (s *Simulation) moveEntity(entity *entityRuntime, delta Vec) Vec {
+	start := entity.position
 	if delta.X != 0 {
 		nextX := entity.position.X + delta.X
 		nextX = clampEntityX(nextX, entity.config.Body, s.config.StageBounds)
@@ -1375,6 +1488,10 @@ func (s *Simulation) moveEntity(entity *entityRuntime, delta Vec) {
 			entity.config.Body,
 			s.config.StageBounds,
 		)
+	}
+	return Vec{
+		X: entity.position.X - start.X,
+		Y: entity.position.Y - start.Y,
 	}
 }
 
@@ -1737,6 +1854,30 @@ func validStatusMultiplier(value Coord) bool {
 	return value > 0 && value <= UnitsPerPixel*16 && validCoord(value)
 }
 
+func validatePlatformerConfig(config *PlatformerConfig) error {
+	if config == nil ||
+		config.MaxSpeedPerTick <= 0 ||
+		config.AccelerationPerTick <= 0 ||
+		config.AirAcceleration <= 0 ||
+		config.DecelerationPerTick <= 0 ||
+		config.GravityPerTick <= 0 ||
+		config.JumpSpeedPerTick <= 0 ||
+		config.MaxFallSpeedPerTick <= 0 ||
+		config.CoyoteTicks < 0 ||
+		config.JumpBufferTicks < 0 ||
+		!validCoord(config.MaxSpeedPerTick) ||
+		!validCoord(config.AccelerationPerTick) ||
+		!validCoord(config.AirAcceleration) ||
+		!validCoord(config.DecelerationPerTick) ||
+		!validCoord(config.GravityPerTick) ||
+		!validCoord(config.JumpSpeedPerTick) ||
+		!validCoord(config.MaxFallSpeedPerTick) ||
+		!validTickCount(config.CoyoteTicks, config.JumpBufferTicks) {
+		return errors.New("invalid platformer movement configuration")
+	}
+	return nil
+}
+
 func validateImpact(impact ImpactConfig) error {
 	if impact.Damage <= 0 ||
 		impact.StaggerTicks < 0 ||
@@ -1796,6 +1937,17 @@ func validateEntityDefinitionWithPlacement(
 	}
 	if definition.MovePerTick < 0 || !validCoord(definition.MovePerTick) {
 		return fmt.Errorf("entity %q move speed cannot be negative", definition.ID)
+	}
+	if definition.Platformer != nil {
+		if definition.MovePerTick != 0 {
+			return fmt.Errorf(
+				"entity %q cannot combine topdown and platformer movement",
+				definition.ID,
+			)
+		}
+		if err := validatePlatformerConfig(definition.Platformer); err != nil {
+			return fmt.Errorf("entity %q: %w", definition.ID, err)
+		}
 	}
 	if !validCoord(definition.Position.X) ||
 		!validCoord(definition.Position.Y) {
@@ -2042,6 +2194,10 @@ func cloneEntityConfig(config EntityConfig) EntityConfig {
 		status.Immune = append([]string(nil), config.Status.Immune...)
 		result.Status = &status
 	}
+	if config.Platformer != nil {
+		platformer := *config.Platformer
+		result.Platformer = &platformer
+	}
 	return result
 }
 
@@ -2253,6 +2409,16 @@ func clampAxis(value int8) int8 {
 		return 1
 	}
 	return 0
+}
+
+func approachCoord(current, target, delta Coord) Coord {
+	if delta <= 0 || current == target {
+		return current
+	}
+	if current < target {
+		return minCoord(current+delta, target)
+	}
+	return maxCoord(current-delta, target)
 }
 
 func countdown(value int) int {

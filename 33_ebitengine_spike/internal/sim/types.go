@@ -164,6 +164,22 @@ type StatusReceiverConfig struct {
 	Immune []string `json:"immune,omitempty"`
 }
 
+// PlatformerConfig is an actor-local movement controller. Speeds are
+// fixed-point distance per simulation tick; accelerations and gravity are the
+// per-tick changes to velocity. Keeping this on the actor avoids a global
+// topdown/platformer game-mode branch.
+type PlatformerConfig struct {
+	MaxSpeedPerTick     Coord `json:"max_speed_per_tick"`
+	AccelerationPerTick Coord `json:"acceleration_per_tick"`
+	AirAcceleration     Coord `json:"air_acceleration_per_tick"`
+	DecelerationPerTick Coord `json:"deceleration_per_tick"`
+	GravityPerTick      Coord `json:"gravity_per_tick"`
+	JumpSpeedPerTick    Coord `json:"jump_speed_per_tick"`
+	MaxFallSpeedPerTick Coord `json:"max_fall_speed_per_tick"`
+	CoyoteTicks         int   `json:"coyote_ticks"`
+	JumpBufferTicks     int   `json:"jump_buffer_ticks"`
+}
+
 // Ability returns mutable configuration owned by this CombatConfig.
 func (config *CombatConfig) Ability(id string) *AbilityConfig {
 	if config == nil {
@@ -245,11 +261,12 @@ type EntityConfig struct {
 	// Ability accepts protocol-v8 and test fixtures authored before loadouts
 	// existed. Simulation construction normalizes it into Combat and clears
 	// this field; new content must use Combat.
-	Ability  *AbilityConfig        `json:"ability,omitempty"`
-	Reaction ReactionConfig        `json:"reaction"`
-	Dodge    *DodgeConfig          `json:"dodge,omitempty"`
-	Parry    *ParryConfig          `json:"parry,omitempty"`
-	Status   *StatusReceiverConfig `json:"status,omitempty"`
+	Ability    *AbilityConfig        `json:"ability,omitempty"`
+	Reaction   ReactionConfig        `json:"reaction"`
+	Dodge      *DodgeConfig          `json:"dodge,omitempty"`
+	Parry      *ParryConfig          `json:"parry,omitempty"`
+	Status     *StatusReceiverConfig `json:"status,omitempty"`
+	Platformer *PlatformerConfig     `json:"platformer,omitempty"`
 
 	// DialogueID makes the entity interactable. StartQuestID is started
 	// transactionally when that dialogue opens.
@@ -334,6 +351,7 @@ type EntityInput struct {
 	AbilityID string
 	Parry     bool
 	Dodge     bool
+	Jump      bool
 	Interact  bool
 }
 
@@ -348,6 +366,7 @@ type Input struct {
 	AbilityID string
 	Parry     bool
 	Dodge     bool
+	Jump      bool
 	Interact  bool
 	Commands  []EntityInput
 }
@@ -398,6 +417,8 @@ const (
 	EventStatusTicked      EventType = "status.ticked"
 	EventStatusExpired     EventType = "status.expired"
 	EventStatusResisted    EventType = "status.resisted"
+	EventPlatformerJumped  EventType = "platformer.jumped"
+	EventPlatformerLanded  EventType = "platformer.landed"
 	EventEntitySpawned     EventType = "entity.spawned"
 	EventEntityRemoved     EventType = "entity.removed"
 	EventDialogueStarted   EventType = "dialogue.started"
@@ -495,6 +516,11 @@ type EntitySnapshot struct {
 	ParryTicks         int                       `json:"parry_ticks"`
 	ParryCooldownTicks int                       `json:"parry_cooldown_ticks"`
 	LastParryPerfect   bool                      `json:"last_parry_perfect"`
+	Velocity           Vec                       `json:"velocity"`
+	Grounded           bool                      `json:"grounded"`
+	CoyoteTicks        int                       `json:"coyote_ticks"`
+	JumpBufferTicks    int                       `json:"jump_buffer_ticks"`
+	Platformer         *PlatformerConfig         `json:"platformer,omitempty"`
 }
 
 // QuestSnapshot is detached from mutable quest state.

@@ -13,7 +13,7 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 다만 `32_recreate`를 지금 삭제하거나 본 런타임을 즉시 교체하면 안 된다.
 현재는 프로세스 재시작을 포함한 샘플 캠페인의 headless 실행 계약과
 authored tilemap visual gate, secondary combat fixture까지 통과했다.
-다만 sprite clip·전체 오디오와 encounter/platformer fixture가 아직
+다만 sprite clip·전체 오디오와 encounter fixture가 아직
 남아 있으므로 시각·기능 전체가 `32_recreate`와 동등하다는 뜻은
 아니다.
 콘솔도 일반 `go build` 대상이 아니며 각 제조사 승인, SDK, 개발기와
@@ -92,7 +92,11 @@ authored tilemap visual gate, secondary combat fixture까지 통과했다.
 - burning 상태의 stack/refresh, 주기 피해, 이동·공격·피격 배율과 면역
 - whirlwind의 repeat interval과 대상별 3회 multi-hit
 - 살아 있는 projectile·status·정확한 ability/cooldown을 보존하는
-  simulation session v3
+  simulation session
+- actor-local platformer 가속·공중 가속·감속·중력·최대 낙하,
+  코요테 타임·점프 버퍼와 jump/land event
+- platformer velocity·grounded·타이머를 보존하는 simulation session v4
+- authored `render.shape` 사각형 바닥·발판의 fill/outline 렌더링
 - 콘텐츠 수치로 동작하는 chase/attack AI
 - 대화 시작, 퀘스트 시작·진행·완료
 - 전체 session 저장·불러오기와 원자적 검증
@@ -136,6 +140,8 @@ authored tilemap visual gate, secondary combat fixture까지 통과했다.
 - 실행 중인 실제 창에서 protocol로 player/slime을 재배치하고 fire bolt를
   발사해 화면상 투사체와 명중 후 burning 상태를 같은 tick의 `world`
   응답으로 대조
+- 실제 platformer 창에 move/jump 의미 입력을 주입해 공중 좌표·속도와
+  화면을 대조하고 authored 발판 중심 Y=375 착지까지 확인
 - 취소된 다중 frame step의 전체 rollback
 - 대기 ability와 실제 player 이동·패링·회피·상호작용 입력 병합
 - 13개 콘텐츠 kind, action 32종, condition 17종, stage section 7종의
@@ -169,7 +175,7 @@ authored tilemap visual gate, secondary combat fixture까지 통과했다.
 
 다음 항목은 `32_recreate`가 계속 기준 명세여야 하는 이유다.
 
-- platformer, arena 등 나머지 fixture stage
+- encounter/arena fixture stage
 - sprite clip·ability visual의 완전한 data-driven 렌더링과 전체 오디오
 - 장비 공격력 이외의 확장 RPG stat·상태이상 계산
 - 실행 중 정의 반영과 stage/entity 생성 편집
@@ -186,14 +192,15 @@ authored tilemap visual gate, secondary combat fixture까지 통과했다.
    acceptance와 실제 창 tilemap capture를 통과해 visual campaign gate를
    닫았다.
 4. ~~secondary ability, projectile, status, multi-hit을 옮긴다.~~ 완료
-   이어서 encounter와 platformer fixture stage를 옮긴다.
+   ~~platformer fixture stage도 옮겼다.~~ 이어서 encounter fixture를
+   옮긴다.
 5. Maker가 LÖVE/Ebitengine backend를 선택해 같은 프로젝트를 미리 볼
    수 있게 한다.
 6. Windows 실기와 macOS 실기 패키징을 통과시킨다.
 7. 제조사 승인을 확보한 플랫폼만 별도 adapter·SDK branch에서
    개발기 acceptance를 수행한다.
 
-4번의 남은 encounter/platformer fixture와 presentation gate를
+4번의 남은 encounter fixture와 presentation gate를
 통과하기 전에는
 `33_ebitengine_spike`를 본 런타임으로 승격하지 않는다.
 
