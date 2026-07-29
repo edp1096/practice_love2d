@@ -231,12 +231,37 @@ func (game *Game) drawView(view View) {
 	game.canvas.Fill(color.RGBA{R: 16, G: 20, B: 28, A: 255})
 	game.drawGround(view)
 	for _, wall := range view.Walls {
-		x, y := game.screenPoint(view, wall.X, wall.Y)
-		zoom := cameraZoom(view)
 		fill := wall.Color
 		if fill.A == 0 {
 			fill = color.RGBA{R: 49, G: 58, B: 71, A: 255}
 		}
+		stroke := color.RGBA{R: 91, G: 107, B: 127, A: 255}
+		if points := wallPolygonScreenPoints(view, wall); len(points) >= 3 {
+			var path vector.Path
+			path.MoveTo(float32(points[0].X), float32(points[0].Y))
+			for _, point := range points[1:] {
+				path.LineTo(float32(point.X), float32(point.Y))
+			}
+			path.Close()
+			fillOptions := &vector.DrawPathOptions{}
+			fillOptions.ColorScale.ScaleWithColor(fill)
+			vector.FillPath(game.canvas, &path, nil, fillOptions)
+			strokeOptions := &vector.StrokeOptions{
+				Width:      2,
+				MiterLimit: 10,
+			}
+			strokeDrawOptions := &vector.DrawPathOptions{}
+			strokeDrawOptions.ColorScale.ScaleWithColor(stroke)
+			vector.StrokePath(
+				game.canvas,
+				&path,
+				strokeOptions,
+				strokeDrawOptions,
+			)
+			continue
+		}
+		x, y := game.screenPoint(view, wall.X, wall.Y)
+		zoom := cameraZoom(view)
 		vector.DrawFilledRect(
 			game.canvas,
 			float32(x),
@@ -253,7 +278,7 @@ func (game *Game) drawView(view View) {
 			float32(wall.Width*zoom),
 			float32(wall.Height*zoom),
 			2,
-			color.RGBA{R: 91, G: 107, B: 127, A: 255},
+			stroke,
 			false,
 		)
 	}
@@ -309,9 +334,32 @@ func (game *Game) screenPoint(
 	worldX float64,
 	worldY float64,
 ) (float64, float64) {
+	return worldScreenPoint(view, worldX, worldY)
+}
+
+func worldScreenPoint(
+	view View,
+	worldX float64,
+	worldY float64,
+) (float64, float64) {
 	zoom := cameraZoom(view)
 	return (worldX - view.Camera.X + view.Camera.ShakeX) * zoom,
 		(worldY - view.Camera.Y + view.Camera.ShakeY) * zoom
+}
+
+func wallPolygonScreenPoints(view View, wall RectView) []PointView {
+	if len(wall.Points) == 0 {
+		return nil
+	}
+	result := make([]PointView, len(wall.Points))
+	for index, point := range wall.Points {
+		result[index].X, result[index].Y = worldScreenPoint(
+			view,
+			point.X,
+			point.Y,
+		)
+	}
+	return result
 }
 
 func (game *Game) drawEntity(view View, entity EntityView) {
@@ -564,7 +612,7 @@ func (game *Game) drawHUD(view View) {
 			color.RGBA{R: 244, G: 211, B: 108, A: 255},
 		)
 	}
-	if view.Paused {
+	if view.AutomationPaused {
 		vector.DrawFilledRect(
 			game.canvas,
 			ScreenWidth/2-170,

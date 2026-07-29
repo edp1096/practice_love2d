@@ -72,7 +72,8 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 - 기존 hero, slime, guide, merchant, slash, font 애셋 로딩
 - 기존 콘텐츠 정의 44개와 dependency path 86개 보존
 - canonical catalog SHA-256:
-  `40b17e1bef28e5b01fc4dd7d20e16196e0779b4fc18a03542852450331d33ec0`
+  `a8c64856d22cb4e6039f88737602fe3ba08bbd7c24bd5a4193cb3e2ed413d0e9`
+- `game/game.lua`의 project manifest를 schema v2 catalog에 함께 컴파일
 - 고정소수점 60 tick 이동과 swept wall collision
 - 공격 windup/active/recovery와 cooldown
 - 피해, 경직, 넉백, 히트스톱, 피격 flash, 카메라 흔들림
@@ -84,6 +85,21 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 - ID가 보존된 wall 조회·검증·runtime 형상 제어
 - wall ID를 simulation까지 직접 보존하며 현재 entity 위치를 기준으로
   원자적으로 형상을 교체
+- hub/grove의 convex polygon wall을 정확한 authored vertex와 고정소수점
+  SAT 충돌로 보존하고 고속 이동·spawn·session load에서 관통 방지
+- Campaign의 장기 상태와 stage별 World를 분리하고
+  village → hub → grove 왕복 portal을 원자적으로 전환
+- rectangle·convex polygon portal이 wall과 같은 고정소수점 SAT 및
+  strict edge-touch 규칙을 공유
+- 7개 stage, 모든 entry spawn과 2개 locale의 22개 조합을 `contentc`
+  단계에서 실제 simulation으로 사전 구성
+- versioned Campaign save가 stage entry, locale, flag, inventory,
+  equipment, 다중 목표 quest, 재화를 보존하고 프로세스 재시작 시
+  stage-local World를 새로 구성
+- typed rule executor가 대화 조건·action, quest 완료 보상, 상점 거래를
+  한 Campaign transaction으로 처리
+- 대화 세션이 선택 조건을 action과 같은 transaction에서 재검사하고
+  `thanks` 진입의 `finish_game`까지 정확히 한 번 실행
 - 32 wire와 수명주기를 보존한 `Entity.spawn`, queued
   `Entity.remove`, optional-speaker `Dialogue.start`
 - 동적 actor의 sprite/tag/chase metadata까지 renderer, AI, snapshot에
@@ -102,7 +118,9 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 - 실행 위치에 의존하지 않는 embedded 기본 catalog
 - 선택형 shared-secret 인증과 loopback 강제
 - 포트 bind 실패 선검출 및 `App.quit` 응답 후 종료
-- `Emulation.step` 뒤 의도적인 pause를 화면 overlay로 명시하고
+- `Emulation.step`이 실행 전 automation pause 상태를 복원하여 실행
+  중인 창을 멈춘 채 남기지 않는 수명주기
+- 명시적인 `pause true` 동안만 화면 overlay를 표시하고 정밀 캡처 뒤
   `pause false`로 재개하는 자동화 수명주기
 - 창을 생성하지 않는 protocol/runtime 통합 회귀 테스트
 - `go test ./...`
@@ -123,9 +141,9 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 
 다음 항목은 `32_recreate`가 계속 기준 명세여야 하는 이유다.
 
-- world hub, grove, platformer, arena 등 나머지 stage와 portal 전환
+- platformer, arena 등 나머지 fixture stage
 - fire bolt, whirlwind, projectile와 다중 hit
-- shop, inventory, equipment, economy, item use
+- shop, inventory, equipment, economy의 gameplay/UI 연결과 item use
 - 메뉴, 새 게임, 캠페인 완료와 ending
 - merchant interaction의 실제 shop 화면
 - tilemap 렌더링과 전체 오디오
@@ -137,16 +155,28 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 ## 다음 구현 gate
 
 1. ~~protocol에 Maker preview 생성·삭제·대화 계약을 추가한다.~~ 완료
-2. `32_recreate`의 complete campaign을 같은 catalog와 scripted
-   acceptance로 Ebitengine에서 재현한다.
-3. shop/inventory/equipment와 secondary ability/projectile을 renderer와
-   무관한 simulation feature로 옮긴다.
-4. stage 전환과 portal을 구현하고 모든 샘플 stage를 렌더링한다.
+2. complete campaign 기반을 다음 의존 순서로 옮긴다.
+   - `game.lua`를 canonical project manifest로 컴파일한다.
+   - 장기 `CampaignState`와 스테이지별 전투 simulation을 분리한다.
+   - dialogue graph, 조건, action transaction과 다중 목표 quest를
+     gameplay 입력에 연결한다.
+   - inventory, equipment, stats, economy, shop을 gameplay/UI에
+     연결한다.
+   - 검증된 stage factory와 portal 위에 tilemap presentation을 옮긴다.
+   - title, pause menu, continue, gameover, ending을 옮긴다.
+3. `32_recreate`와 같은 **프로세스 재시작을 포함한** campaign
+   acceptance를 통과시킨다. 여기까지가 complete campaign gate다.
+4. secondary ability, projectile, status, multi-hit과 나머지 fixture
+   stage를 옮긴다.
 5. Maker가 LÖVE/Ebitengine backend를 선택해 같은 프로젝트를 미리 볼
    수 있게 한다.
 6. Windows 실기와 macOS 실기 패키징을 통과시킨다.
 7. 제조사 승인을 확보한 플랫폼만 별도 adapter·SDK branch에서
    개발기 acceptance를 수행한다.
 
-2번까지 통과하기 전에는 `33_ebitengine_spike`를 본 런타임으로
+3번까지 통과하기 전에는 `33_ebitengine_spike`를 본 런타임으로
 승격하지 않는다.
+
+자동화의 `Emulation.step` 정지는 위 game-flow의 pause menu와 별도
+상태다. 전자는 테스트 clock만 멈추고, 후자는 게임 안의 UI/세션
+상태이므로 둘을 같은 boolean으로 합치지 않는다.

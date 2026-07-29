@@ -24,10 +24,10 @@ func (runtime *Runtime) Tick(actions ebitapp.Actions) error {
 		}
 	}
 	if actions.Pause {
-		runtime.paused = !runtime.paused
+		runtime.automationPaused = !runtime.automationPaused
 		runtime.revision++
 	}
-	if runtime.paused {
+	if runtime.automationPaused {
 		return nil
 	}
 	input := sim.Input{
@@ -38,15 +38,10 @@ func (runtime *Runtime) Tick(actions ebitapp.Actions) error {
 		Dodge:    actions.Dodge,
 		Interact: actions.Interact,
 	}
-	var originalVirtual map[string]virtualAction
-	if len(runtime.pendingRemovals) != 0 {
-		originalVirtual = cloneVirtualActions(runtime.virtual)
-	}
+	originalVirtual := cloneVirtualActions(runtime.virtual)
 	runtime.mergeVirtualInputLocked(&input)
 	if err := runtime.tickLocked(input); err != nil {
-		if originalVirtual != nil {
-			runtime.virtual = originalVirtual
-		}
+		runtime.virtual = originalVirtual
 		return err
 	}
 	return nil
@@ -119,23 +114,9 @@ func (runtime *Runtime) advanceVirtualLocked() {
 }
 
 func (runtime *Runtime) tickLocked(input sim.Input) error {
-	var originalSimulation *sim.Simulation
-	var originalPendingAbilities map[string]bool
-	var originalPendingRemovals map[string]bool
-	var originalMoving map[string]bool
-	var originalPreviewEntities map[string]previewEntity
+	checkpoint := runtime.checkpointLocked()
+	runtime.detachMutableLocked(checkpoint)
 	if len(runtime.pendingRemovals) != 0 {
-		originalSimulation = runtime.simulation
-		originalPendingAbilities = runtime.pendingAbilities
-		originalPendingRemovals = runtime.pendingRemovals
-		originalMoving = runtime.moving
-		originalPreviewEntities = runtime.previewEntities
-		runtime.simulation = runtime.simulation.Clone()
-		runtime.pendingAbilities = cloneBoolMap(runtime.pendingAbilities)
-		runtime.pendingRemovals = cloneBoolMap(runtime.pendingRemovals)
-		runtime.moving = cloneBoolMap(runtime.moving)
-		runtime.previewEntities = clonePreviewEntities(runtime.previewEntities)
-
 		// Removal wins over interaction on its flush tick. This prevents a
 		// queued speaker from becoming a new strong dialogue reference after
 		// Entity.remove has already acknowledged the request.
@@ -238,11 +219,11 @@ func (runtime *Runtime) tickLocked(input sim.Input) error {
 		}
 	}
 	if err := runtime.flushPendingRemovalsLocked(); err != nil {
-		runtime.simulation = originalSimulation
-		runtime.pendingAbilities = originalPendingAbilities
-		runtime.pendingRemovals = originalPendingRemovals
-		runtime.moving = originalMoving
-		runtime.previewEntities = originalPreviewEntities
+		runtime.restoreCheckpointLocked(checkpoint)
+		return err
+	}
+	if err := runtime.updatePortalsLocked(); err != nil {
+		runtime.restoreCheckpointLocked(checkpoint)
 		return err
 	}
 	runtime.revision++
@@ -323,10 +304,10 @@ func (runtime *Runtime) View() ebitapp.View {
 		float64(ebitapp.ScreenHeight)/viewportHeight,
 	)
 	view := ebitapp.View{
-		Tick:     frame.Tick,
-		Revision: runtime.revision,
-		Paused:   runtime.paused,
-		Quit:     runtime.quit,
+		Tick:             frame.Tick,
+		Revision:         runtime.revision,
+		AutomationPaused: runtime.automationPaused,
+		Quit:             runtime.quit,
 		Camera: ebitapp.CameraView{
 			X: coordPixels(
 				frame.Camera.BaseCenter.X -
@@ -350,19 +331,27 @@ func (runtime *Runtime) View() ebitapp.View {
 			Help:  "WASD 이동 · Space 공격 · C 패링 · X 회피 · E 대화",
 		},
 	}
-	if runtime.paused {
+	if runtime.automationPaused {
 		view.HUD.Status = fmt.Sprintf("일시정지 · tick %d", frame.Tick)
 	} else {
 		view.HUD.Status = fmt.Sprintf("tick %d · Ebitengine", frame.Tick)
 	}
 	for _, wall := range frame.Walls {
 		rect := wall.Rect
+		points := make([]ebitapp.PointView, len(wall.Points))
+		for index, point := range wall.Points {
+			points[index] = ebitapp.PointView{
+				X: coordPixels(point.X),
+				Y: coordPixels(point.Y),
+			}
+		}
 		view.Walls = append(view.Walls, ebitapp.RectView{
 			X:      coordPixels(rect.MinX),
 			Y:      coordPixels(rect.MinY),
 			Width:  coordPixels(rect.MaxX - rect.MinX),
 			Height: coordPixels(rect.MaxY - rect.MinY),
 			Color:  color.RGBA{R: 57, G: 69, B: 76, A: 255},
+			Points: points,
 		})
 	}
 	positions := make(map[string]sim.Vec, len(frame.Actors))

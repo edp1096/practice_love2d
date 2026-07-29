@@ -33,11 +33,17 @@ type stageDTO struct {
 }
 
 type wallDTO struct {
-	ID     string  `json:"id"`
-	X      float64 `json:"x"`
-	Y      float64 `json:"y"`
-	Width  float64 `json:"width"`
-	Height float64 `json:"height"`
+	ID     string     `json:"id"`
+	X      float64    `json:"x"`
+	Y      float64    `json:"y"`
+	Width  float64    `json:"width"`
+	Height float64    `json:"height"`
+	Points []pointDTO `json:"points,omitempty"`
+}
+
+type pointDTO struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
 }
 
 type cameraDTO struct {
@@ -159,12 +165,20 @@ func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
 	}
 	for _, wall := range frame.Walls {
 		rect := wall.Rect
+		points := make([]pointDTO, len(wall.Points))
+		for index, point := range wall.Points {
+			points[index] = pointDTO{
+				X: coordPixels(point.X),
+				Y: coordPixels(point.Y),
+			}
+		}
 		result.Walls = append(result.Walls, wallDTO{
 			ID:     wall.ID,
 			X:      coordPixels(rect.MinX),
 			Y:      coordPixels(rect.MinY),
 			Width:  coordPixels(rect.MaxX - rect.MinX),
 			Height: coordPixels(rect.MaxY - rect.MinY),
+			Points: points,
 		})
 	}
 	for _, entity := range snapshot.Entities {

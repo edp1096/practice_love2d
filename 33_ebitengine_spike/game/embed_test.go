@@ -17,6 +17,11 @@ func TestEmbeddedCatalogIsCompleteAndDetached(t *testing.T) {
 	if catalog.Graph().Total != 44 || catalog.Graph().EdgeCount != 86 {
 		t.Fatalf("embedded graph = %#v", catalog.Graph())
 	}
+	if project := catalog.Project(); project.ID != "recreate.maker_runtime" ||
+		project.InitialStage != "stage.village" ||
+		project.Flow.StartSpawn != "default" {
+		t.Fatalf("embedded project = %#v", project)
+	}
 	first[0] = 0
 	if bytes.Equal(first, Bytes()) {
 		t.Fatal("Bytes leaked mutable embedded storage")

@@ -16,10 +16,10 @@ type Model interface {
 
 // View is an immutable render snapshot produced after a simulation tick.
 type View struct {
-	Tick     uint64
-	Revision uint64
-	Paused   bool
-	Quit     bool
+	Tick             uint64
+	Revision         uint64
+	AutomationPaused bool
+	Quit             bool
 
 	Camera CameraView
 	World  WorldView
@@ -50,6 +50,12 @@ type RectView struct {
 	Width  float64
 	Height float64
 	Color  color.RGBA
+	Points []PointView
+}
+
+type PointView struct {
+	X float64
+	Y float64
 }
 
 type EntityView struct {

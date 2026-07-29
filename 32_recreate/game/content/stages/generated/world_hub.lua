@@ -87,7 +87,7 @@ return {
             id = "enemy.slime.2",
             position = {
                 x = 760,
-                y = 430,
+                y = 340,
             },
         },
     },

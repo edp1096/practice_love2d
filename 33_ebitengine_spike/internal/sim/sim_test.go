@@ -150,7 +150,7 @@ func TestSetWallUsesStableIDAndCurrentEntityPositions(t *testing.T) {
 	}); err == nil {
 		t.Fatal("wall overlapping the current entity position was accepted")
 	}
-	if after := simulation.RenderFrame().Walls[0]; after != before {
+	if after := simulation.RenderFrame().Walls[0]; !reflect.DeepEqual(after, before) {
 		t.Fatalf("rejected wall edit was not transactional: %#v", after)
 	}
 }

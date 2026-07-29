@@ -34,6 +34,7 @@ func TestSpawnEntityPreviewIsAtomicSortedAndDetached(t *testing.T) {
 		previewEntity("in-wall", Pixels(105), Pixels(80)),
 	}
 	invalid[1].Controlled = true
+	invalid[3].Body.Solid = true
 	for _, definition := range invalid {
 		if err := simulation.SpawnEntity(definition); err == nil {
 			t.Fatalf("invalid spawn %q was accepted", definition.ID)

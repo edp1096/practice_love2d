@@ -974,7 +974,7 @@ func stageRuntimeCoverageIssues(
 	data map[string]any,
 	id string,
 ) []string {
-	issues := make([]string, 0, 3)
+	issues := make([]string, 0, 5)
 	width, _ := number(data["width"])
 	height, _ := number(data["height"])
 	if camera, ok := data["camera"].(map[string]any); ok {
@@ -1023,6 +1023,66 @@ func stageRuntimeCoverageIssues(
 				issues = append(issues, fmt.Sprintf(
 					"Ebitengine adapter camera follow_tag %q matches more than one actor in this stage",
 					followTag,
+				))
+			}
+		}
+	}
+	controlledActors := 0
+	controlledTags := []string{}
+	for _, raw := range anySlice(data["spawns"]) {
+		spawn, _ := raw.(map[string]any)
+		actorID, _ := spawn["actor"].(string)
+		actor, err := referencedDefinition(
+			catalog,
+			actorID,
+			"actor",
+			id+".portals.actor_tag",
+		)
+		if err != nil {
+			continue
+		}
+		components, _ := actor["components"].(map[string]any)
+		_, controlled := components["control.player"]
+		if overrides, ok := spawn["components"].(map[string]any); ok {
+			if _, exists := overrides["control.player"]; exists {
+				controlled = true
+			}
+		}
+		if !controlled {
+			continue
+		}
+		controlledActors++
+		actorTags, _ := stringArray(
+			actor["tags"],
+			id+".portals.actor_tag",
+			false,
+		)
+		instanceTags, _ := stringArray(
+			spawn["tags"],
+			id+".portals.actor_tag",
+			false,
+		)
+		controlledTags = append(controlledTags, actorTags...)
+		controlledTags = append(controlledTags, instanceTags...)
+	}
+	if controlledActors != 1 {
+		issues = append(issues, fmt.Sprintf(
+			"Ebitengine adapter requires exactly one controlled actor; got %d",
+			controlledActors,
+		))
+	} else {
+		for index, raw := range anySlice(data["portals"]) {
+			portal, _ := raw.(map[string]any)
+			actorTag, _ := portal["actor_tag"].(string)
+			if actorTag == "" {
+				actorTag = DefaultPortalActorTag
+			}
+			if !containsString(controlledTags, actorTag) {
+				issues = append(issues, fmt.Sprintf(
+					"Ebitengine adapter portal %d actor_tag %q "+
+						"matches no controlled actor",
+					index,
+					actorTag,
 				))
 			}
 		}

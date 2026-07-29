@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"practice_love2d/33_ebitengine_spike/internal/campaign"
 	"practice_love2d/33_ebitengine_spike/internal/protocol"
 	"practice_love2d/33_ebitengine_spike/internal/storage"
 )
@@ -16,7 +17,10 @@ func TestProtocolDrivesRuntimeWithoutPresentationWindow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := New(Options{Store: store})
+	runtime, err := New(Options{
+		Build: verticalSliceBuildOptions(),
+		Store: store,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,24 +158,40 @@ func TestProtocolDrivesRuntimeWithoutPresentationWindow(t *testing.T) {
 	if world.Count != 5 {
 		t.Fatalf("wire removal did not flush: count=%d", world.Count)
 	}
-	savedTick := world.Tick
+	var saved campaignSaveResult
 	call(
 		protocol.MethodAppSave,
 		protocol.SaveSlotParams{Slot: "wire"},
-		nil,
+		&saved,
 	)
+	if !saved.Saved ||
+		saved.Stage != "stage.rpg_village" ||
+		saved.Spawn != "default" ||
+		saved.Locale != "locale.ko" ||
+		saved.Bytes == 0 {
+		t.Fatalf("wire campaign save response = %#v", saved)
+	}
 	call(protocol.MethodAppStartNewGame, nil, nil)
+	var loaded campaignLoadResult
 	call(
 		protocol.MethodAppLoad,
 		protocol.SaveSlotParams{Slot: "wire"},
-		nil,
+		&loaded,
 	)
+	if !loaded.Loaded ||
+		loaded.Stage != saved.Stage ||
+		loaded.Spawn != saved.Spawn ||
+		loaded.Locale != saved.Locale ||
+		loaded.Mode != campaign.ModePlaying ||
+		loaded.Bytes != saved.Bytes {
+		t.Fatalf("wire campaign load response = %#v", loaded)
+	}
 	call(protocol.MethodWorldGetSnapshot, nil, &world)
-	if world.Tick != savedTick {
+	if world.Tick != 0 || world.WorldTick != 0 {
 		t.Fatalf(
-			"wire save/load tick = %d, want %d",
+			"wire campaign load did not rebuild a fresh World: tick=%d world_tick=%d",
 			world.Tick,
-			savedTick,
+			world.WorldTick,
 		)
 	}
 

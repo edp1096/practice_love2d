@@ -3,6 +3,7 @@ package gameapp
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"testing"
 
 	"practice_love2d/33_ebitengine_spike/internal/protocol"
@@ -451,7 +452,7 @@ func TestSpawnedGuideCarriesChoiceDependencyWithoutAutoAccept(t *testing.T) {
 	}
 }
 
-func TestPlayerSaveLoadClearsPreviewAndRejectsInjectedTopology(t *testing.T) {
+func TestPlayerLoadRejectsLivePreviewAndLegacySessionTopology(t *testing.T) {
 	t.Parallel()
 	runtime := newTestRuntime(t)
 	callRuntime(
@@ -472,21 +473,36 @@ func TestPlayerSaveLoadClearsPreviewAndRejectsInjectedTopology(t *testing.T) {
 			Y:        &y,
 		},
 	)
+	if _, err := runtime.Call(
+		context.Background(),
+		protocol.Call{
+			Method: protocol.MethodAppLoad,
+			Params: protocol.SaveSlotParams{Slot: "baseline"},
+		},
+	); err == nil {
+		t.Fatal("player load replaced a live Maker preview")
+	}
+	if _, found := findWorldEntity(
+		runtime.worldSnapshotLocked(),
+		"preview.load",
+	); !found {
+		t.Fatal("rejected player load mutated the running preview")
+	}
+
+	callRuntime(
+		t,
+		runtime,
+		protocol.MethodAppStartNewGame,
+		protocol.EmptyParams{},
+	)
 	callRuntime(
 		t,
 		runtime,
 		protocol.MethodAppLoad,
 		protocol.SaveSlotParams{Slot: "baseline"},
 	)
-	world := runtime.worldSnapshotLocked()
-	if world.Count != 5 {
-		t.Fatalf("player load retained preview topology: count=%d", world.Count)
-	}
-	runtime.mu.RLock()
-	previewCount := len(runtime.previewEntities)
-	runtime.mu.RUnlock()
-	if previewCount != 0 {
-		t.Fatalf("player load retained %d preview metadata records", previewCount)
+	if world := runtime.worldSnapshotLocked(); world.Count != 5 {
+		t.Fatalf("fresh campaign load entity count = %d", world.Count)
 	}
 
 	callRuntime(
@@ -510,6 +526,13 @@ func TestPlayerSaveLoadClearsPreviewAndRejectsInjectedTopology(t *testing.T) {
 	if err := runtime.store.Save("injected", data); err != nil {
 		t.Fatal(err)
 	}
+	callRuntime(
+		t,
+		runtime,
+		protocol.MethodAppStartNewGame,
+		protocol.EmptyParams{},
+	)
+	before := runtime.worldSnapshotLocked()
 	if _, err := runtime.Call(
 		context.Background(),
 		protocol.Call{
@@ -522,8 +545,12 @@ func TestPlayerSaveLoadClearsPreviewAndRejectsInjectedTopology(t *testing.T) {
 	if _, found := findWorldEntity(
 		runtime.worldSnapshotLocked(),
 		"preview.injected",
-	); !found {
-		t.Fatal("rejected player load mutated the running preview")
+	); found {
+		t.Fatal("legacy session preview leaked into the campaign runtime")
+	}
+	after := runtime.worldSnapshotLocked()
+	if !reflect.DeepEqual(after, before) {
+		t.Fatal("rejected legacy session mutated the authored World")
 	}
 }
 

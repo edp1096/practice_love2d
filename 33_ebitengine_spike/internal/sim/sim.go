@@ -246,9 +246,11 @@ func (s *Simulation) StartQuest(id string) error {
 	return nil
 }
 
-// SetWall replaces one identified wall against the current runtime state.
-// A rejected edit leaves both geometry and entities unchanged. This is the
-// simulation-side boundary used by editor/debug previews.
+// SetWall replaces one identified wall with an axis-aligned rectangle against
+// the current runtime state. Replacing a polygon intentionally clears its
+// authored points: this original rectangle mutation API edits bounds as a
+// rectangle, rather than silently stretching a polygon. A rejected edit leaves
+// both geometry and entities unchanged.
 func (s *Simulation) SetWall(id string, replacement Rect) error {
 	if id == "" {
 		return errors.New("wall ID is required")
@@ -271,6 +273,9 @@ func (s *Simulation) SetWall(id string, replacement Rect) error {
 	}
 	for _, entityID := range s.entityOrder {
 		entity := s.entities[entityID]
+		if !entity.config.Body.Solid {
+			continue
+		}
 		if overlaps(
 			entityRect(entity.position, entity.config.Body),
 			replacement,
@@ -282,7 +287,10 @@ func (s *Simulation) SetWall(id string, replacement Rect) error {
 			)
 		}
 	}
-	s.config.Walls[index].Rect = replacement
+	s.config.Walls[index] = Wall{
+		ID:   id,
+		Rect: replacement,
+	}
 	return nil
 }
 
@@ -920,33 +928,15 @@ func (s *Simulation) moveEntity(entity *entityRuntime, delta Vec) {
 		nextX := entity.position.X + delta.X
 		nextX = clampEntityX(nextX, entity.config.Body, s.config.StageBounds)
 		if entity.config.Body.Solid {
-			current := entityRect(entity.position, entity.config.Body)
 			for _, wall := range s.config.Walls {
-				rect := wall.Rect
-				next := entityRect(
-					Vec{X: nextX, Y: entity.position.Y},
+				nextX = clampAxisAgainstWall(
+					wall,
 					entity.config.Body,
+					entity.position.X,
+					nextX,
+					entity.position.Y,
+					true,
 				)
-				verticalOverlap := current.MinY < rect.MaxY &&
-					current.MaxY > rect.MinY
-				if !verticalOverlap {
-					continue
-				}
-				if delta.X > 0 &&
-					((current.MaxX <= rect.MinX && next.MaxX > rect.MinX) ||
-						overlaps(next, rect)) {
-					nextX = minCoord(
-						nextX,
-						rect.MinX-entity.config.Body.HalfWidth,
-					)
-				} else if delta.X < 0 &&
-					((current.MinX >= rect.MaxX && next.MinX < rect.MaxX) ||
-						overlaps(next, rect)) {
-					nextX = maxCoord(
-						nextX,
-						rect.MaxX+entity.config.Body.HalfWidth,
-					)
-				}
 			}
 		}
 		entity.position.X = clampEntityX(
@@ -959,33 +949,15 @@ func (s *Simulation) moveEntity(entity *entityRuntime, delta Vec) {
 		nextY := entity.position.Y + delta.Y
 		nextY = clampEntityY(nextY, entity.config.Body, s.config.StageBounds)
 		if entity.config.Body.Solid {
-			current := entityRect(entity.position, entity.config.Body)
 			for _, wall := range s.config.Walls {
-				rect := wall.Rect
-				next := entityRect(
-					Vec{X: entity.position.X, Y: nextY},
+				nextY = clampAxisAgainstWall(
+					wall,
 					entity.config.Body,
+					entity.position.Y,
+					nextY,
+					entity.position.X,
+					false,
 				)
-				horizontalOverlap := current.MinX < rect.MaxX &&
-					current.MaxX > rect.MinX
-				if !horizontalOverlap {
-					continue
-				}
-				if delta.Y > 0 &&
-					((current.MaxY <= rect.MinY && next.MaxY > rect.MinY) ||
-						overlaps(next, rect)) {
-					nextY = minCoord(
-						nextY,
-						rect.MinY-entity.config.Body.HalfHeight,
-					)
-				} else if delta.Y < 0 &&
-					((current.MinY >= rect.MaxY && next.MinY < rect.MaxY) ||
-						overlaps(next, rect)) {
-					nextY = maxCoord(
-						nextY,
-						rect.MaxY+entity.config.Body.HalfHeight,
-					)
-				}
 			}
 		}
 		entity.position.Y = clampEntityY(
@@ -1084,8 +1056,8 @@ func validateConfig(config Config) error {
 			return fmt.Errorf("duplicate wall %q", wall.ID)
 		}
 		walls[wall.ID] = struct{}{}
-		if err := validateRect(
-			wall.Rect,
+		if err := validateWallGeometry(
+			wall,
 			fmt.Sprintf("wall %q", wall.ID),
 		); err != nil {
 			return err
@@ -1130,12 +1102,11 @@ func validateConfig(config Config) error {
 		if definition.MaxHealth <= 0 {
 			return fmt.Errorf("entity %q maximum health must be positive", definition.ID)
 		}
-		if definition.Body.HalfWidth <= 0 || definition.Body.HalfHeight <= 0 {
-			return fmt.Errorf("entity %q body dimensions must be positive", definition.ID)
-		}
-		if !validCoord(definition.Body.HalfWidth) ||
-			!validCoord(definition.Body.HalfHeight) {
-			return fmt.Errorf("entity %q body is outside deterministic range", definition.ID)
+		if err := validateBody(
+			definition.Body,
+			fmt.Sprintf("entity %q body", definition.ID),
+		); err != nil {
+			return err
 		}
 		if definition.MovePerTick < 0 || !validCoord(definition.MovePerTick) {
 			return fmt.Errorf("entity %q move speed cannot be negative", definition.ID)
@@ -1150,17 +1121,19 @@ func validateConfig(config Config) error {
 		) {
 			return fmt.Errorf("entity %q starts outside stage bounds", definition.ID)
 		}
-		for wallIndex, wall := range config.Walls {
-			if overlaps(
-				entityRect(definition.Position, definition.Body),
-				wall.Rect,
-			) {
-				return fmt.Errorf(
-					"entity %q overlaps wall %q at index %d",
-					definition.ID,
-					wall.ID,
-					wallIndex,
-				)
+		if definition.Body.Solid {
+			for wallIndex, wall := range config.Walls {
+				if wallOverlapsRect(
+					wall,
+					entityRect(definition.Position, definition.Body),
+				) {
+					return fmt.Errorf(
+						"entity %q overlaps wall %q at index %d",
+						definition.ID,
+						wall.ID,
+						wallIndex,
+					)
+				}
 			}
 		}
 		if definition.DialogueID != "" {
@@ -1229,12 +1202,11 @@ func validateEntityDefinitionWithPlacement(
 	if definition.MaxHealth <= 0 {
 		return fmt.Errorf("entity %q maximum health must be positive", definition.ID)
 	}
-	if definition.Body.HalfWidth <= 0 || definition.Body.HalfHeight <= 0 {
-		return fmt.Errorf("entity %q body dimensions must be positive", definition.ID)
-	}
-	if !validCoord(definition.Body.HalfWidth) ||
-		!validCoord(definition.Body.HalfHeight) {
-		return fmt.Errorf("entity %q body is outside deterministic range", definition.ID)
+	if err := validateBody(
+		definition.Body,
+		fmt.Sprintf("entity %q body", definition.ID),
+	); err != nil {
+		return err
 	}
 	if definition.MovePerTick < 0 || !validCoord(definition.MovePerTick) {
 		return fmt.Errorf("entity %q move speed cannot be negative", definition.ID)
@@ -1253,17 +1225,19 @@ func validateEntityDefinitionWithPlacement(
 				definition.ID,
 			)
 		}
-		for wallIndex, wall := range config.Walls {
-			if overlaps(
-				entityRect(definition.Position, definition.Body),
-				wall.Rect,
-			) {
-				return fmt.Errorf(
-					"entity %q overlaps wall %q at index %d",
-					definition.ID,
-					wall.ID,
-					wallIndex,
-				)
+		if definition.Body.Solid {
+			for wallIndex, wall := range config.Walls {
+				if wallOverlapsRect(
+					wall,
+					entityRect(definition.Position, definition.Body),
+				) {
+					return fmt.Errorf(
+						"entity %q overlaps wall %q at index %d",
+						definition.ID,
+						wall.ID,
+						wallIndex,
+					)
+				}
 			}
 		}
 	}
@@ -1378,7 +1352,7 @@ func validateRect(rect Rect, label string) error {
 
 func cloneConfig(config Config) Config {
 	result := config
-	result.Walls = append([]Wall(nil), config.Walls...)
+	result.Walls = cloneWalls(config.Walls)
 	result.Dialogues = append([]DialogueDefinition(nil), config.Dialogues...)
 	result.Quests = append([]QuestDefinition(nil), config.Quests...)
 	result.Entities = make([]EntityConfig, len(config.Entities))
@@ -1590,7 +1564,7 @@ func absCoord(value Coord) Coord {
 
 func validTickCount(values ...int) bool {
 	for _, value := range values {
-		if value < 0 || value > 1_000_000 {
+		if value < 0 || value > MaxTickCount {
 			return false
 		}
 	}

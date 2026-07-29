@@ -49,7 +49,7 @@ func (s *Simulation) RenderFrame() RenderFrame {
 	return RenderFrame{
 		Tick:     s.rawTick,
 		Stage:    s.config.StageBounds,
-		Walls:    append([]Wall(nil), s.config.Walls...),
+		Walls:    cloneWalls(s.config.Walls),
 		Camera:   s.cameraSnapshot(),
 		Actors:   actors,
 		Dialogue: s.dialogueSnapshot(),

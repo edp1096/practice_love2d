@@ -15,6 +15,11 @@ const UnitsPerPixel Coord = 1024
 // TicksPerSecond is the fixed simulation rate expected by demo content.
 const TicksPerSecond = 60
 
+// MaxTickCount is the largest duration accepted by simulation configuration
+// and session validation. Keeping this explicit lets content translators
+// reject float-to-int overflow before it can vary by target architecture.
+const MaxTickCount = 1_000_000
+
 // Coord is a deterministic fixed-point world coordinate.
 type Coord int64
 
@@ -39,11 +44,16 @@ type Rect struct {
 }
 
 // Wall is immutable collision geometry with a stable authored identity.
-// Keeping the ID inside the simulation avoids trying to recover editor
-// identity from equal rectangle coordinates.
+// Rect is the collision rectangle for an axis-aligned wall and the exact
+// bounds for a polygon wall. Points is empty for rectangles; otherwise it
+// contains the authored, fixed-point vertices of a strictly convex polygon.
+//
+// Keeping Rect for both shapes preserves the original rectangle wire/API and
+// gives broad-phase users bounds without discarding polygon geometry.
 type Wall struct {
-	ID   string `json:"id"`
-	Rect Rect   `json:"rect"`
+	ID     string `json:"id"`
+	Rect   Rect   `json:"rect"`
+	Points []Vec  `json:"points,omitempty"`
 }
 
 // Body describes an axis-aligned entity collision body.

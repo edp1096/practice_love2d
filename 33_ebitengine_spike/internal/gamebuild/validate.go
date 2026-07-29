@@ -223,14 +223,7 @@ func ValidateDefinition(
 		for _, issue := range stageRuntimeCoverageIssues(catalog, data, id) {
 			unsupported(issue)
 		}
-		if id != defaultStageID {
-			unsupported(
-				"this executable currently starts stage.rpg_village only",
-			)
-		}
 		for _, field := range []string{
-			"portals",
-			"spawn_points",
 			"tilemap",
 			"encounters",
 			"triggers",

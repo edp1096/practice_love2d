@@ -14,8 +14,13 @@ import (
 )
 
 const (
-	defaultStageID  = "stage.rpg_village"
-	defaultLocaleID = "locale.ko"
+	defaultStageID        = "stage.rpg_village"
+	defaultLocaleID       = "locale.ko"
+	defaultViewportWidth  = 800
+	defaultViewportHeight = 450
+	// DefaultPortalActorTag is the semantic input owner used when authored
+	// portal content omits actor_tag.
+	DefaultPortalActorTag = "player"
 )
 
 // ImpactOptions contains presentation policy that currently lives in
@@ -29,8 +34,37 @@ type ImpactOptions struct {
 
 type Options struct {
 	StageID  string
+	SpawnID  string
 	LocaleID string
 	Impact   ImpactOptions
+}
+
+// SpawnPoint is a named player-entry location inside one authored stage.
+// Coordinates are fixed-point simulation values so a stage transition can
+// construct its candidate World without involving a renderer.
+type SpawnPoint struct {
+	ID       string  `json:"id"`
+	Position sim.Vec `json:"position"`
+}
+
+// Portal is immutable stage navigation data. Portal overlap and cooldown are
+// runtime concerns; target references are validated by the content compiler.
+type Portal struct {
+	ID            string    `json:"id"`
+	Rect          sim.Rect  `json:"rect"`
+	Points        []sim.Vec `json:"points,omitempty"`
+	ActorTag      string    `json:"actor_tag,omitempty"`
+	TargetStageID string    `json:"target_stage_id"`
+	TargetSpawnID string    `json:"target_spawn_id"`
+	CooldownTicks int       `json:"cooldown_ticks"`
+}
+
+// StageBlueprint contains navigation data that must survive independently of
+// an individual Simulation instance.
+type StageBlueprint struct {
+	ID          string       `json:"id"`
+	SpawnPoints []SpawnPoint `json:"spawn_points"`
+	Portals     []Portal     `json:"portals"`
 }
 
 type InstanceMetadata struct {
@@ -72,20 +106,23 @@ func (presentation Presentation) Instance(id string) (InstanceMetadata, bool) {
 type Result struct {
 	Config       sim.Config
 	Presentation Presentation
+	Stage        StageBlueprint
 }
 
 type stageDefinition struct {
-	SchemaVersion int          `json:"schema_version"`
-	Kind          string       `json:"kind"`
-	ID            string       `json:"id"`
-	Name          string       `json:"name"`
-	NameKey       string       `json:"name_key"`
-	Width         float64      `json:"width"`
-	Height        float64      `json:"height"`
-	Background    []float64    `json:"background"`
-	Camera        stageCamera  `json:"camera"`
-	Spawns        []stageSpawn `json:"spawns"`
-	Walls         []stageWall  `json:"walls"`
+	SchemaVersion int               `json:"schema_version"`
+	Kind          string            `json:"kind"`
+	ID            string            `json:"id"`
+	Name          string            `json:"name"`
+	NameKey       string            `json:"name_key"`
+	Width         float64           `json:"width"`
+	Height        float64           `json:"height"`
+	Background    []float64         `json:"background"`
+	Camera        stageCamera       `json:"camera"`
+	Spawns        []stageSpawn      `json:"spawns"`
+	Walls         []stageWall       `json:"walls"`
+	SpawnPoints   []stageSpawnPoint `json:"spawn_points"`
+	Portals       []stagePortal     `json:"portals"`
 }
 
 type stageCamera struct {
@@ -108,17 +145,38 @@ type stagePosition struct {
 	Y float64 `json:"y"`
 }
 
+type stageSpawnPoint struct {
+	ID string  `json:"id"`
+	X  float64 `json:"x"`
+	Y  float64 `json:"y"`
+}
+
+type stagePortal struct {
+	ID          string    `json:"id"`
+	Shape       shapeRect `json:"shape"`
+	ActorTag    string    `json:"actor_tag"`
+	TargetStage string    `json:"target_stage"`
+	TargetSpawn string    `json:"target_spawn"`
+	Cooldown    float64   `json:"cooldown"`
+}
+
 type stageWall struct {
 	ID    string    `json:"id"`
 	Shape shapeRect `json:"shape"`
 }
 
+type shapePoint struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+
 type shapeRect struct {
-	Type   string  `json:"type"`
-	X      float64 `json:"x"`
-	Y      float64 `json:"y"`
-	Width  float64 `json:"width"`
-	Height float64 `json:"height"`
+	Type   string       `json:"type"`
+	X      float64      `json:"x"`
+	Y      float64      `json:"y"`
+	Width  float64      `json:"width"`
+	Height float64      `json:"height"`
+	Points []shapePoint `json:"points"`
 }
 
 type actorDefinition struct {
@@ -133,6 +191,8 @@ type actorDefinition struct {
 type bodyComponent struct {
 	Shape  string  `json:"shape"`
 	Radius float64 `json:"radius"`
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
 	Solid  bool    `json:"solid"`
 }
 
@@ -266,6 +326,9 @@ func Build(catalog *content.Catalog, options Options) (*Result, error) {
 	if catalog == nil {
 		return nil, errors.New("gamebuild: catalog is required")
 	}
+	if err := catalog.ValidateProjectReferences(); err != nil {
+		return nil, fmt.Errorf("gamebuild: invalid project manifest: %w", err)
+	}
 	applyDefaults(&options)
 
 	var stage stageDefinition
@@ -283,9 +346,24 @@ func Build(catalog *content.Catalog, options Options) (*Result, error) {
 	if !positiveFinite(stage.Width) || !positiveFinite(stage.Height) {
 		return nil, fmt.Errorf("%s has invalid dimensions", stage.ID)
 	}
+	if stage.Camera == (stageCamera{}) {
+		stage.Camera.ViewportWidth = defaultViewportWidth
+		stage.Camera.ViewportHeight = defaultViewportHeight
+	}
 	if !positiveFinite(stage.Camera.ViewportWidth) ||
 		!positiveFinite(stage.Camera.ViewportHeight) {
 		return nil, fmt.Errorf("%s has invalid camera viewport", stage.ID)
+	}
+	if stage.Camera.ViewportWidth > stage.Width ||
+		stage.Camera.ViewportHeight > stage.Height {
+		return nil, fmt.Errorf(
+			"%s camera viewport %.6gx%.6g exceeds stage bounds %.6gx%.6g",
+			stage.ID,
+			stage.Camera.ViewportWidth,
+			stage.Camera.ViewportHeight,
+			stage.Width,
+			stage.Height,
+		)
 	}
 
 	result := &Result{
@@ -303,6 +381,7 @@ func Build(catalog *content.Catalog, options Options) (*Result, error) {
 			StageID:   stage.ID,
 			StageName: localized(strings, stage.NameKey, stage.Name),
 		},
+		Stage: StageBlueprint{ID: stage.ID},
 	}
 	for index := range min(len(stage.Background), 4) {
 		value := stage.Background[index]
@@ -314,6 +393,85 @@ func Build(catalog *content.Catalog, options Options) (*Result, error) {
 	if result.Presentation.Background[3] == 0 {
 		result.Presentation.Background[3] = 1
 	}
+
+	var selectedSpawn *SpawnPoint
+	seenSpawnPoints := make(map[string]struct{}, len(stage.SpawnPoints))
+	for _, authored := range stage.SpawnPoints {
+		if authored.ID == "" || !finite(authored.X) || !finite(authored.Y) {
+			return nil, fmt.Errorf("%s has an invalid spawn point", stage.ID)
+		}
+		if _, duplicate := seenSpawnPoints[authored.ID]; duplicate {
+			return nil, fmt.Errorf(
+				"%s duplicates spawn point %q",
+				stage.ID,
+				authored.ID,
+			)
+		}
+		seenSpawnPoints[authored.ID] = struct{}{}
+		converted := SpawnPoint{
+			ID: authored.ID,
+			Position: sim.Vec{
+				X: pixels(authored.X),
+				Y: pixels(authored.Y),
+			},
+		}
+		result.Stage.SpawnPoints = append(result.Stage.SpawnPoints, converted)
+		if options.SpawnID == authored.ID {
+			copy := converted
+			selectedSpawn = &copy
+		}
+	}
+	implicitAuthoredSpawn := options.SpawnID == implicitEntrySpawnID &&
+		len(stage.SpawnPoints) == 0
+	if options.SpawnID != "" && selectedSpawn == nil && !implicitAuthoredSpawn {
+		return nil, fmt.Errorf(
+			"%s has no spawn point %q",
+			stage.ID,
+			options.SpawnID,
+		)
+	}
+	sort.Slice(result.Stage.SpawnPoints, func(i, j int) bool {
+		return result.Stage.SpawnPoints[i].ID < result.Stage.SpawnPoints[j].ID
+	})
+
+	seenPortals := make(map[string]struct{}, len(stage.Portals))
+	for _, authored := range stage.Portals {
+		if authored.ID == "" || authored.TargetStage == "" ||
+			authored.TargetSpawn == "" || !finite(authored.Cooldown) ||
+			authored.Cooldown < 0 ||
+			!durationFitsPortableTicks(authored.Cooldown) {
+			return nil, fmt.Errorf("%s has an invalid portal %q", stage.ID, authored.ID)
+		}
+		if _, duplicate := seenPortals[authored.ID]; duplicate {
+			return nil, fmt.Errorf(
+				"%s duplicates portal %q",
+				stage.ID,
+				authored.ID,
+			)
+		}
+		seenPortals[authored.ID] = struct{}{}
+		geometry, err := convertShape(
+			stage.ID+" portal "+authored.ID,
+			authored.ID,
+			authored.Shape,
+		)
+		if err != nil {
+			return nil, err
+		}
+		result.Stage.Portals = append(result.Stage.Portals, Portal{
+			ID:            authored.ID,
+			Rect:          geometry.Rect,
+			Points:        geometry.Points,
+			ActorTag:      authored.ActorTag,
+			TargetStageID: authored.TargetStage,
+			TargetSpawnID: authored.TargetSpawn,
+			CooldownTicks: secondsToTicks(authored.Cooldown),
+		})
+	}
+	sort.Slice(result.Stage.Portals, func(i, j int) bool {
+		return result.Stage.Portals[i].ID < result.Stage.Portals[j].ID
+	})
+
 	seenWalls := make(map[string]struct{}, len(stage.Walls))
 	for _, wall := range stage.Walls {
 		if _, duplicate := seenWalls[wall.ID]; duplicate {
@@ -328,10 +486,7 @@ func Build(catalog *content.Catalog, options Options) (*Result, error) {
 		if err != nil {
 			return nil, err
 		}
-		result.Config.Walls = append(result.Config.Walls, sim.Wall{
-			ID:   wall.ID,
-			Rect: converted,
-		})
+		result.Config.Walls = append(result.Config.Walls, converted)
 	}
 
 	dialogues := make(map[string]sim.DialogueDefinition)
@@ -351,17 +506,20 @@ func Build(catalog *content.Catalog, options Options) (*Result, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s spawn %q: %w", stage.ID, spawn.ID, err)
 		}
+		if entity.Controlled {
+			if controlledID != "" {
+				return nil, fmt.Errorf("%s has more than one controlled actor", stage.ID)
+			}
+			if selectedSpawn != nil {
+				entity.Position = selectedSpawn.Position
+			}
+			controlledID = entity.ID
+		}
 		result.Config.Entities = append(result.Config.Entities, entity)
 		result.Presentation.Instances = append(
 			result.Presentation.Instances,
 			metadata,
 		)
-		if entity.Controlled {
-			if controlledID != "" {
-				return nil, fmt.Errorf("%s has more than one controlled actor", stage.ID)
-			}
-			controlledID = entity.ID
-		}
 		if interactionRange > result.Config.InteractionRange {
 			result.Config.InteractionRange = interactionRange
 		}
@@ -374,6 +532,28 @@ func Build(catalog *content.Catalog, options Options) (*Result, error) {
 	}
 	if controlledID == "" {
 		return nil, fmt.Errorf("%s has no controlled actor", stage.ID)
+	}
+	var controlledMetadata InstanceMetadata
+	for _, metadata := range result.Presentation.Instances {
+		if metadata.ID == controlledID {
+			controlledMetadata = metadata
+			break
+		}
+	}
+	for _, portal := range result.Stage.Portals {
+		actorTag := portal.ActorTag
+		if actorTag == "" {
+			actorTag = DefaultPortalActorTag
+		}
+		if !containsTag(controlledMetadata.Tags, actorTag) {
+			return nil, fmt.Errorf(
+				"%s portal %q actor_tag %q does not match controlled actor %q",
+				stage.ID,
+				portal.ID,
+				actorTag,
+				controlledID,
+			)
+		}
 	}
 	cameraTarget := controlledID
 	if stage.Camera.FollowTag != "" {
@@ -658,20 +838,41 @@ func buildEntity(
 		return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
 			fmt.Errorf("decode body: %w", err)
 	}
-	if body.Shape != "circle" || !positiveFinite(body.Radius) {
+	var halfWidth, halfHeight sim.Coord
+	switch body.Shape {
+	case "circle":
+		if !positiveFinite(body.Radius) {
+			return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
+				fmt.Errorf("circle body requires a positive radius")
+		}
+		halfWidth = pixels(body.Radius)
+		halfHeight = pixels(body.Radius)
+	case "rectangle":
+		if !positiveFinite(body.Width) || !positiveFinite(body.Height) {
+			return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
+				fmt.Errorf("rectangle body requires positive width and height")
+		}
+		halfWidth = pixels(body.Width / 2)
+		halfHeight = pixels(body.Height / 2)
+	default:
 		return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
-			fmt.Errorf("only positive circle bodies are supported, got %q", body.Shape)
+			fmt.Errorf("unsupported body shape %q", body.Shape)
+	}
+	convertedBody := sim.Body{
+		HalfWidth:  halfWidth,
+		HalfHeight: halfHeight,
+		Solid:      body.Solid,
+	}
+	if err := sim.ValidateBody(convertedBody); err != nil {
+		return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
+			fmt.Errorf("invalid %s body: %w", body.Shape, err)
 	}
 	entity := sim.EntityConfig{
-		ID:       spawn.ID,
-		Kind:     actor.ID,
-		Name:     actor.Name,
-		Position: sim.Vec{X: pixels(spawn.Position.X), Y: pixels(spawn.Position.Y)},
-		Body: sim.Body{
-			HalfWidth:  pixels(body.Radius),
-			HalfHeight: pixels(body.Radius),
-			Solid:      body.Solid,
-		},
+		ID:        spawn.ID,
+		Kind:      actor.ID,
+		Name:      actor.Name,
+		Position:  sim.Vec{X: pixels(spawn.Position.X), Y: pixels(spawn.Position.Y)},
+		Body:      convertedBody,
 		MaxHealth: 1,
 		Facing:    sim.Vec{X: sim.UnitsPerPixel},
 	}
@@ -994,12 +1195,77 @@ func buildQuest(
 	return nil, fmt.Errorf("%s has no supported actor.killed objective", id)
 }
 
-func convertWall(stageID string, wall stageWall) (sim.Rect, error) {
-	shape := wall.Shape
-	if wall.ID == "" || shape.Type != "rectangle" ||
+func convertWall(stageID string, wall stageWall) (sim.Wall, error) {
+	if wall.ID == "" {
+		return sim.Wall{}, fmt.Errorf(
+			"%s has invalid wall %q",
+			stageID,
+			wall.ID,
+		)
+	}
+	return convertShape(stageID+" wall "+wall.ID, wall.ID, wall.Shape)
+}
+
+func convertShape(
+	label string,
+	id string,
+	shape shapeRect,
+) (sim.Wall, error) {
+	if shape.Type == "rectangle" {
+		rect, err := convertRectangle(label, shape)
+		if err != nil {
+			return sim.Wall{}, err
+		}
+		result := sim.Wall{ID: id, Rect: rect}
+		if err := sim.ValidateWall(result); err != nil {
+			return sim.Wall{}, fmt.Errorf("%s: %w", label, err)
+		}
+		return result, nil
+	}
+	if shape.Type != "polygon" || len(shape.Points) < 3 {
+		return sim.Wall{}, fmt.Errorf("%s has an invalid polygon", label)
+	}
+	points := make([]sim.Vec, len(shape.Points))
+	for index, point := range shape.Points {
+		if !finite(point.X) || !finite(point.Y) {
+			return sim.Wall{}, fmt.Errorf(
+				"%s has an invalid polygon point %d",
+				label,
+				index,
+			)
+		}
+		points[index] = sim.Vec{
+			X: pixels(point.X),
+			Y: pixels(point.Y),
+		}
+	}
+	result := sim.Wall{
+		ID:     id,
+		Points: points,
+		Rect: sim.Rect{
+			MinX: points[0].X,
+			MinY: points[0].Y,
+			MaxX: points[0].X,
+			MaxY: points[0].Y,
+		},
+	}
+	for _, point := range points[1:] {
+		result.Rect.MinX = min(result.Rect.MinX, point.X)
+		result.Rect.MinY = min(result.Rect.MinY, point.Y)
+		result.Rect.MaxX = max(result.Rect.MaxX, point.X)
+		result.Rect.MaxY = max(result.Rect.MaxY, point.Y)
+	}
+	if err := sim.ValidateWall(result); err != nil {
+		return sim.Wall{}, fmt.Errorf("%s: %w", label, err)
+	}
+	return result, nil
+}
+
+func convertRectangle(label string, shape shapeRect) (sim.Rect, error) {
+	if shape.Type != "rectangle" ||
 		!finite(shape.X) || !finite(shape.Y) ||
 		!positiveFinite(shape.Width) || !positiveFinite(shape.Height) {
-		return sim.Rect{}, fmt.Errorf("%s has invalid wall %q", stageID, wall.ID)
+		return sim.Rect{}, fmt.Errorf("%s has an invalid rectangle", label)
 	}
 	return sim.Rect{
 		MinX: pixels(shape.X - shape.Width/2),
@@ -1043,7 +1309,23 @@ func secondsToTicks(seconds float64) int {
 	if !finite(seconds) || seconds <= 0 {
 		return 0
 	}
-	return max(1, int(math.Round(seconds*sim.TicksPerSecond)))
+	ticks := math.Round(seconds * sim.TicksPerSecond)
+	if ticks > sim.MaxTickCount {
+		// Return an architecture-independent invalid sentinel. Simulation
+		// validation will reject it; callers without simulation validation
+		// must first call durationFitsPortableTicks.
+		return sim.MaxTickCount + 1
+	}
+	return max(1, int(ticks))
+}
+
+// durationFitsPortableTicks keeps authored durations inside the simulation's
+// supported range. Console toolchains must not observe a different overflow
+// result from desktop builds.
+func durationFitsPortableTicks(seconds float64) bool {
+	return finite(seconds) &&
+		seconds >= 0 &&
+		seconds <= float64(sim.MaxTickCount)/sim.TicksPerSecond
 }
 
 func rateToCoord(pixelsPerSecond float64) sim.Coord {

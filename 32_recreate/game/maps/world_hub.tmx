@@ -50,7 +50,8 @@
    </properties>
    <point/>
   </object>
-  <object id="3" name="enemy.slime.2" class="spawn" x="760" y="430">
+  <!-- Keep the authored spawn clear of the stone_garden collision polygon. -->
+  <object id="3" name="enemy.slime.2" class="spawn" x="760" y="340">
    <properties>
     <property name="actor" value="actor.slime"/>
    </properties>

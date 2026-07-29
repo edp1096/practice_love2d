@@ -228,9 +228,14 @@ func (s *Simulation) restoreEntitySession(
 		) {
 		return nil, errors.New("position is outside stage bounds")
 	}
-	for _, wall := range s.config.Walls {
-		if overlaps(entityRect(saved.Position, config.Body), wall.Rect) {
-			return nil, errors.New("position overlaps a wall")
+	if config.Body.Solid {
+		for _, wall := range s.config.Walls {
+			if wallOverlapsRect(
+				wall,
+				entityRect(saved.Position, config.Body),
+			) {
+				return nil, errors.New("position overlaps a wall")
+			}
 		}
 	}
 	if saved.Facing == (Vec{}) || !validCoord(saved.Facing.X) ||

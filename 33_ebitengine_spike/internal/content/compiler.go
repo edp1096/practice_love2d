@@ -43,6 +43,10 @@ func (compiler Compiler) Compile(
 		return nil, fmt.Errorf("resolve source project %q: %w", sourceProject, err)
 	}
 	contentRoot := filepath.Join(absoluteSource, "game", "content")
+	manifestPath := filepath.Join(absoluteSource, filepath.FromSlash(projectManifestSource))
+	if err := validateManifestPath(manifestPath); err != nil {
+		return nil, err
+	}
 	paths, err := discoverDefinitionPaths(contentRoot)
 	if err != nil {
 		return nil, err
@@ -54,6 +58,25 @@ func (compiler Compiler) Compile(
 	timeout := compiler.EvaluationTimeout
 	if timeout <= 0 {
 		timeout = defaultEvaluationTimeout
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("compile content: %w", err)
+	}
+
+	manifestData, err := evaluateLuaObject(
+		ctx,
+		manifestPath,
+		projectManifestSource,
+		timeout,
+		"project",
+		"project manifest",
+	)
+	if err != nil {
+		return nil, err
+	}
+	manifest, err := compileProjectManifest(manifestData)
+	if err != nil {
+		return nil, err
 	}
 
 	definitions := make([]Definition, 0, len(paths))
@@ -95,6 +118,7 @@ func (compiler Compiler) Compile(
 	})
 	catalog := &Catalog{
 		SchemaVersion: CatalogSchemaVersion,
+		Manifest:      manifest,
 		Definitions:   definitions,
 	}
 	catalog.DependencyGraph = buildGraph(definitions)
@@ -102,6 +126,27 @@ func (compiler Compiler) Compile(
 		return nil, err
 	}
 	return catalog, nil
+}
+
+func validateManifestPath(manifestPath string) error {
+	info, err := os.Lstat(manifestPath)
+	if err != nil {
+		return fmt.Errorf("inspect project manifest %q: %w", manifestPath, err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("%s: symbolic links are not allowed", projectManifestSource)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("%s: project manifest is not a regular file", projectManifestSource)
+	}
+	if info.Size() > maxDefinitionBytes {
+		return fmt.Errorf(
+			"%s: project manifest exceeds %d bytes",
+			projectManifestSource,
+			maxDefinitionBytes,
+		)
+	}
+	return nil
 }
 
 func discoverDefinitionPaths(contentRoot string) ([]string, error) {
@@ -163,6 +208,24 @@ func evaluateDefinition(
 	source string,
 	timeout time.Duration,
 ) (map[string]any, error) {
+	return evaluateLuaObject(
+		parent,
+		path,
+		source,
+		timeout,
+		"content",
+		"content file",
+	)
+}
+
+func evaluateLuaObject(
+	parent context.Context,
+	path string,
+	source string,
+	timeout time.Duration,
+	rootPath string,
+	label string,
+) (map[string]any, error) {
 	code, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", source, err)
@@ -209,8 +272,9 @@ func evaluateDefinition(
 	}
 	if state.GetTop() != 1 {
 		return nil, fmt.Errorf(
-			"%s: content file must return exactly one value, returned %d",
+			"%s: %s must return exactly one value, returned %d",
 			source,
+			label,
 			state.GetTop(),
 		)
 	}
@@ -218,7 +282,7 @@ func evaluateDefinition(
 	converted, err := convertLuaValue(
 		state,
 		state.Get(1),
-		"content",
+		rootPath,
 		make(map[*lua.LTable]string),
 	)
 	if err != nil {
@@ -226,7 +290,7 @@ func evaluateDefinition(
 	}
 	object, ok := converted.(map[string]any)
 	if !ok {
-		return nil, fmt.Errorf("%s: content file must return an object", source)
+		return nil, fmt.Errorf("%s: %s must return an object", source, label)
 	}
 	return object, nil
 }

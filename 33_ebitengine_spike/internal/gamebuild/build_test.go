@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"practice_love2d/33_ebitengine_spike/internal/content"
@@ -35,6 +36,20 @@ func TestBuildUsesAuthoredActionRPGContent(t *testing.T) {
 	}
 	if got, want := len(result.Config.Walls), 5; got != want {
 		t.Fatalf("walls = %d, want %d", got, want)
+	}
+	if result.Stage.ID != "stage.rpg_village" ||
+		len(result.Stage.SpawnPoints) != 2 ||
+		len(result.Stage.Portals) != 1 {
+		t.Fatalf("stage navigation = %#v", result.Stage)
+	}
+	portal := result.Stage.Portals[0]
+	if portal.ID != "to_field" ||
+		portal.TargetStageID != "stage.world_hub" ||
+		portal.TargetSpawnID != "village_entry" ||
+		portal.Rect.MaxX-portal.Rect.MinX != pixels(32) ||
+		portal.Rect.MaxY-portal.Rect.MinY != pixels(128) ||
+		len(portal.Points) != 0 {
+		t.Fatalf("portal = %#v", portal)
 	}
 	var north *sim.Wall
 	for index := range result.Config.Walls {
@@ -124,6 +139,78 @@ func TestBuildUsesAuthoredActionRPGContent(t *testing.T) {
 	}
 }
 
+func TestBuildAppliesNamedEntrySpawnToControlledActor(t *testing.T) {
+	t.Parallel()
+
+	result, err := Build(loadCatalog(t), Options{SpawnID: "field_return"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entity := range result.Config.Entities {
+		if !entity.Controlled {
+			continue
+		}
+		if got, want := entity.Position, (sim.Vec{
+			X: pixels(850),
+			Y: pixels(270),
+		}); got != want {
+			t.Fatalf("controlled position = %#v, want %#v", got, want)
+		}
+		return
+	}
+	t.Fatal("controlled actor not found")
+}
+
+func TestBuildRejectsUnknownEntrySpawn(t *testing.T) {
+	t.Parallel()
+
+	if _, err := Build(loadCatalog(t), Options{SpawnID: "missing"}); err == nil {
+		t.Fatal("unknown entry spawn was accepted")
+	}
+}
+
+func TestBuildUsesAuthoredPlayerPositionForImplicitDefaultEntry(t *testing.T) {
+	t.Parallel()
+
+	catalog := loadCatalog(t)
+	raw, exists := catalog.Definition("stage.rpg_village")
+	if !exists {
+		t.Fatal("stage.rpg_village missing")
+	}
+	var stage map[string]any
+	if err := json.Unmarshal(raw, &stage); err != nil {
+		t.Fatal(err)
+	}
+	delete(stage, "spawn_points")
+	updated, err := json.Marshal(stage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	catalog, err = catalog.WithDefinition("stage.rpg_village", updated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := Build(catalog, Options{
+		StageID: "stage.rpg_village",
+		SpawnID: implicitEntrySpawnID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entity := range result.Config.Entities {
+		if entity.Controlled {
+			if got, want := entity.Position, (sim.Vec{
+				X: pixels(150),
+				Y: pixels(270),
+			}); got != want {
+				t.Fatalf("controlled position = %#v, want %#v", got, want)
+			}
+			return
+		}
+	}
+	t.Fatal("controlled actor not found")
+}
+
 func TestBuildReflectsCatalogMutation(t *testing.T) {
 	t.Parallel()
 
@@ -170,11 +257,53 @@ func TestSecondsToTicksUsesNearestNonzeroTick(t *testing.T) {
 		{0.05, 3},
 		{0.12, 7},
 		{0.18, 11},
+		{float64(sim.MaxTickCount+1) / sim.TicksPerSecond, sim.MaxTickCount + 1},
 	} {
 		if got := secondsToTicks(test.seconds); got != test.want {
 			t.Errorf("secondsToTicks(%v) = %d, want %d",
 				test.seconds, got, test.want)
 		}
+	}
+}
+
+func TestBuildRejectsPortalCooldownOutsideSimulationRange(t *testing.T) {
+	t.Parallel()
+
+	catalog := mutateCampaignDefinition(
+		t,
+		loadCatalog(t),
+		"stage.rpg_village",
+		func(data map[string]any) {
+			portals := data["portals"].([]any)
+			portal := portals[0].(map[string]any)
+			portal["cooldown"] =
+				float64(sim.MaxTickCount+1) / sim.TicksPerSecond
+		},
+	)
+	if _, err := Build(catalog, Options{}); err == nil ||
+		!strings.Contains(err.Error(), "invalid portal") {
+		t.Fatalf("Build error = %v, want invalid portal", err)
+	}
+}
+
+func TestBuildRejectsPortalTagThatCannotSelectControlledActor(t *testing.T) {
+	t.Parallel()
+
+	catalog := mutateCampaignDefinition(
+		t,
+		loadCatalog(t),
+		"stage.rpg_village",
+		func(data map[string]any) {
+			portals := data["portals"].([]any)
+			portals[0].(map[string]any)["actor_tag"] = "npc"
+		},
+	)
+	if _, err := Build(catalog, Options{}); err == nil ||
+		!strings.Contains(err.Error(), "does not match controlled actor") {
+		t.Fatalf(
+			"Build error = %v, want controlled actor_tag mismatch",
+			err,
+		)
 	}
 }
 

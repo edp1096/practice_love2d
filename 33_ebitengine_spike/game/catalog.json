@@ -1,5 +1,70 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "project": {
+    "source": "game/game.lua",
+    "id": "recreate.maker_runtime",
+    "profile": "action-rpg",
+    "title": "고요한 숲의 수호자",
+    "initial_stage": "stage.village",
+    "fixed_dt": 0.016666666666666666,
+    "locale": {
+      "default": "locale.ko",
+      "fallback": "locale.en"
+    },
+    "flow": {
+      "save_slot": "campaign",
+      "start_stage": "stage.village",
+      "start_spawn": "default",
+      "title": {
+        "heading_key": "flow.title.heading",
+        "message_key": "flow.title.message"
+      },
+      "game_over": {
+        "heading_key": "flow.game_over.heading",
+        "message_key": "flow.game_over.message"
+      },
+      "ending": {
+        "heading_key": "flow.ending.heading",
+        "message_key": "flow.ending.message"
+      }
+    },
+    "font": {
+      "asset": "font.ui",
+      "size": 16
+    },
+    "warnings": [
+      {
+        "code": "unsupported_project_field",
+        "path": "content_roots",
+        "message": "project setting is not compiled into the runtime manifest"
+      },
+      {
+        "code": "unsupported_project_field",
+        "path": "features",
+        "message": "project setting is not compiled into the runtime manifest"
+      },
+      {
+        "code": "unsupported_project_field",
+        "path": "impact_feedback",
+        "message": "project setting is not compiled into the runtime manifest"
+      },
+      {
+        "code": "unsupported_project_field",
+        "path": "input",
+        "message": "project setting is not compiled into the runtime manifest"
+      },
+      {
+        "code": "unsupported_project_field",
+        "path": "maximum_action_depth",
+        "message": "project setting is not compiled into the runtime manifest"
+      },
+      {
+        "code": "unsupported_project_field",
+        "path": "maximum_steps",
+        "message": "project setting is not compiled into the runtime manifest"
+      }
+    ]
+  },
   "definitions": [
     {
       "source": "game/content/abilities/fire_bolt.lua",
@@ -3361,7 +3426,7 @@
             "id": "enemy.slime.2",
             "position": {
               "x": 760,
-              "y": 430
+              "y": 340
             }
           }
         ],

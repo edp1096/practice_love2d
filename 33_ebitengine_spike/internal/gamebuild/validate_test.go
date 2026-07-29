@@ -139,6 +139,36 @@ func TestValidateDefinitionChecksFollowTagAgainstEditedStage(t *testing.T) {
 	}
 }
 
+func TestValidateDefinitionChecksPortalTagAgainstControlledActor(
+	t *testing.T,
+) {
+	t.Parallel()
+
+	catalog := loadCatalog(t)
+	const stageID = "stage.rpg_village"
+	draft := definitionMap(t, catalog, stageID)
+	portals := draft["portals"].([]any)
+	portals[0].(map[string]any)["actor_tag"] = "merchant"
+	candidate := withDefinition(t, catalog, stageID, draft)
+
+	result, err := ValidateDefinition(candidate, stageID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.SchemaValid || result.FullyApplied {
+		t.Fatalf("validation result = %#v", result)
+	}
+	if !warningsContain(
+		result.Warnings,
+		`actor_tag "merchant" matches no controlled actor`,
+	) {
+		t.Fatalf(
+			"warnings = %q, want controlled portal actor_tag diagnostic",
+			result.Warnings,
+		)
+	}
+}
+
 func TestValidateDefinitionRejectsInvalidActionPayloadAndType(t *testing.T) {
 	t.Parallel()
 

@@ -4,10 +4,12 @@
 런타임으로 옮기는 비교 구현이다. `32_recreate`는 복사 원본이 아니라
 기능 기준 명세로 유지한다.
 
-현재 vertical slice에는 기존 애셋과 `stage.rpg_village` 콘텐츠를
-그대로 사용한 플레이어, 가이드, 상인, 슬라임 2마리, 벽, 카메라가
-있다. 이동·충돌·공격·피해·경직·넉백·히트스톱·패링·퍼펙트 패링·
-회피·대화·퀘스트·세이브가 고정 60 tick 시뮬레이션으로 동작한다.
+기본 실행은 하드코딩된 시험장이 아니라 `game/game.lua`에서 컴파일한
+project manifest의 `stage.village/default`를 사용한다. 플레이어,
+실제 안내인·상인 sprite, 벽, 카메라가 보이며 전투 fixture와 Maker
+preview에서는 슬라임을 생성할 수 있다. 이동·충돌·공격·피해·경직·
+넉백·히트스톱·패링·퍼펙트 패링·회피·대화·퀘스트·세이브가 고정
+60 tick 시뮬레이션으로 동작한다.
 
 ## 실행
 
@@ -59,14 +61,20 @@ go run ./cmd/recreatectl load test-slot
 go run ./cmd/recreatectl new-game
 ```
 
-`step`은 결정적인 화면 검사를 위해 요청한 프레임을 진행한 뒤 게임을
-**일시정지 상태로 유지한다.** 창이 멎은 것이 아니며 화면 중앙의
-`AUTOMATION PAUSED` 표시로 구분된다. 다시 실시간으로 실행하려면 다음을
-호출한다.
+`step`은 요청한 프레임을 원자적으로 진행한 뒤 실행 전 pause 상태를
+복원한다. 따라서 실행 중인 창에 `step`을 호출해도 멈춘 채 남지 않는다.
+결정적인 화면을 검사할 때만 다음처럼 명시적으로 pause–step–capture–
+resume 순서를 사용한다.
 
 ```bash
+go run ./cmd/recreatectl pause true
+go run ./cmd/recreatectl step --frames 45
+go run ./cmd/recreatectl screenshot /tmp/controlled.png
 go run ./cmd/recreatectl pause false
 ```
+
+명시적으로 멈춘 동안에는 화면 중앙의 `AUTOMATION PAUSED` 표시가
+나타난다.
 
 일반 회귀 테스트는 Ebitengine 창을 만들지 않는
 `go test ./...` 경로를 사용한다. 실제 창 검증이 필요할 때만
@@ -91,13 +99,15 @@ action만 적용한다. 선택지 안의 quest action은 선택 전에는 실행
 이벤트를 반환한다. 변이는 전체 상태를 검증한 뒤 원자적으로 반영된다.
 벽 ID는 렌더 좌표에서 역산하지 않고 simulation까지 직접 보존된다.
 
-`save`/`load`는 실제 플레이 세션용이다. 체력·위치·전투·퀘스트·대화·
-카메라 상태를 저장하지만, 테스트가 주입한 가상 입력과 대기 명령,
-일시적인 벽 preview는 의도적으로 저장하지 않는다. 동적 entity,
-entity 삭제 예약, 직접 dialogue 같은 Maker preview가 남아 있으면
-`save`와 호환 session `reload`를 명시적으로 거부한다. `new-game`으로
-authored World를 복원한 뒤 저장한다. 자동화는 저장 파일을 checkpoint처럼
-재사용하지 말고 setup 명령과 고정 `step`을 다시 실행한다.
+`save`/`load`는 stage와 진입 spawn, locale, 게임 진행, flag, inventory,
+equipment, quest, 재화를 담은 versioned campaign 저장이다. 체력·위치·
+전투·대화·카메라·portal cooldown 같은 현재 World 상태와 가상 입력,
+자동화 pause, Maker preview는 저장하지 않는다. `load`는 저장된 stage를
+authored content에서 새로 빌드하므로 World는 항상 해당 spawn의 초기
+상태로 시작한다. 동적 entity, entity 삭제 예약, 직접 dialogue 같은
+Maker preview가 남아 있으면 `save`와 `load`를 모두 명시적으로 거부한다.
+자동화는 저장 파일을 simulation checkpoint처럼 재사용하지 말고 setup
+명령과 고정 `step`을 다시 실행한다.
 
 디버그 브리지는 loopback만 허용한다. 여러 사용자가 쓰는 호스트에서는
 토큰 파일을 `0600`으로 만들고 양쪽에 지정한다.
@@ -121,8 +131,10 @@ go run ./cmd/contentc \
   -output game/catalog.json
 ```
 
-현재 결과는 정의 44개, dependency path 86개이며 동일 입력은
-byte-for-byte 같은 catalog를 만든다.
+현재 결과는 정의 44개, dependency path 86개다. canonical 파일을 쓰기
+전에 7개 stage의 모든 entry spawn과 2개 locale, 총 22개 조합을
+simulation까지 구성한다. 동일 입력은 byte-for-byte 같은 catalog를
+만든다.
 
 기본 catalog는 실행 파일에 embed된다. `-catalog path/to/catalog.json`은
 개발 중 외부 catalog를 reload할 때만 쓰는 override다.
@@ -154,10 +166,17 @@ Maker / debug client ──protocol v8──▶ gameapp
 
 - `internal/content`: 제한된 Lua 콘텐츠 컴파일러와 dependency graph
 - `internal/gamebuild`: catalog를 검증된 게임 설정으로 변환
+- `internal/projectcheck`: 모든 stage·entry·locale과 Campaign/rule
+  topology 사전 검증
+- `internal/campaign`: stage와 분리된 장기 진행 및 versioned player save
+- `internal/rulesruntime`: 대화·quest·inventory·shop의 원자적 규칙 실행
 - `internal/sim`: 렌더러와 분리된 고정소수점 결정적 게임 상태
 - `internal/gameapp`: AI, 저장, 화면 DTO, 프로토콜 backend
 - `internal/ebitapp`: Ebitengine 입력·스프라이트·화면 출력
 - `internal/protocol`: 인증 가능한 loopback NDJSON protocol v8
 - `internal/storage`: 플랫폼 교체 가능한 세이브 저장소
 
-전환 판정과 남은 기능은 [docs/SPIKE.md](docs/SPIKE.md)에 정리되어 있다.
+전환 판정과 남은 기능은 [docs/SPIKE.md](docs/SPIKE.md), 완전한 샘플
+게임의 실행 계약과 구현 순서는
+[docs/CAMPAIGN_MIGRATION.md](docs/CAMPAIGN_MIGRATION.md)에 정리되어
+있다.

@@ -35,6 +35,73 @@ func TestCompileRecreateCatalogAcceptance(t *testing.T) {
 	if got, want := first.DependencyGraph.EdgeCount, 86; got != want {
 		t.Fatalf("dependency paths = %d, want %d", got, want)
 	}
+	project := first.Project()
+	if got, want := project.ID, "recreate.maker_runtime"; got != want {
+		t.Fatalf("project id = %q, want %q", got, want)
+	}
+	if got, want := project.Profile, "action-rpg"; got != want {
+		t.Fatalf("project profile = %q, want %q", got, want)
+	}
+	if got, want := project.Title, "고요한 숲의 수호자"; got != want {
+		t.Fatalf("project title = %q, want %q", got, want)
+	}
+	if got, want := project.InitialStage, "stage.village"; got != want {
+		t.Fatalf("initial stage = %q, want %q", got, want)
+	}
+	if got, want := project.FixedDT, 1.0/60.0; got != want {
+		t.Fatalf("fixed_dt = %v, want %v", got, want)
+	}
+	if got, want := project.Locale, (ProjectLocale{
+		Default:  "locale.ko",
+		Fallback: "locale.en",
+	}); got != want {
+		t.Fatalf("locale = %#v, want %#v", got, want)
+	}
+	if got, want := project.Flow, (ProjectFlow{
+		SaveSlot:   "campaign",
+		StartStage: "stage.village",
+		StartSpawn: "default",
+		Title: ProjectFlowCopy{
+			HeadingKey: "flow.title.heading",
+			MessageKey: "flow.title.message",
+		},
+		GameOver: ProjectFlowCopy{
+			HeadingKey: "flow.game_over.heading",
+			MessageKey: "flow.game_over.message",
+		},
+		Ending: ProjectFlowCopy{
+			HeadingKey: "flow.ending.heading",
+			MessageKey: "flow.ending.message",
+		},
+	}); got != want {
+		t.Fatalf("flow = %#v, want %#v", got, want)
+	}
+	if got, want := project.Font, (ProjectFont{
+		Asset: "font.ui",
+		Size:  16,
+	}); got != want {
+		t.Fatalf("font = %#v, want %#v", got, want)
+	}
+	if err := first.ValidateProjectReferences(); err != nil {
+		t.Fatalf("project references: %v", err)
+	}
+	invalidReferences := *first
+	invalidReferences.Manifest = first.Project()
+	invalidReferences.Manifest.Flow.StartSpawn = "missing"
+	if err := invalidReferences.ValidateProjectReferences(); err == nil {
+		t.Fatal("missing project start spawn passed reference validation")
+	}
+	wantWarningPaths := []string{
+		"content_roots",
+		"features",
+		"impact_feedback",
+		"input",
+		"maximum_action_depth",
+		"maximum_steps",
+	}
+	if got := warningPaths(project.Warnings); !reflect.DeepEqual(got, wantWarningPaths) {
+		t.Fatalf("project warning paths = %#v, want %#v", got, wantWarningPaths)
+	}
 	firstJSON, err := MarshalCanonical(first)
 	if err != nil {
 		t.Fatalf("MarshalCanonical first: %v", err)
@@ -102,6 +169,12 @@ func TestCatalogRuntimeLookupDecodeAndFSLoad(t *testing.T) {
 	t.Parallel()
 
 	project := newProject(t)
+	writeProjectManifest(t, project, strings.Replace(
+		testProjectManifest,
+		"return {",
+		"return {\n    future_setting=true,",
+		1,
+	))
 	writeDefinition(t, project, "b.lua", `
 return {
     schema_version = 1,
@@ -161,6 +234,11 @@ return {
 	graphCopy.Nodes[0].ID = "mutated"
 	if catalog.Graph().Nodes[0].ID == "mutated" {
 		t.Fatal("Graph leaked mutable node storage")
+	}
+	projectCopy := catalog.Project()
+	projectCopy.Warnings[0].Path = "mutated"
+	if catalog.Project().Warnings[0].Path == "mutated" {
+		t.Fatal("Project leaked mutable warning storage")
 	}
 
 	data, err := MarshalCanonical(catalog)
@@ -385,6 +463,193 @@ return {schema_version=1, kind="test", id="test.safe"}`)
 	})
 }
 
+func TestCompileProjectManifestStrictValidation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		source   string
+		contains string
+	}{
+		{
+			name:     "top level array",
+			source:   `return {"not", "an", "object"}`,
+			contains: "project manifest must return an object",
+		},
+		{
+			name: "global access",
+			source: `
+return {
+    id="test.project",
+    title=os.getenv("HOME"),
+}`,
+			contains: "evaluate Lua",
+		},
+		{
+			name: "missing fixed dt",
+			source: strings.Replace(
+				testProjectManifest,
+				"    fixed_dt=1/60,\n",
+				"",
+				1,
+			),
+			contains: "fixed_dt is required",
+		},
+		{
+			name: "bad fixed dt",
+			source: strings.Replace(
+				testProjectManifest,
+				"fixed_dt=1/60",
+				"fixed_dt=0",
+				1,
+			),
+			contains: "fixed_dt must be 1/60",
+		},
+		{
+			name: "unsupported fixed dt",
+			source: strings.Replace(
+				testProjectManifest,
+				"fixed_dt=1/60",
+				"fixed_dt=1/30",
+				1,
+			),
+			contains: "runtime currently supports 60 TPS only",
+		},
+		{
+			name: "stage mismatch",
+			source: strings.Replace(
+				testProjectManifest,
+				`start_stage="stage.test"`,
+				`start_stage="stage.other"`,
+				1,
+			),
+			contains: "flow.start_stage must match initial_stage",
+		},
+		{
+			name: "unknown locale field",
+			source: strings.Replace(
+				testProjectManifest,
+				`fallback="locale.en"`,
+				`fallback="locale.en", extra=true`,
+				1,
+			),
+			contains: "locale.extra is not supported",
+		},
+		{
+			name: "unknown flow copy field",
+			source: strings.Replace(
+				testProjectManifest,
+				`message_key="flow.title.message"`,
+				`message_key="flow.title.message", extra=true`,
+				1,
+			),
+			contains: "flow.title.extra is not supported",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			project := newProject(t)
+			writeProjectManifest(t, project, test.source)
+			writeDefinition(
+				t,
+				project,
+				"valid.lua",
+				`return {schema_version=1, kind="test", id="test.valid"}`,
+			)
+			_, err := Compile(context.Background(), project)
+			if err == nil || !strings.Contains(err.Error(), test.contains) {
+				t.Fatalf(
+					"Compile error = %v, want substring %q",
+					err,
+					test.contains,
+				)
+			}
+		})
+	}
+}
+
+func TestCompileProjectManifestWarningsAreExplicitAndDeterministic(t *testing.T) {
+	t.Parallel()
+
+	project := newProject(t)
+	writeProjectManifest(t, project, strings.Replace(
+		testProjectManifest,
+		"return {",
+		"return {\n    z_future={enabled=true},\n    a_future=true,",
+		1,
+	))
+	writeDefinition(
+		t,
+		project,
+		"valid.lua",
+		`return {schema_version=1, kind="test", id="test.valid"}`,
+	)
+	catalog, err := Compile(context.Background(), project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := warningPaths(catalog.Project().Warnings), []string{
+		"a_future",
+		"z_future",
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("warning paths = %#v, want %#v", got, want)
+	}
+	for _, warning := range catalog.Project().Warnings {
+		if warning.Code != unsupportedProjectFieldCode ||
+			warning.Message != unsupportedProjectFieldText {
+			t.Fatalf("unexpected warning: %#v", warning)
+		}
+	}
+}
+
+func TestCompileRequiresRegularProjectManifest(t *testing.T) {
+	t.Parallel()
+
+	t.Run("missing", func(t *testing.T) {
+		project := newProject(t)
+		if err := os.Remove(filepath.Join(project, "game", "game.lua")); err != nil {
+			t.Fatal(err)
+		}
+		writeDefinition(
+			t,
+			project,
+			"valid.lua",
+			`return {schema_version=1, kind="test", id="test.valid"}`,
+		)
+		_, err := Compile(context.Background(), project)
+		if err == nil || !strings.Contains(err.Error(), "inspect project manifest") {
+			t.Fatalf("Compile error = %v, want missing manifest rejection", err)
+		}
+	})
+
+	t.Run("symlink", func(t *testing.T) {
+		project := newProject(t)
+		manifestPath := filepath.Join(project, "game", "game.lua")
+		if err := os.Remove(manifestPath); err != nil {
+			t.Fatal(err)
+		}
+		external := filepath.Join(t.TempDir(), "game.lua")
+		if err := os.WriteFile(external, []byte(testProjectManifest), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(external, manifestPath); err != nil {
+			t.Skipf("symlink unavailable: %v", err)
+		}
+		writeDefinition(
+			t,
+			project,
+			"valid.lua",
+			`return {schema_version=1, kind="test", id="test.valid"}`,
+		)
+		_, err := Compile(context.Background(), project)
+		if err == nil || !strings.Contains(err.Error(), "symbolic links are not allowed") {
+			t.Fatalf("Compile error = %v, want manifest symlink rejection", err)
+		}
+	})
+}
+
 func TestLuaValueInspectionRejectsMetatableCycleAndUserdata(t *testing.T) {
 	t.Parallel()
 
@@ -487,6 +752,14 @@ func TestCompileValidationFailures(t *testing.T) {
 			},
 			contains: "id must match namespace.name",
 		},
+		{
+			name: "oversized id",
+			definitions: []string{
+				`return {schema_version=1, kind="test", id="test.` +
+					strings.Repeat("x", MaxContentIDBytes) + `"}`,
+			},
+			contains: "at most 128 bytes",
+		},
 	}
 
 	for _, test := range tests {
@@ -588,6 +861,35 @@ return {schema_version=1, kind="test", id="test.b"}`)
 		mutate func(*Catalog)
 	}{
 		{
+			name: "invalid project source",
+			mutate: func(candidate *Catalog) {
+				candidate.Manifest.Source = "/tmp/game.lua"
+			},
+		},
+		{
+			name: "invalid project stage",
+			mutate: func(candidate *Catalog) {
+				candidate.Manifest.InitialStage = "stage.other"
+			},
+		},
+		{
+			name: "unsorted project warnings",
+			mutate: func(candidate *Catalog) {
+				candidate.Manifest.Warnings = []ProjectManifestWarning{
+					{
+						Code:    unsupportedProjectFieldCode,
+						Path:    "z",
+						Message: unsupportedProjectFieldText,
+					},
+					{
+						Code:    unsupportedProjectFieldCode,
+						Path:    "a",
+						Message: unsupportedProjectFieldText,
+					},
+				}
+			},
+		},
+		{
 			name: "missing reverse edge",
 			mutate: func(candidate *Catalog) {
 				candidate.DependencyGraph.Nodes[1].Dependents = []Edge{}
@@ -643,12 +945,21 @@ return {schema_version=1, kind="test", id="test.b"}`)
 	}
 	unknown := bytes.Replace(
 		valid,
-		[]byte(`"schema_version": 1,`),
-		[]byte(`"schema_version": 1, "unknown": true,`),
+		[]byte(`"schema_version": 2,`),
+		[]byte(`"schema_version": 2, "unknown": true,`),
 		1,
 	)
 	if _, err := LoadBytes(unknown); err == nil {
 		t.Fatal("LoadBytes accepted an unknown catalog field")
+	}
+	unknownProject := bytes.Replace(
+		valid,
+		[]byte(`"source": "game/game.lua",`),
+		[]byte(`"source": "game/game.lua", "unknown": true,`),
+		1,
+	)
+	if _, err := LoadBytes(unknownProject); err == nil {
+		t.Fatal("LoadBytes accepted an unknown project field")
 	}
 }
 
@@ -680,7 +991,49 @@ func newProject(t *testing.T) string {
 	); err != nil {
 		t.Fatalf("create content directory: %v", err)
 	}
+	writeProjectManifest(t, project, testProjectManifest)
 	return project
+}
+
+const testProjectManifest = `return {
+    id="test.project",
+    profile="test",
+    title="Test Project",
+    initial_stage="stage.test",
+    fixed_dt=1/60,
+    locale={
+        default="locale.en",
+        fallback="locale.en",
+    },
+    flow={
+        save_slot="test",
+        start_stage="stage.test",
+        start_spawn="default",
+        title={
+            heading_key="flow.title.heading",
+            message_key="flow.title.message",
+        },
+        game_over={
+            heading_key="flow.game_over.heading",
+            message_key="flow.game_over.message",
+        },
+        ending={
+            heading_key="flow.ending.heading",
+            message_key="flow.ending.message",
+        },
+    },
+    font={
+        asset="font.ui",
+        size=16,
+    },
+}`
+
+func writeProjectManifest(t *testing.T, project, source string) {
+	t.Helper()
+	path := filepath.Join(project, "game", "game.lua")
+	if err := os.WriteFile(path, []byte(source), 0o644); err != nil {
+		t.Fatalf("write project manifest: %v", err)
+	}
 }
 
 func writeDefinition(t *testing.T, project, relative, source string) {
@@ -737,4 +1090,12 @@ func cloneCatalog(t *testing.T, catalog *Catalog) *Catalog {
 		t.Fatalf("json.Unmarshal catalog: %v", err)
 	}
 	return &clone
+}
+
+func warningPaths(warnings []ProjectManifestWarning) []string {
+	paths := make([]string, len(warnings))
+	for index, warning := range warnings {
+		paths[index] = warning.Path
+	}
+	return paths
 }

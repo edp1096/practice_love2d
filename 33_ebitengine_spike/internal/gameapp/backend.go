@@ -1,18 +1,17 @@
 package gameapp
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	goruntime "runtime"
 	"runtime/debug"
 	"sort"
 
+	"practice_love2d/33_ebitengine_spike/internal/campaign"
 	"practice_love2d/33_ebitengine_spike/internal/gamebuild"
 	"practice_love2d/33_ebitengine_spike/internal/protocol"
 	"practice_love2d/33_ebitengine_spike/internal/sim"
@@ -42,7 +41,7 @@ func (runtime *Runtime) Call(
 			Tick:        snapshot.Tick,
 			WorldTick:   snapshot.WorldTick,
 			Revision:    runtime.revision,
-			Paused:      runtime.paused,
+			Paused:      runtime.automationPaused,
 			Quit:        runtime.quit,
 			QuitPending: runtime.quitPending,
 			Hitstop:     snapshot.HitstopTicks,
@@ -166,8 +165,8 @@ func (runtime *Runtime) Call(
 			return nil, invalidBackendParams(call.Method)
 		}
 		runtime.mu.Lock()
-		if runtime.paused != params.Enabled {
-			runtime.paused = params.Enabled
+		if runtime.automationPaused != params.Enabled {
+			runtime.automationPaused = params.Enabled
 			runtime.revision++
 		}
 		tick := runtime.simulation.Snapshot().Tick
@@ -657,48 +656,26 @@ func (runtime *Runtime) step(ctx context.Context, frames int) (any, error) {
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
 
-	originalSimulation := runtime.simulation
-	originalVirtual := runtime.virtual
-	originalPending := runtime.pendingAbilities
-	originalRemovals := runtime.pendingRemovals
-	originalMoving := runtime.moving
-	originalPreviewEntities := runtime.previewEntities
-	originalPaused := runtime.paused
-	originalRevision := runtime.revision
+	checkpoint := runtime.checkpointLocked()
+	originalPaused := runtime.automationPaused
 
-	runtime.simulation = originalSimulation.Clone()
-	runtime.virtual = cloneVirtualActions(originalVirtual)
-	runtime.pendingAbilities = cloneBoolMap(originalPending)
-	runtime.pendingRemovals = cloneBoolMap(originalRemovals)
-	runtime.moving = cloneBoolMap(originalMoving)
-	runtime.previewEntities = clonePreviewEntities(originalPreviewEntities)
-	runtime.paused = true
+	runtime.detachMutableLocked(checkpoint)
+	runtime.automationPaused = true
 	for range frames {
 		if err := ctx.Err(); err != nil {
-			runtime.simulation = originalSimulation
-			runtime.virtual = originalVirtual
-			runtime.pendingAbilities = originalPending
-			runtime.pendingRemovals = originalRemovals
-			runtime.moving = originalMoving
-			runtime.previewEntities = originalPreviewEntities
-			runtime.paused = originalPaused
-			runtime.revision = originalRevision
+			runtime.restoreCheckpointLocked(checkpoint)
+			runtime.automationPaused = originalPaused
 			return nil, err
 		}
 		input := sim.Input{}
 		runtime.mergeVirtualInputLocked(&input)
 		if err := runtime.tickLocked(input); err != nil {
-			runtime.simulation = originalSimulation
-			runtime.virtual = originalVirtual
-			runtime.pendingAbilities = originalPending
-			runtime.pendingRemovals = originalRemovals
-			runtime.moving = originalMoving
-			runtime.previewEntities = originalPreviewEntities
-			runtime.paused = originalPaused
-			runtime.revision = originalRevision
+			runtime.restoreCheckpointLocked(checkpoint)
+			runtime.automationPaused = originalPaused
 			return nil, err
 		}
 	}
+	runtime.automationPaused = originalPaused
 	snapshot := runtime.simulation.Snapshot()
 	return struct {
 		Paused    bool    `json:"paused"`
@@ -707,7 +684,7 @@ func (runtime *Runtime) step(ctx context.Context, frames int) (any, error) {
 		Tick      uint64  `json:"tick"`
 		WorldTick uint64  `json:"world_tick"`
 	}{
-		Paused:    true,
+		Paused:    originalPaused,
 		Frames:    frames,
 		DT:        1.0 / sim.TicksPerSecond,
 		Tick:      snapshot.Tick,
@@ -733,6 +710,25 @@ func cloneBoolMap(source map[string]bool) map[string]bool {
 	return result
 }
 
+type campaignSaveResult struct {
+	Slot   string `json:"slot"`
+	Saved  bool   `json:"saved"`
+	Stage  string `json:"stage"`
+	Spawn  string `json:"spawn"`
+	Locale string `json:"locale"`
+	Bytes  int    `json:"bytes"`
+}
+
+type campaignLoadResult struct {
+	Slot   string        `json:"slot"`
+	Loaded bool          `json:"loaded"`
+	Stage  string        `json:"stage"`
+	Spawn  string        `json:"spawn"`
+	Locale string        `json:"locale"`
+	Mode   campaign.Mode `json:"mode"`
+	Bytes  int           `json:"bytes"`
+}
+
 func (runtime *Runtime) save(ctx context.Context, slot string) (any, error) {
 	runtime.mu.RLock()
 	if runtime.simulation.HasTemporaryPreview() ||
@@ -742,25 +738,45 @@ func (runtime *Runtime) save(ctx context.Context, slot string) (any, error) {
 			"temporary Maker preview state cannot be written to a player save; start a new game first",
 		)
 	}
-	state := runtime.simulation.SaveSession()
-	runtime.mu.RUnlock()
-	data, err := json.MarshalIndent(state, "", "  ")
+	data, err := runtime.campaign.Marshal()
 	if err != nil {
+		runtime.mu.RUnlock()
 		return nil, fmt.Errorf("encode save slot %q: %w", slot, err)
 	}
-	data = append(data, '\n')
+	savedCampaign, err := campaign.Decode(runtime.campaignConfig, data)
+	if err != nil {
+		runtime.mu.RUnlock()
+		return nil, fmt.Errorf(
+			"verify save slot %q campaign payload: %w",
+			slot,
+			err,
+		)
+	}
+	state := savedCampaign.Snapshot()
+	if !state.Flow.Started ||
+		state.CurrentStageID == "" ||
+		state.EntrySpawnID == "" {
+		runtime.mu.RUnlock()
+		return nil, fmt.Errorf(
+			"save slot %q requires a started campaign with a stage entry",
+			slot,
+		)
+	}
+	runtime.mu.RUnlock()
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	if err := runtime.store.Save(slot, data); err != nil {
 		return nil, err
 	}
-	return struct {
-		Slot  string `json:"slot"`
-		Saved bool   `json:"saved"`
-		Tick  uint64 `json:"tick"`
-		Bytes int    `json:"bytes"`
-	}{slot, true, state.Tick, len(data)}, nil
+	return campaignSaveResult{
+		Slot:   slot,
+		Saved:  true,
+		Stage:  state.CurrentStageID,
+		Spawn:  state.EntrySpawnID,
+		Locale: state.Locale,
+		Bytes:  len(data),
+	}, nil
 }
 
 func (runtime *Runtime) load(ctx context.Context, slot string) (any, error) {
@@ -768,59 +784,108 @@ func (runtime *Runtime) load(ctx context.Context, slot string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	var state sim.SessionState
-	if err := decoder.Decode(&state); err != nil {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	runtime.mu.Lock()
+	defer runtime.mu.Unlock()
+
+	if runtime.simulation.HasTemporaryPreview() ||
+		len(runtime.pendingRemovals) != 0 {
+		return nil, errors.New(
+			"temporary Maker preview state cannot be replaced by a player save; start a new game first",
+		)
+	}
+	activeCampaign, err := campaign.Decode(runtime.campaignConfig, data)
+	if err != nil {
 		return nil, fmt.Errorf("decode save slot %q: %w", slot, err)
 	}
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		if err == nil {
-			return nil, fmt.Errorf("decode save slot %q: trailing JSON", slot)
-		}
-		return nil, fmt.Errorf("decode save slot %q: %w", slot, err)
+	state := activeCampaign.Snapshot()
+	if !state.Flow.Started {
+		return nil, fmt.Errorf(
+			"load save slot %q: campaign has not started",
+			slot,
+		)
+	}
+	if state.CurrentStageID == "" || state.EntrySpawnID == "" {
+		return nil, fmt.Errorf(
+			"load save slot %q: started campaign has no stage entry",
+			slot,
+		)
+	}
+
+	resolved := runtime.buildOptions
+	resolved.StageID = state.CurrentStageID
+	resolved.SpawnID = state.EntrySpawnID
+	resolved.LocaleID = state.Locale
+	built, candidate, err := buildSimulation(runtime.catalog, resolved)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"load save slot %q stage %s/%s: %w",
+			slot,
+			state.CurrentStageID,
+			state.EntrySpawnID,
+			err,
+		)
+	}
+	if built.Stage.ID != state.CurrentStageID {
+		return nil, fmt.Errorf(
+			"load save slot %q built stage %q, want %q",
+			slot,
+			built.Stage.ID,
+			state.CurrentStageID,
+		)
+	}
+	entrySpawnID, err := campaignEntrySpawn(built, resolved)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"load save slot %q resolve stage entry: %w",
+			slot,
+			err,
+		)
+	}
+	if entrySpawnID != state.EntrySpawnID {
+		return nil, fmt.Errorf(
+			"load save slot %q built spawn %q, want %q",
+			slot,
+			entrySpawnID,
+			state.EntrySpawnID,
+		)
+	}
+	portalInside, err := portalOverlaps(built, candidate)
+	if err != nil {
+		return nil, fmt.Errorf("load save slot %q portal latch: %w", slot, err)
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if sessionContainsPreview(state) {
-		return nil, fmt.Errorf(
-			"load save slot %q: temporary Maker preview state is not valid in a player save",
-			slot,
-		)
-	}
-	runtime.mu.Lock()
-	candidate, err := sim.New(runtime.built.Config)
-	if err != nil {
-		runtime.mu.Unlock()
-		return nil, fmt.Errorf("load save slot %q: %w", slot, err)
-	}
-	if err := candidate.LoadSession(state); err != nil {
-		runtime.mu.Unlock()
-		return nil, fmt.Errorf("load save slot %q: %w", slot, err)
-	}
+
+	// All decoding, topology validation, stage construction, and portal-latch
+	// validation above operate on detached candidates. These assignments are
+	// the single no-fail commit boundary.
+	runtime.buildOptions = resolved
+	runtime.built = built
 	runtime.simulation = candidate
+	runtime.campaign = activeCampaign
 	runtime.virtual = make(map[string]virtualAction)
 	runtime.pendingAbilities = make(map[string]bool)
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
+	runtime.portalCooldownTicks = 0
+	runtime.portalInside = portalInside
 	runtime.revision++
-	tick := runtime.simulation.Snapshot().Tick
-	runtime.mu.Unlock()
-	return struct {
-		Slot   string `json:"slot"`
-		Loaded bool   `json:"loaded"`
-		Tick   uint64 `json:"tick"`
-	}{slot, true, tick}, nil
-}
 
-func sessionContainsPreview(state sim.SessionState) bool {
-	return len(state.PreviewEntities) != 0 ||
-		len(state.PreviewQuests) != 0 ||
-		len(state.RemovedEntityIDs) != 0 ||
-		state.Dialogue.Definition != nil
+	return campaignLoadResult{
+		Slot:   slot,
+		Loaded: true,
+		Stage:  state.CurrentStageID,
+		Spawn:  state.EntrySpawnID,
+		Locale: state.Locale,
+		Mode:   state.Mode,
+		Bytes:  len(data),
+	}, nil
 }
 
 func ebitengineVersion() string {

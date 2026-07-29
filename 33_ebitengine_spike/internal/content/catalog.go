@@ -16,18 +16,29 @@ import (
 	"strings"
 )
 
-const CatalogSchemaVersion = 1
+const (
+	CatalogSchemaVersion = 2
+	// MaxContentIDBytes matches the durable campaign identifier contract.
+	// Content IDs are ASCII, so bytes and characters have the same length.
+	MaxContentIDBytes = 128
+)
 
 var contentIDPattern = regexp.MustCompile(
 	`^[a-z][a-z0-9_]*\.[a-z][a-z0-9_.-]*$`,
 )
 
+func validContentID(id string) bool {
+	return len(id) <= MaxContentIDBytes &&
+		contentIDPattern.MatchString(id)
+}
+
 // Catalog is the deterministic, runtime-neutral representation emitted by the
 // content compiler. Definitions and graph nodes are ordered by content ID.
 type Catalog struct {
-	SchemaVersion   int          `json:"schema_version"`
-	Definitions     []Definition `json:"definitions"`
-	DependencyGraph Graph        `json:"graph"`
+	SchemaVersion   int             `json:"schema_version"`
+	Manifest        ProjectManifest `json:"project"`
+	Definitions     []Definition    `json:"definitions"`
+	DependencyGraph Graph           `json:"graph"`
 }
 
 // Definition retains the project-relative source path for diagnostics while
@@ -249,6 +260,7 @@ func (catalog *Catalog) WithDefinition(
 	}
 	candidate := &Catalog{
 		SchemaVersion:   CatalogSchemaVersion,
+		Manifest:        cloneProjectManifest(catalog.Manifest),
 		Definitions:     definitions,
 		DependencyGraph: buildGraph(definitions),
 	}
@@ -277,6 +289,9 @@ func (catalog *Catalog) lookup(id string) (Definition, bool) {
 func MarshalCanonical(catalog *Catalog) ([]byte, error) {
 	if catalog == nil {
 		return nil, fmt.Errorf("marshal content catalog: catalog is nil")
+	}
+	if err := validateCatalog(catalog); err != nil {
+		return nil, err
 	}
 	data, err := json.MarshalIndent(catalog, "", "  ")
 	if err != nil {
@@ -344,6 +359,9 @@ func validateCatalog(catalog *Catalog) error {
 			catalog.SchemaVersion,
 		)
 	}
+	if err := validateProjectManifest(catalog.Manifest); err != nil {
+		return err
+	}
 	if catalog.DependencyGraph.Total != len(catalog.Definitions) ||
 		catalog.DependencyGraph.Total != len(catalog.DependencyGraph.Nodes) {
 		return fmt.Errorf(
@@ -383,7 +401,6 @@ func validateCatalog(catalog *Catalog) error {
 		definitionsByID[id] = definition
 		lastID = id
 	}
-
 	edgeCount := 0
 	reverseEdgeCount := 0
 	forward := make(map[string]struct{})
@@ -512,10 +529,11 @@ func validateDefinition(data map[string]any, source string) error {
 		return fmt.Errorf("%s: kind must be a non-empty string", source)
 	}
 	id, ok := data["id"].(string)
-	if !ok || !contentIDPattern.MatchString(id) {
+	if !ok || !validContentID(id) {
 		return fmt.Errorf(
-			"%s: id must match namespace.name using lowercase characters",
+			"%s: id must match namespace.name using lowercase characters and be at most %d bytes",
 			source,
+			MaxContentIDBytes,
 		)
 	}
 	return nil

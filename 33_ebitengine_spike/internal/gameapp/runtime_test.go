@@ -3,15 +3,27 @@ package gameapp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
 	"path/filepath"
 	"reflect"
 	"sync"
 	"testing"
 
+	gamecatalog "practice_love2d/33_ebitengine_spike/game"
 	"practice_love2d/33_ebitengine_spike/internal/ebitapp"
+	"practice_love2d/33_ebitengine_spike/internal/gamebuild"
 	"practice_love2d/33_ebitengine_spike/internal/protocol"
 	"practice_love2d/33_ebitengine_spike/internal/storage"
 )
+
+func verticalSliceBuildOptions() gamebuild.Options {
+	return gamebuild.Options{
+		StageID:  "stage.rpg_village",
+		SpawnID:  "default",
+		LocaleID: "locale.ko",
+	}
+}
 
 func newTestRuntime(t *testing.T) *Runtime {
 	t.Helper()
@@ -21,6 +33,7 @@ func newTestRuntime(t *testing.T) *Runtime {
 	}
 	runtime, err := New(Options{
 		CatalogPath: filepath.Join("..", "..", "game", "catalog.json"),
+		Build:       verticalSliceBuildOptions(),
 		Store:       store,
 	})
 	if err != nil {
@@ -41,8 +54,206 @@ func TestRuntimeUsesEmbeddedCatalogWithoutWorkingDirectoryDependency(
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := runtime.View().World.Stage; got != "stage.rpg_village" {
-		t.Fatalf("embedded stage = %q", got)
+	view := runtime.View()
+	if got := view.World.Stage; got != "stage.village" {
+		t.Fatalf("embedded stage = %q, want stage.village", got)
+	}
+	if got, want := len(view.Entities), 3; got != want {
+		t.Fatalf("embedded entities = %d, want %d", got, want)
+	}
+	entityIDs := make([]string, 0, len(view.Entities))
+	for _, entity := range view.Entities {
+		entityIDs = append(entityIDs, entity.ID)
+	}
+	if got, want := entityIDs, []string{"guide", "merchant", "player"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("embedded entity IDs = %v, want %v", got, want)
+	}
+	if got := runtime.buildOptions; got.StageID != "stage.village" ||
+		got.SpawnID != "default" || got.LocaleID != "locale.ko" {
+		t.Fatalf("resolved embedded build options = %#v", got)
+	}
+}
+
+func TestResolveBuildOptionsUsesManifestOnlyForEmptyFields(t *testing.T) {
+	t.Parallel()
+	catalog, err := loadCatalog("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	impact := gamebuild.ImpactOptions{
+		DamageShakePixels:  9,
+		DamageShakeSeconds: 0.2,
+	}
+	got := resolveBuildOptions(catalog, gamebuild.Options{
+		StageID:  "stage.rpg_village",
+		LocaleID: "locale.en",
+		Impact:   impact,
+	})
+	want := gamebuild.Options{
+		StageID:  "stage.rpg_village",
+		LocaleID: "locale.en",
+		Impact:   impact,
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("resolved build options = %#v, want %#v", got, want)
+	}
+}
+
+func TestExplicitStageDoesNotInheritManifestStartSpawn(t *testing.T) {
+	t.Parallel()
+	store, err := storage.NewFileStore(filepath.Join(t.TempDir(), "saves"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime, err := New(Options{
+		Build: gamebuild.Options{StageID: "stage.world_grove"},
+		Store: store,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := runtime.View().World.Stage; got != "stage.world_grove" {
+		t.Fatalf("explicit stage = %q", got)
+	}
+	if got := runtime.buildOptions; got.SpawnID != "" ||
+		got.LocaleID != "locale.ko" {
+		t.Fatalf("resolved explicit-stage options = %#v", got)
+	}
+	player := worldEntity(t, runtime.worldSnapshotLocked(), "player")
+	if player.X != 96 || player.Y != 288 {
+		t.Fatalf("authored grove player position = (%v, %v)", player.X, player.Y)
+	}
+}
+
+func TestNewGameAndReloadResolveCurrentManifestDefaults(t *testing.T) {
+	t.Parallel()
+	catalogPath := filepath.Join(t.TempDir(), "catalog.json")
+	if err := os.WriteFile(catalogPath, gamecatalog.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store, err := storage.NewFileStore(filepath.Join(t.TempDir(), "saves"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime, err := New(Options{
+		CatalogPath: catalogPath,
+		Store:       store,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := runtime.View().HUD.Title; got != "버드나무 마을" {
+		t.Fatalf("initial manifest locale title = %q", got)
+	}
+
+	writeCatalogDefaultLocale(t, catalogPath, "locale.en")
+	callRuntime(
+		t,
+		runtime,
+		protocol.MethodAppStartNewGame,
+		protocol.EmptyParams{},
+	)
+	if got := runtime.View().HUD.Title; got != "Willow Village" {
+		t.Fatalf("new-game manifest locale title = %q", got)
+	}
+	if got := runtime.buildOptions.LocaleID; got != "locale.en" {
+		t.Fatalf("new-game resolved locale = %q", got)
+	}
+
+	callRuntime(
+		t,
+		runtime,
+		protocol.MethodEntitySetPosition,
+		protocol.SetPositionParams{
+			EntityID: "player",
+			X:        430,
+			Y:        300,
+		},
+	)
+	writeCatalogDefaultLocale(t, catalogPath, "locale.ko")
+	callRuntime(
+		t,
+		runtime,
+		protocol.MethodAppReloadContent,
+		protocol.EmptyParams{},
+	)
+	view := runtime.View()
+	if got := view.HUD.Title; got != "버드나무 마을" {
+		t.Fatalf("reload manifest locale title = %q", got)
+	}
+	if got := runtime.buildOptions.LocaleID; got != "locale.ko" {
+		t.Fatalf("reload resolved locale = %q", got)
+	}
+	if got := worldEntity(t, runtime.worldSnapshotLocked(), "player").X; got != 430 {
+		t.Fatalf("reload did not preserve active session position: %v", got)
+	}
+}
+
+func TestFailedNewGameKeepsResolvedRuntimeAtomic(t *testing.T) {
+	t.Parallel()
+	catalogPath := filepath.Join(t.TempDir(), "catalog.json")
+	if err := os.WriteFile(catalogPath, gamecatalog.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store, err := storage.NewFileStore(filepath.Join(t.TempDir(), "saves"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime, err := New(Options{
+		CatalogPath: catalogPath,
+		Store:       store,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeView := runtime.View()
+	beforeOptions := runtime.buildOptions
+	beforeProject := runtime.catalog.Project()
+
+	writeCatalogDefaultLocale(t, catalogPath, "locale.missing")
+	if err := runtime.startNewGame(context.Background()); err == nil {
+		t.Fatal("new game accepted a missing manifest locale")
+	}
+	if got := runtime.View(); !reflect.DeepEqual(got, beforeView) {
+		t.Fatalf("failed new game changed view:\n got %#v\nwant %#v", got, beforeView)
+	}
+	if got := runtime.buildOptions; !reflect.DeepEqual(got, beforeOptions) {
+		t.Fatalf("failed new game changed build options: %#v", got)
+	}
+	if got := runtime.catalog.Project(); !reflect.DeepEqual(got, beforeProject) {
+		t.Fatalf("failed new game changed active catalog: %#v", got)
+	}
+}
+
+func writeCatalogDefaultLocale(
+	t *testing.T,
+	path string,
+	localeID string,
+) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document map[string]any
+	if err := json.Unmarshal(data, &document); err != nil {
+		t.Fatal(err)
+	}
+	project, ok := document["project"].(map[string]any)
+	if !ok {
+		t.Fatal("catalog project manifest is missing")
+	}
+	locale, ok := project["locale"].(map[string]any)
+	if !ok {
+		t.Fatal("catalog project locale is missing")
+	}
+	locale["default"] = localeID
+	encoded, err := json.Marshal(document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, encoded, 0o600); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -183,7 +394,7 @@ func TestWallMutationIsIdentifiedValidatedAndTransactional(t *testing.T) {
 	}
 }
 
-func TestVirtualInputStepAndSaveLoadAreDeterministic(t *testing.T) {
+func TestCampaignSaveLoadRebuildsFreshDeterministicWorld(t *testing.T) {
 	t.Parallel()
 	runtime := newTestRuntime(t)
 	initial := runtime.worldSnapshotLocked()
@@ -243,8 +454,15 @@ func TestVirtualInputStepAndSaveLoadAreDeterministic(t *testing.T) {
 		protocol.SaveSlotParams{Slot: "automation"},
 	)
 	restored := runtime.worldSnapshotLocked()
-	if got := worldEntity(t, restored, "player").X; got != movedPlayer.X {
-		t.Fatalf("restored x = %v, want %v", got, movedPlayer.X)
+	if got := worldEntity(t, restored, "player").X; got != initialPlayer.X {
+		t.Fatalf("fresh player x = %v, want %v", got, initialPlayer.X)
+	}
+	if restored.Tick != 0 || restored.WorldTick != 0 {
+		t.Fatalf(
+			"fresh World clocks = tick %d, world tick %d",
+			restored.Tick,
+			restored.WorldTick,
+		)
 	}
 
 	callRuntime(
@@ -254,7 +472,7 @@ func TestVirtualInputStepAndSaveLoadAreDeterministic(t *testing.T) {
 		protocol.StepParams{Frames: 1},
 	)
 	afterExpiredInput := runtime.worldSnapshotLocked()
-	if got := worldEntity(t, afterExpiredInput, "player").X; got != movedPlayer.X {
+	if got := worldEntity(t, afterExpiredInput, "player").X; got != initialPlayer.X {
 		t.Fatalf("expired virtual input moved player to %v", got)
 	}
 }
@@ -289,7 +507,7 @@ func TestCancelledStepRollsBackPartialBatch(t *testing.T) {
 	runtime.mu.RLock()
 	beforeVirtual := cloneVirtualActions(runtime.virtual)
 	beforeRevision := runtime.revision
-	beforePaused := runtime.paused
+	beforePaused := runtime.automationPaused
 	runtime.mu.RUnlock()
 
 	ctx := &cancelAfterContext{
@@ -303,7 +521,7 @@ func TestCancelledStepRollsBackPartialBatch(t *testing.T) {
 	runtime.mu.RLock()
 	afterVirtual := cloneVirtualActions(runtime.virtual)
 	afterRevision := runtime.revision
-	afterPaused := runtime.paused
+	afterPaused := runtime.automationPaused
 	runtime.mu.RUnlock()
 	if !reflect.DeepEqual(after, before) ||
 		!reflect.DeepEqual(afterVirtual, beforeVirtual) ||
@@ -314,6 +532,50 @@ func TestCancelledStepRollsBackPartialBatch(t *testing.T) {
 			before,
 			after,
 		)
+	}
+}
+
+func TestSuccessfulStepPreservesAutomationPauseState(t *testing.T) {
+	t.Parallel()
+
+	for _, paused := range []bool{false, true} {
+		paused := paused
+		t.Run(fmt.Sprintf("paused=%t", paused), func(t *testing.T) {
+			t.Parallel()
+			runtime := newTestRuntime(t)
+			runtime.automationPaused = paused
+
+			result, err := runtime.step(context.Background(), 1)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			runtime.mu.RLock()
+			after := runtime.automationPaused
+			runtime.mu.RUnlock()
+			if after != paused {
+				t.Fatalf(
+					"step changed automation pause from %t to %t",
+					paused,
+					after,
+				)
+			}
+
+			wire, err := json.Marshal(result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var response struct {
+				Paused bool `json:"paused"`
+				Tick   int  `json:"tick"`
+			}
+			if err := json.Unmarshal(wire, &response); err != nil {
+				t.Fatal(err)
+			}
+			if response.Paused != paused || response.Tick != 1 {
+				t.Fatalf("step response = %s", wire)
+			}
+		})
 	}
 }
 

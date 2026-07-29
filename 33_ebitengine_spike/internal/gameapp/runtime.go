@@ -10,10 +10,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"sort"
 	"sync"
 
 	gamecatalog "practice_love2d/33_ebitengine_spike/game"
+	"practice_love2d/33_ebitengine_spike/internal/campaign"
 	"practice_love2d/33_ebitengine_spike/internal/content"
 	"practice_love2d/33_ebitengine_spike/internal/ebitapp"
 	"practice_love2d/33_ebitengine_spike/internal/gamebuild"
@@ -40,22 +42,11 @@ type previewEntity struct {
 	metadata gamebuild.InstanceMetadata
 }
 
-// Runtime serializes every mutable simulation operation. Ebitengine's update
-// goroutine and protocol connection goroutines may call it concurrently.
-type Runtime struct {
-	mu sync.RWMutex
-
-	catalogPath  string
+type runtimeCheckpoint struct {
 	buildOptions gamebuild.Options
-	catalog      *content.Catalog
 	built        *gamebuild.Result
 	simulation   *sim.Simulation
-	store        storage.Store
-
-	paused      bool
-	quit        bool
-	quitPending bool
-	revision    uint64
+	campaign     *campaign.Campaign
 
 	virtual          map[string]virtualAction
 	pendingAbilities map[string]bool
@@ -64,6 +55,45 @@ type Runtime struct {
 
 	previewSequence uint64
 	previewEntities map[string]previewEntity
+
+	portalCooldownTicks int
+	portalInside        map[string]bool
+	revision            uint64
+}
+
+// Runtime serializes every mutable simulation operation. Ebitengine's update
+// goroutine and protocol connection goroutines may call it concurrently.
+type Runtime struct {
+	mu sync.RWMutex
+
+	catalogPath    string
+	buildOverrides gamebuild.Options
+	buildOptions   gamebuild.Options
+	catalog        *content.Catalog
+	campaignConfig campaign.Config
+	campaign       *campaign.Campaign
+	built          *gamebuild.Result
+	simulation     *sim.Simulation
+	store          storage.Store
+
+	// automationPaused is controlled only by Emulation.* and the physical
+	// debug pause key. Semantic title/pause/gameover UI belongs to the
+	// campaign flow controller and must never reuse this clock gate.
+	automationPaused bool
+	quit             bool
+	quitPending      bool
+	revision         uint64
+
+	virtual          map[string]virtualAction
+	pendingAbilities map[string]bool
+	pendingRemovals  map[string]bool
+	moving           map[string]bool
+
+	previewSequence uint64
+	previewEntities map[string]previewEntity
+
+	portalCooldownTicks int
+	portalInside        map[string]bool
 
 	captureMu sync.RWMutex
 	capture   CaptureFunc
@@ -77,14 +107,34 @@ func New(options Options) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	built, simulation, err := buildSimulation(catalog, options.Build)
+	resolved := resolveBuildOptions(catalog, options.Build)
+	campaignConfig, err := gamebuild.BuildCampaignConfig(catalog)
 	if err != nil {
 		return nil, err
 	}
+	built, simulation, err := buildSimulation(catalog, resolved)
+	if err != nil {
+		return nil, err
+	}
+	activeCampaign, err := newCampaignForWorld(
+		campaignConfig,
+		built,
+		resolved,
+	)
+	if err != nil {
+		return nil, err
+	}
+	portalInside, err := portalOverlaps(built, simulation)
+	if err != nil {
+		return nil, fmt.Errorf("seed initial portal latch: %w", err)
+	}
 	runtime := &Runtime{
 		catalogPath:      options.CatalogPath,
-		buildOptions:     options.Build,
+		buildOverrides:   options.Build,
+		buildOptions:     resolved,
 		catalog:          catalog,
+		campaignConfig:   campaignConfig,
+		campaign:         activeCampaign,
 		built:            built,
 		simulation:       simulation,
 		store:            options.Store,
@@ -92,6 +142,7 @@ func New(options Options) (*Runtime, error) {
 		pendingAbilities: make(map[string]bool),
 		pendingRemovals:  make(map[string]bool),
 		moving:           make(map[string]bool),
+		portalInside:     portalInside,
 		revision:         1,
 	}
 	runtime.resetPreviewLocked()
@@ -103,6 +154,25 @@ func loadCatalog(path string) (*content.Catalog, error) {
 		return content.LoadBytes(gamecatalog.Bytes())
 	}
 	return content.LoadFile(path)
+}
+
+func resolveBuildOptions(
+	catalog *content.Catalog,
+	overrides gamebuild.Options,
+) gamebuild.Options {
+	resolved := overrides
+	project := catalog.Project()
+	if resolved.StageID == "" {
+		resolved.StageID = project.Flow.StartStage
+	}
+	if resolved.SpawnID == "" &&
+		resolved.StageID == project.Flow.StartStage {
+		resolved.SpawnID = project.Flow.StartSpawn
+	}
+	if resolved.LocaleID == "" {
+		resolved.LocaleID = project.Locale.Default
+	}
+	return resolved
 }
 
 func buildSimulation(
@@ -118,6 +188,83 @@ func buildSimulation(
 		return nil, nil, fmt.Errorf("construct simulation: %w", err)
 	}
 	return built, simulation, nil
+}
+
+func newCampaignForWorld(
+	config campaign.Config,
+	built *gamebuild.Result,
+	options gamebuild.Options,
+) (*campaign.Campaign, error) {
+	active, err := campaign.NewGame(config)
+	if err != nil {
+		return nil, err
+	}
+	entrySpawnID, err := campaignEntrySpawn(built, options)
+	if err != nil {
+		return nil, err
+	}
+	state := active.Snapshot()
+	if state.CurrentStageID == built.Stage.ID &&
+		state.EntrySpawnID == entrySpawnID &&
+		state.Locale == options.LocaleID {
+		return active, nil
+	}
+	if err := active.Transaction(func(state *campaign.State) error {
+		state.CurrentStageID = built.Stage.ID
+		state.EntrySpawnID = entrySpawnID
+		state.Locale = options.LocaleID
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf(
+			"align campaign with initial world %s/%s: %w",
+			built.Stage.ID,
+			entrySpawnID,
+			err,
+		)
+	}
+	return active, nil
+}
+
+func campaignEntrySpawn(
+	built *gamebuild.Result,
+	options gamebuild.Options,
+) (string, error) {
+	if options.SpawnID != "" {
+		return options.SpawnID, nil
+	}
+	if len(built.Stage.SpawnPoints) == 0 {
+		return "default", nil
+	}
+
+	var controlled *sim.EntityConfig
+	for index := range built.Config.Entities {
+		if built.Config.Entities[index].Controlled {
+			controlled = &built.Config.Entities[index]
+			break
+		}
+	}
+	if controlled != nil {
+		matched := ""
+		for _, spawn := range built.Stage.SpawnPoints {
+			if spawn.Position != controlled.Position {
+				continue
+			}
+			if matched != "" {
+				return "", fmt.Errorf(
+					"stage %q has multiple entry spawns at the authored player position; an explicit spawn is required",
+					built.Stage.ID,
+				)
+			}
+			matched = spawn.ID
+		}
+		if matched != "" {
+			return matched, nil
+		}
+	}
+	return "", fmt.Errorf(
+		"stage %q has no entry spawn at the authored player position; an explicit spawn is required",
+		built.Stage.ID,
+	)
 }
 
 // SetCapture connects Page.captureScreenshot after the Ebitengine game owns
@@ -161,7 +308,36 @@ func (runtime *Runtime) reloadContent(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	built, candidate, err := buildSimulation(catalog, runtime.buildOptions)
+	campaignConfig, err := gamebuild.BuildCampaignConfig(catalog)
+	if err != nil {
+		return err
+	}
+	campaignState := runtime.campaign.Snapshot()
+	if err := validateCampaignReloadTopology(
+		runtime.campaignConfig,
+		campaignConfig,
+	); err != nil {
+		return err
+	}
+	resolved := runtime.buildOptions
+	resolved.StageID = campaignState.CurrentStageID
+	resolved.SpawnID = campaignState.EntrySpawnID
+	resolved.LocaleID = campaignState.Locale
+	if campaignState.Locale == runtime.campaignConfig.DefaultLocale {
+		// A campaign still following the old project default follows a changed
+		// default during explicit developer reload. A user-selected locale is
+		// retained.
+		resolved.LocaleID = campaignConfig.DefaultLocale
+	}
+	built, candidate, err := buildSimulation(catalog, resolved)
+	if err != nil {
+		return err
+	}
+	activeCampaign, err := restoreReloadedCampaign(
+		campaignConfig,
+		campaignState,
+		resolved.LocaleID,
+	)
 	if err != nil {
 		return err
 	}
@@ -172,7 +348,14 @@ func (runtime *Runtime) reloadContent(ctx context.Context) error {
 			err,
 		)
 	}
+	portalInside, err := portalOverlaps(built, candidate)
+	if err != nil {
+		return fmt.Errorf("reload portal latch: %w", err)
+	}
 	runtime.catalog = catalog
+	runtime.buildOptions = resolved
+	runtime.campaignConfig = campaignConfig
+	runtime.campaign = activeCampaign
 	runtime.built = built
 	runtime.simulation = candidate
 	runtime.virtual = make(map[string]virtualAction)
@@ -180,8 +363,72 @@ func (runtime *Runtime) reloadContent(ctx context.Context) error {
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
+	runtime.portalCooldownTicks = 0
+	runtime.portalInside = portalInside
 	runtime.revision++
 	return nil
+}
+
+func validateCampaignReloadTopology(
+	current campaign.Config,
+	next campaign.Config,
+) error {
+	if current.ProjectID != next.ProjectID {
+		return fmt.Errorf(
+			"reload project identity changed from %q to %q; start a new game to open another project",
+			current.ProjectID,
+			next.ProjectID,
+		)
+	}
+	checks := []struct {
+		name  string
+		left  any
+		right any
+	}{
+		{"config version", current.Version, next.Version},
+		{"initial stage", current.InitialStageID, next.InitialStageID},
+		{
+			"initial entry spawn",
+			current.InitialEntrySpawnID,
+			next.InitialEntrySpawnID,
+		},
+		{"locale topology", current.Locales, next.Locales},
+		{"stage entry topology", current.Stages, next.Stages},
+		{"flag topology", current.Flags, next.Flags},
+		{"item topology", current.Items, next.Items},
+		{
+			"equipment slot topology",
+			current.EquipmentSlots,
+			next.EquipmentSlots,
+		},
+		{"quest objective topology", current.Quests, next.Quests},
+	}
+	for _, check := range checks {
+		if !reflect.DeepEqual(check.left, check.right) {
+			return fmt.Errorf(
+				"reload campaign %s changed; start a new game to accept incompatible content",
+				check.name,
+			)
+		}
+	}
+	return nil
+}
+
+func restoreReloadedCampaign(
+	config campaign.Config,
+	state campaign.State,
+	localeID string,
+) (*campaign.Campaign, error) {
+	state.ContentID = config.ContentID
+	state.Locale = localeID
+	active, err := campaign.Restore(config, state)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"reload campaign progress is incompatible with edited content: %w",
+			err,
+		)
+	}
+	return active, nil
 }
 
 func (runtime *Runtime) startNewGame(ctx context.Context) error {
@@ -198,11 +445,31 @@ func (runtime *Runtime) startNewGame(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	built, simulation, err := buildSimulation(catalog, runtime.buildOptions)
+	resolved := resolveBuildOptions(catalog, runtime.buildOverrides)
+	campaignConfig, err := gamebuild.BuildCampaignConfig(catalog)
 	if err != nil {
 		return err
 	}
+	built, simulation, err := buildSimulation(catalog, resolved)
+	if err != nil {
+		return err
+	}
+	activeCampaign, err := newCampaignForWorld(
+		campaignConfig,
+		built,
+		resolved,
+	)
+	if err != nil {
+		return err
+	}
+	portalInside, err := portalOverlaps(built, simulation)
+	if err != nil {
+		return fmt.Errorf("seed new-game portal latch: %w", err)
+	}
 	runtime.catalog = catalog
+	runtime.buildOptions = resolved
+	runtime.campaignConfig = campaignConfig
+	runtime.campaign = activeCampaign
 	runtime.built = built
 	runtime.simulation = simulation
 	runtime.virtual = make(map[string]virtualAction)
@@ -210,6 +477,8 @@ func (runtime *Runtime) startNewGame(ctx context.Context) error {
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
+	runtime.portalCooldownTicks = 0
+	runtime.portalInside = portalInside
 	runtime.revision++
 	return nil
 }
@@ -219,12 +488,18 @@ func (runtime *Runtime) resetLocked() error {
 	if err != nil {
 		return err
 	}
+	portalInside, err := portalOverlaps(runtime.built, candidate)
+	if err != nil {
+		return fmt.Errorf("reset portal latch: %w", err)
+	}
 	runtime.simulation = candidate
 	runtime.virtual = make(map[string]virtualAction)
 	runtime.pendingAbilities = make(map[string]bool)
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
+	runtime.portalCooldownTicks = 0
+	runtime.portalInside = portalInside
 	runtime.revision++
 	return nil
 }
@@ -271,4 +546,54 @@ func (runtime *Runtime) allMetadataLocked() []gamebuild.InstanceMetadata {
 		result = append(result, runtime.previewEntities[id].metadata)
 	}
 	return result
+}
+
+func (runtime *Runtime) checkpointLocked() runtimeCheckpoint {
+	return runtimeCheckpoint{
+		buildOptions:        runtime.buildOptions,
+		built:               runtime.built,
+		simulation:          runtime.simulation,
+		campaign:            runtime.campaign,
+		virtual:             runtime.virtual,
+		pendingAbilities:    runtime.pendingAbilities,
+		pendingRemovals:     runtime.pendingRemovals,
+		moving:              runtime.moving,
+		previewSequence:     runtime.previewSequence,
+		previewEntities:     runtime.previewEntities,
+		portalCooldownTicks: runtime.portalCooldownTicks,
+		portalInside:        runtime.portalInside,
+		revision:            runtime.revision,
+	}
+}
+
+func (runtime *Runtime) detachMutableLocked(
+	checkpoint runtimeCheckpoint,
+) {
+	runtime.simulation = checkpoint.simulation.Clone()
+	runtime.virtual = cloneVirtualActions(checkpoint.virtual)
+	runtime.pendingAbilities = cloneBoolMap(checkpoint.pendingAbilities)
+	runtime.pendingRemovals = cloneBoolMap(checkpoint.pendingRemovals)
+	runtime.moving = cloneBoolMap(checkpoint.moving)
+	runtime.previewEntities = clonePreviewEntities(
+		checkpoint.previewEntities,
+	)
+	runtime.portalInside = cloneBoolMap(checkpoint.portalInside)
+}
+
+func (runtime *Runtime) restoreCheckpointLocked(
+	checkpoint runtimeCheckpoint,
+) {
+	runtime.buildOptions = checkpoint.buildOptions
+	runtime.built = checkpoint.built
+	runtime.simulation = checkpoint.simulation
+	runtime.campaign = checkpoint.campaign
+	runtime.virtual = checkpoint.virtual
+	runtime.pendingAbilities = checkpoint.pendingAbilities
+	runtime.pendingRemovals = checkpoint.pendingRemovals
+	runtime.moving = checkpoint.moving
+	runtime.previewSequence = checkpoint.previewSequence
+	runtime.previewEntities = checkpoint.previewEntities
+	runtime.portalCooldownTicks = checkpoint.portalCooldownTicks
+	runtime.portalInside = checkpoint.portalInside
+	runtime.revision = checkpoint.revision
 }
