@@ -8,6 +8,7 @@ return {
     maximum_action_depth = 64,
     content_roots = {"game/content"},
     features = {
+        "engine.features.game_flow",
         "engine.features.movement.topdown",
         "engine.features.camera",
         "engine.features.presentation.impact",
@@ -21,6 +22,10 @@ return {
         "engine.features.action.parry",
         "engine.features.presentation.basic",
     },
+    flow = {
+        save_slot = "campaign",
+        start_stage = "stage.start",
+    },
     input = {
         actions = {
             move_up = {keys = {"w", "up"}, buttons = {"dpup"}},
@@ -31,6 +36,11 @@ return {
             special = {keys = {"f", "v"}, buttons = {"y"}},
             dodge = {keys = {"lshift", "rshift", "x"}, buttons = {"b"}},
             parry = {keys = {"c", "lctrl", "rctrl"}, buttons = {"leftshoulder"}},
+            menu_up = {keys = {"w", "up"}, buttons = {"dpup"}},
+            menu_down = {keys = {"s", "down"}, buttons = {"dpdown"}},
+            menu_confirm = {keys = {"return", "space"}, buttons = {"a"}},
+            menu_cancel = {keys = {"escape", "backspace"}, buttons = {"b"}},
+            pause = {keys = {"p", "escape"}, buttons = {"start"}},
             restart = {keys = {"r"}, buttons = {"back"}},
             debug_overlay = {keys = {"f1"}, buttons = {}},
         },

@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 )
@@ -54,7 +55,12 @@ type smokeReport struct {
 	Stage      string  `json:"stage"`
 	PlayerID   string  `json:"player_id"`
 	FixedDelta float64 `json:"fixed_dt"`
-	Movement   struct {
+	Flow       struct {
+		InitialMode string   `json:"initial_mode"`
+		Options     []string `json:"options"`
+		Screenshot  string   `json:"screenshot"`
+	} `json:"flow"`
+	Movement struct {
 		StartX float64 `json:"start_x"`
 		EndX   float64 `json:"end_x"`
 		Delta  float64 `json:"delta"`
@@ -573,6 +579,37 @@ func executeSmokeScenario(
 			scenario.Profile,
 		)
 	}
+	report.Project = state.Project
+	report.Profile = state.Profile
+	report.Stage = scenario.Stage
+	report.FixedDelta = state.FixedDelta
+
+	var initial worldSnapshot
+	if err := client.call("World.getSnapshot", nil, &initial); err != nil {
+		return report, err
+	}
+	report.Flow.InitialMode = initial.GameFlow.Mode
+	report.Flow.Options = append(
+		[]string(nil),
+		initial.GameFlow.Options...,
+	)
+	if initial.GameFlow.Mode != "title" ||
+		initial.GameFlow.Started ||
+		!slices.Contains(initial.GameFlow.Options, "new_game") ||
+		!slices.Contains(initial.GameFlow.Options, "quit") {
+		return report, fmt.Errorf(
+			"generated profile must boot a fresh title with new_game and "+
+				"quit, got mode=%q started=%t options=%v",
+			initial.GameFlow.Mode,
+			initial.GameFlow.Started,
+			initial.GameFlow.Options,
+		)
+	}
+	report.Flow.Screenshot = filepath.Join(artifacts, "smoke-title.png")
+	if err := captureScreenshot(client, report.Flow.Screenshot); err != nil {
+		return report, err
+	}
+
 	if err := client.call(
 		"App.startNewGame",
 		map[string]any{"stageId": scenario.Stage},
@@ -591,10 +628,6 @@ func executeSmokeScenario(
 			scenario.Stage,
 		)
 	}
-	report.Project = state.Project
-	report.Profile = state.Profile
-	report.Stage = state.StageID
-	report.FixedDelta = state.FixedDelta
 	steps := state.Simulation.SteppedFrames
 
 	player, err := runSmokeMovement(

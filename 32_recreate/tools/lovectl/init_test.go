@@ -56,6 +56,10 @@ func TestInitCreatesEachIndependentProfileWithoutOverwrite(t *testing.T) {
 				`profile = "` + profile + `"`,
 				`title = "Maker \"Test\""`,
 				`initial_stage = "stage.start"`,
+				`"engine.features.game_flow"`,
+				`save_slot = "campaign"`,
+				`start_stage = "stage.start"`,
+				`pause = {`,
 			} {
 				if !strings.Contains(text, expected) {
 					t.Fatalf("manifest lacks %q:\n%s", expected, text)

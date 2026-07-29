@@ -22,6 +22,44 @@ return {
 파일명과 디렉터리는 정리를 위한 것이며 등록 역할을 하지 않는다.
 `game/content` 아래 어느 하위 디렉터리에 놓아도 자동 탐색된다.
 
+## 프로젝트와 game flow
+
+새 프로젝트의 composition root는 `game/game.lua`다. RPG, 액션 RPG,
+순수 액션 모두 완전한 게임으로 시작하려면 `game_flow` feature와 의미
+입력을 함께 선언한다.
+
+```lua
+features = {
+    "engine.features.game_flow",
+    -- 선택한 이동·액션·RPG feature
+},
+flow = {
+    save_slot = "campaign",
+    start_stage = "stage.start",
+    -- start_spawn = "default", -- 생략하면 stage 기본 진입점
+},
+input = {
+    actions = {
+        menu_up = {keys = {"w", "up"}, buttons = {"dpup"}},
+        menu_down = {keys = {"s", "down"}, buttons = {"dpdown"}},
+        menu_confirm = {keys = {"return"}, buttons = {"a"}},
+        menu_cancel = {keys = {"escape"}, buttons = {"b"}},
+        pause = {keys = {"p", "escape"}, buttons = {"start"}},
+    },
+},
+```
+
+처음 실행하면 `new_game`, `quit`가 있는 title이 열린다. 저장이
+검증되면 `continue`가 추가되고, 플레이 중 `pause`로 저장·타이틀 메뉴를
+연다. 플레이어 사망은 gameover를 열며 콘텐츠 action
+`{type = "finish_game"}`은 ending을 연다. `{type = "save_game"}`은
+manifest의 슬롯에 저장하고 `game_flow_state` 조건은 `started` 또는
+`completed`를 검사한다. 시작·완료 여부는 save의 `game.flow` v1
+section에 들어간다.
+
+`lovectl init --profile rpg|action-rpg|action`이 이 계약을 포함한
+독립 프로젝트를 생성하므로 처음부터 직접 작성할 필요는 없다.
+
 ## Actor
 
 actor는 런타임 엔티티 프리팹이다.

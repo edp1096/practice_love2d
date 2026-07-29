@@ -143,9 +143,11 @@ TMX compile은 모든 source를 메모리와 임시 디렉터리에서 먼저 �
 
 공식 profile은 `rpg`, `action-rpg`, `action` 세 가지다. 각 profile은
 필요한 feature, 입력 action, 최소 콘텐츠와 검증 capability를 선언한다.
-`lovectl init`은 엔진을 복사하지 않고 프로젝트 composition과 콘텐츠
-디렉터리를 만든다. 프로젝트 manifest가 선택한 profile과 추가 feature를
-명시한다.
+`lovectl init`은 독립 실행과 재현 가능한 검사를 위해 현재 버전의
+`engine`, `tools/lovectl`, `tests`를 새 프로젝트에 함께 복사한다. 게임
+고유 composition과 콘텐츠는 이 번들과 분리되며, 프로젝트 manifest가
+선택한 profile과 추가 feature를 명시한다. 엔진 갱신은 생성 당시 버전을
+모호하게 추적하는 대신 검증된 새 번들로 명시적으로 승격한다.
 
 ## 구현 단계와 완료 조건
 
@@ -219,7 +221,11 @@ TMX compile은 모든 source를 메모리와 임시 디렉터리에서 먼저 �
 2026-07-30 인수에서는 `lovectl check`의 Lua 96개 테스트와 콘텐츠
 56개 정의, Go race/vet를 다시 통과했다. 빈 임시 디렉터리에서 세
 profile을 각각 생성해 `check`, 격리된 실제 화면 `smoke`, 동일 SHA의
-두 `.love` 패키지를 확인했다. 루트 `lovectl test`는 액션·패링·회피·
+두 `.love` 패키지를 확인했다. 세 smoke는 새 프로젝트가 즉시 gameplay로
+건너뛰지 않고 `new_game`, `quit`가 있는 title에서 시작하는 화면까지
+캡처한다. 같은 생성 프로젝트를 Ebitengine canonical catalog로도
+컴파일해 세 profile 모두 title과 gameplay 제한 실행을 확인했다.
+루트 `lovectl test`는 액션·패링·회피·
 투사체·status·다단 히트·보스 phase·플랫포머·RPG·저장 화면 15개와
 370 fixed tick을, `lovectl campaign`은 타이틀부터 프로세스 재시작
 이어하기·엔딩·게임오버까지 화면 13개와 198 fixed tick을 통과했다.

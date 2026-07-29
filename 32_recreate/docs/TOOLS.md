@@ -4,6 +4,25 @@
 semantic debug protocol과 transactional reload를 사용해 콘텐츠 제작을
 돕는다.
 
+## 독립 프로젝트 생성
+
+```bash
+go run ./tools/lovectl init --profile rpg ../my-rpg
+go run ./tools/lovectl init --profile action-rpg ../my-action-rpg
+go run ./tools/lovectl init --profile action ../my-action
+```
+
+대상 경로는 존재하지 않아야 하며 실패 시 반쪽짜리 디렉터리를 남기지
+않는다. 생성물에는 version을 고정한 `engine`, `tools/lovectl`, `tests`
+번들과 profile별 composition·최소 콘텐츠·smoke manifest가 들어간다.
+첫 부팅은 title이며 smoke도 `new_game`, `quit`와 title screenshot을
+먼저 검증한 뒤 gameplay capability를 검사한다.
+
+세 profile은 LÖVE의 `check`·실화면 smoke·결정적 package뿐 아니라
+Ebitengine의 canonical catalog, title 제한 실행과 gameplay 제한
+실행으로도 교차 검증한다. 순수 action에는 locale/font가 없어도 되고,
+RPG profile의 단일 locale은 자기 자신을 fallback으로 사용한다.
+
 ## 로컬 Maker 화면
 
 ```bash

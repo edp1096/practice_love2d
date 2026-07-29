@@ -79,6 +79,7 @@ core          ──────▶ 다른 게임 도메인에 의존하지 않�
 
 ```text
 App session
+ ├─ game.flow
  ├─ rpg.flags
  ├─ rpg.inventory
  ├─ rpg.equipment
@@ -128,10 +129,12 @@ portal은 World에서 App을 직접 호출하지 않는다. 의미 있는
 
 - `damage`
 - `heal`
+- `revive`
 - `stagger`
 - `invulnerable`
 - `knockback`
 - `hitstop`
+- `camera_shake`
 - `spawn_projectile`
 - `apply_status`
 - `remove_status`
@@ -145,11 +148,12 @@ portal은 World에서 App을 직접 호출하지 않는다. 의미 있는
 - `add_currency`, `spend_currency`
 - `open_shop`, `close_shop`, `buy_item`, `sell_item`
 - `set_locale`
+- `finish_game`, `save_game`
 
 현재 등록된 조건은 공통 조합인 `always`, `all`, `any`, `not` 위에
 `health_at_most`, `has_status`, `encounter_state`, `flag`, `has_item`,
 `item_equipped`, `dialogue_active`, `quest_state`, `quest_objective`,
-`currency_at_least`, `shop_active`, `locale_is`가 있다.
+`currency_at_least`, `shop_active`, `locale_is`, `game_flow_state`가 있다.
 
 각 RPG feature가 자기 어휘를 등록하므로 중앙의 거대한 `if/elseif`는
 없다. 같은 action은 대화 선택지, 퀘스트 보상, 아이템 효과와 map
@@ -337,7 +341,7 @@ Tiled 편집 계약 ── Go compiler ── canonical stage ── feature sec
 - 새 feature는 자기 스키마, 시스템, 액션, 조건을 함께 등록한다.
 - 디버그 프로토콜에는 임의 Lua 실행 기능을 추가하지 않는다.
 
-현재 debug protocol v5는 검증된 content definition과 dependency
+현재 debug protocol v8은 검증된 content definition과 dependency
 graph, semantic world snapshot, actor spawn/remove, loadout ability 요청,
 dialogue 시작, 제한된 inventory/economy mutation, save/load, 의미 입력,
 고정 frame step과 screenshot만 노출한다. 콘텐츠 데이터가 아닌 임의

@@ -53,6 +53,20 @@ RPG 기능은 action/condition/event 계약 위의 독립 feature다. 순수 액
 로드되지 않는다. 같은 actor에 action과 RPG component를 함께 붙이면
 별도의 장르 분기 없이 액션 RPG가 된다.
 
+## 새 프로젝트 생성
+
+```bash
+go run ./tools/lovectl init --profile rpg ../my-rpg
+go run ./tools/lovectl init --profile action-rpg ../my-action-rpg
+go run ./tools/lovectl init --profile action ../my-action
+```
+
+생성물은 현재 검증된 engine·도구·테스트 번들을 포함한 독립 프로젝트다.
+세 profile 모두 첫 실행에서 `new_game`, `quit`가 있는 title을 열고
+`check`, 격리된 실제 화면 `smoke`, 결정적 `.love` package를 바로
+실행할 수 있다. 이후 `game/content`와 `game/maps`, runtime asset을
+게임별 데이터로 교체한다.
+
 ## 실행
 
 ```bash

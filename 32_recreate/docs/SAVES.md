@@ -11,6 +11,7 @@ save schema v1
 │  ├─ id
 │  └─ spawn (선택)
 └─ sections
+   ├─ game.flow       v1
    ├─ rpg.flags       v1
    ├─ rpg.inventory   v1
    ├─ rpg.equipment   v1
@@ -21,7 +22,8 @@ save schema v1
 
 현재 위치는 stage와 선택된 spawn point로 표현한다. 물리 접촉, 투사체,
 공격 중간 phase, AI 내부 타이머 같은 일시 상태는 저장하지 않고 새
-World에서 다시 만든다.
+World에서 다시 만든다. `game.flow`는 새 게임 시작 여부와 완료 여부를
+보존해 이어하기와 엔딩 상태를 복원한다.
 
 ## 사용
 
