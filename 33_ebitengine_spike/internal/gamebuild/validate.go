@@ -224,7 +224,6 @@ func ValidateDefinition(
 			unsupported(issue)
 		}
 		for _, field := range []string{
-			"tilemap",
 			"encounters",
 			"triggers",
 			"completion",
@@ -237,9 +236,6 @@ func ValidateDefinition(
 					field,
 				))
 			}
-		}
-		if _, exists := data["background"]; exists {
-			unsupported("stage background color is not rendered yet")
 		}
 
 	case "dialogue":

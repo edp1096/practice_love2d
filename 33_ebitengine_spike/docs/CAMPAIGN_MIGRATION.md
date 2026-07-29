@@ -75,8 +75,9 @@ automation pause를 게임의 pause menu와 합치지 않는다.
 - [x] inventory/equipment/economy/shop 도메인 transaction
 - [x] stat 반영, item use와 shop/inventory 화면
 - [x] title/pause/continue/gameover/ending
-- [ ] tilemap과 data-driven presentation
+- [x] authored tilemap·background·image resource presentation
 - [x] 프로세스 재시작을 포함한 headless campaign acceptance
+- [ ] sprite clip·ability visual·audio의 완전한 data-driven presentation
 - [ ] projectile/status/secondary ability 및 나머지 fixture
 
 ## 현재 인수 근거
@@ -97,6 +98,13 @@ automation pause를 게임의 pause menu와 합치지 않는다.
 시나리오 12의 player death → gameover → retry는
 `TestPlayerDeathOpensGameOverAndRetryBuildsFreshWorld`가 별도로 검증한다.
 모든 테스트는 Ebitengine 창을 생성하지 않는다.
+
+`stage.world_hub/default`의 authored tilemap, background, image resource는
+`gamebuild → gameapp View → Ebitengine renderer` 경계를 그대로 통과한다.
+실제 Ubuntu arm64 창을 2 tick만 실행해 960×540 PNG를 캡처하고 자동
+종료하는 visual acceptance로 타일 레이어, 카메라 변환, Tiled flip flag와
+충돌벽 overlay를 확인했다. sprite clip·ability visual·audio까지
+data-driven이라는 뜻은 아니며 해당 작업은 별도 gate로 남긴다.
 
 `Flow.getState`, `Flow.move`, `Flow.activate`는 title/pause/gameover/ending
 화면을 외부 자동화가 의미 ID로 조회·제어하는 계약이다.

@@ -87,6 +87,8 @@ type Presentation struct {
 	StageID    string             `json:"stage_id"`
 	StageName  string             `json:"stage_name"`
 	Background [4]float64         `json:"background"`
+	Images     []ImageAsset       `json:"images"`
+	Tilemap    *Tilemap           `json:"tilemap,omitempty"`
 	Instances  []InstanceMetadata `json:"instances"`
 }
 
@@ -123,6 +125,7 @@ type stageDefinition struct {
 	Walls         []stageWall       `json:"walls"`
 	SpawnPoints   []stageSpawnPoint `json:"spawn_points"`
 	Portals       []stagePortal     `json:"portals"`
+	Tilemap       *stageTilemap     `json:"tilemap,omitempty"`
 }
 
 type stageCamera struct {
@@ -382,6 +385,17 @@ func Build(catalog *content.Catalog, options Options) (*Result, error) {
 			StageName: localized(strings, stage.NameKey, stage.Name),
 		},
 		Stage: StageBlueprint{ID: stage.ID},
+	}
+	result.Presentation.Images, err = buildImageAssets(catalog)
+	if err != nil {
+		return nil, fmt.Errorf("%s image resources: %w", stage.ID, err)
+	}
+	result.Presentation.Tilemap, err = buildTilemap(
+		stage.Tilemap,
+		result.Presentation.Images,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("%s tilemap: %w", stage.ID, err)
 	}
 	for index := range min(len(stage.Background), 4) {
 		value := stage.Background[index]

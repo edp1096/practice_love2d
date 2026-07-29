@@ -14,6 +14,21 @@ type Model interface {
 	View() View
 }
 
+// ImageResourceProvider is the optional immutable resource manifest exposed by
+// a production model. Paths are resolved by the platform adapter's packaged
+// asset filesystem, never by the process working directory.
+type ImageResourceProvider interface {
+	ImageResources() []ImageResource
+}
+
+type ImageResource struct {
+	ID     string
+	Path   string
+	Width  int
+	Height int
+	Filter string
+}
+
 // View is an immutable render snapshot produced after a simulation tick.
 type View struct {
 	Tick             uint64
@@ -21,8 +36,9 @@ type View struct {
 	AutomationPaused bool
 	Quit             bool
 
-	Camera CameraView
-	World  WorldView
+	Camera  CameraView
+	World   WorldView
+	Tilemap *TilemapView
 
 	Entities  []EntityView
 	Walls     []RectView
@@ -43,9 +59,40 @@ type CameraView struct {
 }
 
 type WorldView struct {
-	Width  float64
-	Height float64
-	Stage  string
+	Width      float64
+	Height     float64
+	Stage      string
+	Background color.RGBA
+}
+
+type TilemapView struct {
+	Source     string
+	TileWidth  int
+	TileHeight int
+	Tilesets   []TilesetView
+	Layers     []TileLayerView
+}
+
+type TilesetView struct {
+	ID         string
+	AssetID    string
+	FirstGID   uint32
+	TileCount  int
+	Columns    int
+	TileWidth  int
+	TileHeight int
+}
+
+type TileLayerView struct {
+	ID      string
+	Name    string
+	Width   int
+	Height  int
+	Visible bool
+	Opacity float64
+	OffsetX float64
+	OffsetY float64
+	Data    []uint32
 }
 
 type RectView struct {

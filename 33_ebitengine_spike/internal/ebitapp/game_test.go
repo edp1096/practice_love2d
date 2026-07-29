@@ -1,11 +1,166 @@
 package ebitapp
 
 import (
+	"image"
 	"reflect"
 	"strings"
 	"testing"
 	"unicode/utf8"
 )
+
+func TestTileDrawCommandsPreserveLayersGIDsFlipsAndCamera(t *testing.T) {
+	t.Parallel()
+
+	view := View{
+		Camera: CameraView{
+			X:      4,
+			Y:      2,
+			ShakeX: 1,
+			ShakeY: -1,
+			Zoom:   2,
+		},
+		Tilemap: &TilemapView{
+			TileWidth:  16,
+			TileHeight: 16,
+			Tilesets: []TilesetView{{
+				ID:         "terrain",
+				AssetID:    "image.terrain",
+				FirstGID:   1,
+				TileCount:  4,
+				Columns:    2,
+				TileWidth:  8,
+				TileHeight: 8,
+			}},
+			Layers: []TileLayerView{{
+				ID:      "ground",
+				Width:   2,
+				Height:  2,
+				Visible: true,
+				Opacity: 0.5,
+				OffsetX: 4,
+				OffsetY: 2,
+				Data: []uint32{
+					1,
+					tileFlipHorizontal | 2,
+					tileFlipVertical | 3,
+					tileFlipDiagonal | 4,
+				},
+			}},
+		},
+	}
+	commands := tileDrawCommands(view)
+	if len(commands) != 4 {
+		t.Fatalf("tile commands = %#v", commands)
+	}
+	if commands[0].AssetID != "image.terrain" ||
+		commands[0].Source != image.Rect(0, 0, 8, 8) ||
+		commands[0].X != 2 ||
+		commands[0].Y != -2 ||
+		commands[0].Width != 32 ||
+		commands[0].Height != 32 ||
+		commands[0].Opacity != 0.5 {
+		t.Fatalf("first tile command = %#v", commands[0])
+	}
+	if commands[1].Source != image.Rect(8, 0, 16, 8) ||
+		!commands[1].FlipHorizontal ||
+		commands[1].FlipVertical ||
+		commands[1].FlipDiagonal {
+		t.Fatalf("horizontal tile command = %#v", commands[1])
+	}
+	if commands[2].Source != image.Rect(0, 8, 8, 16) ||
+		!commands[2].FlipVertical {
+		t.Fatalf("vertical tile command = %#v", commands[2])
+	}
+	if commands[3].Source != image.Rect(8, 8, 16, 16) ||
+		!commands[3].FlipDiagonal {
+		t.Fatalf("diagonal tile command = %#v", commands[3])
+	}
+
+	horizontal := tileVertices(commands[1])
+	if horizontal[0].SrcX != 16 || horizontal[1].SrcX != 8 {
+		t.Fatalf("horizontal tile UVs = %#v", horizontal)
+	}
+	vertical := tileVertices(commands[2])
+	if vertical[0].SrcY != 16 || vertical[3].SrcY != 8 {
+		t.Fatalf("vertical tile UVs = %#v", vertical)
+	}
+	diagonal := tileVertices(commands[3])
+	if diagonal[1].SrcX != 8 || diagonal[1].SrcY != 16 {
+		t.Fatalf("diagonal tile UVs = %#v", diagonal)
+	}
+}
+
+func TestTileDrawCommandsCullAndIgnoreHiddenMalformedLayers(t *testing.T) {
+	t.Parallel()
+
+	view := View{
+		Camera: CameraView{X: 10_000, Y: 10_000, Zoom: 1},
+		Tilemap: &TilemapView{
+			TileWidth:  32,
+			TileHeight: 32,
+			Tilesets: []TilesetView{{
+				AssetID:    "image.terrain",
+				FirstGID:   1,
+				TileCount:  1,
+				Columns:    1,
+				TileWidth:  32,
+				TileHeight: 32,
+			}},
+			Layers: []TileLayerView{
+				{
+					ID:      "offscreen",
+					Width:   1,
+					Height:  1,
+					Visible: true,
+					Opacity: 1,
+					Data:    []uint32{1},
+				},
+				{
+					ID:      "hidden",
+					Width:   1,
+					Height:  1,
+					Visible: false,
+					Opacity: 1,
+					Data:    []uint32{1},
+				},
+				{
+					ID:      "malformed",
+					Width:   2,
+					Height:  2,
+					Visible: true,
+					Opacity: 1,
+					Data:    []uint32{1},
+				},
+			},
+		},
+	}
+	if got := tileDrawCommands(view); len(got) != 0 {
+		t.Fatalf("culled tile commands = %#v", got)
+	}
+}
+
+func TestPackagedAssetPathRejectsTraversalAndHostPaths(t *testing.T) {
+	t.Parallel()
+
+	got, err := packagedAssetPath(
+		"assets/runtime/images/tilesets/world.png",
+	)
+	if err != nil || got != "images/tilesets/world.png" {
+		t.Fatalf("packaged asset path = %q, %v", got, err)
+	}
+	for _, invalid := range []string{
+		"",
+		"/assets/runtime/world.png",
+		"assets/runtime/../secret.png",
+		"assets/runtime\\world.png",
+		"images/world.png",
+		"assets/runtime/",
+	} {
+		if _, err := packagedAssetPath(invalid); err == nil {
+			t.Fatalf("unsafe packaged asset path %q was accepted", invalid)
+		}
+	}
+}
 
 func TestCaptureRequestsArrivingDuringDrawWaitForNextFrame(t *testing.T) {
 	t.Parallel()

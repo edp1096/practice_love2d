@@ -139,6 +139,83 @@ func TestBuildUsesAuthoredActionRPGContent(t *testing.T) {
 	}
 }
 
+func TestBuildPreservesAuthoredTilemapAndImageManifest(t *testing.T) {
+	t.Parallel()
+
+	result, err := Build(loadCatalog(t), Options{
+		StageID:  "stage.world_hub",
+		SpawnID:  "default",
+		LocaleID: "locale.ko",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Presentation.Images) != 6 {
+		t.Fatalf(
+			"presentation images = %d, want 6",
+			len(result.Presentation.Images),
+		)
+	}
+	var world ImageAsset
+	for _, asset := range result.Presentation.Images {
+		if asset.ID == "image.world_tileset" {
+			world = asset
+			break
+		}
+	}
+	if world.Path !=
+		"assets/runtime/images/tilesets/tileset_area1.png" ||
+		world.Width != 864 ||
+		world.Height != 576 ||
+		world.Filter != "nearest" {
+		t.Fatalf("world tileset resource = %#v", world)
+	}
+
+	tilemap := result.Presentation.Tilemap
+	if tilemap == nil ||
+		tilemap.Source != "game/maps/world_hub.tmx" ||
+		tilemap.TileWidth != 32 ||
+		tilemap.TileHeight != 32 ||
+		len(tilemap.Tilesets) != 1 ||
+		len(tilemap.Layers) != 1 {
+		t.Fatalf("world tilemap = %#v", tilemap)
+	}
+	tileset := tilemap.Tilesets[0]
+	if tileset.ID != "world_tileset" ||
+		tileset.AssetID != "image.world_tileset" ||
+		tileset.FirstGID != 1 ||
+		tileset.TileCount != 486 ||
+		tileset.Columns != 27 ||
+		tileset.TileWidth != 32 ||
+		tileset.TileHeight != 32 {
+		t.Fatalf("world tileset = %#v", tileset)
+	}
+	layer := tilemap.Layers[0]
+	if layer.ID != "ground" ||
+		layer.Width != 34 ||
+		layer.Height != 18 ||
+		!layer.Visible ||
+		layer.Opacity != 1 ||
+		len(layer.Data) != 34*18 ||
+		layer.Data[0] != 29 {
+		t.Fatalf("world ground layer = %#v", layer)
+	}
+
+	// Tile data returned by one build cannot mutate a later fresh build.
+	layer.Data[0] = 0
+	second, err := Build(loadCatalog(t), Options{
+		StageID:  "stage.world_hub",
+		SpawnID:  "default",
+		LocaleID: "locale.ko",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Presentation.Tilemap.Layers[0].Data[0] != 29 {
+		t.Fatal("tilemap data leaked between independent builds")
+	}
+}
+
 func TestBuildAppliesNamedEntrySpawnToControlledActor(t *testing.T) {
 	t.Parallel()
 
@@ -326,6 +403,22 @@ func TestValidateDefinitionSeparatesSchemaFromRuntimeCoverage(t *testing.T) {
 	if !fireBolt.SchemaValid || fireBolt.FullyApplied ||
 		len(fireBolt.Warnings) == 0 {
 		t.Fatalf("fire bolt validation = %#v", fireBolt)
+	}
+	worldHub, err := ValidateDefinition(catalog, "stage.world_hub")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !worldHub.SchemaValid {
+		t.Fatalf("world hub validation = %#v", worldHub)
+	}
+	for _, warning := range worldHub.Warnings {
+		if strings.Contains(warning, `stage field "tilemap"`) ||
+			strings.Contains(warning, "background color is not rendered") {
+			t.Fatalf(
+				"implemented tilemap/background reported unsupported: %q",
+				warning,
+			)
+		}
 	}
 
 	raw, ok := catalog.Definition("ability.fire_bolt")

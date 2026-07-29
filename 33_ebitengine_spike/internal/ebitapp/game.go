@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"math"
 	"os"
+	"path"
 	"sort"
 	"strings"
 	"unicode"
@@ -215,6 +216,7 @@ type Game struct {
 
 	canvas  *ebiten.Image
 	images  map[string]*ebiten.Image
+	filters map[string]ebiten.Filter
 	font    *text.GoTextFaceSource
 	capture chan captureRequest
 
@@ -238,23 +240,13 @@ func NewWithOptions(model Model, options Options) (*Game, error) {
 			"a screenshot path requires a non-zero stop tick",
 		)
 	}
-	images := make(map[string]*ebiten.Image)
-	for id, path := range map[string]string{
-		"image.player_sheet":    "images/player/player-sheet.png",
-		"image.slime_red_sheet": "images/enemies/slime-red-sheet.png",
-		"image.guide_sheet":     "images/npcs/guide-sheet.png",
-		"image.merchant_sheet":  "images/npcs/merchant-sheet.png",
-		"image.slash":           "images/effects/slash.png",
-	} {
-		data, err := gameassets.ReadFile(path)
-		if err != nil {
-			return nil, fmt.Errorf("load %s: %w", id, err)
-		}
-		decoded, err := png.Decode(bytes.NewReader(data))
-		if err != nil {
-			return nil, fmt.Errorf("decode %s: %w", id, err)
-		}
-		images[id] = ebiten.NewImageFromImage(decoded)
+	resources := defaultImageResources()
+	if provider, ok := model.(ImageResourceProvider); ok {
+		resources = provider.ImageResources()
+	}
+	images, filters, err := loadImageResources(resources)
+	if err != nil {
+		return nil, err
 	}
 	fontData, err := gameassets.ReadFile(
 		"fonts/Hakgyoansim_ChaekgalpiR.ttf",
@@ -270,10 +262,145 @@ func NewWithOptions(model Model, options Options) (*Game, error) {
 		model:   model,
 		canvas:  ebiten.NewImage(ScreenWidth, ScreenHeight),
 		images:  images,
+		filters: filters,
 		font:    font,
 		capture: make(chan captureRequest, 8),
 		options: options,
 	}, nil
+}
+
+func defaultImageResources() []ImageResource {
+	return []ImageResource{
+		{
+			ID:     "image.guide_sheet",
+			Path:   "assets/runtime/images/npcs/guide-sheet.png",
+			Width:  384,
+			Height: 96,
+			Filter: "nearest",
+		},
+		{
+			ID:     "image.merchant_sheet",
+			Path:   "assets/runtime/images/npcs/merchant-sheet.png",
+			Width:  384,
+			Height: 96,
+			Filter: "nearest",
+		},
+		{
+			ID:     "image.player_sheet",
+			Path:   "assets/runtime/images/player/player-sheet.png",
+			Width:  384,
+			Height: 960,
+			Filter: "nearest",
+		},
+		{
+			ID:     "image.slash",
+			Path:   "assets/runtime/images/effects/slash.png",
+			Width:  46,
+			Height: 39,
+			Filter: "nearest",
+		},
+		{
+			ID:     "image.slime_red_sheet",
+			Path:   "assets/runtime/images/enemies/slime-red-sheet.png",
+			Width:  176,
+			Height: 64,
+			Filter: "nearest",
+		},
+		{
+			ID:     "image.world_tileset",
+			Path:   "assets/runtime/images/tilesets/tileset_area1.png",
+			Width:  864,
+			Height: 576,
+			Filter: "nearest",
+		},
+	}
+}
+
+func loadImageResources(
+	resources []ImageResource,
+) (map[string]*ebiten.Image, map[string]ebiten.Filter, error) {
+	images := make(map[string]*ebiten.Image, len(resources))
+	filters := make(map[string]ebiten.Filter, len(resources))
+	for index, resource := range resources {
+		if resource.ID == "" {
+			return nil, nil, fmt.Errorf("image resource %d has an empty ID", index)
+		}
+		if _, duplicate := images[resource.ID]; duplicate {
+			return nil, nil, fmt.Errorf(
+				"image resource %q is duplicated",
+				resource.ID,
+			)
+		}
+		relative, err := packagedAssetPath(resource.Path)
+		if err != nil {
+			return nil, nil, fmt.Errorf(
+				"image resource %q: %w",
+				resource.ID,
+				err,
+			)
+		}
+		data, err := gameassets.ReadFile(relative)
+		if err != nil {
+			return nil, nil, fmt.Errorf("load %s: %w", resource.ID, err)
+		}
+		decoded, err := png.Decode(bytes.NewReader(data))
+		if err != nil {
+			return nil, nil, fmt.Errorf("decode %s: %w", resource.ID, err)
+		}
+		bounds := decoded.Bounds()
+		if bounds.Dx() != resource.Width ||
+			bounds.Dy() != resource.Height {
+			return nil, nil, fmt.Errorf(
+				"image resource %q is %dx%d, manifest requires %dx%d",
+				resource.ID,
+				bounds.Dx(),
+				bounds.Dy(),
+				resource.Width,
+				resource.Height,
+			)
+		}
+		filter, err := imageFilter(resource.Filter)
+		if err != nil {
+			return nil, nil, fmt.Errorf(
+				"image resource %q: %w",
+				resource.ID,
+				err,
+			)
+		}
+		images[resource.ID] = ebiten.NewImageFromImage(decoded)
+		filters[resource.ID] = filter
+	}
+	return images, filters, nil
+}
+
+func packagedAssetPath(authored string) (string, error) {
+	const prefix = "assets/runtime/"
+	if authored == "" ||
+		strings.Contains(authored, "\\") ||
+		path.Clean(authored) != authored ||
+		!strings.HasPrefix(authored, prefix) {
+		return "", fmt.Errorf(
+			"path %q must be a clean project-relative path below %s",
+			authored,
+			prefix,
+		)
+	}
+	relative := strings.TrimPrefix(authored, prefix)
+	if relative == "" || relative == "." {
+		return "", fmt.Errorf("path %q does not name a file", authored)
+	}
+	return relative, nil
+}
+
+func imageFilter(value string) (ebiten.Filter, error) {
+	switch value {
+	case "", "nearest":
+		return ebiten.FilterNearest, nil
+	case "linear":
+		return ebiten.FilterLinear, nil
+	default:
+		return 0, fmt.Errorf("unsupported filter %q", value)
+	}
 }
 
 func (game *Game) Update() error {
@@ -395,7 +522,11 @@ func (game *Game) encodeCanvas() ([]byte, error) {
 }
 
 func (game *Game) drawView(view View) {
-	game.canvas.Fill(color.RGBA{R: 16, G: 20, B: 28, A: 255})
+	background := view.World.Background
+	if background.A == 0 {
+		background = color.RGBA{R: 16, G: 20, B: 28, A: 255}
+	}
+	game.canvas.Fill(background)
 	game.drawGround(view)
 	for _, wall := range view.Walls {
 		fill := wall.Color
@@ -482,6 +613,10 @@ func (game *Game) drawView(view View) {
 }
 
 func (game *Game) drawGround(view View) {
+	if view.Tilemap != nil {
+		game.drawTilemap(view)
+		return
+	}
 	const tile = 48
 	zoom := cameraZoom(view)
 	startX := int(math.Floor(view.Camera.X/float64(tile))) * tile
@@ -506,6 +641,182 @@ func (game *Game) drawGround(view View) {
 			)
 		}
 	}
+}
+
+const (
+	tileFlipHorizontal uint32 = 0x80000000
+	tileFlipVertical   uint32 = 0x40000000
+	tileFlipDiagonal   uint32 = 0x20000000
+	tileGIDMask               = ^(tileFlipHorizontal |
+		tileFlipVertical |
+		tileFlipDiagonal)
+)
+
+type tileDrawCommand struct {
+	AssetID        string
+	Source         image.Rectangle
+	X              float32
+	Y              float32
+	Width          float32
+	Height         float32
+	Opacity        float32
+	FlipHorizontal bool
+	FlipVertical   bool
+	FlipDiagonal   bool
+}
+
+func (game *Game) drawTilemap(view View) {
+	for _, command := range tileDrawCommands(view) {
+		source := game.images[command.AssetID]
+		if source == nil ||
+			command.Source.Min.X < 0 ||
+			command.Source.Min.Y < 0 ||
+			command.Source.Max.X > source.Bounds().Dx() ||
+			command.Source.Max.Y > source.Bounds().Dy() {
+			continue
+		}
+		options := &ebiten.DrawTrianglesOptions{
+			Filter: game.filters[command.AssetID],
+		}
+		game.canvas.DrawTriangles(
+			tileVertices(command),
+			[]uint16{0, 1, 2, 0, 2, 3},
+			source,
+			options,
+		)
+	}
+}
+
+func tileDrawCommands(view View) []tileDrawCommand {
+	tilemap := view.Tilemap
+	if tilemap == nil ||
+		tilemap.TileWidth <= 0 ||
+		tilemap.TileHeight <= 0 {
+		return nil
+	}
+	zoom := cameraZoom(view)
+	if zoom <= 0 {
+		return nil
+	}
+	result := make([]tileDrawCommand, 0)
+	for _, layer := range tilemap.Layers {
+		if !layer.Visible ||
+			layer.Opacity <= 0 ||
+			layer.Opacity > 1 ||
+			layer.Width <= 0 ||
+			layer.Height <= 0 ||
+			layer.Width > int(^uint(0)>>1)/layer.Height ||
+			len(layer.Data) != layer.Width*layer.Height {
+			continue
+		}
+		for index, encoded := range layer.Data {
+			gid := encoded & tileGIDMask
+			if gid == 0 {
+				continue
+			}
+			tileset, exists := tilemapTilesetForGID(
+				tilemap.Tilesets,
+				gid,
+			)
+			if !exists ||
+				tileset.Columns <= 0 ||
+				tileset.TileWidth <= 0 ||
+				tileset.TileHeight <= 0 {
+				continue
+			}
+			local := int(gid - tileset.FirstGID)
+			sourceX := local % tileset.Columns * tileset.TileWidth
+			sourceY := local / tileset.Columns * tileset.TileHeight
+			column := index % layer.Width
+			row := index / layer.Width
+			worldX := layer.OffsetX +
+				float64(column*tilemap.TileWidth)
+			worldY := layer.OffsetY +
+				float64(row*tilemap.TileHeight)
+			screenX, screenY := worldScreenPoint(view, worldX, worldY)
+			width := float64(tilemap.TileWidth) * zoom
+			height := float64(tilemap.TileHeight) * zoom
+			if screenX+width <= 0 ||
+				screenY+height <= 0 ||
+				screenX >= ScreenWidth ||
+				screenY >= ScreenHeight {
+				continue
+			}
+			result = append(result, tileDrawCommand{
+				AssetID: tileset.AssetID,
+				Source: image.Rect(
+					sourceX,
+					sourceY,
+					sourceX+tileset.TileWidth,
+					sourceY+tileset.TileHeight,
+				),
+				X:              float32(screenX),
+				Y:              float32(screenY),
+				Width:          float32(width),
+				Height:         float32(height),
+				Opacity:        float32(layer.Opacity),
+				FlipHorizontal: encoded&tileFlipHorizontal != 0,
+				FlipVertical:   encoded&tileFlipVertical != 0,
+				FlipDiagonal:   encoded&tileFlipDiagonal != 0,
+			})
+		}
+	}
+	return result
+}
+
+func tilemapTilesetForGID(
+	tilesets []TilesetView,
+	gid uint32,
+) (TilesetView, bool) {
+	for _, tileset := range tilesets {
+		first := uint64(tileset.FirstGID)
+		last := first + uint64(tileset.TileCount)
+		if uint64(gid) >= first && uint64(gid) < last {
+			return tileset, true
+		}
+	}
+	return TilesetView{}, false
+}
+
+func tileVertices(command tileDrawCommand) []ebiten.Vertex {
+	type corner struct {
+		x float32
+		y float32
+	}
+	corners := [...]corner{
+		{x: 0, y: 0},
+		{x: 1, y: 0},
+		{x: 1, y: 1},
+		{x: 0, y: 1},
+	}
+	vertices := make([]ebiten.Vertex, len(corners))
+	sourceWidth := float32(command.Source.Dx())
+	sourceHeight := float32(command.Source.Dy())
+	for index, destination := range corners {
+		sourceX, sourceY := destination.x, destination.y
+		// Invert Tiled's diagonal -> horizontal -> vertical transform to map
+		// each fixed destination corner back to its source UV.
+		if command.FlipVertical {
+			sourceY = 1 - sourceY
+		}
+		if command.FlipHorizontal {
+			sourceX = 1 - sourceX
+		}
+		if command.FlipDiagonal {
+			sourceX, sourceY = sourceY, sourceX
+		}
+		vertices[index] = ebiten.Vertex{
+			DstX:   command.X + destination.x*command.Width,
+			DstY:   command.Y + destination.y*command.Height,
+			SrcX:   float32(command.Source.Min.X) + sourceX*sourceWidth,
+			SrcY:   float32(command.Source.Min.Y) + sourceY*sourceHeight,
+			ColorR: 1,
+			ColorG: 1,
+			ColorB: 1,
+			ColorA: command.Opacity,
+		}
+	}
+	return vertices
 }
 
 func (game *Game) screenPoint(
@@ -550,7 +861,7 @@ func (game *Game) drawEntity(view View, entity EntityView) {
 		if source != nil {
 			sub := source.SubImage(spec.source).(*ebiten.Image)
 			options := &ebiten.DrawImageOptions{}
-			options.Filter = ebiten.FilterNearest
+			options.Filter = game.filters[spec.asset]
 			options.GeoM.Translate(
 				-spec.originX,
 				-spec.originY,

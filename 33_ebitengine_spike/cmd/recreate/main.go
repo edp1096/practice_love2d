@@ -12,6 +12,7 @@ import (
 
 	"practice_love2d/33_ebitengine_spike/internal/ebitapp"
 	"practice_love2d/33_ebitengine_spike/internal/gameapp"
+	"practice_love2d/33_ebitengine_spike/internal/gamebuild"
 	"practice_love2d/33_ebitengine_spike/internal/protocol"
 	"practice_love2d/33_ebitengine_spike/internal/sim"
 	"practice_love2d/33_ebitengine_spike/internal/storage"
@@ -21,6 +22,9 @@ import (
 
 type options struct {
 	catalog       string
+	stage         string
+	spawn         string
+	locale        string
 	saveDirectory string
 	debugAddress  string
 	tokenFile     string
@@ -49,6 +53,24 @@ func run(arguments []string) error {
 		"catalog",
 		"",
 		"development override for the embedded content catalog",
+	)
+	flags.StringVar(
+		&options.stage,
+		"stage",
+		"",
+		"development stage override for deterministic runs",
+	)
+	flags.StringVar(
+		&options.spawn,
+		"spawn",
+		"",
+		"development entry-spawn override",
+	)
+	flags.StringVar(
+		&options.locale,
+		"locale",
+		"",
+		"development locale override",
 	)
 	flags.StringVar(
 		&options.saveDirectory,
@@ -105,7 +127,12 @@ func run(arguments []string) error {
 	}
 	runtime, err := gameapp.New(gameapp.Options{
 		CatalogPath: options.catalog,
-		Store:       store,
+		Build: gamebuild.Options{
+			StageID:  options.stage,
+			SpawnID:  options.spawn,
+			LocaleID: options.locale,
+		},
+		Store: store,
 		// Frame-limited runs retain the direct deterministic fixture entry
 		// used by screenshot automation; an interactive desktop boot starts
 		// at the authored title screen.

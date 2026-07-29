@@ -486,12 +486,16 @@ func (runtime *Runtime) View() ebitapp.View {
 			Width:  coordPixels(frame.Stage.MaxX - frame.Stage.MinX),
 			Height: coordPixels(frame.Stage.MaxY - frame.Stage.MinY),
 			Stage:  runtime.built.Presentation.StageID,
+			Background: presentationColor(
+				runtime.built.Presentation.Background,
+			),
 		},
 		HUD: ebitapp.HUDView{
 			Title: runtime.built.Presentation.StageName,
 			Help:  "WASD 이동 · Space 공격 · C 패링 · X 회피 · E 대화",
 		},
 	}
+	view.Tilemap = tilemapView(runtime.built.Presentation.Tilemap)
 	if runtime.automationPaused {
 		view.HUD.Status = fmt.Sprintf("일시정지 · tick %d", frame.Tick)
 	} else {

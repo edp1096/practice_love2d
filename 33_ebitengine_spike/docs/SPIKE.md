@@ -11,9 +11,10 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 하나의 실행본으로 연결했다.
 
 다만 `32_recreate`를 지금 삭제하거나 본 런타임을 즉시 교체하면 안 된다.
-현재는 프로세스 재시작을 포함한 샘플 캠페인의 headless 실행 계약까지
-통과했다. 다만 tilemap·전체 오디오와 secondary combat fixture가 아직
-남아 있으므로 시각·기능 전체가 `32_recreate`와 동등하다는 뜻은 아니다.
+현재는 프로세스 재시작을 포함한 샘플 캠페인의 headless 실행 계약과
+authored tilemap visual gate까지 통과했다. 다만 sprite clip·전체
+오디오와 secondary combat fixture가 아직 남아 있으므로 시각·기능
+전체가 `32_recreate`와 동등하다는 뜻은 아니다.
 콘솔도 일반 `go build` 대상이 아니며 각 제조사 승인, SDK, 개발기와
 비공개 Ebitengine 도구가 필요하다.
 
@@ -72,6 +73,10 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 
 - Ubuntu 22.04 arm64 실제 창과 960×540 PNG 캡처
 - 기존 hero, slime, guide, merchant, slash, font 애셋 로딩
+- catalog image manifest, stage background와 authored tilemap의
+  `gamebuild → View → renderer` 변환
+- tile layer opacity·카메라 culling·Tiled horizontal/vertical/diagonal
+  flip flag를 보존한 실제 960×540 visual acceptance
 - 기존 콘텐츠 정의 44개와 dependency path 86개 보존
 - canonical catalog SHA-256:
   `a8c64856d22cb4e6039f88737602fe3ba08bbd7c24bd5a4193cb3e2ed413d0e9`
@@ -155,7 +160,7 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 
 - platformer, arena 등 나머지 fixture stage
 - fire bolt, whirlwind, projectile와 다중 hit
-- authored tilemap·stage background 렌더링과 전체 오디오
+- sprite clip·ability visual의 완전한 data-driven 렌더링과 전체 오디오
 - projectile, status effect, secondary ability, multi-hit
 - 장비 공격력 이외의 확장 RPG stat·상태이상 계산
 - 실행 중 정의 반영과 stage/entity 생성 편집
@@ -167,10 +172,10 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 1. ~~protocol에 Maker preview 생성·삭제·대화 계약을 추가한다.~~ 완료
 2. complete campaign 기반의 manifest, Campaign/World 분리, dialogue,
    quest, inventory, equipment, economy, shop, flow 이식은 완료했다.
-   검증된 stage factory와 portal 위에 tilemap presentation을 옮긴다.
+   검증된 stage factory와 portal 위에 tilemap presentation도 옮겼다.
 3. `32_recreate`와 같은 **프로세스 재시작을 포함한** headless campaign
-   acceptance는 통과했다. tilemap까지 이식하면 visual campaign gate가
-   닫힌다.
+   acceptance와 실제 창 tilemap capture를 통과해 visual campaign gate를
+   닫았다.
 4. secondary ability, projectile, status, multi-hit과 나머지 fixture
    stage를 옮긴다.
 5. Maker가 LÖVE/Ebitengine backend를 선택해 같은 프로젝트를 미리 볼
@@ -179,7 +184,7 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 7. 제조사 승인을 확보한 플랫폼만 별도 adapter·SDK branch에서
    개발기 acceptance를 수행한다.
 
-tilemap visual campaign gate와 4번 전투 fixture까지 통과하기 전에는
+4번 전투 fixture까지 통과하기 전에는
 `33_ebitengine_spike`를 본 런타임으로 승격하지 않는다.
 
 자동화의 `Emulation.step` 정지는 위 game-flow의 pause menu와 별도
