@@ -312,6 +312,7 @@ type HUDView struct {
 	Help      string
 	Dialogue  string
 	Quest     string
+	ShowStats bool
 	Currency  int64
 	Attack    int
 	Defense   int

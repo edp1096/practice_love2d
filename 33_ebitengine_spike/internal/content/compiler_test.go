@@ -29,10 +29,10 @@ func TestCompileRecreateCatalogAcceptance(t *testing.T) {
 		t.Fatalf("Compile second: %v", err)
 	}
 
-	if got, want := first.DependencyGraph.Total, 54; got != want {
+	if got, want := first.DependencyGraph.Total, 56; got != want {
 		t.Fatalf("definition total = %d, want %d", got, want)
 	}
-	if got, want := first.DependencyGraph.EdgeCount, 86; got != want {
+	if got, want := first.DependencyGraph.EdgeCount, 88; got != want {
 		t.Fatalf("dependency paths = %d, want %d", got, want)
 	}
 	project := first.Project()
@@ -144,7 +144,7 @@ func TestCompileRecreateCatalogAcceptance(t *testing.T) {
 	}
 
 	ids := loaded.IDs()
-	if len(ids) != 54 || !sort.StringsAreSorted(ids) {
+	if len(ids) != 56 || !sort.StringsAreSorted(ids) {
 		t.Fatalf("IDs are not complete and sorted: %v", ids)
 	}
 	if ids[0] != "ability.fire_bolt" ||
@@ -582,6 +582,68 @@ return {
 					err,
 					test.contains,
 				)
+			}
+		})
+	}
+}
+
+func TestCompileProjectManifestSupportsOptionalGenreFeatures(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		locale       string
+		wantDefault  string
+		wantFallback string
+	}{
+		{
+			name: "pure action without localization",
+		},
+		{
+			name: "single locale is its own fallback",
+			locale: `
+    locale={
+        default="locale.en",
+    },`,
+			wantDefault:  "locale.en",
+			wantFallback: "locale.en",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			project := newProject(t)
+			writeProjectManifest(t, project, `return {
+    id="test.project",
+    profile="action",
+    title="Genre Project",
+    initial_stage="stage.test",
+    fixed_dt=1/60,`+test.locale+`
+    flow={
+        save_slot="campaign",
+        start_stage="stage.test",
+    },
+}`)
+			writeDefinition(
+				t,
+				project,
+				"valid.lua",
+				`return {schema_version=1, kind="test", id="test.valid"}`,
+			)
+			catalog, err := Compile(context.Background(), project)
+			if err != nil {
+				t.Fatal(err)
+			}
+			manifest := catalog.Project()
+			if manifest.Locale.Default != test.wantDefault ||
+				manifest.Locale.Fallback != test.wantFallback ||
+				manifest.Flow.StartSpawn != "" ||
+				manifest.Flow.Title != (ProjectFlowCopy{}) ||
+				manifest.Flow.GameOver != (ProjectFlowCopy{}) ||
+				manifest.Flow.Ending != (ProjectFlowCopy{}) ||
+				manifest.Font != (ProjectFont{}) {
+				t.Fatalf("optional manifest = %#v", manifest)
 			}
 		})
 	}

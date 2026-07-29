@@ -29,10 +29,10 @@
     `thanks` node의 `finish_game`이 ending을 연다.
 12. 별도 새 게임에서 player가 죽으면 gameover가 열린다.
 
-현재 32의 실행 가능한 계약은 **guardian 처치 즉시 보상**이다.
-`SAMPLE_GAME.md`의 “보고하고 보상을 받는다”는 문구와 다르므로 parity
-구현에서는 기존 acceptance를 따른다. 보상 시점을 바꾸려면 문서,
-콘텐츠, acceptance를 한 변경으로 함께 수정해야 한다.
+32와 33의 실행 가능한 계약은 모두 **guardian 처치 즉시 보상**이다.
+귀환 보고는 보상 지급이 아니라 completed 대화와 ending을 여는
+단계다. 보상 시점을 바꾸려면 문서, 콘텐츠, 양 runtime acceptance를
+한 변경으로 함께 수정해야 한다.
 
 ## 상태 경계
 

@@ -689,6 +689,17 @@ func TestHUDCurrencyUsesInt64(t *testing.T) {
 	}
 }
 
+func TestHUDPanelHeightTracksOptionalRPGStats(t *testing.T) {
+	t.Parallel()
+
+	if got := hudPanelHeight(HUDView{}); got != 84 {
+		t.Fatalf("action HUD height = %v, want 84", got)
+	}
+	if got := hudPanelHeight(HUDView{ShowStats: true}); got != 104 {
+		t.Fatalf("RPG HUD height = %v, want 104", got)
+	}
+}
+
 func TestLayoutFlowNormalizesModeSelectionAndLongKorean(
 	t *testing.T,
 ) {

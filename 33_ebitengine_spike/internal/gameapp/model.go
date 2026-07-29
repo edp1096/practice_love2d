@@ -502,6 +502,7 @@ func (runtime *Runtime) View() ebitapp.View {
 		float64(ebitapp.ScreenWidth)/viewportWidth,
 		float64(ebitapp.ScreenHeight)/viewportHeight,
 	)
+	showStats, help := runtime.hudPresentationLocked()
 	view := ebitapp.View{
 		Tick:             frame.Tick,
 		Revision:         runtime.revision,
@@ -529,9 +530,9 @@ func (runtime *Runtime) View() ebitapp.View {
 			),
 		},
 		HUD: ebitapp.HUDView{
-			Title: runtime.built.Presentation.StageName,
-			Help: "WASD 이동 · Space 공격 · F 특수 · Q 기술 · " +
-				"C 패링 · X 회피 · E 대화",
+			Title:     runtime.built.Presentation.StageName,
+			Help:      help,
+			ShowStats: showStats,
 		},
 	}
 	if music, exists := runtime.built.Presentation.Audio.Music(
@@ -550,13 +551,6 @@ func (runtime *Runtime) View() ebitapp.View {
 			Event:    cue.event,
 			AssetID:  cue.assetID,
 			Volume:   cue.volume,
-		}
-	}
-	for _, entity := range runtime.built.Config.Entities {
-		if entity.Controlled && entity.Platformer != nil {
-			view.HUD.Help = "A/D 이동 · W/↑ 점프 · Space 공격 · " +
-				"F 특수 · Q 기술"
-			break
 		}
 	}
 	view.Tilemap = tilemapView(runtime.built.Presentation.Tilemap)
@@ -860,6 +854,49 @@ func (runtime *Runtime) View() ebitapp.View {
 		}
 	}
 	return view
+}
+
+func (runtime *Runtime) hudPresentationLocked() (bool, string) {
+	parts := []string{}
+	showStats := false
+	for _, entity := range runtime.built.Config.Entities {
+		if !entity.Controlled {
+			continue
+		}
+		showStats = entity.Stats != nil
+		if entity.Platformer != nil {
+			parts = append(parts, "A/D 이동", "W/↑ 점프")
+		} else if entity.MovePerTick > 0 {
+			parts = append(parts, "WASD 이동")
+		}
+		for _, binding := range []struct {
+			input string
+			label string
+		}{
+			{input: "attack", label: "Space 공격"},
+			{input: "special", label: "F 특수"},
+			{input: "technique", label: "Q 기술"},
+		} {
+			if entity.Combat.AbilityForInput(binding.input) != nil {
+				parts = append(parts, binding.label)
+			}
+		}
+		if entity.Parry != nil {
+			parts = append(parts, "C 패링")
+		}
+		if entity.Dodge != nil {
+			parts = append(parts, "X 회피")
+		}
+		break
+	}
+	if len(runtime.contentRules.Interactions) > 0 {
+		parts = append(parts, "E 상호작용")
+	}
+	if len(runtime.contentRules.Items) > 0 {
+		parts = append(parts, "I 소지품")
+		showStats = true
+	}
+	return showStats, strings.Join(parts, " · ")
 }
 
 func (runtime *Runtime) publishAudioEventsLocked(events []sim.Event) {

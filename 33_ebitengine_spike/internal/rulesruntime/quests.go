@@ -8,8 +8,9 @@ import (
 	"practice_love2d/33_ebitengine_spike/internal/gamebuild"
 )
 
-// ApplyObjectiveEvent advances every active quest objective matching
-// (Event, ActorID). A single quest cannot contain duplicate match filters
+// ApplyObjectiveEvent advances every active quest objective matching the
+// event name and authored scalar payload filter. A single quest cannot contain
+// duplicate match filters
 // because New rejects that ambiguous topology. Unmatched, inactive-only,
 // completed-only, duplicate, and over-counted events fail closed.
 //
@@ -29,18 +30,19 @@ func (executor *Executor) ApplyObjectiveEvent(
 	if event.Event == "" {
 		return EventResult{}, errors.New("apply objective event: event is empty")
 	}
-	if event.ActorID == "" {
-		return EventResult{}, errors.New("apply objective event: actor id is empty")
-	}
 	if event.Count <= 0 || event.Count > campaign.MaxJSONInteger {
 		return EventResult{}, fmt.Errorf(
 			"apply objective event: count must be in [1, %d]",
 			campaign.MaxJSONInteger,
 		)
 	}
+	payload, err := objectiveEventPayload(event)
+	if err != nil {
+		return EventResult{}, fmt.Errorf("apply objective event: %w", err)
+	}
 
 	var candidate EventResult
-	err := live.Transaction(func(state *campaign.State) error {
+	err = live.Transaction(func(state *campaign.State) error {
 		if err := executor.requireIdentity(state); err != nil {
 			return err
 		}
@@ -55,7 +57,7 @@ func (executor *Executor) ApplyObjectiveEvent(
 			objectiveRule, exists := matchingObjective(
 				questRule,
 				event.Event,
-				event.ActorID,
+				payload,
 			)
 			if !exists {
 				continue
@@ -139,16 +141,14 @@ func (executor *Executor) ApplyObjectiveEvent(
 		switch {
 		case !knownMatch:
 			return fmt.Errorf(
-				"no quest objective matches event %q for actor %q",
+				"no quest objective matches event %q and payload",
 				event.Event,
-				event.ActorID,
 			)
 		case !activeMatch:
 			return fmt.Errorf(
-				"event %q for actor %q has no active objective; "+
+				"event %q and payload have no active objective; "+
 					"it is inactive, completed, or duplicated",
 				event.Event,
-				event.ActorID,
 			)
 		default:
 			return nil
@@ -204,12 +204,40 @@ func (executor *Executor) questComplete(
 func matchingObjective(
 	quest gamebuild.QuestRule,
 	event string,
-	actorID string,
+	payload map[string]any,
 ) (gamebuild.QuestObjectiveRule, bool) {
 	for _, objective := range quest.Objectives {
-		if objective.Event == event && objective.ActorID == actorID {
+		if objective.Matches(event, payload) {
 			return objective, true
 		}
 	}
 	return gamebuild.QuestObjectiveRule{}, false
+}
+
+func objectiveEventPayload(event ObjectiveEvent) (map[string]any, error) {
+	result := make(map[string]any, len(event.Payload)+1)
+	for key, value := range event.Payload {
+		if key == "" {
+			return nil, errors.New("payload has an empty key")
+		}
+		switch value.(type) {
+		case string, float64, bool:
+		default:
+			return nil, fmt.Errorf(
+				"payload %q must be a string, number, or boolean",
+				key,
+			)
+		}
+		result[key] = value
+	}
+	if event.ActorID != "" {
+		if value, exists := result["actor_id"]; exists &&
+			value != event.ActorID {
+			return nil, errors.New(
+				"actor id conflicts with payload actor_id",
+			)
+		}
+		result["actor_id"] = event.ActorID
+	}
+	return result, nil
 }

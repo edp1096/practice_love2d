@@ -30,16 +30,25 @@ func (config Config) Validate() error {
 		return err
 	}
 	if len(config.Locales) == 0 {
-		return fmt.Errorf("campaign config requires at least one locale")
-	}
-	if err := validateUniqueIdentifiers("locale", config.Locales); err != nil {
-		return err
-	}
-	if !containsString(config.Locales, config.DefaultLocale) {
-		return fmt.Errorf(
-			"default locale %q is not configured",
-			config.DefaultLocale,
-		)
+		if config.DefaultLocale != "" {
+			return fmt.Errorf(
+				"default locale %q is configured without locales",
+				config.DefaultLocale,
+			)
+		}
+	} else {
+		if err := validateUniqueIdentifiers(
+			"locale",
+			config.Locales,
+		); err != nil {
+			return err
+		}
+		if !containsString(config.Locales, config.DefaultLocale) {
+			return fmt.Errorf(
+				"default locale %q is not configured",
+				config.DefaultLocale,
+			)
+		}
 	}
 
 	if len(config.Stages) == 0 {
@@ -214,7 +223,14 @@ func validateState(state State, config Config) error {
 	if err := validateFlow(state.Flow, state.Mode); err != nil {
 		return err
 	}
-	if !containsString(config.Locales, state.Locale) {
+	if len(config.Locales) == 0 {
+		if state.Locale != "" {
+			return fmt.Errorf(
+				"state locale %q is configured without locales",
+				state.Locale,
+			)
+		}
+	} else if !containsString(config.Locales, state.Locale) {
 		return fmt.Errorf("state locale %q is not configured", state.Locale)
 	}
 	if err := validateLocation(state, config); err != nil {

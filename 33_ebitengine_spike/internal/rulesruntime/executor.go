@@ -43,9 +43,10 @@ type ActionResult struct {
 // the simulation bridge. Count must be positive. The runtime rejects an event
 // that exceeds an objective's remaining count instead of silently clamping it.
 type ObjectiveEvent struct {
-	Event   string `json:"event"`
-	ActorID string `json:"actor_id"`
-	Count   int64  `json:"count"`
+	Event   string         `json:"event"`
+	Payload map[string]any `json:"payload,omitempty"`
+	ActorID string         `json:"actor_id,omitempty"`
+	Count   int64          `json:"count"`
 }
 
 // QuestProgress describes one objective mutation caused by an event.

@@ -274,23 +274,6 @@ func ValidateDefinition(
 		if err := validateQuestSemantics(catalog, data, id); err != nil {
 			return DefinitionValidation{}, err
 		}
-		for index, raw := range anySlice(data["objectives"]) {
-			objective, _ := raw.(map[string]any)
-			if objective["event"] != "actor.killed" {
-				unsupported(fmt.Sprintf(
-					"quest objective %d event %q is not executed",
-					index,
-					objective["event"],
-				))
-			}
-			where, _ := objective["where"].(map[string]any)
-			if len(where) != 1 || where["actor_id"] == nil {
-				unsupported(fmt.Sprintf(
-					"quest objective %d filter is not executed",
-					index,
-				))
-			}
-		}
 		for _, field := range []string{"on_start", "on_complete"} {
 			reportRuleActionCoverage(
 				data[field],

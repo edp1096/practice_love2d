@@ -81,7 +81,7 @@ func BuildEntityPreview(
 		LocaleID: options.LocaleID,
 		Impact:   options.Impact,
 	}
-	applyDefaults(&buildOptions)
+	applyDefaults(catalog, &buildOptions)
 	strings, err := loadLocaleStrings(catalog, buildOptions.LocaleID)
 	if err != nil {
 		return nil, err
@@ -133,7 +133,7 @@ func BuildDialoguePreview(
 	}
 	localeID := options.LocaleID
 	if localeID == "" {
-		localeID = defaultLocaleID
+		localeID = catalog.Project().Locale.Default
 	}
 	strings, err := loadLocaleStrings(catalog, localeID)
 	if err != nil {

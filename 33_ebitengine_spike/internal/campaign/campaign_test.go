@@ -877,6 +877,41 @@ func applyProgress(t *testing.T, game *Campaign) {
 	}
 }
 
+func TestCampaignSupportsProjectsWithoutLocalization(t *testing.T) {
+	t.Parallel()
+
+	config := testConfig()
+	config.DefaultLocale = ""
+	config.Locales = nil
+	if err := config.Validate(); err != nil {
+		t.Fatalf("locale-free Config.Validate() error = %v", err)
+	}
+	active, err := NewGame(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := active.Snapshot().Locale; got != "" {
+		t.Fatalf("locale-free state locale = %q, want empty", got)
+	}
+	encoded, err := active.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := Decode(config, encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := decoded.Snapshot().Locale; got != "" {
+		t.Fatalf("decoded locale-free state locale = %q, want empty", got)
+	}
+	if err := active.Transaction(func(state *State) error {
+		state.Locale = "en"
+		return nil
+	}); err == nil || !strings.Contains(err.Error(), "without locales") {
+		t.Fatalf("localized transaction error = %v", err)
+	}
+}
+
 func testConfig() Config {
 	return Config{
 		Version:             CurrentConfigVersion,

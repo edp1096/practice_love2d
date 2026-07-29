@@ -468,6 +468,54 @@ func TestBuildReflectsCatalogMutation(t *testing.T) {
 	t.Fatal("hero not found")
 }
 
+func TestBuildAppliesLoveComponentDefaultsWhenFieldsAreOmitted(t *testing.T) {
+	t.Parallel()
+
+	catalog := mutateCampaignDefinition(
+		t,
+		loadCatalog(t),
+		"actor.hero",
+		func(data map[string]any) {
+			components := data["components"].(map[string]any)
+			components["action.reaction"] = map[string]any{}
+			components["action.dodge"] = map[string]any{}
+			components["action.parry"] = map[string]any{}
+		},
+	)
+	result, err := Build(catalog, Options{
+		StageID: "stage.action_room",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entity := range result.Config.Entities {
+		if entity.Kind != "actor.hero" {
+			continue
+		}
+		if entity.Reaction.HitInvulnerabilityTicks != secondsToTicks(0.3) ||
+			entity.Reaction.FlashTicks != secondsToTicks(0.16) ||
+			entity.Dodge == nil ||
+			entity.Dodge.DurationTicks != secondsToTicks(0.22) ||
+			entity.Dodge.Distance != pixels(78) ||
+			entity.Dodge.InvulnerabilityTicks != secondsToTicks(0.18) ||
+			entity.Dodge.CooldownTicks != secondsToTicks(0.48) ||
+			entity.Parry == nil ||
+			entity.Parry.WindowTicks != secondsToTicks(0.32) ||
+			entity.Parry.PerfectWindowTicks != secondsToTicks(0.12) ||
+			entity.Parry.CooldownTicks != secondsToTicks(0.75) ||
+			entity.Parry.SuccessCooldownTicks != secondsToTicks(0.18) ||
+			entity.Parry.ArcDegrees != 170 ||
+			entity.Parry.StaggerTicks != secondsToTicks(0.55) ||
+			entity.Parry.PerfectStaggerTicks != secondsToTicks(1.1) ||
+			entity.Parry.HitstopTicks != secondsToTicks(0.035) ||
+			entity.Parry.PerfectHitstopTicks != secondsToTicks(0.06) {
+			t.Fatalf("component defaults = %#v", entity)
+		}
+		return
+	}
+	t.Fatal("hero not found")
+}
+
 func TestSecondsToTicksUsesNearestNonzeroTick(t *testing.T) {
 	t.Parallel()
 

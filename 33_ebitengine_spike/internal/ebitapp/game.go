@@ -2244,7 +2244,7 @@ func (game *Game) drawHUD(view View) {
 		16,
 		14,
 		360,
-		104,
+		hudPanelHeight(view.HUD),
 		color.RGBA{R: 10, G: 13, B: 19, A: 218},
 		false,
 	)
@@ -2282,23 +2282,27 @@ func (game *Game) drawHUD(view View) {
 			view.HUD.Currency,
 		)
 	}
-	game.drawText(
-		fmt.Sprintf(
-			"ATK %d · DEF %d · MOVE %.2f · %dG",
-			view.HUD.Attack,
-			view.HUD.Defense,
-			view.HUD.MoveSpeed,
-			view.HUD.Currency,
-		),
-		28,
-		70,
-		13,
-		color.RGBA{R: 216, G: 225, B: 235, A: 255},
-	)
+	statusY := float64(70)
+	if view.HUD.ShowStats {
+		game.drawText(
+			fmt.Sprintf(
+				"ATK %d · DEF %d · MOVE %.2f · %dG",
+				view.HUD.Attack,
+				view.HUD.Defense,
+				view.HUD.MoveSpeed,
+				view.HUD.Currency,
+			),
+			28,
+			70,
+			13,
+			color.RGBA{R: 216, G: 225, B: 235, A: 255},
+		)
+		statusY = 91
+	}
 	game.drawText(
 		status,
 		28,
-		91,
+		statusY,
 		13,
 		color.RGBA{R: 189, G: 203, B: 219, A: 255},
 	)
@@ -2391,6 +2395,13 @@ func (game *Game) drawHUD(view View) {
 			color.RGBA{R: 166, G: 205, B: 219, A: 255},
 		)
 	}
+}
+
+func hudPanelHeight(hud HUDView) float32 {
+	if hud.ShowStats {
+		return 104
+	}
+	return 84
 }
 
 func (game *Game) drawText(

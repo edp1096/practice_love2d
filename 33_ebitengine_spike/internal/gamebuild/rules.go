@@ -169,10 +169,50 @@ type DialogueRule struct {
 }
 
 type QuestObjectiveRule struct {
-	ID      string `json:"id"`
-	Event   string `json:"event"`
-	ActorID string `json:"actor_id"`
-	Count   int    `json:"count"`
+	ID      string         `json:"id"`
+	Event   string         `json:"event"`
+	Where   map[string]any `json:"where"`
+	ActorID string         `json:"actor_id,omitempty"`
+	Count   int            `json:"count"`
+}
+
+// Matches applies the same scalar event-filter semantics as the LÖVE quest
+// feature. ActorID remains a compatibility projection for older adapters;
+// newly compiled rules retain the complete authored where object.
+func (rule QuestObjectiveRule) Matches(
+	event string,
+	payload map[string]any,
+) bool {
+	if rule.Event != event {
+		return false
+	}
+	where := rule.Where
+	if len(where) == 0 && rule.ActorID != "" {
+		where = map[string]any{"actor_id": rule.ActorID}
+	}
+	for key, expected := range where {
+		actual, exists := payload[key]
+		if !exists || !sameRuleScalar(actual, expected) {
+			return false
+		}
+	}
+	return true
+}
+
+func sameRuleScalar(left, right any) bool {
+	switch typed := left.(type) {
+	case string:
+		value, ok := right.(string)
+		return ok && typed == value
+	case float64:
+		value, ok := right.(float64)
+		return ok && typed == value
+	case bool:
+		value, ok := right.(bool)
+		return ok && typed == value
+	default:
+		return false
+	}
 }
 
 type QuestRule struct {
@@ -816,30 +856,48 @@ func (compiler *contentRuleCompiler) compileQuestObjective(
 	if err != nil {
 		return QuestObjectiveRule{}, fmt.Errorf("build content rules: %w", err)
 	}
-	if event != "actor.killed" {
-		return QuestObjectiveRule{}, &UnsupportedRuleCapabilityError{
-			Path:       path + ".event",
-			Capability: "quest objective event",
-			Name:       event,
+	where := map[string]any{}
+	if rawWhere, exists := objective["where"]; exists {
+		where, err = requiredObject(rawWhere, path+".where")
+		if err != nil {
+			return QuestObjectiveRule{}, fmt.Errorf(
+				"build content rules: %w",
+				err,
+			)
+		}
+		for key, value := range where {
+			if strings.TrimSpace(key) == "" {
+				return QuestObjectiveRule{}, fmt.Errorf(
+					"build content rules: %s.where has an empty filter key",
+					path,
+				)
+			}
+			switch value.(type) {
+			case string, float64, bool:
+			default:
+				return QuestObjectiveRule{}, fmt.Errorf(
+					"build content rules: %s.where.%s must be a string, number, or boolean",
+					path,
+					key,
+				)
+			}
 		}
 	}
-	where, err := requiredObject(objective["where"], path+".where")
-	if err != nil {
-		return QuestObjectiveRule{}, fmt.Errorf("build content rules: %w", err)
-	}
-	if err := rejectUnknownKeys(where, path+".where", "actor_id"); err != nil {
-		return QuestObjectiveRule{}, fmt.Errorf("build content rules: %w", err)
-	}
-	actorID, err := requiredString(where["actor_id"], path+".where.actor_id")
-	if err != nil {
-		return QuestObjectiveRule{}, fmt.Errorf("build content rules: %w", err)
-	}
-	if err := compiler.requireReference(
-		actorID,
-		"actor",
-		path+".where.actor_id",
-	); err != nil {
-		return QuestObjectiveRule{}, err
+	actorID, _ := where["actor_id"].(string)
+	if _, exists := where["actor_id"]; exists {
+		if actorID == "" {
+			return QuestObjectiveRule{}, fmt.Errorf(
+				"build content rules: %s.where.actor_id must be a non-empty string",
+				path,
+			)
+		}
+		if err := compiler.requireReference(
+			actorID,
+			"actor",
+			path+".where.actor_id",
+		); err != nil {
+			return QuestObjectiveRule{}, err
+		}
 	}
 	count, err := ruleInteger(objective["count"], path+".count", 1)
 	if err != nil {
@@ -848,6 +906,7 @@ func (compiler *contentRuleCompiler) compileQuestObjective(
 	return QuestObjectiveRule{
 		ID:      id,
 		Event:   event,
+		Where:   cloneRuleFilter(where),
 		ActorID: actorID,
 		Count:   count,
 	}, nil
@@ -1626,8 +1685,21 @@ func cloneDialogueChoiceRule(value DialogueChoiceRule) DialogueChoiceRule {
 func cloneQuestRule(value QuestRule) QuestRule {
 	result := value
 	result.Objectives = append([]QuestObjectiveRule(nil), value.Objectives...)
+	for index := range result.Objectives {
+		result.Objectives[index].Where = cloneRuleFilter(
+			result.Objectives[index].Where,
+		)
+	}
 	result.OnStart = append([]RuleAction(nil), value.OnStart...)
 	result.OnComplete = append([]RuleAction(nil), value.OnComplete...)
+	return result
+}
+
+func cloneRuleFilter(value map[string]any) map[string]any {
+	result := make(map[string]any, len(value))
+	for key, item := range value {
+		result[key] = item
+	}
 	return result
 }
 

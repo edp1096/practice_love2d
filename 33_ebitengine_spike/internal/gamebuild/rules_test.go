@@ -224,6 +224,32 @@ func TestBuildContentRulesCompilesCompleteCampaign(t *testing.T) {
 	}
 }
 
+func TestBuildContentRulesSupportsGenericUnfilteredQuestEvent(t *testing.T) {
+	t.Parallel()
+
+	catalog := loadCatalog(t)
+	mutateRuleDefinition(t, catalog, "quest.grove_guardian",
+		func(data map[string]any) {
+			objective := data["objectives"].([]any)[0].(map[string]any)
+			objective["event"] = "maker.quest.progress"
+			delete(objective, "where")
+		},
+	)
+	rules, err := BuildContentRules(catalog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	quest := requireQuestRule(t, rules, "quest.grove_guardian")
+	objective := quest.Objectives[0]
+	if objective.Event != "maker.quest.progress" ||
+		objective.ActorID != "" ||
+		len(objective.Where) != 0 ||
+		!objective.Matches("maker.quest.progress", map[string]any{}) ||
+		objective.Matches("other.event", map[string]any{}) {
+		t.Fatalf("generic objective = %#v", objective)
+	}
+}
+
 func TestBuildContentRulesIsDeterministicAndDeepDetached(t *testing.T) {
 	t.Parallel()
 
@@ -248,6 +274,7 @@ func TestBuildContentRulesIsDeterministicAndDeepDetached(t *testing.T) {
 	firstGreeting.Choices[0].Actions[0].QuestID = "quest.mutated"
 	firstQuest := ruleQuestPointer(t, &first, "quest.grove_guardian")
 	firstQuest.Objectives[0].ActorID = "actor.mutated"
+	firstQuest.Objectives[0].Where["actor_id"] = "actor.mutated"
 	firstItem := ruleItemPointer(t, &first, "item.training_sword")
 	firstItem.Equipment.AttackModifier = 999
 	firstShop := ruleShopPointer(t, &first, "shop.village")
@@ -274,6 +301,12 @@ func TestBuildContentRulesIsDeterministicAndDeepDetached(t *testing.T) {
 	}
 	if requireShopRule(t, second, "shop.village").Offers[0].BuyPrice != 25 {
 		t.Fatal("Clone shared nested offer storage with its source")
+	}
+	ruleQuestPointer(t, &cloned, "quest.grove_guardian").
+		Objectives[0].Where["actor_id"] = "actor.clone_mutation"
+	if requireQuestRule(t, second, "quest.grove_guardian").
+		Objectives[0].Where["actor_id"] != "actor.slime" {
+		t.Fatal("Clone shared nested objective filter storage with its source")
 	}
 
 	lookup, ok := second.Dialogue("dialogue.village_guide")
@@ -321,16 +354,6 @@ func TestBuildContentRulesRejectsUnsupportedCapabilities(t *testing.T) {
 			},
 			capability: "condition",
 			value:      "always",
-		},
-		{
-			name: "objective event",
-			id:   "quest.grove_guardian",
-			mutate: func(data map[string]any) {
-				objectives := data["objectives"].([]any)
-				objectives[0].(map[string]any)["event"] = "enemy.defeated"
-			},
-			capability: "quest objective event",
-			value:      "enemy.defeated",
 		},
 	} {
 		test := test

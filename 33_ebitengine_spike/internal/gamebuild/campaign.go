@@ -189,6 +189,18 @@ func BuildCampaignConfig(
 	sort.Slice(result.Quests, func(i, j int) bool {
 		return result.Quests[i].ID < result.Quests[j].ID
 	})
+	if result.InitialEntrySpawnID == "" {
+		result.InitialEntrySpawnID, err = defaultCampaignEntrySpawn(
+			result.Stages,
+			result.InitialStageID,
+		)
+		if err != nil {
+			return campaign.Config{}, fmt.Errorf(
+				"build campaign config: %w",
+				err,
+			)
+		}
+	}
 
 	if err := result.Validate(); err != nil {
 		return campaign.Config{}, fmt.Errorf(
@@ -197,6 +209,30 @@ func BuildCampaignConfig(
 		)
 	}
 	return result, nil
+}
+
+func defaultCampaignEntrySpawn(
+	stages []campaign.StageDefinition,
+	stageID string,
+) (string, error) {
+	for _, stage := range stages {
+		if stage.ID != stageID {
+			continue
+		}
+		for _, entry := range stage.EntrySpawns {
+			if entry == implicitEntrySpawnID {
+				return entry, nil
+			}
+		}
+		if len(stage.EntrySpawns) > 0 {
+			return stage.EntrySpawns[0], nil
+		}
+		return "", fmt.Errorf(
+			"initial stage %q has no entry spawn",
+			stageID,
+		)
+	}
+	return "", fmt.Errorf("initial stage %q is not configured", stageID)
 }
 
 func campaignControlledActors(

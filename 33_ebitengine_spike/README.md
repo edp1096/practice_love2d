@@ -188,7 +188,9 @@ go run ./cmd/recreatectl pause false
 나타난다.
 
 일반 회귀 테스트는 Ebitengine 창을 만들지 않는
-`go test ./...` 경로를 사용한다. 실제 창 검증이 필요할 때만
+`go test -count=1 ./...` 경로를 사용한다. `-count=1`은 형제
+`32_recreate` authoring source를 읽는 parity 검사가 예전 Go test cache를
+재사용하지 않게 한다. 실제 창 검증이 필요할 때만
 `-frames`를 지정한 단일 프로세스를 띄우며, 지정한 tick 뒤 자동으로
 종료한다.
 

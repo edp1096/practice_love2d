@@ -14,9 +14,9 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 현재는 프로세스 재시작을 포함한 샘플 캠페인의 headless 실행 계약과
 authored tilemap visual gate, secondary combat, platformer, encounter
 fixture, data-driven sprite clip·ability visual과 전체 audio
-presentation, runtime Maker editing, WebAssembly packaging gate까지
-통과했다. 다만 아래에 남은 확장 RPG 계산과 네이티브 모바일·호스트
-검증 때문에 시각·기능 전체가 `32_recreate`와 동등하다는 뜻은 아니다.
+presentation, runtime Maker editing, WebAssembly packaging gate와
+확장 RPG 계산까지 통과했다. 다만 아래에 남은 네이티브 모바일·호스트
+검증 때문에 모든 배포 대상에서 `32_recreate`와 동등하다는 뜻은 아니다.
 콘솔도 일반 `go build` 대상이 아니며 각 제조사 승인, SDK, 개발기와
 비공개 Ebitengine 도구가 필요하다.
 
@@ -91,6 +91,10 @@ presentation, runtime Maker editing, WebAssembly packaging gate까지
 - canonical catalog SHA-256:
   `c8dbc5bde518937ffb988b658930f76361ffcb258702a76956c30f2b7ff931e0`
 - `game/game.lua`의 project manifest를 schema v2 catalog에 함께 컴파일
+- `lovectl init`의 `rpg`, `action-rpg`, `action` 생성물을 같은 compiler로
+  검증하고 각각 title·gameplay 제한 실행
+- locale/font가 없는 순수 action manifest, 단일 locale의 자기 fallback,
+  생략한 기본 spawn과 flow 화면 문구 지원
 - 고정소수점 60 tick 이동과 swept wall collision
 - 공격 windup/active/recovery와 cooldown
 - 피해, 경직, 넉백, 히트스톱, 피격 flash, 카메라 흔들림
@@ -117,6 +121,8 @@ presentation, runtime Maker editing, WebAssembly packaging gate까지
   scope·action index/type을 포함한 원자적 실패 event
 - 콘텐츠 수치로 동작하는 chase/attack AI
 - 대화 시작, 퀘스트 시작·진행·완료
+- 임의 quest event 이름과 선택적 string/number/boolean payload filter를
+  typed rule runtime에서 실행
 - 전체 session 저장·불러오기와 원자적 검증
 - protocol v8의 상태·콘텐츠·월드·엔티티·입력·프레임·화면·저장 제어
 - ID가 보존된 wall 조회·검증·runtime 형상 제어
@@ -201,8 +207,8 @@ presentation, runtime Maker editing, WebAssembly packaging gate까지
 - 명시적인 `pause true` 동안만 화면 overlay를 표시하고 정밀 캡처 뒤
   `pause false`로 재개하는 자동화 수명주기
 - 창을 생성하지 않는 protocol/runtime 통합 회귀 테스트
-- `go test ./...`
-- `go test -race ./...`
+- `go test -count=1 ./...`
+- `go test -count=1 -race ./...`
 - `go vet ./...`
 - Windows amd64 전체 실행본 교차 빌드
 - 순수 simulation의 Windows amd64/macOS arm64 교차 빌드

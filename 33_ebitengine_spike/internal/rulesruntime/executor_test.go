@@ -435,6 +435,47 @@ func TestObjectiveEventsRejectOvercountUnknownAndInactive(t *testing.T) {
 	}
 }
 
+func TestGenericQuestEventWithoutActorFilterProgresses(t *testing.T) {
+	t.Parallel()
+
+	config, rules := completeDefinitions(t)
+	for questIndex := range rules.Quests {
+		if rules.Quests[questIndex].ID != "quest.grove_guardian" {
+			continue
+		}
+		rules.Quests[questIndex].Objectives[0].Event =
+			"maker.quest.progress"
+		rules.Quests[questIndex].Objectives[0].Where =
+			map[string]any{}
+		rules.Quests[questIndex].Objectives[0].ActorID = ""
+	}
+	executor, err := New(config, rules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	live, err := campaign.NewGame(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	startGroveQuest(t, executor, live, rules)
+	for count := 1; count <= 2; count++ {
+		result, err := executor.ApplyObjectiveEvent(
+			live,
+			ObjectiveEvent{
+				Event: "maker.quest.progress",
+				Count: 1,
+			},
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(result.Progress) != 1 ||
+			result.Progress[0].Current != int64(count) {
+			t.Fatalf("generic event %d result = %#v", count, result)
+		}
+	}
+}
+
 func TestShopBuySellValidationAndAtomicity(t *testing.T) {
 	t.Parallel()
 

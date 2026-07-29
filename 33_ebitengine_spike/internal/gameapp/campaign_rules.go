@@ -226,7 +226,11 @@ func (runtime *Runtime) applyObjectiveEventsLocked(
 		}
 		if !runtime.hasActiveObjectiveRemainingLocked(
 			string(event.Type),
-			metadata.ActorID,
+			map[string]any{
+				"actor_id":  metadata.ActorID,
+				"source_id": event.SourceID,
+				"target_id": event.TargetID,
+			},
 		) {
 			continue
 		}
@@ -235,7 +239,11 @@ func (runtime *Runtime) applyObjectiveEventsLocked(
 			rulesruntime.ObjectiveEvent{
 				Event:   string(event.Type),
 				ActorID: metadata.ActorID,
-				Count:   1,
+				Payload: map[string]any{
+					"source_id": event.SourceID,
+					"target_id": event.TargetID,
+				},
+				Count: 1,
 			},
 		)
 		if err != nil {
@@ -266,7 +274,7 @@ func (runtime *Runtime) applyObjectiveEventsLocked(
 
 func (runtime *Runtime) hasActiveObjectiveRemainingLocked(
 	event string,
-	actorID string,
+	payload map[string]any,
 ) bool {
 	state := runtime.campaign.Snapshot()
 	quests := make(map[string]campaign.QuestState, len(state.Quests))
@@ -286,7 +294,7 @@ func (runtime *Runtime) hasActiveObjectiveRemainingLocked(
 			objectives[objective.ID] = objective
 		}
 		for _, objective := range rule.Objectives {
-			if objective.Event != event || objective.ActorID != actorID {
+			if !objective.Matches(event, payload) {
 				continue
 			}
 			progress, exists := objectives[objective.ID]

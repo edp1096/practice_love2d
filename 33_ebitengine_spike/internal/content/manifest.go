@@ -203,54 +203,70 @@ func compileProjectManifest(data map[string]any) (ProjectManifest, error) {
 		return ProjectManifest{}, err
 	}
 
-	localeData, err := manifestObject(data, "locale", source)
-	if err != nil {
-		return ProjectManifest{}, err
-	}
-	if err := rejectUnknownManifestFields(
-		localeData,
-		source+".locale",
-		"default",
-		"fallback",
-	); err != nil {
-		return ProjectManifest{}, err
-	}
-	defaultLocale, err := manifestString(
-		localeData,
-		"default",
-		source+".locale",
-	)
-	if err != nil {
-		return ProjectManifest{}, err
-	}
-	fallbackLocale, err := manifestString(
-		localeData,
-		"fallback",
-		source+".locale",
-	)
-	if err != nil {
-		return ProjectManifest{}, err
+	var defaultLocale, fallbackLocale string
+	if rawLocale, exists := data["locale"]; exists {
+		localeData, ok := rawLocale.(map[string]any)
+		if !ok {
+			return ProjectManifest{}, fmt.Errorf(
+				"%s.locale must be an object",
+				source,
+			)
+		}
+		if err := rejectUnknownManifestFields(
+			localeData,
+			source+".locale",
+			"default",
+			"fallback",
+		); err != nil {
+			return ProjectManifest{}, err
+		}
+		defaultLocale, err = manifestString(
+			localeData,
+			"default",
+			source+".locale",
+		)
+		if err != nil {
+			return ProjectManifest{}, err
+		}
+		fallbackLocale, err = optionalManifestString(
+			localeData,
+			"fallback",
+			source+".locale",
+		)
+		if err != nil {
+			return ProjectManifest{}, err
+		}
+		if fallbackLocale == "" {
+			fallbackLocale = defaultLocale
+		}
 	}
 
-	fontData, err := manifestObject(data, "font", source)
-	if err != nil {
-		return ProjectManifest{}, err
-	}
-	if err := rejectUnknownManifestFields(
-		fontData,
-		source+".font",
-		"asset",
-		"size",
-	); err != nil {
-		return ProjectManifest{}, err
-	}
-	fontAsset, err := manifestString(fontData, "asset", source+".font")
-	if err != nil {
-		return ProjectManifest{}, err
-	}
-	fontSize, err := manifestNumber(fontData, "size", source+".font")
-	if err != nil {
-		return ProjectManifest{}, err
+	var fontAsset string
+	var fontSize float64
+	if rawFont, exists := data["font"]; exists {
+		fontData, ok := rawFont.(map[string]any)
+		if !ok {
+			return ProjectManifest{}, fmt.Errorf(
+				"%s.font must be an object",
+				source,
+			)
+		}
+		if err := rejectUnknownManifestFields(
+			fontData,
+			source+".font",
+			"asset",
+			"size",
+		); err != nil {
+			return ProjectManifest{}, err
+		}
+		fontAsset, err = manifestString(fontData, "asset", source+".font")
+		if err != nil {
+			return ProjectManifest{}, err
+		}
+		fontSize, err = manifestNumber(fontData, "size", source+".font")
+		if err != nil {
+			return ProjectManifest{}, err
+		}
 	}
 	audio, err := compileProjectAudio(data)
 	if err != nil {
@@ -281,7 +297,11 @@ func compileProjectManifest(data map[string]any) (ProjectManifest, error) {
 	if err != nil {
 		return ProjectManifest{}, err
 	}
-	startSpawn, err := manifestString(flowData, "start_spawn", source+".flow")
+	startSpawn, err := optionalManifestString(
+		flowData,
+		"start_spawn",
+		source+".flow",
+	)
 	if err != nil {
 		return ProjectManifest{}, err
 	}
@@ -490,9 +510,17 @@ func compileProjectFlowCopy(
 	field string,
 ) (ProjectFlowCopy, error) {
 	currentPath := projectManifestSource + ".flow"
-	data, err := manifestObject(flow, field, currentPath)
-	if err != nil {
-		return ProjectFlowCopy{}, err
+	raw, exists := flow[field]
+	if !exists {
+		return ProjectFlowCopy{}, nil
+	}
+	data, ok := raw.(map[string]any)
+	if !ok {
+		return ProjectFlowCopy{}, fmt.Errorf(
+			"%s.%s must be an object",
+			currentPath,
+			field,
+		)
 	}
 	copyPath := currentPath + "." + field
 	if err := rejectUnknownManifestFields(
@@ -503,11 +531,11 @@ func compileProjectFlowCopy(
 	); err != nil {
 		return ProjectFlowCopy{}, err
 	}
-	heading, err := manifestString(data, "heading_key", copyPath)
+	heading, err := optionalManifestString(data, "heading_key", copyPath)
 	if err != nil {
 		return ProjectFlowCopy{}, err
 	}
-	message, err := manifestString(data, "message_key", copyPath)
+	message, err := optionalManifestString(data, "message_key", copyPath)
 	if err != nil {
 		return ProjectFlowCopy{}, err
 	}
@@ -535,6 +563,17 @@ func manifestString(
 		)
 	}
 	return text, nil
+}
+
+func optionalManifestString(
+	data map[string]any,
+	field string,
+	currentPath string,
+) (string, error) {
+	if _, exists := data[field]; !exists {
+		return "", nil
+	}
+	return manifestString(data, field, currentPath)
 }
 
 func manifestNumber(
@@ -632,10 +671,22 @@ func validateProjectManifest(manifest ProjectManifest) error {
 			manifest.Source,
 		)
 	}
-	if !manifestIDWithNamespace(manifest.Locale.Default, "locale.") {
+	if manifest.Locale.Default == "" || manifest.Locale.Fallback == "" {
+		if manifest.Locale != (ProjectLocale{}) {
+			return fmt.Errorf(
+				"%s.locale default and fallback must both be configured",
+				manifest.Source,
+			)
+		}
+	} else if !manifestIDWithNamespace(
+		manifest.Locale.Default,
+		"locale.",
+	) {
 		return fmt.Errorf("%s.locale.default must be a locale content id", manifest.Source)
-	}
-	if !manifestIDWithNamespace(manifest.Locale.Fallback, "locale.") {
+	} else if !manifestIDWithNamespace(
+		manifest.Locale.Fallback,
+		"locale.",
+	) {
 		return fmt.Errorf("%s.locale.fallback must be a locale content id", manifest.Source)
 	}
 	if !simpleManifestValue(manifest.Flow.SaveSlot) {
@@ -650,7 +701,8 @@ func validateProjectManifest(manifest ProjectManifest) error {
 			manifest.Source,
 		)
 	}
-	if !simpleManifestValue(manifest.Flow.StartSpawn) {
+	if manifest.Flow.StartSpawn != "" &&
+		!simpleManifestValue(manifest.Flow.StartSpawn) {
 		return fmt.Errorf("%s.flow.start_spawn is invalid", manifest.Source)
 	}
 	for name, copy := range map[string]ProjectFlowCopy{
@@ -658,14 +710,16 @@ func validateProjectManifest(manifest ProjectManifest) error {
 		"game_over": manifest.Flow.GameOver,
 		"title":     manifest.Flow.Title,
 	} {
-		if !simpleManifestValue(copy.HeadingKey) {
+		if copy.HeadingKey != "" &&
+			!simpleManifestValue(copy.HeadingKey) {
 			return fmt.Errorf(
 				"%s.flow.%s.heading_key is invalid",
 				manifest.Source,
 				name,
 			)
 		}
-		if !simpleManifestValue(copy.MessageKey) {
+		if copy.MessageKey != "" &&
+			!simpleManifestValue(copy.MessageKey) {
 			return fmt.Errorf(
 				"%s.flow.%s.message_key is invalid",
 				manifest.Source,
@@ -673,10 +727,12 @@ func validateProjectManifest(manifest ProjectManifest) error {
 			)
 		}
 	}
-	if !manifestIDWithNamespace(manifest.Font.Asset, "font.") {
+	if manifest.Font == (ProjectFont{}) {
+		// Ebitengine packages its fallback UI font. Pure action templates do
+		// not need to load the RPG font feature just to satisfy the adapter.
+	} else if !manifestIDWithNamespace(manifest.Font.Asset, "font.") {
 		return fmt.Errorf("%s.font.asset must be a font asset id", manifest.Source)
-	}
-	if manifest.Font.Size <= 0 ||
+	} else if manifest.Font.Size <= 0 ||
 		manifest.Font.Size > 512 ||
 		math.IsNaN(manifest.Font.Size) ||
 		math.IsInf(manifest.Font.Size, 0) {
@@ -836,22 +892,30 @@ func validateManifestReferences(
 	if err != nil {
 		return err
 	}
-	if _, err := requireKind(
-		"locale.default",
-		manifest.Locale.Default,
-		"locale",
-	); err != nil {
-		return err
+	if manifest.Locale.Default != "" {
+		if _, err := requireKind(
+			"locale.default",
+			manifest.Locale.Default,
+			"locale",
+		); err != nil {
+			return err
+		}
+		if _, err := requireKind(
+			"locale.fallback",
+			manifest.Locale.Fallback,
+			"locale",
+		); err != nil {
+			return err
+		}
 	}
-	if _, err := requireKind(
-		"locale.fallback",
-		manifest.Locale.Fallback,
-		"locale",
-	); err != nil {
-		return err
-	}
-	if _, err := requireKind("font.asset", manifest.Font.Asset, "asset"); err != nil {
-		return err
+	if manifest.Font.Asset != "" {
+		if _, err := requireKind(
+			"font.asset",
+			manifest.Font.Asset,
+			"asset",
+		); err != nil {
+			return err
+		}
 	}
 	requireAudioAsset := func(field, id string) error {
 		definition, err := requireKind(field, id, "asset")
@@ -894,6 +958,9 @@ func validateManifestReferences(
 		}
 	}
 
+	if manifest.Flow.StartSpawn == "" {
+		return nil
+	}
 	foundSpawn := false
 	rawSpawnPoints, _ := startStage.Data["spawn_points"].([]any)
 	for _, raw := range rawSpawnPoints {

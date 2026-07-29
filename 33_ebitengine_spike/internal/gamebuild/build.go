@@ -16,7 +16,6 @@ import (
 
 const (
 	defaultStageID        = "stage.rpg_village"
-	defaultLocaleID       = "locale.ko"
 	defaultViewportWidth  = 800
 	defaultViewportHeight = 450
 	// DefaultPortalActorTag is the semantic input owner used when authored
@@ -280,27 +279,27 @@ type chaseAIComponent struct {
 }
 
 type reactionComponent struct {
-	HitInvulnerability float64 `json:"hit_invulnerability"`
-	FlashDuration      float64 `json:"flash_duration"`
+	HitInvulnerability *float64 `json:"hit_invulnerability"`
+	FlashDuration      *float64 `json:"flash_duration"`
 }
 
 type dodgeComponent struct {
-	Duration        float64 `json:"duration"`
-	Distance        float64 `json:"distance"`
-	Invulnerability float64 `json:"invulnerability"`
-	Cooldown        float64 `json:"cooldown"`
+	Duration        *float64 `json:"duration"`
+	Distance        *float64 `json:"distance"`
+	Invulnerability *float64 `json:"invulnerability"`
+	Cooldown        *float64 `json:"cooldown"`
 }
 
 type parryComponent struct {
-	Window          float64 `json:"window"`
-	PerfectWindow   float64 `json:"perfect_window"`
-	Cooldown        float64 `json:"cooldown"`
-	SuccessCooldown float64 `json:"success_cooldown"`
-	ArcDegrees      int     `json:"arc_degrees"`
-	Stagger         float64 `json:"stagger"`
-	PerfectStagger  float64 `json:"perfect_stagger"`
-	Hitstop         float64 `json:"hitstop"`
-	PerfectHitstop  float64 `json:"perfect_hitstop"`
+	Window          *float64 `json:"window"`
+	PerfectWindow   *float64 `json:"perfect_window"`
+	Cooldown        *float64 `json:"cooldown"`
+	SuccessCooldown *float64 `json:"success_cooldown"`
+	ArcDegrees      *int     `json:"arc_degrees"`
+	Stagger         *float64 `json:"stagger"`
+	PerfectStagger  *float64 `json:"perfect_stagger"`
+	Hitstop         *float64 `json:"hitstop"`
+	PerfectHitstop  *float64 `json:"perfect_hitstop"`
 }
 
 type renderSpriteComponent struct {
@@ -484,7 +483,7 @@ func Build(catalog *content.Catalog, options Options) (*Result, error) {
 	if err := catalog.ValidateProjectReferences(); err != nil {
 		return nil, fmt.Errorf("gamebuild: invalid project manifest: %w", err)
 	}
-	applyDefaults(&options)
+	applyDefaults(catalog, &options)
 
 	var stage stageDefinition
 	if err := catalog.Decode(options.StageID, &stage); err != nil {
@@ -956,12 +955,12 @@ func mergeJSONValue(base any, override any) any {
 	}
 }
 
-func applyDefaults(options *Options) {
+func applyDefaults(catalog *content.Catalog, options *Options) {
 	if options.StageID == "" {
 		options.StageID = defaultStageID
 	}
-	if options.LocaleID == "" {
-		options.LocaleID = defaultLocaleID
+	if options.LocaleID == "" && catalog != nil {
+		options.LocaleID = catalog.Project().Locale.Default
 	}
 	if options.Impact.DamageShakePixels == 0 {
 		options.Impact.DamageShakePixels = 5
@@ -981,6 +980,9 @@ func loadLocaleStrings(
 	catalog *content.Catalog,
 	id string,
 ) (map[string]string, error) {
+	if id == "" {
+		return map[string]string{}, nil
+	}
 	var locale localeDefinition
 	if err := catalog.Decode(id, &locale); err != nil {
 		return nil, err
@@ -1205,8 +1207,14 @@ func buildEntity(
 			return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0, err
 		}
 		entity.Reaction = sim.ReactionConfig{
-			HitInvulnerabilityTicks: secondsToTicks(reaction.HitInvulnerability),
-			FlashTicks:              secondsToTicks(reaction.FlashDuration),
+			HitInvulnerabilityTicks: secondsToTicks(optionalFloat(
+				reaction.HitInvulnerability,
+				0.3,
+			)),
+			FlashTicks: secondsToTicks(optionalFloat(
+				reaction.FlashDuration,
+				0.16,
+			)),
 		}
 	}
 	if raw := actor.Components["action.dodge"]; raw != nil {
@@ -1215,10 +1223,19 @@ func buildEntity(
 			return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0, err
 		}
 		entity.Dodge = &sim.DodgeConfig{
-			DurationTicks:        secondsToTicks(dodge.Duration),
-			Distance:             pixels(dodge.Distance),
-			InvulnerabilityTicks: secondsToTicks(dodge.Invulnerability),
-			CooldownTicks:        secondsToTicks(dodge.Cooldown),
+			DurationTicks: secondsToTicks(optionalFloat(
+				dodge.Duration,
+				0.22,
+			)),
+			Distance: pixels(optionalFloat(dodge.Distance, 78)),
+			InvulnerabilityTicks: secondsToTicks(optionalFloat(
+				dodge.Invulnerability,
+				0.18,
+			)),
+			CooldownTicks: secondsToTicks(optionalFloat(
+				dodge.Cooldown,
+				0.48,
+			)),
 		}
 	}
 	if raw := actor.Components["action.parry"]; raw != nil {
@@ -1227,17 +1244,41 @@ func buildEntity(
 			return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0, err
 		}
 		entity.Parry = &sim.ParryConfig{
-			WindowTicks:          secondsToTicks(parry.Window),
-			PerfectWindowTicks:   secondsToTicks(parry.PerfectWindow),
-			CooldownTicks:        secondsToTicks(parry.Cooldown),
-			SuccessCooldownTicks: secondsToTicks(parry.SuccessCooldown),
-			ArcDegrees:           parry.ArcDegrees,
-			StaggerTicks:         secondsToTicks(parry.Stagger),
-			PerfectStaggerTicks:  secondsToTicks(parry.PerfectStagger),
-			HitstopTicks:         secondsToTicks(parry.Hitstop),
-			PerfectHitstopTicks:  secondsToTicks(parry.PerfectHitstop),
-			CameraShake:          pixels(impact.ParryShakePixels),
-			CameraShakeTicks:     secondsToTicks(impact.ParryShakeSeconds),
+			WindowTicks: secondsToTicks(optionalFloat(
+				parry.Window,
+				0.32,
+			)),
+			PerfectWindowTicks: secondsToTicks(optionalFloat(
+				parry.PerfectWindow,
+				0.12,
+			)),
+			CooldownTicks: secondsToTicks(optionalFloat(
+				parry.Cooldown,
+				0.75,
+			)),
+			SuccessCooldownTicks: secondsToTicks(optionalFloat(
+				parry.SuccessCooldown,
+				0.18,
+			)),
+			ArcDegrees: optionalInt(parry.ArcDegrees, 170),
+			StaggerTicks: secondsToTicks(optionalFloat(
+				parry.Stagger,
+				0.55,
+			)),
+			PerfectStaggerTicks: secondsToTicks(optionalFloat(
+				parry.PerfectStagger,
+				1.1,
+			)),
+			HitstopTicks: secondsToTicks(optionalFloat(
+				parry.Hitstop,
+				0.035,
+			)),
+			PerfectHitstopTicks: secondsToTicks(optionalFloat(
+				parry.PerfectHitstop,
+				0.06,
+			)),
+			CameraShake:      pixels(impact.ParryShakePixels),
+			CameraShakeTicks: secondsToTicks(impact.ParryShakeSeconds),
 		}
 	}
 	if raw := actor.Components["action.status"]; raw != nil {
@@ -1709,6 +1750,20 @@ func localized(strings map[string]string, key string, fallback string) string {
 		}
 	}
 	return fallback
+}
+
+func optionalFloat(value *float64, fallback float64) float64 {
+	if value == nil {
+		return fallback
+	}
+	return *value
+}
+
+func optionalInt(value *int, fallback int) int {
+	if value == nil {
+		return fallback
+	}
+	return *value
 }
 
 // secondsToTicks uses nearest-tick rounding. Positive authored durations never

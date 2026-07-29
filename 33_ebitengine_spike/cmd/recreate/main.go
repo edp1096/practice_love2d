@@ -116,7 +116,7 @@ func run(arguments []string) error {
 		&options.frames,
 		"frames",
 		0,
-		"stop after a deterministic number of ticks",
+		"stop after ticks, or updates with -start-at-title",
 	)
 	flags.StringVar(
 		&options.screenshot,

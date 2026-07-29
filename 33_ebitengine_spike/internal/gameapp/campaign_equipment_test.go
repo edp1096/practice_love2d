@@ -230,7 +230,8 @@ func TestEquipmentProtocolRebuildsEveryEffectiveRPGStat(
 		t.Fatalf("debug protocol RPG stats = %#v", dto)
 	}
 	view := runtime.View()
-	if view.HUD.Attack != 5 ||
+	if !view.HUD.ShowStats ||
+		view.HUD.Attack != 5 ||
 		view.HUD.Defense != 3 ||
 		view.HUD.MoveSpeed != 1.25 {
 		t.Fatalf("HUD RPG stats = %#v", view.HUD)

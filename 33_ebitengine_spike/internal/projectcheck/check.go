@@ -134,10 +134,16 @@ func validate(
 		StageCount:      len(config.Stages),
 		LocaleCount:     len(config.Locales),
 	}
+	buildLocales := config.Locales
+	if len(buildLocales) == 0 {
+		// A pure action project may intentionally have no localization
+		// feature. It still needs one construction pass with literal text.
+		buildLocales = []string{""}
+	}
 	stageSources := definitionSources(catalog)
 	for _, stage := range config.Stages {
 		for _, entrySpawnID := range stage.EntrySpawns {
-			for _, localeID := range config.Locales {
+			for _, localeID := range buildLocales {
 				options := gamebuild.Options{
 					StageID:  stage.ID,
 					SpawnID:  entrySpawnID,

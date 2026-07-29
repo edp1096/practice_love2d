@@ -1,6 +1,7 @@
 package rulesruntime
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"practice_love2d/33_ebitengine_spike/internal/gamebuild"
@@ -119,18 +120,50 @@ func (executor *Executor) validateQuestRules() error {
 					configObjective.Required,
 				)
 			}
-			if objective.Event == "" || objective.ActorID == "" {
+			if objective.Event == "" {
 				return fmt.Errorf(
-					"quest %q objective %q requires event and actor id",
+					"quest %q objective %q requires an event",
 					rule.ID,
 					objective.ID,
 				)
 			}
-			filter := objective.Event + "\x00" + objective.ActorID
+			where := objective.Where
+			if len(where) == 0 && objective.ActorID != "" {
+				where = map[string]any{"actor_id": objective.ActorID}
+			}
+			for key, value := range where {
+				if key == "" {
+					return fmt.Errorf(
+						"quest %q objective %q has an empty filter key",
+						rule.ID,
+						objective.ID,
+					)
+				}
+				switch value.(type) {
+				case string, float64, bool:
+				default:
+					return fmt.Errorf(
+						"quest %q objective %q filter %q is not scalar",
+						rule.ID,
+						objective.ID,
+						key,
+					)
+				}
+			}
+			filterJSON, err := json.Marshal(where)
+			if err != nil {
+				return fmt.Errorf(
+					"quest %q objective %q filter: %w",
+					rule.ID,
+					objective.ID,
+					err,
+				)
+			}
+			filter := objective.Event + "\x00" + string(filterJSON)
 			if previous, duplicate := filters[filter]; duplicate {
 				return fmt.Errorf(
 					"quest %q objectives %q and %q have duplicate "+
-						"event/actor filters",
+						"event/payload filters",
 					rule.ID,
 					previous,
 					objective.ID,
