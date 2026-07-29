@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101c1b">
+  <meta name="color-scheme" content="dark">
+  <title>고요한 숲의 수호자 · Recreate</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="boot" role="status" aria-live="polite">
+    <div class="mark" aria-hidden="true">R</div>
+    <h1>고요한 숲의 수호자</h1>
+    <p id="boot-status">게임 데이터를 불러오는 중…</p>
+    <div class="progress" aria-hidden="true"><span></span></div>
+  </main>
+  <aside id="web-controls" aria-label="웹 실행 도구">
+    <details>
+      <summary>조작</summary>
+      <p>WASD/방향키 이동 · Space/Z 공격 · F 특수 · Q 기술</p>
+      <p>C/Ctrl 패링 · X/Shift 회피 · E 결정 · I 인벤토리 · Esc 일시정지</p>
+    </details>
+    <button id="fullscreen" type="button">전체 화면</button>
+  </aside>
+  <noscript>이 게임은 JavaScript와 WebAssembly가 필요합니다.</noscript>
+  <script src="wasm_exec.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

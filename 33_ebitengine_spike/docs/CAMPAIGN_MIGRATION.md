@@ -82,6 +82,7 @@ automation pause를 게임의 pause menu와 합치지 않는다.
 - [x] authored encounter wave·boss phase·session fixture
 - [x] sprite clip·instance override·ability visual의 data-driven presentation
 - [x] audio cue와 전체 오디오의 data-driven presentation
+- [x] browser campaign storage와 결정적 WebAssembly 배포·화면 acceptance
 
 ## 현재 인수 근거
 
@@ -149,6 +150,14 @@ mapping 거부·첫 wave 실패 topology 복원을 검증한다.
 화면을 외부 자동화가 의미 ID로 조회·제어하는 계약이다.
 `Emulation.step`은 이 화면들이 활성화된 동안 오류로 거부되므로 화면
 뒤의 World를 몰래 진행시킬 수 없다.
+
+동일한 campaign/runtime은 `cmd/recreate`의 `js/wasm` 진입점에서도
+실행된다. 파일 저장소 대신 origin별 `localStorage` Store를 사용하고,
+TCP debug bridge는 브라우저 빌드에서 제외한다. `cmd/webbundle`은
+catalog와 runtime asset을 포함한 정적 배포본·결정적 ZIP·파일 해시
+manifest를 생성한다. `cmd/webaccept`는 이를 다시 검증한 후 격리된
+headless Chromium에서 실제 Ebitengine 960×540 canvas와 타이틀 PNG를
+확인하고 임시 서버·브라우저를 자동 종료한다.
 
 ## 테스트 불변조건
 

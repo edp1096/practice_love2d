@@ -14,8 +14,9 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 현재는 프로세스 재시작을 포함한 샘플 캠페인의 headless 실행 계약과
 authored tilemap visual gate, secondary combat, platformer, encounter
 fixture, data-driven sprite clip·ability visual과 전체 audio
-presentation gate까지 통과했다. 다만 아래에 남은 runtime 편집·패키징
-항목 때문에 시각·기능 전체가 `32_recreate`와 동등하다는 뜻은 아니다.
+presentation, runtime Maker editing, WebAssembly packaging gate까지
+통과했다. 다만 아래에 남은 확장 RPG 계산과 네이티브 모바일·호스트
+검증 때문에 시각·기능 전체가 `32_recreate`와 동등하다는 뜻은 아니다.
 콘솔도 일반 `go build` 대상이 아니며 각 제조사 승인, SDK, 개발기와
 비공개 Ebitengine 도구가 필요하다.
 
@@ -24,7 +25,8 @@ presentation gate까지 통과했다. 다만 아래에 남은 runtime 편집·�
 | 대상 | 현재 공개 근거 | 이 프로젝트의 판정 |
 | --- | --- | --- |
 | Windows/macOS/Linux | [Ebitengine 정식 대상](https://ebitengine.org/en/documents/features.html) | 구조와 Windows 빌드는 확인. macOS 실행은 macOS 호스트에서 별도 검증 |
-| Web/Android/iOS | [Ebitengine 정식 대상](https://ebitengine.org/en/documents/features.html) | 엔진 경로는 존재하지만 이번 spike에서 아직 패키징하지 않음 |
+| Web | [Ebitengine 정식 대상](https://ebitengine.org/en/documents/features.html) | 결정적 WASM/정적 ZIP, PWA cache, browser save, 실제 headless Chromium 화면 검증 완료 |
+| Android/iOS | [Ebitengine 정식 대상](https://ebitengine.org/en/documents/features.html) | 엔진 경로는 존재하지만 이번 spike에서 네이티브 패키징·실기 검증하지 않음 |
 | Nintendo Switch | [Ebitengine이 공식 지원을 명시](https://ebitengine.org/en/blog/nintendo_switch.html) | 도구 일부는 비공개이며 Nintendo 계약 이후에만 검증 가능 |
 | Xbox | [저장소가 지원을 명시하지만 모든 사용자에게 공개된 상태는 아니라고 명시](https://github.com/hajimehoshi/ebiten/blob/v2.9.9/README.md#platforms) | Microsoft GDK 승인과 접근 확보가 출시 gate |
 | PlayStation 5 | [v2.9.9에 `playstation5` build tag가 있음](https://github.com/hajimehoshi/ebiten/blob/v2.9.9/playstation5/doc_playstaton5.go) | 실제 구현 일부는 별도 저장소가 제공한다고 코드에 명시. Sony SDK/도구 없이는 출시 가능 판정 불가 |
@@ -200,6 +202,16 @@ presentation gate까지 통과했다. 다만 아래에 남은 runtime 편집·�
 - `go vet ./...`
 - Windows amd64 전체 실행본 교차 빌드
 - 순수 simulation의 Windows amd64/macOS arm64 교차 빌드
+- `js/wasm` 전체 실행본과 현재 Go 버전의 `wasm_exec.js`를 포함한
+  정적 웹 배포본
+- source·catalog가 같으면 bundle ID, manifest, 파일 순서·timestamp와
+  ZIP SHA-256까지 같은 결정적 웹 패키징
+- 각 배포 파일의 크기·SHA-256 검증, loopback-only 서버와 올바른
+  `application/wasm` MIME
+- origin별 `localStorage` campaign 저장소와 첫 로드 후 PWA offline cache
+- Ubuntu arm64의 격리된 headless Chromium에서 실제 WebGL/WASM 부팅,
+  `data-recreate-ready=true`, 960×540 canvas와 타이틀 화면 PNG 확인 후
+  브라우저·서버 자동 종료
 
 ### 호스트가 필요한 검증
 
@@ -214,7 +226,7 @@ presentation gate까지 통과했다. 다만 아래에 남은 runtime 편집·�
 다음 항목은 `32_recreate`가 계속 기준 명세여야 하는 이유다.
 
 - 장비 공격력 이외의 확장 RPG stat·상태이상 계산
-- 모바일·웹 패키징
+- Android/iOS 네이티브 패키징과 실기 수명주기
 - 콘솔별 storage, suspend/resume, safe-area, controller-user 정책
 
 ## 다음 구현 gate
@@ -231,14 +243,16 @@ presentation gate까지 통과했다. 다만 아래에 남은 runtime 편집·�
    완료
 5. ~~Maker가 LÖVE/Ebitengine backend를 선택해 같은 프로젝트를 미리 볼
    수 있게 한다.~~ 완료
-6. Windows 실기와 macOS 실기 패키징을 통과시킨다.
-7. 제조사 승인을 확보한 플랫폼만 별도 adapter·SDK branch에서
+6. ~~결정적 WASM 패키지, browser storage와 실제 headless WebGL 부팅
+   검증을 통과시킨다.~~ 완료
+7. Windows 실기와 macOS 실기 패키징을 통과시킨다.
+8. 제조사 승인을 확보한 플랫폼만 별도 adapter·SDK branch에서
    개발기 acceptance를 수행한다.
 
 기능·sprite clip·ability visual·audio presentation·runtime Maker
-editing gate는 통과했다. 남은 web/mobile packaging과 확장 RPG stat
-gate를 닫기 전에는 `33_ebitengine_spike`를 본 런타임으로 승격하지
-않는다.
+editing·web packaging gate는 통과했다. 남은 native mobile packaging과
+확장 RPG stat gate를 닫기 전에는 `33_ebitengine_spike`를 본 런타임으로
+승격하지 않는다.
 
 자동화의 `Emulation.step` 정지는 위 game-flow의 pause menu와 별도
 상태다. 전자는 테스트 clock만 멈추고, 후자는 게임 안의 UI/세션

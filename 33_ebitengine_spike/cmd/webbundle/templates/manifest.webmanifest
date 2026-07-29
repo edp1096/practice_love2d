@@ -1,0 +1,20 @@
+{
+  "name": "고요한 숲의 수호자",
+  "short_name": "숲의 수호자",
+  "description": "Recreate Ebitengine 액션 RPG 샘플",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#081211",
+  "theme_color": "#101c1b",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

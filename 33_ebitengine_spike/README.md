@@ -67,6 +67,45 @@ image 크기·runtime 경로 이탈은 실행 전에 거부된다.
 하나를 주입한다. 위 명령은 공격 clip, slash visual, stage BGM,
 `attack.started` cue를 같은 제한 실행에서 통과시키고 자동 종료한다.
 
+## 웹 빌드
+
+현재 catalog와 원본 애셋이 포함된 정적 WebAssembly 배포본과 결정적인
+ZIP을 만든다.
+
+```bash
+go run ./cmd/webbundle
+```
+
+기본 출력은 `dist/web`과 `dist/recreate-web.zip`이다. 같은 Go toolchain,
+소스와 catalog로 반복하면 파일 순서·시간·build ID가 고정된 동일 ZIP이
+생성된다. `recreate-web.json`에는 Go/Ebitengine 버전, catalog 해시,
+bundle ID와 각 파일의 크기·SHA-256이 기록된다.
+
+Chromium이 설치된 개발 호스트에서는 실제 WASM, WebGL canvas와 첫 화면을
+창 없이 제한 시간 안에 검증할 수 있다.
+
+```bash
+go run ./cmd/webaccept \
+  -root dist/web \
+  -screenshot /tmp/recreate-web.png
+```
+
+이 명령은 manifest와 모든 배포 파일의 해시를 먼저 확인하고 임시
+loopback 서버와 격리된 headless Chromium을 실행한다. HTML 준비 상태,
+Ebitengine의 960×540 canvas와 PNG 크기를 검사한 뒤 브라우저와 서버를
+종료한다. 로컬에서 직접 조작할 때만 다음 서버를 사용한다.
+
+```bash
+go run ./cmd/webserve -root dist/web
+```
+
+개발 서버는 loopback 주소만 허용하고 `.wasm`을
+`application/wasm`으로 제공한다. 다른 정적 호스트에 배포할 때도 같은
+MIME type이 필요하다. 첫 온라인 로드 뒤 service worker가 런타임을
+캐시하며, campaign save는 origin별 `localStorage`에 저장된다. 브라우저
+빌드에는 파일 저장소와 TCP debug bridge가 포함되지 않는다. 이는 웹
+배포 경로이며 Android/iOS 네이티브 패키징을 대신하지 않는다.
+
 ## 화면·상태 자동화
 
 게임을 실행한 채 다른 터미널에서 다음을 사용할 수 있다.
@@ -268,6 +307,7 @@ Maker / debug client ──protocol v8──▶ gameapp
 - `internal/ebitapp`: Ebitengine 입력·스프라이트·화면·WAV 오디오 출력
 - `internal/protocol`: 인증 가능한 loopback NDJSON protocol v8
 - `internal/storage`: 플랫폼 교체 가능한 세이브 저장소
+- `internal/webdist`: 해시가 확인된 WASM 배포본과 loopback HTTP 경계
 
 전환 판정과 남은 기능은 [docs/SPIKE.md](docs/SPIKE.md), 완전한 샘플
 게임의 실행 계약과 구현 순서는
