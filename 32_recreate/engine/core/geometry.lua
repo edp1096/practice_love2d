@@ -47,6 +47,173 @@ function geometry.sweptCirclesIntersect(
     ) <= combined * combined
 end
 
+function geometry.sweptCircleFraction(
+    start_x,
+    start_y,
+    end_x,
+    end_y,
+    moving_radius,
+    target_x,
+    target_y,
+    target_radius
+)
+    local radius = moving_radius + target_radius
+    local offset_x = start_x - target_x
+    local offset_y = start_y - target_y
+    local c =
+        offset_x * offset_x + offset_y * offset_y - radius * radius
+    if c <= 0 then return 0 end
+
+    local delta_x = end_x - start_x
+    local delta_y = end_y - start_y
+    local a = delta_x * delta_x + delta_y * delta_y
+    if a <= 1e-12 then return nil end
+    local b = 2 * (offset_x * delta_x + offset_y * delta_y)
+    local discriminant = b * b - 4 * a * c
+    if discriminant < 0 then return nil end
+    local fraction = (-b - math.sqrt(discriminant)) / (2 * a)
+    if fraction < 0 or fraction > 1 then return nil end
+    return fraction
+end
+
+local function minimumFraction(current, candidate)
+    if candidate == nil then return current end
+    if current == nil or candidate < current then return candidate end
+    return current
+end
+
+local function sweptCircleSegmentFraction(
+    start_x,
+    start_y,
+    end_x,
+    end_y,
+    radius,
+    first,
+    second
+)
+    local result = geometry.sweptCircleFraction(
+        start_x,
+        start_y,
+        end_x,
+        end_y,
+        radius,
+        first.x,
+        first.y,
+        0
+    )
+    result = minimumFraction(result, geometry.sweptCircleFraction(
+        start_x,
+        start_y,
+        end_x,
+        end_y,
+        radius,
+        second.x,
+        second.y,
+        0
+    ))
+
+    local edge_x = second.x - first.x
+    local edge_y = second.y - first.y
+    local edge_length = math.sqrt(edge_x * edge_x + edge_y * edge_y)
+    if edge_length <= 1e-12 then return result end
+    local normal_x = -edge_y / edge_length
+    local normal_y = edge_x / edge_length
+    local start_distance =
+        (start_x - first.x) * normal_x +
+        (start_y - first.y) * normal_y
+    local velocity_x = end_x - start_x
+    local velocity_y = end_y - start_y
+    local normal_velocity =
+        velocity_x * normal_x + velocity_y * normal_y
+    if math.abs(normal_velocity) <= 1e-12 then return result end
+
+    for _, boundary in ipairs({-radius, radius}) do
+        local fraction =
+            (boundary - start_distance) / normal_velocity
+        if fraction >= 0 and fraction <= 1 then
+            local x = start_x + velocity_x * fraction
+            local y = start_y + velocity_y * fraction
+            local projection =
+                ((x - first.x) * edge_x +
+                 (y - first.y) * edge_y) /
+                (edge_length * edge_length)
+            if projection >= 0 and projection <= 1 then
+                result = minimumFraction(result, fraction)
+            end
+        end
+    end
+    return result
+end
+
+function geometry.sweptCirclePolygonFraction(
+    start_x,
+    start_y,
+    end_x,
+    end_y,
+    radius,
+    points
+)
+    if geometry.circleIntersectsPolygon(
+        start_x,
+        start_y,
+        radius,
+        points
+    ) then
+        return 0
+    end
+    local result
+    local previous = points[#points]
+    for _, current in ipairs(points) do
+        result = minimumFraction(
+            result,
+            sweptCircleSegmentFraction(
+                start_x,
+                start_y,
+                end_x,
+                end_y,
+                radius,
+                previous,
+                current
+            )
+        )
+        previous = current
+    end
+    return result
+end
+
+function geometry.sweptCircleShapeFraction(
+    start_x,
+    start_y,
+    end_x,
+    end_y,
+    radius,
+    shape
+)
+    local points
+    if shape.type == "rectangle" then
+        local half_width = shape.width / 2
+        local half_height = shape.height / 2
+        points = {
+            {x = shape.x - half_width, y = shape.y - half_height},
+            {x = shape.x + half_width, y = shape.y - half_height},
+            {x = shape.x + half_width, y = shape.y + half_height},
+            {x = shape.x - half_width, y = shape.y + half_height},
+        }
+    elseif shape.type == "polygon" then
+        points = shape.points
+    else
+        return nil
+    end
+    return geometry.sweptCirclePolygonFraction(
+        start_x,
+        start_y,
+        end_x,
+        end_y,
+        radius,
+        points
+    )
+end
+
 function geometry.pointInPolygon(x, y, points)
     local inside = false
     local previous = points[#points]

@@ -42,6 +42,7 @@ function Host.new(manifest, filesystem, session_store)
         stage_sections = {},
         stage_section_order = {},
         world_initializers = {},
+        app_controllers = {},
         boot_validators = {},
         features = {},
         feature_modules = {},
@@ -93,6 +94,31 @@ function Host:registerWorldInitializer(name, priority, handler)
         handler = handler,
     }
     table.sort(self.world_initializers, function(left, right)
+        if left.priority ~= right.priority then
+            return left.priority < right.priority
+        end
+        return left.name < right.name
+    end)
+end
+
+function Host:registerAppController(name, priority, handler)
+    assert(
+        type(name) == "string" and name ~= "",
+        "app controller name is required"
+    )
+    assert(type(handler) == "function", "app controller is required")
+    for _, controller in ipairs(self.app_controllers) do
+        assert(
+            controller.name ~= name,
+            "duplicate app controller: " .. name
+        )
+    end
+    self.app_controllers[#self.app_controllers + 1] = {
+        name = name,
+        priority = priority or 100,
+        handler = handler,
+    }
+    table.sort(self.app_controllers, function(left, right)
         if left.priority ~= right.priority then
             return left.priority < right.priority
         end

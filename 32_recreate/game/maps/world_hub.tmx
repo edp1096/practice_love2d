@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="34" height="18" tilewidth="32" tileheight="32" infinite="0" nextlayerid="3" nextobjectid="15">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="34" height="18" tilewidth="32" tileheight="32" infinite="0" nextlayerid="3" nextobjectid="18">
  <properties>
   <property name="stage_id" value="stage.world_hub"/>
   <property name="display_name" value="World Hub"/>
+  <property name="display_name_key" value="stage.world_hub.name"/>
   <property name="mode" value="topdown"/>
   <property name="camera_width" type="float" value="800"/>
   <property name="camera_height" type="float" value="450"/>
@@ -57,9 +58,11 @@
   </object>
   <object id="4" name="default" class="spawn_point" x="120" y="288"><point/></object>
   <object id="5" name="grove_return" class="spawn_point" x="980" y="288"><point/></object>
+  <object id="15" name="village_entry" class="spawn_point" x="80" y="288"><point/></object>
   <object id="6" name="north_boundary" class="wall" x="0" y="0" width="1088" height="32"/>
   <object id="7" name="south_boundary" class="wall" x="0" y="544" width="1088" height="32"/>
-  <object id="8" name="west_boundary" class="wall" x="0" y="0" width="32" height="576"/>
+  <object id="8" name="west_north" class="wall" x="0" y="0" width="32" height="224"/>
+  <object id="16" name="west_south" class="wall" x="0" y="352" width="32" height="224"/>
   <object id="9" name="east_north" class="wall" x="1056" y="0" width="32" height="224"/>
   <object id="10" name="east_south" class="wall" x="1056" y="352" width="32" height="224"/>
   <object id="11" name="rotated_ruin" class="wall" x="470" y="170" width="170" height="42" rotation="15"/>
@@ -76,6 +79,12 @@
    <properties>
     <property name="target_stage" value="stage.world_grove"/>
     <property name="target_spawn" value="west_entry"/>
+   </properties>
+  </object>
+  <object id="17" name="to_village" class="portal" x="0" y="224" width="32" height="128">
+   <properties>
+    <property name="target_stage" value="stage.village"/>
+    <property name="target_spawn" value="field_return"/>
    </properties>
   </object>
  </objectgroup>

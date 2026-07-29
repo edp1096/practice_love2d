@@ -10,6 +10,15 @@ function filesystem:info(path)
     return love.filesystem.getInfo(path)
 end
 
+function filesystem:imageDimensions(path)
+    local loaded, image_or_error =
+        pcall(love.image.newImageData, path)
+    if not loaded then return nil, nil, image_or_error end
+    local width, height = image_or_error:getDimensions()
+    image_or_error:release()
+    return width, height
+end
+
 function filesystem:loadTable(path)
     local chunk, load_error = love.filesystem.load(path)
     if not chunk then return nil, load_error end

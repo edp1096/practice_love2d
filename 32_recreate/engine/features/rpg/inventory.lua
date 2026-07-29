@@ -210,35 +210,32 @@ function feature:register(host)
             return nil, "item '" .. item_id .. "' is not in inventory"
         end
         target = target or world:findByTag("player")[1]
-        for index, action in ipairs(definition.effects or {}) do
-            local result, action_error = world:execute(action, {
+        return world:transaction(function()
+            local effects, effect_error = world:executeActions(
+                definition.effects,
+                {
                 source = source or target,
                 target = target,
                 item = definition,
+                }
+            )
+            if not effects then
+                return nil, "item effects failed: " ..
+                    tostring(effect_error)
+            end
+            local removed, remove_error = self:take(world, item_id, 1)
+            if not removed then return nil, remove_error end
+            world.events:emit("inventory.item_used", {
+                item_id = item_id,
+                target_id = target and target.id or nil,
+                count = self:count(item_id),
             })
-            if result == nil or result == false then
-                return nil, string.format(
-                    "item effect %d failed: %s",
-                    index,
-                    tostring(action_error)
-                )
-            end
-            if type(result) == "table" and result.stop_effects then
-                break
-            end
-        end
-        local removed, remove_error = self:take(world, item_id, 1)
-        if not removed then return nil, remove_error end
-        world.events:emit("inventory.item_used", {
-            item_id = item_id,
-            target_id = target and target.id or nil,
-            count = self:count(item_id),
-        })
-        return {
-            applied = true,
-            item_id = item_id,
-            count = self:count(item_id),
-        }
+            return {
+                applied = true,
+                item_id = item_id,
+                count = self:count(item_id),
+            }
+        end)
     end
 
     host:registerContentKind("item", {

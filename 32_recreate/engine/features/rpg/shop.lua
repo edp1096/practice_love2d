@@ -446,9 +446,12 @@ function feature:register(host)
                     1
                 )
             end
-            state.message = result and
-                (state.mode == "buy" and "Purchased" or "Sold") or
-                tostring(trade_error)
+            local locale = world:service("locale")
+            state.message = result and locale:text(
+                state.mode == "buy" and
+                    "ui.shop.purchased" or "ui.shop.sold",
+                state.mode == "buy" and "Purchased" or "Sold"
+            ) or tostring(trade_error)
         end
     end
 
@@ -486,8 +489,12 @@ function feature:register(host)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.printf(
             string.format(
-                "[%s]   Currency: %d",
-                state.mode:upper(),
+                "[%s]   %s: %d",
+                locale:text(
+                    "ui.shop." .. state.mode,
+                    state.mode:upper()
+                ),
+                locale:text("ui.currency", "Currency"),
                 economy:balance()
             ),
             x + 20,
@@ -514,9 +521,15 @@ function feature:register(host)
             )
             love.graphics.printf(
                 available and string.format(
-                    "%d   (owned %d)",
+                    "%d   (%s)",
                     price,
-                    inventory:count(offer.item)
+                    string.format(
+                        locale:text(
+                            "ui.shop.owned",
+                            "owned %d"
+                        ),
+                        inventory:count(offer.item)
+                    )
                 ) or "--",
                 x + 300,
                 y + 90 + (index - 1) * 30,

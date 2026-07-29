@@ -154,21 +154,39 @@ local function executeActions(
     entry,
     damage_kind
 )
-    for _, action in ipairs(actions or {}) do
-        local result = world:execute(action, {
+    local result, action_error, failure =
+        world:executeActions(actions, {
             source = source,
             target = target,
             status = definition,
             status_stacks = entry.stacks,
             damage_kind = damage_kind,
         })
-        if type(result) == "table" and result.stop_effects then
-            break
-        end
+    if not result then
+        return nil, action_error, failure
     end
+    return result
 end
 
 local status = {}
+
+local function emitActionFailure(
+    world,
+    target,
+    definition,
+    scope,
+    action_error,
+    failure
+)
+    world.events:emit("status.action_failed", {
+        target_id = target and target.id or nil,
+        status_id = definition and definition.id or nil,
+        scope = scope,
+        action_index = failure and failure.index or nil,
+        action_type = failure and failure.action.type or nil,
+        error = action_error,
+    })
+end
 
 function status:has(entity, status_id)
     local state = statusState(entity)
@@ -213,61 +231,94 @@ function status:apply(world, target, status_id, options)
         }
     end
 
-    local duration = options.duration or definition.duration
-    local requested_stacks = options.stacks or 1
-    local maximum =
-        definition.stacking == "stack" and
-        (definition.max_stacks or 99) or 1
-    local entry = state.active[status_id]
-    local event_name
-    if entry then
-        local previous_stacks = entry.stacks
-        if definition.stacking == "stack" then
-            entry.stacks = math.min(
-                maximum,
-                entry.stacks + requested_stacks
-            )
+    local action_failure
+    local result, apply_error = world:transaction(function()
+        local duration = options.duration or definition.duration
+        local requested_stacks = options.stacks or 1
+        local maximum =
+            definition.stacking == "stack" and
+            (definition.max_stacks or 99) or 1
+        local entry = state.active[status_id]
+        local event_name
+        if entry then
+            local previous_stacks = entry.stacks
+            if definition.stacking == "stack" then
+                entry.stacks = math.min(
+                    maximum,
+                    entry.stacks + requested_stacks
+                )
+            else
+                entry.stacks = 1
+            end
+            entry.remaining = duration
+            entry.source_id =
+                options.source and options.source.id or entry.source_id
+            entry.revision = (entry.revision or 1) + 1
+            event_name = entry.stacks > previous_stacks and
+                "status.stacked" or "status.refreshed"
         else
-            entry.stacks = 1
+            state.sequence = (state.sequence or 0) + 1
+            entry = {
+                status_id = status_id,
+                definition = definition,
+                source_id = options.source and options.source.id or nil,
+                stacks = math.min(maximum, requested_stacks),
+                remaining = duration,
+                tick_remaining = definition.tick_interval,
+                instance = state.sequence,
+                revision = 1,
+            }
+            state.active[status_id] = entry
+            event_name = "status.applied"
+            local applied, action_error, failure = executeActions(
+                world,
+                definition.on_apply,
+                options.source,
+                target,
+                definition,
+                entry
+            )
+            if not applied then
+                action_failure = failure
+                return nil, action_error
+            end
         end
-        entry.remaining = duration
-        entry.source_id =
-            options.source and options.source.id or entry.source_id
-        event_name = entry.stacks > previous_stacks and
-            "status.stacked" or "status.refreshed"
-    else
-        entry = {
+
+        if state.active[status_id] ~= entry then
+            return {
+                applied = true,
+                active = state.active[status_id] ~= nil,
+                replaced_during_apply = true,
+                status_id = status_id,
+            }
+        end
+        world.events:emit(event_name, {
+            target_id = target.id,
+            source_id = entry.source_id,
             status_id = status_id,
-            definition = definition,
-            source_id = options.source and options.source.id or nil,
-            stacks = math.min(maximum, requested_stacks),
-            remaining = duration,
-            tick_remaining = definition.tick_interval,
+            stacks = entry.stacks,
+            duration = duration,
+        })
+        return {
+            applied = true,
+            active = true,
+            status_id = status_id,
+            stacks = entry.stacks,
+            duration = duration,
         }
-        state.active[status_id] = entry
-        event_name = "status.applied"
-        executeActions(
+    end)
+    if not result then
+        emitActionFailure(
             world,
-            definition.on_apply,
-            options.source,
             target,
             definition,
-            entry
+            "apply",
+            apply_error,
+            action_failure
         )
+        return nil, apply_error
     end
-    world.events:emit(event_name, {
-        target_id = target.id,
-        source_id = entry.source_id,
-        status_id = status_id,
-        stacks = entry.stacks,
-        duration = duration,
-    })
-    return {
-        applied = true,
-        status_id = status_id,
-        stacks = entry.stacks,
-        duration = duration,
-    }
+    return result
 end
 
 function status:remove(world, target, status_id, reason)
@@ -305,54 +356,109 @@ function status_system:update(world, dt)
         local state = statusState(entity)
         for _, status_id in ipairs(util.sortedKeys(state.active)) do
             local entry = state.active[status_id]
-            local definition = entry.definition
-            local active_dt = math.min(dt, entry.remaining)
-            entry.remaining = util.countdown(entry.remaining, dt)
+            if entry then
+                local definition = entry.definition
+                local original_remaining = entry.remaining
+                local original_tick = entry.tick_remaining
+                local revision = entry.revision
+                local active_dt = math.min(dt, entry.remaining)
+                entry.remaining = util.countdown(entry.remaining, dt)
+                local failed = false
 
-            if definition.tick_interval then
-                entry.tick_remaining =
-                    entry.tick_remaining - active_dt
-                while entry.tick_remaining <= 1e-9 do
-                    for _ = 1, entry.stacks do
-                        executeActions(
+                if definition.tick_interval then
+                    entry.tick_remaining =
+                        entry.tick_remaining - active_dt
+                    while entry.tick_remaining <= 1e-9 do
+                        local tick_actions = {}
+                        for _ = 1, entry.stacks do
+                            for _, action in ipairs(
+                                definition.tick_actions
+                            ) do
+                                tick_actions[#tick_actions + 1] = action
+                            end
+                        end
+                        local ticked, action_error, failure =
+                            executeActions(
+                                world,
+                                tick_actions,
+                                sourceFor(world, entry),
+                                entity,
+                                definition,
+                                entry,
+                                "periodic"
+                            )
+                        if not ticked then
+                            if state.active[status_id] == entry then
+                                entry.remaining = original_remaining
+                                entry.tick_remaining = original_tick
+                            end
+                            emitActionFailure(
+                                world,
+                                entity,
+                                definition,
+                                "tick",
+                                action_error,
+                                failure
+                            )
+                            failed = true
+                            break
+                        end
+                        world.events:emit("status.ticked", {
+                            target_id = entity.id,
+                            source_id = entry.source_id,
+                            status_id = status_id,
+                            stacks = entry.stacks,
+                        })
+                        if state.active[status_id] ~= entry or
+                           entry.revision ~= revision or entity.dead then
+                            break
+                        end
+                        entry.tick_remaining =
+                            entry.tick_remaining +
+                                definition.tick_interval
+                        if active_dt == 0 then break end
+                    end
+                end
+
+                if not failed and state.active[status_id] == entry and
+                   entry.revision == revision and
+                   entry.remaining == 0 then
+                    local action_failure
+                    local expired, expire_error =
+                        world:transaction(function()
+                            state.active[status_id] = nil
+                            local executed, action_error, failure =
+                                executeActions(
+                                    world,
+                                    definition.on_expire,
+                                    sourceFor(world, entry),
+                                    entity,
+                                    definition,
+                                    entry
+                                )
+                            if not executed then
+                                action_failure = failure
+                                return nil, action_error
+                            end
+                            world.events:emit("status.expired", {
+                                target_id = entity.id,
+                                source_id = entry.source_id,
+                                status_id = status_id,
+                                stacks = entry.stacks,
+                            })
+                            return {applied = true}
+                        end)
+                    if not expired then
+                        emitActionFailure(
                             world,
-                            definition.tick_actions,
-                            sourceFor(world, entry),
                             entity,
                             definition,
-                            entry,
-                            "periodic"
+                            "expire",
+                            expire_error,
+                            action_failure
                         )
-                        if entity.dead then break end
                     end
-                    world.events:emit("status.ticked", {
-                        target_id = entity.id,
-                        source_id = entry.source_id,
-                        status_id = status_id,
-                        stacks = entry.stacks,
-                    })
-                    entry.tick_remaining =
-                        entry.tick_remaining + definition.tick_interval
-                    if active_dt == 0 or entity.dead then break end
                 end
-            end
-
-            if entry.remaining == 0 then
-                executeActions(
-                    world,
-                    definition.on_expire,
-                    sourceFor(world, entry),
-                    entity,
-                    definition,
-                    entry
-                )
-                state.active[status_id] = nil
-                world.events:emit("status.expired", {
-                    target_id = entity.id,
-                    source_id = entry.source_id,
-                    status_id = status_id,
-                    stacks = entry.stacks,
-                })
             end
         end
     end
@@ -407,9 +513,29 @@ function feature:register(host)
             return {
                 immune = immune,
                 active = {},
+                sequence = 0,
             }
         end,
     })
+    host.services.lifecycle:registerDeathHandler(
+        "action.status",
+        70,
+        function(entity, world)
+            local state = statusState(entity)
+            if not state then return end
+            for _, status_id in ipairs(util.sortedKeys(state.active)) do
+                local entry = state.active[status_id]
+                world.events:emit("status.removed", {
+                    target_id = entity.id,
+                    source_id = entry.source_id,
+                    status_id = status_id,
+                    stacks = entry.stacks,
+                    reason = "death",
+                })
+            end
+            state.active = {}
+        end
+    )
 
     host.rules:registerAction("apply_status", {
         validate = function(action, validator, path)
@@ -508,6 +634,7 @@ function feature:register(host)
         "status.damage_modifiers",
         5,
         function(action, context, nextHandler)
+            if context.debug then return nextHandler() end
             local outgoing = status:multiplier(
                 context.source,
                 "damage_dealt"

@@ -145,3 +145,140 @@ func TestParseTMXRejectsNestedGroups(t *testing.T) {
 		t.Fatalf("expected nested group error, got %v", err)
 	}
 }
+
+func writeProjectMap(
+	t *testing.T,
+	project string,
+	name string,
+	stageID string,
+) string {
+	t.Helper()
+	directory := filepath.Join(project, "game", "maps")
+	if err := os.MkdirAll(directory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	contents := strings.Replace(
+		validTMX,
+		"stage.test_map",
+		stageID,
+		1,
+	)
+	path := filepath.Join(directory, name+".tmx")
+	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestCompileMapsRemovesOrphansAndAllowsEmptySourceSet(t *testing.T) {
+	project := t.TempDir()
+	source := writeProjectMap(
+		t,
+		project,
+		"first",
+		"stage.first",
+	)
+	generated := filepath.Join(
+		project,
+		"game",
+		"content",
+		"stages",
+		"generated",
+	)
+	if err := os.MkdirAll(generated, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	orphan := filepath.Join(generated, "orphan.lua")
+	if err := os.WriteFile(orphan, []byte("return {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := compileMaps(project, nil, "", true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(orphan); !os.IsNotExist(err) {
+		t.Fatalf("orphan generated file still exists: %v", err)
+	}
+	first := filepath.Join(generated, "first.lua")
+	if _, err := os.Stat(first); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Remove(source); err != nil {
+		t.Fatal(err)
+	}
+	if err := compileMaps(project, nil, "", true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(first); !os.IsNotExist(err) {
+		t.Fatalf("deleted TMX output still exists: %v", err)
+	}
+}
+
+func TestSelectiveMapCheckPreservesOtherGeneratedStages(t *testing.T) {
+	project := t.TempDir()
+	first := writeProjectMap(
+		t,
+		project,
+		"first",
+		"stage.first",
+	)
+	writeProjectMap(t, project, "second", "stage.second")
+	if err := compileMaps(project, nil, "", true); err != nil {
+		t.Fatal(err)
+	}
+	relative, err := filepath.Rel(project, first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := compileMaps(
+		project,
+		[]string{relative},
+		"",
+		false,
+	); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestFailedMapCompileLeavesGeneratedDirectoryUnchanged(t *testing.T) {
+	project := t.TempDir()
+	source := writeProjectMap(
+		t,
+		project,
+		"first",
+		"stage.first",
+	)
+	if err := compileMaps(project, nil, "", true); err != nil {
+		t.Fatal(err)
+	}
+	generated := filepath.Join(
+		project,
+		"game",
+		"content",
+		"stages",
+		"generated",
+		"first.lua",
+	)
+	before, err := os.ReadFile(generated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		source,
+		[]byte("<map>"),
+		0o644,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if err := compileMaps(project, nil, "", true); err == nil {
+		t.Fatal("expected invalid TMX compile to fail")
+	}
+	after, err := os.ReadFile(generated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != string(before) {
+		t.Fatal("failed compile changed generated output")
+	}
+}

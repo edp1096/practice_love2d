@@ -243,23 +243,25 @@ function feature:register(host)
 
     local function executeActions(world, state, actions, scope)
         local context = contextFor(world, state)
-        for index, action in ipairs(actions or {}) do
-            local result, action_error = world:execute(action, context)
-            if result == nil or result == false then
-                world.events:emit("dialogue.action_failed", {
-                    dialogue_id = state.definition_id,
-                    node_id = state.node_id,
-                    scope = scope,
-                    action_index = index,
-                    error = action_error,
-                })
-                return nil, action_error
-            end
-            if type(result) == "table" and result.stop_effects then
-                break
-            end
+        local result, action_error, failure =
+            world:executeActions(actions, context)
+        if not result then
+            return nil, action_error, {
+                dialogue_id = state.definition_id,
+                node_id = state.node_id,
+                scope = scope,
+                action_index = failure and failure.index or nil,
+                action_type = failure and failure.action.type or nil,
+                error = action_error,
+            }
         end
         return true
+    end
+
+    local function emitActionFailure(world, failure)
+        if failure then
+            world.events:emit("dialogue.action_failed", failure)
+        end
     end
 
     local function refreshChoices(world, state)
@@ -290,13 +292,13 @@ function feature:register(host)
         end
         state.node_id = node_id
         state.selected = 1
-        local executed, action_error = executeActions(
+        local executed, action_error, failure = executeActions(
             world,
             state,
             node.actions,
             "node"
         )
-        if not executed then return nil, action_error end
+        if not executed then return nil, action_error, failure end
         refreshChoices(world, state)
         world.events:emit("dialogue.node_entered", {
             dialogue_id = state.definition_id,
@@ -319,26 +321,34 @@ function feature:register(host)
         if not definition or definition.kind ~= "dialogue" then
             return nil, "unknown dialogue '" .. tostring(dialogue_id) .. "'"
         end
-        state.active = true
-        state.definition_id = dialogue_id
-        state.interactor_id = interactor and interactor.id or nil
-        state.speaker_entity_id = speaker and speaker.id or nil
-        local entered, enter_error =
-            enterNode(world, state, definition.start)
-        if not entered then
-            state.active = false
-            return nil, enter_error
+        local action_failure
+        local result, start_error = world:transaction(function()
+            state.active = true
+            state.definition_id = dialogue_id
+            state.interactor_id = interactor and interactor.id or nil
+            state.speaker_entity_id = speaker and speaker.id or nil
+            local entered, enter_error, failure =
+                enterNode(world, state, definition.start)
+            if not entered then
+                action_failure = failure
+                return nil, enter_error
+            end
+            world.events:emit("dialogue.started", {
+                dialogue_id = dialogue_id,
+                interactor_id = state.interactor_id,
+                speaker_entity_id = state.speaker_entity_id,
+            })
+            return {
+                applied = true,
+                dialogue_id = dialogue_id,
+                node_id = state.node_id,
+            }
+        end)
+        if not result then
+            emitActionFailure(world, action_failure)
+            return nil, start_error
         end
-        world.events:emit("dialogue.started", {
-            dialogue_id = dialogue_id,
-            interactor_id = state.interactor_id,
-            speaker_entity_id = state.speaker_entity_id,
-        })
-        return {
-            applied = true,
-            dialogue_id = dialogue_id,
-            node_id = state.node_id,
-        }
+        return result
     end
 
     function dialogue:close(world, reason)
@@ -373,13 +383,24 @@ function feature:register(host)
             return nil, "dialogue node requires a choice"
         end
         if node.next then
-            local entered, enter_error =
-                enterNode(world, state, node.next)
-            if not entered then return nil, enter_error end
-            return {
-                applied = true,
-                node_id = state.node_id,
-            }
+            local action_failure
+            local result, advance_error = world:transaction(function()
+                local entered, enter_error, failure =
+                    enterNode(world, state, node.next)
+                if not entered then
+                    action_failure = failure
+                    return nil, enter_error
+                end
+                return {
+                    applied = true,
+                    node_id = state.node_id,
+                }
+            end)
+            if not result then
+                emitActionFailure(world, action_failure)
+                return nil, advance_error
+            end
+            return result
         end
         return self:close(world, "finished")
     end
@@ -401,30 +422,44 @@ function feature:register(host)
                 tostring(selector) .. "'"
         end
         local choice_id = choice.id
-        local executed, action_error = executeActions(
-            world,
-            state,
-            choice.actions,
-            "choice"
-        )
-        if not executed then return nil, action_error end
-        world.events:emit("dialogue.choice_selected", {
-            dialogue_id = state.definition_id,
-            node_id = state.node_id,
-            choice_id = choice_id,
-        })
-        if choice.next then
-            local entered, enter_error =
-                enterNode(world, state, choice.next)
-            if not entered then return nil, enter_error end
-            return {
-                applied = true,
-                choice_id = choice_id,
+        local action_failure
+        local result, choose_error = world:transaction(function()
+            local executed, action_error, failure = executeActions(
+                world,
+                state,
+                choice.actions,
+                "choice"
+            )
+            if not executed then
+                action_failure = failure
+                return nil, action_error
+            end
+            world.events:emit("dialogue.choice_selected", {
+                dialogue_id = state.definition_id,
                 node_id = state.node_id,
-            }
+                choice_id = choice_id,
+            })
+            if choice.next then
+                local entered, enter_error, enter_failure =
+                    enterNode(world, state, choice.next)
+                if not entered then
+                    action_failure = enter_failure
+                    return nil, enter_error
+                end
+                return {
+                    applied = true,
+                    choice_id = choice_id,
+                    node_id = state.node_id,
+                }
+            end
+            local closed = self:close(world, "choice")
+            closed.choice_id = choice_id
+            return closed
+        end)
+        if not result then
+            emitActionFailure(world, action_failure)
+            return nil, choose_error
         end
-        local result = self:close(world, "choice")
-        result.choice_id = choice_id
         return result
     end
 

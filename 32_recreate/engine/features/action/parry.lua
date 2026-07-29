@@ -223,13 +223,28 @@ function feature:register(host)
             }
         end,
     })
+    host.services.lifecycle:registerDeathHandler(
+        "action.parry",
+        60,
+        function(entity, world)
+            local parry = parryOf(entity)
+            if parry and parry.active then
+                parry.active = false
+                parry.remaining = 0
+                world.events:emit("parry.interrupted", {
+                    entity_id = entity.id,
+                    reason = "death",
+                })
+            end
+        end
+    )
 
     host.rules:registerActionInterceptor(
         "damage",
         "parry.guard",
         10,
         function(action, context, nextHandler)
-            if context.damage_kind == "periodic" then
+            if context.debug or context.damage_kind == "periodic" then
                 return nextHandler()
             end
             local target = context.target

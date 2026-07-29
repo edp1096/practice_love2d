@@ -11,13 +11,10 @@ return {
             radius = 18,
             solid = false,
         },
-        ["render.shape"] = {
-            shape = "circle",
-            radius = 18,
-            color = {0.28, 0.68, 1.0, 1.0},
-            outline = {0.75, 0.92, 1.0, 1.0},
-            label = "GUIDE",
+        ["render.sprite"] = {
+            sprite = "sprite.guide",
         },
+        ["motion.facing"] = {},
         ["rpg.interactable"] = {
             input = "interact",
             range = 70,

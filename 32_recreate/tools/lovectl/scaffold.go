@@ -12,9 +12,10 @@ import (
 var contentNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 
 type contentTemplate struct {
-	directory     string
-	referenceKind string
-	render        func(name string, reference string) string
+	directory         string
+	referenceKind     string
+	optionalReference bool
+	render            func(name string, reference string) string
 }
 
 const scaffoldUsage = "usage: lovectl new TYPE NAME [REFERENCE_ID]\n" +
@@ -79,8 +80,9 @@ var contentTemplates = map[string]contentTemplate{
 		},
 	},
 	"projectile": {
-		directory:     "projectiles",
-		referenceKind: "actor",
+		directory:         "projectiles",
+		referenceKind:     "actor",
+		optionalReference: true,
 		render: func(name string, actorID string) string {
 			return fmt.Sprintf(`return {
     schema_version = 1,
@@ -282,18 +284,76 @@ var contentTemplates = map[string]contentTemplate{
 	},
 }
 
-func runScaffold(projectPath string, arguments []string) error {
+func projectileActorScaffold(name string) string {
+	return fmt.Sprintf(`return {
+    schema_version = 1,
+    kind = "actor",
+    id = "actor.projectile_%s",
+    name = "%s Projectile",
+    tags = {"projectile"},
+
+    components = {
+        transform = {},
+        body = {
+            shape = "circle",
+            radius = 6,
+            solid = true,
+            collision_layer = "projectile",
+            collision_mask = {"world"},
+        },
+        ["motion.facing"] = {},
+        ["motion.kinematics"] = {},
+        ["render.shape"] = {
+            shape = "circle",
+            radius = 7,
+            color = {0.25, 0.75, 1.0, 1.0},
+            outline = {0.8, 0.95, 1.0, 1.0},
+            layer = 10,
+        },
+    },
+}
+`, name, name)
+}
+
+func writeScaffoldFile(path string, contents string) error {
+	file, err := os.OpenFile(
+		path,
+		os.O_WRONLY|os.O_CREATE|os.O_EXCL,
+		0o644,
+	)
+	if err != nil {
+		if os.IsExist(err) {
+			return fmt.Errorf("content already exists: %s", path)
+		}
+		return err
+	}
+	_, writeErr := file.WriteString(contents)
+	closeErr := file.Close()
+	if writeErr != nil {
+		return writeErr
+	}
+	return closeErr
+}
+
+func createScaffold(
+	projectPath string,
+	arguments []string,
+) ([]string, error) {
 	if len(arguments) < 2 {
-		return errors.New(scaffoldUsage)
+		return nil, errors.New(scaffoldUsage)
 	}
 	kind := arguments[0]
 	name := arguments[1]
 	template, ok := contentTemplates[kind]
 	if !ok {
-		return fmt.Errorf("unsupported content template %q\n%s", kind, scaffoldUsage)
+		return nil, fmt.Errorf(
+			"unsupported content template %q\n%s",
+			kind,
+			scaffoldUsage,
+		)
 	}
 	if !contentNamePattern.MatchString(name) {
-		return errors.New(
+		return nil, errors.New(
 			"NAME must start with a lowercase letter and contain only " +
 				"lowercase letters, numbers, and underscores",
 		)
@@ -302,23 +362,48 @@ func runScaffold(projectPath string, arguments []string) error {
 	if template.referenceKind != "" {
 		expectedArguments = 3
 	}
-	if len(arguments) != expectedArguments {
+	validArgumentCount := len(arguments) == expectedArguments ||
+		(template.optionalReference && len(arguments) == 2)
+	if !validArgumentCount {
 		usage := fmt.Sprintf("usage: lovectl new %s NAME", kind)
 		if template.referenceKind != "" {
-			usage += " " + strings.ToUpper(template.referenceKind) + "_ID"
+			referenceName :=
+				strings.ToUpper(template.referenceKind) + "_ID"
+			if template.optionalReference {
+				usage += " [" + referenceName + "]"
+			} else {
+				usage += " " + referenceName
+			}
 		}
-		return errors.New(usage)
+		return nil, errors.New(usage)
 	}
 	reference := ""
-	if template.referenceKind != "" {
+	if template.referenceKind != "" && len(arguments) == 3 {
 		reference = arguments[2]
 		if !contentIDPattern.MatchString(reference) ||
 			!strings.HasPrefix(reference, template.referenceKind+".") {
-			return fmt.Errorf(
+			return nil, fmt.Errorf(
 				"REFERENCE_ID must be a %s.* content ID",
 				template.referenceKind,
 			)
 		}
+	}
+	generatedActorPath := ""
+	if kind == "projectile" && reference == "" {
+		reference = "actor.projectile_" + name
+		actorDirectory := filepath.Join(
+			projectPath,
+			"game",
+			"content",
+			"actors",
+		)
+		if err := os.MkdirAll(actorDirectory, 0o755); err != nil {
+			return nil, err
+		}
+		generatedActorPath = filepath.Join(
+			actorDirectory,
+			"projectile_"+name+".lua",
+		)
 	}
 
 	directory := filepath.Join(
@@ -328,25 +413,51 @@ func runScaffold(projectPath string, arguments []string) error {
 		template.directory,
 	)
 	if err := os.MkdirAll(directory, 0o755); err != nil {
-		return err
+		return nil, err
 	}
 	path := filepath.Join(directory, name+".lua")
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
-	if err != nil {
-		if os.IsExist(err) {
-			return fmt.Errorf("content already exists: %s", path)
+	for _, candidate := range []string{generatedActorPath, path} {
+		if candidate == "" {
+			continue
 		}
+		if _, err := os.Lstat(candidate); err == nil {
+			return nil, fmt.Errorf("content already exists: %s", candidate)
+		} else if !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+	if generatedActorPath != "" {
+		if err := writeScaffoldFile(
+			generatedActorPath,
+			projectileActorScaffold(name),
+		); err != nil {
+			return nil, err
+		}
+	}
+	if err := writeScaffoldFile(
+		path,
+		template.render(name, reference),
+	); err != nil {
+		if generatedActorPath != "" {
+			_ = os.Remove(generatedActorPath)
+		}
+		return nil, err
+	}
+	paths := []string{}
+	if generatedActorPath != "" {
+		paths = append(paths, generatedActorPath)
+	}
+	paths = append(paths, path)
+	return paths, nil
+}
+
+func runScaffold(projectPath string, arguments []string) error {
+	paths, err := createScaffold(projectPath, arguments)
+	if err != nil {
 		return err
 	}
-
-	_, writeErr := file.WriteString(template.render(name, reference))
-	closeErr := file.Close()
-	if writeErr != nil {
-		return writeErr
+	for _, path := range paths {
+		fmt.Println(path)
 	}
-	if closeErr != nil {
-		return closeErr
-	}
-	fmt.Println(path)
 	return nil
 }

@@ -1,21 +1,25 @@
 return {
     id = "recreate.maker_runtime",
-    title = "Recreate 2D Maker Runtime",
-    initial_stage = "stage.action_room",
+    profile = "action-rpg",
+    title = "고요한 숲의 수호자",
+    initial_stage = "stage.village",
 
     fixed_dt = 1 / 60,
     maximum_steps = 8,
+    maximum_action_depth = 64,
 
     content_roots = {
         "game/content",
     },
 
     features = {
+        "engine.features.game_flow",
         "engine.features.movement.topdown",
         "engine.features.movement.platformer",
         "engine.features.geometry",
         "engine.features.navigation",
         "engine.features.camera",
+        "engine.features.presentation.impact",
         "engine.features.tilemap",
         "engine.features.action.chase_ai",
         "engine.features.action.hitstop",
@@ -46,6 +50,41 @@ return {
     font = {
         asset = "font.ui",
         size = 16,
+    },
+    flow = {
+        save_slot = "campaign",
+        start_stage = "stage.village",
+        start_spawn = "default",
+        title = {
+            heading_key = "flow.title.heading",
+            message_key = "flow.title.message",
+        },
+        game_over = {
+            heading_key = "flow.game_over.heading",
+            message_key = "flow.game_over.message",
+        },
+        ending = {
+            heading_key = "flow.ending.heading",
+            message_key = "flow.ending.message",
+        },
+    },
+    impact_feedback = {
+        damage = {
+            duration = 0.09,
+            magnitude = 2.5,
+        },
+        kill = {
+            duration = 0.16,
+            magnitude = 5,
+        },
+        parry = {
+            duration = 0.14,
+            magnitude = 6,
+        },
+        perfect_parry = {
+            duration = 0.2,
+            magnitude = 10,
+        },
     },
 
     input = {
@@ -117,6 +156,10 @@ return {
             menu_cancel = {
                 keys = {"escape", "backspace"},
                 buttons = {"b"},
+            },
+            pause = {
+                keys = {"escape", "p"},
+                buttons = {"start"},
             },
             restart = {
                 keys = {"r"},

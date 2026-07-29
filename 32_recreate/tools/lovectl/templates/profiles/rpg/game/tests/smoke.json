@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "profile": "rpg",
+  "stage": "stage.start",
+  "player_tag": "player",
+  "movement": {
+    "action": "move_right",
+    "frames": 18,
+    "minimum_delta": 20
+  },
+  "interaction": {
+    "target_tag": "npc",
+    "action": "interact",
+    "frames": 2,
+    "expected_flag": "maker.smoke.interacted"
+  },
+  "persistence": {
+    "item": "item.potion"
+  }
+}

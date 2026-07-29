@@ -18,6 +18,7 @@ return {
     },
     mode = "topdown",
     name = "World Hub",
+    name_key = "stage.world_hub.name",
     portals = {
         {
             cooldown = 0.25,
@@ -32,6 +33,19 @@ return {
             target_spawn = "west_entry",
             target_stage = "stage.world_grove",
         },
+        {
+            cooldown = 0.25,
+            id = "to_village",
+            shape = {
+                height = 128,
+                type = "rectangle",
+                width = 32,
+                x = 16,
+                y = 288,
+            },
+            target_spawn = "field_return",
+            target_stage = "stage.village",
+        },
     },
     schema_version = 1,
     spawn_points = {
@@ -43,6 +57,11 @@ return {
         {
             id = "grove_return",
             x = 980,
+            y = 288,
+        },
+        {
+            id = "village_entry",
+            x = 80,
             y = 288,
         },
     },
@@ -183,13 +202,23 @@ return {
             },
         },
         {
-            id = "west_boundary",
+            id = "west_north",
             shape = {
-                height = 576,
+                height = 224,
                 type = "rectangle",
                 width = 32,
                 x = 16,
-                y = 288,
+                y = 112,
+            },
+        },
+        {
+            id = "west_south",
+            shape = {
+                height = 224,
+                type = "rectangle",
+                width = 32,
+                x = 16,
+                y = 464,
             },
         },
         {

@@ -26,14 +26,39 @@ local function validateAsset(definition, validator, host)
         end
     end
     if asset_type == "image" then
-        validator:positive(definition.width, "width", true)
-        validator:positive(definition.height, "height", true)
+        local width =
+            validator:positive(definition.width, "width", true)
+        local height =
+            validator:positive(definition.height, "height", true)
         validator:enum(
             definition.filter,
             {"nearest", "linear"},
             "filter",
             false
         )
+        if path and width and height and
+           host.filesystem.imageDimensions then
+            local actual_width, actual_height, image_error =
+                host.filesystem:imageDimensions(path)
+            if not actual_width then
+                validator:error(
+                    "path",
+                    "could not read image metadata: " ..
+                        tostring(image_error)
+                )
+            elseif actual_width ~= width or actual_height ~= height then
+                validator:error(
+                    "width",
+                    string.format(
+                        "image is %dx%d but content declares %dx%d",
+                        actual_width,
+                        actual_height,
+                        width,
+                        height
+                    )
+                )
+            end
+        end
     elseif asset_type == "font" then
         if definition.width ~= nil or definition.height ~= nil or
            definition.filter ~= nil then

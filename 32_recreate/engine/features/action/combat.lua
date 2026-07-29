@@ -313,53 +313,67 @@ local function applyAbilityHits(world, source, combat, ability)
                ability.hitbox
            ) and
            targetIsInside(world, source, target, ability) then
-            local target_hit_index = recordHit(
-                combat.active,
-                target.id,
-                ability.hitbox
-            )
-            local applied = false
-            for _, action in ipairs(ability.effects) do
-                local result = world:execute(action, {
-                    source = source,
-                    target = target,
-                    ability = ability,
+            local action_failure
+            local hit_result, hit_error = world:transaction(function()
+                local target_hit_index = recordHit(
+                    combat.active,
+                    target.id,
+                    ability.hitbox
+                )
+                local effects, effect_error, failure =
+                    world:executeActions(ability.effects, {
+                        source = source,
+                        target = target,
+                        ability = ability,
+                    })
+                if not effects then
+                    action_failure = failure
+                    return nil, effect_error
+                end
+                local applied = false
+                for _, result in ipairs(effects.results) do
+                    if type(result) == "table" and result.applied then
+                        applied = true
+                    end
+                end
+                world.events:emit("ability.hit", {
+                    source_id = source.id,
+                    target_id = target.id,
+                    ability_id = ability.id,
+                    target_hit_index = target_hit_index,
+                    hit_index = combat.active.hit_count,
+                    applied = applied,
                 })
-                if type(result) == "table" and result.applied then
-                    applied = true
-                end
-                if type(result) == "table" and result.stop_effects then
-                    break
-                end
+                return {applied = true}
+            end)
+            if not hit_result then
+                world.events:emit("ability.action_failed", {
+                    source_id = source.id,
+                    target_id = target.id,
+                    ability_id = ability.id,
+                    scope = "hit",
+                    action_index =
+                        action_failure and action_failure.index or nil,
+                    action_type = action_failure and
+                        action_failure.action.type or nil,
+                    error = hit_error,
+                })
+                return nil, hit_error
             end
-            world.events:emit("ability.hit", {
-                source_id = source.id,
-                target_id = target.id,
-                ability_id = ability.id,
-                target_hit_index = target_hit_index,
-                hit_index = combat.active.hit_count,
-                applied = applied,
-            })
         end
     end
+    return true
 end
 
 local function applyActivation(world, source, ability)
-    for index, action in ipairs(ability.activation or {}) do
-        local result, action_error = world:execute(action, {
+    local result, action_error, failure =
+        world:executeActions(ability.activation, {
             source = source,
             target = source,
             ability = ability,
         })
-        if result == nil or result == false then
-            world.events:emit("ability.action_failed", {
-                source_id = source.id,
-                ability_id = ability.id,
-                action_index = index,
-                error = action_error,
-            })
-            return false
-        end
+    if not result then
+        return nil, action_error, failure
     end
     return true
 end
@@ -376,18 +390,62 @@ end
 
 local function resolveAbility(world, source, combat, ability)
     if not combat.active then return end
-    combat.active.phase = "active"
-    combat.active.remaining = ability.duration
-    combat.active.hit_targets = {}
-    combat.active.hit_count = 0
-    world.events:emit("ability.used", {
-        source_id = source.id,
-        ability_id = ability.id,
-    })
+    local action_failure
+    local activated, activation_error = world:transaction(function()
+        combat.active.phase = "active"
+        combat.active.remaining = ability.duration
+        combat.active.hit_targets = {}
+        combat.active.hit_count = 0
+        world.events:emit("ability.used", {
+            source_id = source.id,
+            ability_id = ability.id,
+        })
 
-    applyActivation(world, source, ability)
-    applyAbilityHits(world, source, combat, ability)
+        local applied, action_error, failure =
+            applyActivation(world, source, ability)
+        if not applied then
+            action_failure = failure
+            return nil, action_error
+        end
+        return {applied = true}
+    end)
+    if not activated then
+        world.events:emit("ability.action_failed", {
+            source_id = source.id,
+            ability_id = ability.id,
+            scope = "activation",
+            action_index =
+                action_failure and action_failure.index or nil,
+            action_type = action_failure and
+                action_failure.action.type or nil,
+            error = activation_error,
+        })
+        world.events:emit("ability.interrupted", {
+            source_id = source.id,
+            ability_id = ability.id,
+            reason = "action_failed",
+        })
+        combat.active = nil
+        return nil, activation_error
+    end
+
+    local hits_applied = applyAbilityHits(
+        world,
+        source,
+        combat,
+        ability
+    )
+    if not hits_applied then
+        world.events:emit("ability.interrupted", {
+            source_id = source.id,
+            ability_id = ability.id,
+            reason = "action_failed",
+        })
+        combat.active = nil
+        return nil, "ability hit actions failed"
+    end
     interruptIfBlocked(world, source, combat)
+    return true
 end
 
 local function startAbility(world, source, combat, ability)
@@ -450,10 +508,11 @@ function combat_system:update(world, dt)
         local combat = entity.components["action.combat"]
         combat.cooldown = util.countdown(combat.cooldown, dt)
         if combat.active then
-            if not world:allows(entity, "act") then
+            if entity.dead or not world:allows(entity, "act") then
                 world.events:emit("ability.interrupted", {
                     source_id = entity.id,
                     ability_id = combat.active.ability_id,
+                    reason = entity.dead and "death" or "blocked",
                 })
                 combat.active = nil
             else
@@ -466,8 +525,16 @@ function combat_system:update(world, dt)
                     resolveAbility(world, entity, combat, ability)
                 elseif combat.active.phase == "active" then
                     updateHitTimers(combat.active, dt)
-                    applyAbilityHits(world, entity, combat, ability)
-                    if not interruptIfBlocked(world, entity, combat) and
+                    local hits_applied =
+                        applyAbilityHits(world, entity, combat, ability)
+                    if not hits_applied then
+                        world.events:emit("ability.interrupted", {
+                            source_id = entity.id,
+                            ability_id = ability.id,
+                            reason = "action_failed",
+                        })
+                        combat.active = nil
+                    elseif not interruptIfBlocked(world, entity, combat) and
                        combat.active.remaining <= 0 then
                         finishAbility(world, entity, combat, ability)
                     end
@@ -603,6 +670,21 @@ function feature:register(host)
             }
         end,
     })
+    host.services.lifecycle:registerDeathHandler(
+        "action.combat",
+        20,
+        function(entity, world)
+            local combat = entity.components["action.combat"]
+            if combat and combat.active then
+                world.events:emit("ability.interrupted", {
+                    source_id = entity.id,
+                    ability_id = combat.active.ability_id,
+                    reason = "death",
+                })
+                combat.active = nil
+            end
+        end
+    )
 
     host:registerComponent("action.combat_input", {
         requires = {"action.combat"},

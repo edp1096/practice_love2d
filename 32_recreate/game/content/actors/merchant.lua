@@ -11,13 +11,10 @@ return {
             radius = 18,
             solid = false,
         },
-        ["render.shape"] = {
-            shape = "circle",
-            radius = 18,
-            color = {0.95, 0.62, 0.2, 1.0},
-            outline = {1.0, 0.9, 0.58, 1.0},
-            label = "SHOP",
+        ["render.sprite"] = {
+            sprite = "sprite.merchant",
         },
+        ["motion.facing"] = {},
         ["rpg.interactable"] = {
             input = "interact",
             range = 70,

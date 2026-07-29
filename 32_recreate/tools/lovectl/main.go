@@ -9,7 +9,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -36,6 +38,20 @@ func run(arguments []string) error {
 	if command == "" {
 		printUsage()
 		return errors.New("missing command")
+	}
+	if command == "help" || command == "-h" || command == "--help" {
+		printUsage()
+		return nil
+	}
+	if command == "init" {
+		sourceProject, err := findProject(options.projectPath)
+		if err != nil {
+			return fmt.Errorf(
+				"find Recreate source project for init: %w",
+				err,
+			)
+		}
+		return runInit(sourceProject, commandArguments)
 	}
 
 	projectPath, err := findProject(options.projectPath)
@@ -182,6 +198,25 @@ func run(arguments []string) error {
 			params["spawnId"] = commandArguments[1]
 		}
 		return callAndPrint(client, "App.loadStage", params)
+	case "new-game":
+		if len(commandArguments) > 2 {
+			return errors.New(
+				"usage: lovectl new-game [STAGE_ID] [SPAWN_ID]",
+			)
+		}
+		params := map[string]any{}
+		if len(commandArguments) >= 1 {
+			params["stageId"] = commandArguments[0]
+		}
+		if len(commandArguments) == 2 {
+			params["spawnId"] = commandArguments[1]
+		}
+		return callAndPrint(client, "App.startNewGame", params)
+	case "title":
+		if len(commandArguments) != 0 {
+			return errors.New("usage: lovectl title")
+		}
+		return callAndPrint(client, "App.returnToTitle", nil)
 	case "reload":
 		return callAndPrint(client, "App.reloadContent", nil)
 	case "quit":
@@ -200,6 +235,12 @@ func run(arguments []string) error {
 		return runChecks(options, projectPath)
 	case "test":
 		return runVisualTest(options, projectPath, commandArguments)
+	case "smoke":
+		return runSmokeTest(options, projectPath, commandArguments)
+	case "campaign":
+		return runCampaignTest(options, projectPath, commandArguments)
+	case "maker":
+		return runMaker(options, projectPath, commandArguments)
 	case "map":
 		return runMapCommand(projectPath, commandArguments)
 	case "new":
@@ -212,9 +253,6 @@ func run(arguments []string) error {
 		return runPreview(client, commandArguments)
 	case "package":
 		return runPackageCommand(options, projectPath, commandArguments)
-	case "help", "-h", "--help":
-		printUsage()
-		return nil
 	default:
 		return fmt.Errorf("unknown command: %s", command)
 	}
@@ -263,9 +301,14 @@ Usage:
   lovectl [global flags] COMMAND [arguments]
 
 Commands:
+  init --profile PROFILE TARGET     Create an independent Maker project
   run                              Launch a debug-enabled game
   check                            Syntax, content, Lua, and Go checks
-  test [--artifacts PATH]          Real-window action scenario
+  smoke [--artifacts PATH]         Project-declared capability smoke test
+  test [--artifacts PATH]          Full project acceptance scenario
+  campaign [--artifacts PATH]      Complete sample-game acceptance scenario
+  maker [--listen ADDR] [--no-open]
+                                    Open the local visual Maker workspace
   map compile [SOURCE.tmx ...]     Compile canonical TMX into Lua stages
   map check [SOURCE.tmx ...]       Validate TMX and generated output
   new TYPE NAME [REFERENCE_ID]     Create validated content; run without args for types
@@ -285,10 +328,12 @@ Commands:
   load SLOT                       Validate, migrate, and load a save
   action NAME [--frames N]         Inject semantic input
   pause true|false                 Pause/resume simulation
-  step [--frames N] [--dt S]       Advance deterministic frames
+  step [--frames N]                Advance fixed simulation ticks
   overlay true|false               Toggle semantic overlay
   screenshot OUTPUT.png            Capture the framebuffer
   stage STAGE_ID [SPAWN_ID]        Atomically enter a stage/spawn point
+  new-game [STAGE_ID] [SPAWN_ID]   Reset session and start a fresh game
+  title                            Reset session and return to title
   reload                           Revalidate content and recreate the stage
   call METHOD [PARAMS_JSON]        Raw whitelisted protocol call
   quit                             Quit LÖVE cleanly
@@ -385,16 +430,14 @@ func runAction(client *protocolClient, arguments []string) error {
 func runStep(client *protocolClient, arguments []string) error {
 	flags := flag.NewFlagSet("step", flag.ContinueOnError)
 	frames := flags.Int("frames", 1, "number of frames")
-	delta := flags.Float64("dt", 1.0/60.0, "seconds per frame")
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
 	if len(flags.Args()) != 0 {
-		return errors.New("usage: lovectl step [--frames N] [--dt S]")
+		return errors.New("usage: lovectl step [--frames N]")
 	}
 	return callAndPrint(client, "Test.step", map[string]any{
 		"frames": *frames,
-		"dt":     *delta,
 	})
 }
 
@@ -439,24 +482,36 @@ func captureScreenshot(client *protocolClient, outputPath string) error {
 	return nil
 }
 
-func debugEnvironment(port int) []string {
-	result := make([]string, 0, len(os.Environ())+2)
-	for _, value := range os.Environ() {
-		if len(value) >= len("RECREATE_DEBUG_BRIDGE=") &&
-			value[:len("RECREATE_DEBUG_BRIDGE=")] == "RECREATE_DEBUG_BRIDGE=" {
-			continue
-		}
-		if len(value) >= len("RECREATE_DEBUG_PORT=") &&
-			value[:len("RECREATE_DEBUG_PORT=")] == "RECREATE_DEBUG_PORT=" {
-			continue
+func overrideEnvironment(
+	environment []string,
+	overrides map[string]string,
+) []string {
+	result := make([]string, 0, len(environment)+len(overrides))
+	for _, value := range environment {
+		key, _, found := strings.Cut(value, "=")
+		if found {
+			if _, overridden := overrides[key]; overridden {
+				continue
+			}
 		}
 		result = append(result, value)
 	}
-	return append(
-		result,
-		"RECREATE_DEBUG_BRIDGE=1",
-		fmt.Sprintf("RECREATE_DEBUG_PORT=%d", port),
-	)
+	keys := make([]string, 0, len(overrides))
+	for key := range overrides {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		result = append(result, key+"="+overrides[key])
+	}
+	return result
+}
+
+func debugEnvironment(port int) []string {
+	return overrideEnvironment(os.Environ(), map[string]string{
+		"RECREATE_DEBUG_BRIDGE": "1",
+		"RECREATE_DEBUG_PORT":   fmt.Sprintf("%d", port),
+	})
 }
 
 func launchForeground(options globalOptions, projectPath string) error {

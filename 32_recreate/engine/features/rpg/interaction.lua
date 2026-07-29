@@ -112,20 +112,17 @@ function interaction_system:update(world)
         source_id = player.id,
         target_id = nearest.id,
     })
-    for index, action in ipairs(config.actions) do
-        local result, action_error = world:execute(action, context)
-        if result == nil or result == false then
-            world.events:emit("interaction.action_failed", {
-                source_id = player.id,
-                target_id = nearest.id,
-                action_index = index,
-                error = action_error,
-            })
-            return
-        end
-        if type(result) == "table" and result.stop_effects then
-            break
-        end
+    local result, action_error, failure =
+        world:executeActions(config.actions, context)
+    if not result then
+        world.events:emit("interaction.action_failed", {
+            source_id = player.id,
+            target_id = nearest.id,
+            action_index = failure and failure.index or nil,
+            action_type = failure and failure.action.type or nil,
+            error = action_error,
+        })
+        return
     end
     world.events:emit("interaction.completed", {
         source_id = player.id,

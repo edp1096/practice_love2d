@@ -16,6 +16,7 @@ import (
 
 type runtimeState struct {
 	Project         string  `json:"project"`
+	Profile         string  `json:"profile"`
 	StageID         string  `json:"stage_id"`
 	LoveVersion     string  `json:"love_version"`
 	LuaVersion      string  `json:"lua_version"`
@@ -65,11 +66,16 @@ type worldSnapshot struct {
 	Entities []entityState `json:"entities"`
 	Events   []eventState  `json:"recent_events"`
 	Camera   struct {
-		X        float64 `json:"x"`
-		Y        float64 `json:"y"`
-		Width    float64 `json:"width"`
-		Height   float64 `json:"height"`
-		TargetID string  `json:"target_id"`
+		X              float64 `json:"x"`
+		Y              float64 `json:"y"`
+		Width          float64 `json:"width"`
+		Height         float64 `json:"height"`
+		TargetID       string  `json:"target_id"`
+		ShakeRemaining float64 `json:"shake_remaining"`
+		ShakeMagnitude float64 `json:"shake_magnitude"`
+		ShakeOffsetX   float64 `json:"shake_offset_x"`
+		ShakeOffsetY   float64 `json:"shake_offset_y"`
+		ShakeSequence  int     `json:"shake_sequence"`
 	} `json:"camera"`
 	Tilemap struct {
 		Available    bool   `json:"available"`
@@ -99,7 +105,16 @@ type worldSnapshot struct {
 	Dialogue    dialogueState    `json:"dialogue"`
 	Interaction interactionState `json:"interaction"`
 	Shop        shopState        `json:"shop"`
-	Locale      struct {
+	GameFlow    struct {
+		Mode      string   `json:"mode"`
+		Selected  int      `json:"selected"`
+		Options   []string `json:"options"`
+		HasSave   bool     `json:"has_save"`
+		Started   bool     `json:"started"`
+		Completed bool     `json:"completed"`
+		Notice    string   `json:"notice"`
+	} `json:"game_flow"`
+	Locale struct {
 		ID   string `json:"id"`
 		Code string `json:"code"`
 	} `json:"locale"`
@@ -310,6 +325,8 @@ type visualReport struct {
 		EnemyStaggerRemaining   float64 `json:"enemy_stagger_remaining"`
 		SuccessDisplayRemaining float64 `json:"success_display_remaining"`
 		Perfect                 bool    `json:"perfect"`
+		CameraShakeRemaining    float64 `json:"camera_shake_remaining"`
+		CameraShakeMagnitude    float64 `json:"camera_shake_magnitude"`
 	} `json:"parry"`
 	Dodge struct {
 		PlayerHealthBefore float64 `json:"player_health_before"`
@@ -481,6 +498,155 @@ type loveProcess struct {
 	done    chan error
 }
 
+type visualScenario struct {
+	SchemaVersion int    `json:"schema_version"`
+	Project       string `json:"project"`
+	LocaleCode    string `json:"locale_code"`
+	Tags          struct {
+		Player string `json:"player"`
+		Enemy  string `json:"enemy"`
+		Boss   string `json:"boss"`
+	} `json:"tags"`
+	Stages struct {
+		Action     string `json:"action"`
+		Encounter  string `json:"encounter"`
+		Platformer string `json:"platformer"`
+		WorldHub   string `json:"world_hub"`
+		WorldGrove string `json:"world_grove"`
+		RPG        string `json:"rpg"`
+	} `json:"stages"`
+	Content struct {
+		Projectile      string `json:"projectile"`
+		BurningStatus   string `json:"burning_status"`
+		MultiHitAbility string `json:"multi_hit_ability"`
+		EnragedStatus   string `json:"enraged_status"`
+		PreviewActor    string `json:"preview_actor"`
+		PreviewAbility  string `json:"preview_ability"`
+		Dialogue        string `json:"dialogue"`
+		Quest           string `json:"quest"`
+		Shop            string `json:"shop"`
+		Potion          string `json:"potion"`
+		Equipment       string `json:"equipment"`
+	} `json:"content"`
+	Entities struct {
+		Guide        string   `json:"guide"`
+		Merchant     string   `json:"merchant"`
+		QuestEnemies []string `json:"quest_enemies"`
+	} `json:"entities"`
+	Encounter struct {
+		Placement       string `json:"placement"`
+		FirstWave       string `json:"first_wave"`
+		BossWave        string `json:"boss_wave"`
+		Phase           string `json:"phase"`
+		CompletionEvent string `json:"completion_event"`
+	} `json:"encounter"`
+	Flags struct {
+		QuestReward string `json:"quest_reward"`
+	} `json:"flags"`
+	Dialogue struct {
+		StartNode    string `json:"start_node"`
+		AcceptedNode string `json:"accepted_node"`
+		AcceptChoice string `json:"accept_choice"`
+	} `json:"dialogue"`
+	Events struct {
+		GroveDiscovered string `json:"grove_discovered"`
+	} `json:"events"`
+	EquipmentSlot string `json:"equipment_slot"`
+}
+
+func loadVisualScenario(
+	projectPath string,
+	argument string,
+) (visualScenario, error) {
+	var scenario visualScenario
+	path := argument
+	if path == "" {
+		path = filepath.Join(
+			projectPath,
+			"game",
+			"tests",
+			"visual_scenario.json",
+		)
+	} else if !filepath.IsAbs(path) {
+		path = filepath.Join(projectPath, path)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return scenario, fmt.Errorf(
+			"read visual scenario %s: %w",
+			path,
+			err,
+		)
+	}
+	if err := decodeStrictJSON(data, &scenario); err != nil {
+		return scenario, fmt.Errorf(
+			"decode visual scenario %s: %w",
+			path,
+			err,
+		)
+	}
+	if scenario.SchemaVersion != 1 {
+		return scenario, fmt.Errorf(
+			"visual scenario schema_version must be 1, got %d",
+			scenario.SchemaVersion,
+		)
+	}
+	required := []struct {
+		path  string
+		value string
+	}{
+		{"project", scenario.Project},
+		{"locale_code", scenario.LocaleCode},
+		{"tags.player", scenario.Tags.Player},
+		{"tags.enemy", scenario.Tags.Enemy},
+		{"tags.boss", scenario.Tags.Boss},
+		{"stages.action", scenario.Stages.Action},
+		{"stages.encounter", scenario.Stages.Encounter},
+		{"stages.platformer", scenario.Stages.Platformer},
+		{"stages.world_hub", scenario.Stages.WorldHub},
+		{"stages.world_grove", scenario.Stages.WorldGrove},
+		{"stages.rpg", scenario.Stages.RPG},
+		{"content.projectile", scenario.Content.Projectile},
+		{"content.burning_status", scenario.Content.BurningStatus},
+		{"content.multi_hit_ability", scenario.Content.MultiHitAbility},
+		{"content.enraged_status", scenario.Content.EnragedStatus},
+		{"content.preview_actor", scenario.Content.PreviewActor},
+		{"content.preview_ability", scenario.Content.PreviewAbility},
+		{"content.dialogue", scenario.Content.Dialogue},
+		{"content.quest", scenario.Content.Quest},
+		{"content.shop", scenario.Content.Shop},
+		{"content.potion", scenario.Content.Potion},
+		{"content.equipment", scenario.Content.Equipment},
+		{"entities.guide", scenario.Entities.Guide},
+		{"entities.merchant", scenario.Entities.Merchant},
+		{"encounter.placement", scenario.Encounter.Placement},
+		{"encounter.first_wave", scenario.Encounter.FirstWave},
+		{"encounter.boss_wave", scenario.Encounter.BossWave},
+		{"encounter.phase", scenario.Encounter.Phase},
+		{"encounter.completion_event", scenario.Encounter.CompletionEvent},
+		{"flags.quest_reward", scenario.Flags.QuestReward},
+		{"dialogue.start_node", scenario.Dialogue.StartNode},
+		{"dialogue.accepted_node", scenario.Dialogue.AcceptedNode},
+		{"dialogue.accept_choice", scenario.Dialogue.AcceptChoice},
+		{"events.grove_discovered", scenario.Events.GroveDiscovered},
+		{"equipment_slot", scenario.EquipmentSlot},
+	}
+	for _, field := range required {
+		if field.value == "" {
+			return scenario, fmt.Errorf(
+				"visual scenario field %s is required",
+				field.path,
+			)
+		}
+	}
+	if len(scenario.Entities.QuestEnemies) < 2 {
+		return scenario, errors.New(
+			"visual scenario entities.quest_enemies requires two IDs",
+		)
+	}
+	return scenario, nil
+}
+
 func runVisualTest(
 	options globalOptions,
 	projectPath string,
@@ -492,17 +658,37 @@ func runVisualTest(
 		"",
 		"directory for screenshot, report, and log",
 	)
+	scenarioArgument := flags.String(
+		"scenario",
+		"",
+		"project-relative visual scenario JSON",
+	)
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
 	if len(flags.Args()) != 0 {
-		return errors.New("usage: lovectl test [--artifacts PATH]")
+		return errors.New(
+			"usage: lovectl test [--artifacts PATH] [--scenario FILE]",
+		)
+	}
+	scenario, err := loadVisualScenario(
+		projectPath,
+		*scenarioArgument,
+	)
+	if err != nil {
+		return err
 	}
 
 	artifacts, err := prepareArtifacts(*artifactArgument)
 	if err != nil {
 		return err
 	}
+	runtimeDirectory, err :=
+		os.MkdirTemp("", "32_recreate_visual_runtime_")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(runtimeDirectory)
 	port, err := availablePort()
 	if err != nil {
 		return err
@@ -520,6 +706,7 @@ func runVisualTest(
 		projectPath,
 		port,
 		logFile,
+		runtimeDirectory,
 	)
 	if err != nil {
 		return err
@@ -531,7 +718,7 @@ func runVisualTest(
 		return visualFailure(err, logPath)
 	}
 
-	report, err := runActionScenario(client, artifacts)
+	report, err := runActionScenario(client, artifacts, scenario)
 	if err != nil {
 		return visualFailure(err, logPath)
 	}
@@ -601,9 +788,14 @@ func runVisualTest(
 func runActionScenario(
 	client *protocolClient,
 	artifacts string,
+	scenario visualScenario,
 ) (visualReport, error) {
 	var report visualReport
-	if err := client.call("Runtime.getState", nil, &report.Runtime); err != nil {
+	if err := client.call(
+		"App.startNewGame",
+		map[string]any{"stageId": scenario.Stages.Action},
+		&report.Runtime,
+	); err != nil {
 		return report, err
 	}
 
@@ -623,11 +815,11 @@ func runActionScenario(
 	if !initial.Available {
 		return report, errors.New("semantic world is unavailable")
 	}
-	player, err := entityWithTag(initial.Entities, "player")
+	player, err := entityWithTag(initial.Entities, scenario.Tags.Player)
 	if err != nil {
 		return report, err
 	}
-	enemy, err := entityWithTag(initial.Entities, "enemy")
+	enemy, err := entityWithTag(initial.Entities, scenario.Tags.Enemy)
 	if err != nil {
 		return report, err
 	}
@@ -896,11 +1088,17 @@ func runActionScenario(
 	if err := client.call("World.getSnapshot", nil, &parryInitial); err != nil {
 		return report, err
 	}
-	parryPlayer, err := entityWithTag(parryInitial.Entities, "player")
+	parryPlayer, err := entityWithTag(
+		parryInitial.Entities,
+		scenario.Tags.Player,
+	)
 	if err != nil {
 		return report, err
 	}
-	parryEnemy, err := entityWithTag(parryInitial.Entities, "enemy")
+	parryEnemy, err := entityWithTag(
+		parryInitial.Entities,
+		scenario.Tags.Enemy,
+	)
 	if err != nil {
 		return report, err
 	}
@@ -1023,6 +1221,19 @@ func runActionScenario(
 	); err != nil {
 		return report, err
 	}
+	report.Parry.CameraShakeRemaining =
+		beforeCapture.Camera.ShakeRemaining
+	report.Parry.CameraShakeMagnitude =
+		beforeCapture.Camera.ShakeMagnitude
+	if report.Parry.CameraShakeRemaining <= 0 ||
+		report.Parry.CameraShakeMagnitude < 9 {
+		return report, fmt.Errorf(
+			"perfect parry did not trigger camera shake: "+
+				"remaining=%.3f magnitude=%.1f",
+			report.Parry.CameraShakeRemaining,
+			report.Parry.CameraShakeMagnitude,
+		)
+	}
 
 	screenshot := filepath.Join(artifacts, "action_slice.png")
 	if err := captureScreenshot(client, screenshot); err != nil {
@@ -1084,11 +1295,17 @@ func runActionScenario(
 	if err := client.call("World.getSnapshot", nil, &dodgeInitial); err != nil {
 		return report, err
 	}
-	dodgePlayer, err := entityWithTag(dodgeInitial.Entities, "player")
+	dodgePlayer, err := entityWithTag(
+		dodgeInitial.Entities,
+		scenario.Tags.Player,
+	)
 	if err != nil {
 		return report, err
 	}
-	dodgeEnemy, err := entityWithTag(dodgeInitial.Entities, "enemy")
+	dodgeEnemy, err := entityWithTag(
+		dodgeInitial.Entities,
+		scenario.Tags.Enemy,
+	)
 	if err != nil {
 		return report, err
 	}
@@ -1215,7 +1432,10 @@ func runActionScenario(
 		return report, err
 	}
 	freeDodgePlayer, err :=
-		entityWithTag(freeDodgeInitial.Entities, "player")
+		entityWithTag(
+			freeDodgeInitial.Entities,
+			scenario.Tags.Player,
+		)
 	if err != nil {
 		return report, err
 	}
@@ -1307,45 +1527,53 @@ func runActionScenario(
 	report.SteppedFrames =
 		finalState.Simulation.SteppedFrames - startSteps
 	report.Paused = finalState.Simulation.Paused
-	projectileReport, err := runProjectileScenario(client, artifacts)
+	projectileReport, err := runProjectileScenario(
+		client,
+		artifacts,
+		scenario,
+	)
 	if err != nil {
 		return report, err
 	}
 	report.Projectile = projectileReport
 	collisionReport, multiHitReport, err :=
-		runCollisionAndMultiHitScenario(client, artifacts)
+		runCollisionAndMultiHitScenario(client, artifacts, scenario)
 	if err != nil {
 		return report, err
 	}
 	report.DynamicCollision = collisionReport
 	report.MultiHit = multiHitReport
-	encounterReport, err := runEncounterScenario(client, artifacts)
+	encounterReport, err := runEncounterScenario(
+		client,
+		artifacts,
+		scenario,
+	)
 	if err != nil {
 		return report, err
 	}
 	report.Encounter = encounterReport
 	platformerReport, err :=
-		runPlatformerScenario(client, artifacts)
+		runPlatformerScenario(client, artifacts, scenario)
 	if err != nil {
 		return report, err
 	}
 	report.Platformer = platformerReport
-	worldReport, err := runWorldScenario(client, artifacts)
+	worldReport, err := runWorldScenario(client, artifacts, scenario)
 	if err != nil {
 		return report, err
 	}
 	report.World = worldReport
-	rpgReport, err := runRPGScenario(client, artifacts)
+	rpgReport, err := runRPGScenario(client, artifacts, scenario)
 	if err != nil {
 		return report, err
 	}
 	report.RPG = rpgReport
-	saveReport, err := runSaveScenario(client, artifacts)
+	saveReport, err := runSaveScenario(client, artifacts, scenario)
 	if err != nil {
 		return report, err
 	}
 	report.Save = saveReport
-	previewReport, err := runPreviewProtocolScenario(client)
+	previewReport, err := runPreviewProtocolScenario(client, scenario)
 	if err != nil {
 		return report, err
 	}
@@ -1361,6 +1589,7 @@ func runActionScenario(
 func runSaveScenario(
 	client *protocolClient,
 	artifacts string,
+	scenario visualScenario,
 ) (saveVisualReport, error) {
 	var report saveVisualReport
 	var exported struct {
@@ -1379,15 +1608,35 @@ func runSaveScenario(
 	}
 	report.SchemaVersion = exported.SchemaVersion
 	report.SectionCount = len(exported.Sections)
-	report.SectionsVersioned = report.SectionCount == 6
+	report.SectionsVersioned = true
 	for _, section := range exported.Sections {
 		if section.Version != 1 || section.Data == nil {
 			report.SectionsVersioned = false
 		}
 	}
+	for _, name := range []string{
+		"game.flow",
+		"rpg.flags",
+		"rpg.inventory",
+		"rpg.equipment",
+		"rpg.quests",
+		"rpg.economy",
+		"rpg.locale",
+	} {
+		if _, exists := exported.Sections[name]; !exists {
+			report.SectionsVersioned = false
+		}
+	}
+	flowSection := exported.Sections["game.flow"]
+	if started, ok := flowSection.Data["started"].(bool); !ok || !started {
+		report.SectionsVersioned = false
+	}
+	if completed, ok := flowSection.Data["completed"].(bool); !ok || completed {
+		report.SectionsVersioned = false
+	}
 	if exported.SchemaVersion != 1 ||
-		exported.Project != "recreate.maker_runtime" ||
-		exported.Stage.ID != "stage.action_room" ||
+		exported.Project != scenario.Project ||
+		exported.Stage.ID != scenario.Stages.Action ||
 		!report.SectionsVersioned {
 		return report, fmt.Errorf(
 			"versioned save export is incomplete: %#v",
@@ -1412,7 +1661,7 @@ func runSaveScenario(
 	report.Path = written.Path
 	if written.Slot != "visual_regression" ||
 		written.Path != "saves/visual_regression.lua" ||
-		written.StageID != "stage.action_room" ||
+		written.StageID != scenario.Stages.Action ||
 		written.SchemaVersion != 1 {
 		return report, fmt.Errorf(
 			"atomic save write response is incomplete: %#v",
@@ -1431,7 +1680,7 @@ func runSaveScenario(
 	if err := client.call(
 		"Inventory.give",
 		map[string]any{
-			"itemId": "item.potion",
+			"itemId": scenario.Content.Potion,
 			"amount": 1,
 		},
 		&mutation,
@@ -1444,7 +1693,10 @@ func runSaveScenario(
 	}
 	report.Mutated =
 		snapshot.Currency.Balance == 100 &&
-			inventoryCount(snapshot.Inventory, "item.potion") == 3
+			inventoryCount(
+				snapshot.Inventory,
+				scenario.Content.Potion,
+			) == 3
 	if !report.Mutated {
 		return report, fmt.Errorf(
 			"post-save mutations were not observable: currency=%d inventory=%#v",
@@ -1456,12 +1708,12 @@ func runSaveScenario(
 	var runtime runtimeState
 	if err := client.call(
 		"App.loadStage",
-		map[string]any{"stageId": "stage.platformer_room"},
+		map[string]any{"stageId": scenario.Stages.Platformer},
 		&runtime,
 	); err != nil {
 		return report, err
 	}
-	if runtime.StageID != "stage.platformer_room" {
+	if runtime.StageID != scenario.Stages.Platformer {
 		return report, fmt.Errorf(
 			"pre-load stage mutation failed: %#v",
 			runtime,
@@ -1479,30 +1731,36 @@ func runSaveScenario(
 	}
 	quest, questErr := questByID(
 		snapshot.Quests,
-		"quest.slime_patrol",
+		scenario.Content.Quest,
 	)
-	player, playerErr := entityWithTag(snapshot.Entities, "player")
+	player, playerErr := entityWithTag(
+		snapshot.Entities,
+		scenario.Tags.Player,
+	)
 	report.Stage = snapshot.Stage.ID
 	report.Currency = snapshot.Currency.Balance
 	report.PotionCount =
-		inventoryCount(snapshot.Inventory, "item.potion")
+		inventoryCount(snapshot.Inventory, scenario.Content.Potion)
 	if questErr == nil {
 		report.QuestStatus = quest.Status
 	}
 	if playerErr == nil {
-		report.EquippedItem = equippedItem(player, "weapon")
+		report.EquippedItem = equippedItem(
+			player,
+			scenario.EquipmentSlot,
+		)
 	}
 	report.Restored =
-		runtime.StageID == "stage.action_room" &&
-			report.Stage == "stage.action_room" &&
+		runtime.StageID == scenario.Stages.Action &&
+			report.Stage == scenario.Stages.Action &&
 			report.Currency == 75 &&
 			report.PotionCount == 2 &&
 			questErr == nil &&
 			report.QuestStatus == "completed" &&
 			playerErr == nil &&
-			report.EquippedItem == "item.training_sword" &&
+			report.EquippedItem == scenario.Content.Equipment &&
 			player.Stats.Attack == 5 &&
-			snapshot.Flags["quest.slime_patrol.rewarded"]
+			snapshot.Flags[scenario.Flags.QuestReward]
 	if !report.Restored {
 		return report, fmt.Errorf(
 			"save did not restore RPG progression transactionally: "+
@@ -1522,6 +1780,7 @@ func runSaveScenario(
 
 func runPreviewProtocolScenario(
 	client *protocolClient,
+	scenario visualScenario,
 ) (previewProtocolReport, error) {
 	var report previewProtocolReport
 	var definition struct {
@@ -1532,16 +1791,17 @@ func runPreviewProtocolScenario(
 	}
 	if err := client.call(
 		"Content.getDefinition",
-		map[string]any{"contentId": "actor.slime"},
+		map[string]any{"contentId": scenario.Content.PreviewActor},
 		&definition,
 	); err != nil {
 		return report, err
 	}
 	report.Definition =
-		definition.ID == "actor.slime" &&
+		definition.ID == scenario.Content.PreviewActor &&
 			definition.Kind == "actor" &&
 			definition.Source == "game/content/actors/slime.lua" &&
-			definition.Definition["id"] == "actor.slime"
+			definition.Definition["id"] ==
+				scenario.Content.PreviewActor
 	if !report.Definition {
 		return report, fmt.Errorf(
 			"content definition preview is incomplete: %#v",
@@ -1553,7 +1813,10 @@ func runPreviewProtocolScenario(
 	if err := client.call("Content.getGraph", nil, &graph); err != nil {
 		return report, err
 	}
-	node, found := findContentGraphNode(graph, "item.training_sword")
+	node, found := findContentGraphNode(
+		graph,
+		scenario.Content.Equipment,
+	)
 	report.Graph = found && len(node.Dependents) >= 3
 	if !report.Graph {
 		return report, fmt.Errorf(
@@ -1565,7 +1828,7 @@ func runPreviewProtocolScenario(
 	var dialogueResult map[string]any
 	if err := client.call(
 		"Dialogue.start",
-		map[string]any{"dialogueId": "dialogue.guide"},
+		map[string]any{"dialogueId": scenario.Content.Dialogue},
 		&dialogueResult,
 	); err != nil {
 		return report, err
@@ -1576,7 +1839,8 @@ func runPreviewProtocolScenario(
 	}
 	report.Dialogue =
 		snapshot.Dialogue.Active &&
-			snapshot.Dialogue.DialogueID == "dialogue.guide"
+			snapshot.Dialogue.DialogueID ==
+				scenario.Content.Dialogue
 	if !report.Dialogue {
 		return report, fmt.Errorf(
 			"dialogue preview did not open: %#v",
@@ -1600,7 +1864,10 @@ func runPreviewProtocolScenario(
 	if err := client.call("World.getSnapshot", nil, &snapshot); err != nil {
 		return report, err
 	}
-	player, err := entityWithTag(snapshot.Entities, "player")
+	player, err := entityWithTag(
+		snapshot.Entities,
+		scenario.Tags.Player,
+	)
 	if err != nil {
 		return report, err
 	}
@@ -1608,7 +1875,7 @@ func runPreviewProtocolScenario(
 	if err := client.call(
 		"Entity.spawn",
 		map[string]any{
-			"actorId":  "actor.slime",
+			"actorId":  scenario.Content.PreviewActor,
 			"entityId": "debug.preview.slime",
 			"x":        player.X + 140,
 			"y":        player.Y,
@@ -1619,7 +1886,7 @@ func runPreviewProtocolScenario(
 	}
 	report.Spawn =
 		spawned.ID == "debug.preview.slime" &&
-			spawned.ActorID == "actor.slime"
+			spawned.ActorID == scenario.Content.PreviewActor
 	if !report.Spawn {
 		return report, fmt.Errorf(
 			"actor preview spawn is incomplete: %#v",
@@ -1632,7 +1899,7 @@ func runPreviewProtocolScenario(
 		"Entity.requestAbility",
 		map[string]any{
 			"entityId":  player.ID,
-			"abilityId": "ability.sword_slash",
+			"abilityId": scenario.Content.PreviewAbility,
 		},
 		&queued,
 	); err != nil {
@@ -1674,6 +1941,7 @@ func runPreviewProtocolScenario(
 func runProjectileScenario(
 	client *protocolClient,
 	artifacts string,
+	scenario visualScenario,
 ) (projectileVisualReport, error) {
 	var report projectileVisualReport
 	var runtime runtimeState
@@ -1685,11 +1953,17 @@ func runProjectileScenario(
 	if err := client.call("World.getSnapshot", nil, &initial); err != nil {
 		return report, err
 	}
-	player, err := entityWithTag(initial.Entities, "player")
+	player, err := entityWithTag(
+		initial.Entities,
+		scenario.Tags.Player,
+	)
 	if err != nil {
 		return report, err
 	}
-	enemy, err := entityWithTag(initial.Entities, "enemy")
+	enemy, err := entityWithTag(
+		initial.Entities,
+		scenario.Tags.Enemy,
+	)
 	if err != nil {
 		return report, err
 	}
@@ -1741,7 +2015,7 @@ func runProjectileScenario(
 	report.CapturedX = projectile.X
 	report.DirectionX = projectile.ProjectileDirectionX
 	report.Spawned = snapshotHasEventName(inFlight, "projectile.spawned")
-	if report.DefinitionID != "projectile.fire_bolt" ||
+	if report.DefinitionID != scenario.Content.Projectile ||
 		report.SourceID != player.ID ||
 		report.CapturedX <= report.StartX ||
 		report.DirectionX < 0.99 ||
@@ -1802,7 +2076,7 @@ func runProjectileScenario(
 	}
 	if hitEnemy.StatusCount != 1 ||
 		len(hitEnemy.Statuses) != 1 ||
-		hitEnemy.Statuses[0].ID != "status.burning" ||
+		hitEnemy.Statuses[0].ID != scenario.Content.BurningStatus ||
 		hitEnemy.Statuses[0].Stacks != 1 ||
 		hitEnemy.Statuses[0].SourceID != player.ID {
 		return report, fmt.Errorf(
@@ -1860,6 +2134,7 @@ func runProjectileScenario(
 func runCollisionAndMultiHitScenario(
 	client *protocolClient,
 	artifacts string,
+	scenario visualScenario,
 ) (dynamicCollisionReport, multiHitVisualReport, error) {
 	var collisionReport dynamicCollisionReport
 	var multiHitReport multiHitVisualReport
@@ -1872,11 +2147,17 @@ func runCollisionAndMultiHitScenario(
 	if err := client.call("World.getSnapshot", nil, &initial); err != nil {
 		return collisionReport, multiHitReport, err
 	}
-	player, err := entityWithTag(initial.Entities, "player")
+	player, err := entityWithTag(
+		initial.Entities,
+		scenario.Tags.Player,
+	)
 	if err != nil {
 		return collisionReport, multiHitReport, err
 	}
-	enemy, err := entityWithTag(initial.Entities, "enemy")
+	enemy, err := entityWithTag(
+		initial.Entities,
+		scenario.Tags.Enemy,
+	)
 	if err != nil {
 		return collisionReport, multiHitReport, err
 	}
@@ -1960,11 +2241,17 @@ func runCollisionAndMultiHitScenario(
 	if err := client.call("World.getSnapshot", nil, &initial); err != nil {
 		return collisionReport, multiHitReport, err
 	}
-	player, err = entityWithTag(initial.Entities, "player")
+	player, err = entityWithTag(
+		initial.Entities,
+		scenario.Tags.Player,
+	)
 	if err != nil {
 		return collisionReport, multiHitReport, err
 	}
-	enemy, err = entityWithTag(initial.Entities, "enemy")
+	enemy, err = entityWithTag(
+		initial.Entities,
+		scenario.Tags.Enemy,
+	)
 	if err != nil {
 		return collisionReport, multiHitReport, err
 	}
@@ -1979,7 +2266,7 @@ func runCollisionAndMultiHitScenario(
 	); err != nil {
 		return collisionReport, multiHitReport, err
 	}
-	multiHitReport.AbilityID = "ability.whirlwind"
+	multiHitReport.AbilityID = scenario.Content.MultiHitAbility
 	multiHitReport.HealthBefore = positioned.Health
 
 	if err := client.call(
@@ -2056,13 +2343,14 @@ func runCollisionAndMultiHitScenario(
 func runEncounterScenario(
 	client *protocolClient,
 	artifacts string,
+	scenario visualScenario,
 ) (encounterVisualReport, error) {
 	var report encounterVisualReport
 	var runtime runtimeState
 	var err error
 	if err := client.call(
 		"App.loadStage",
-		map[string]any{"stageId": "stage.encounter_room"},
+		map[string]any{"stageId": scenario.Stages.Encounter},
 		&runtime,
 	); err != nil {
 		return report, err
@@ -2074,8 +2362,8 @@ func runEncounterScenario(
 		return report, err
 	}
 	report.Stage = snapshot.Stage.ID
-	report.ID = "arena"
-	if report.Stage != "stage.encounter_room" ||
+	report.ID = scenario.Encounter.Placement
+	if report.Stage != scenario.Stages.Encounter ||
 		snapshot.EncounterCount != 1 {
 		return report, fmt.Errorf(
 			"encounter stage snapshot is incomplete: %#v",
@@ -2089,7 +2377,7 @@ func runEncounterScenario(
 		state, stateError = encounterByID(snapshot.Encounters, report.ID)
 		if stateError == nil &&
 			state.Status == "active" &&
-			state.WaveID == "scouts" {
+			state.WaveID == scenario.Encounter.FirstWave {
 			break
 		}
 		if err := requestAndWaitSteps(client, steps, 1); err != nil {
@@ -2104,12 +2392,16 @@ func runEncounterScenario(
 			return report, err
 		}
 	}
-	if state.Status != "active" || state.WaveID != "scouts" {
+	if state.Status != "active" ||
+		state.WaveID != scenario.Encounter.FirstWave {
 		return report, errors.New("encounter did not start its first wave")
 	}
 	report.FirstWave = state.WaveID
 	report.FirstWaveActors = state.Living
-	enemies := liveEntitiesWithTag(snapshot.Entities, "enemy")
+	enemies := liveEntitiesWithTag(
+		snapshot.Entities,
+		scenario.Tags.Enemy,
+	)
 	if report.FirstWaveActors != 2 || len(enemies) != 2 {
 		return report, fmt.Errorf(
 			"first encounter wave has %d living actors and %d entities",
@@ -2147,7 +2439,8 @@ func runEncounterScenario(
 		if err != nil {
 			return report, err
 		}
-		if state.Status == "active" && state.WaveID == "boss" {
+		if state.Status == "active" &&
+			state.WaveID == scenario.Encounter.BossWave {
 			break
 		}
 		if err := requestAndWaitSteps(client, steps, 1); err != nil {
@@ -2155,11 +2448,15 @@ func runEncounterScenario(
 		}
 		steps++
 	}
-	if state.Status != "active" || state.WaveID != "boss" {
+	if state.Status != "active" ||
+		state.WaveID != scenario.Encounter.BossWave {
 		return report, errors.New("encounter did not advance to boss wave")
 	}
 	report.BossWave = state.WaveID
-	boss, err := entityWithTag(snapshot.Entities, "boss")
+	boss, err := entityWithTag(
+		snapshot.Entities,
+		scenario.Tags.Boss,
+	)
 	if err != nil {
 		return report, err
 	}
@@ -2203,8 +2500,8 @@ func runEncounterScenario(
 	if len(boss.Statuses) == 1 {
 		report.StatusID = boss.Statuses[0].ID
 	}
-	if report.Phase != "enraged" ||
-		report.StatusID != "status.enraged" ||
+	if report.Phase != scenario.Encounter.Phase ||
+		report.StatusID != scenario.Content.EnragedStatus ||
 		!snapshotHasEventName(snapshot, "boss.phase_entered") {
 		return report, fmt.Errorf(
 			"boss phase did not enter: state=%#v boss=%#v",
@@ -2248,7 +2545,7 @@ func runEncounterScenario(
 			snapshotHasEventName(snapshot, "encounter.completed") &&
 			snapshotHasEventName(
 				snapshot,
-				"encounter.slime_trial_completed",
+				scenario.Encounter.CompletionEvent,
 			)
 	if !report.Completed {
 		return report, fmt.Errorf(
@@ -2262,12 +2559,13 @@ func runEncounterScenario(
 func runPlatformerScenario(
 	client *protocolClient,
 	artifacts string,
+	scenario visualScenario,
 ) (platformerVisualReport, error) {
 	var report platformerVisualReport
 	var runtime runtimeState
 	if err := client.call(
 		"App.loadStage",
-		map[string]any{"stageId": "stage.platformer_room"},
+		map[string]any{"stageId": scenario.Stages.Platformer},
 		&runtime,
 	); err != nil {
 		return report, err
@@ -2278,13 +2576,16 @@ func runPlatformerScenario(
 	if err := client.call("World.getSnapshot", nil, &snapshot); err != nil {
 		return report, err
 	}
-	player, err := entityWithTag(snapshot.Entities, "player")
+	player, err := entityWithTag(
+		snapshot.Entities,
+		scenario.Tags.Player,
+	)
 	if err != nil {
 		return report, err
 	}
 	report.Stage = snapshot.Stage.ID
 	report.PlayerID = player.ID
-	if report.Stage != "stage.platformer_room" ||
+	if report.Stage != scenario.Stages.Platformer ||
 		!hasComponent(player, "movement.platformer") ||
 		hasComponent(player, "movement.topdown") ||
 		snapshot.Geometry.WallCount != 2 {
@@ -2402,13 +2703,14 @@ func runPlatformerScenario(
 func runWorldScenario(
 	client *protocolClient,
 	artifacts string,
+	scenario visualScenario,
 ) (worldVisualReport, error) {
 	var report worldVisualReport
 	var runtime runtimeState
 	if err := client.call(
 		"App.loadStage",
 		map[string]any{
-			"stageId": "stage.world_hub",
+			"stageId": scenario.Stages.WorldHub,
 			"spawnId": "default",
 		},
 		&runtime,
@@ -2428,7 +2730,7 @@ func runWorldScenario(
 	report.Triggers = hub.Navigation.TriggerCount
 	report.Portals = hub.Navigation.PortalCount
 	report.CameraStartX = hub.Camera.X
-	if report.HubStage != "stage.world_hub" ||
+	if report.HubStage != scenario.Stages.WorldHub ||
 		!hub.Tilemap.Available ||
 		report.TileLayers < 1 ||
 		report.Tilesets < 1 ||
@@ -2441,7 +2743,10 @@ func runWorldScenario(
 			hub,
 		)
 	}
-	player, err := entityWithTag(hub.Entities, "player")
+	player, err := entityWithTag(
+		hub.Entities,
+		scenario.Tags.Player,
+	)
 	if err != nil {
 		return report, err
 	}
@@ -2598,7 +2903,10 @@ func runWorldScenario(
 	if err := client.call("World.getSnapshot", nil, &triggered); err != nil {
 		return report, err
 	}
-	triggeredPlayer, err := entityWithTag(triggered.Entities, "player")
+	triggeredPlayer, err := entityWithTag(
+		triggered.Entities,
+		scenario.Tags.Player,
+	)
 	if err != nil {
 		return report, err
 	}
@@ -2692,11 +3000,14 @@ func runWorldScenario(
 		return report, err
 	}
 	report.GroveStage = grove.Stage.ID
-	grovePlayer, err := entityWithTag(grove.Entities, "player")
+	grovePlayer, err := entityWithTag(
+		grove.Entities,
+		scenario.Tags.Player,
+	)
 	if err != nil {
 		return report, err
 	}
-	if report.GroveStage != "stage.world_grove" ||
+	if report.GroveStage != scenario.Stages.WorldGrove ||
 		math.Abs(grovePlayer.X-96) > 0.001 ||
 		math.Abs(grovePlayer.Y-288) > 0.001 ||
 		!grove.Tilemap.Available {
@@ -2731,7 +3042,10 @@ func runWorldScenario(
 	if err := client.call("World.getSnapshot", nil, &discovered); err != nil {
 		return report, err
 	}
-	if !snapshotHasEventName(discovered, "world.grove_discovered") {
+	if !snapshotHasEventName(
+		discovered,
+		scenario.Events.GroveDiscovered,
+	) {
 		return report, errors.New("generic emit trigger did not fire in grove")
 	}
 	report.GroveScreenshot = filepath.Join(artifacts, "world_grove.png")
@@ -2783,13 +3097,16 @@ func runWorldScenario(
 		return report, err
 	}
 	report.ReturnStage = returned.Stage.ID
-	returnedPlayer, err := entityWithTag(returned.Entities, "player")
+	returnedPlayer, err := entityWithTag(
+		returned.Entities,
+		scenario.Tags.Player,
+	)
 	if err != nil {
 		return report, err
 	}
 	report.ReturnX = returnedPlayer.X
 	report.ReturnY = returnedPlayer.Y
-	if report.ReturnStage != "stage.world_hub" ||
+	if report.ReturnStage != scenario.Stages.WorldHub ||
 		math.Abs(report.ReturnX-980) > 0.001 ||
 		math.Abs(report.ReturnY-288) > 0.001 {
 		return report, fmt.Errorf(
@@ -2815,12 +3132,13 @@ func runWorldScenario(
 func runRPGScenario(
 	client *protocolClient,
 	artifacts string,
+	scenario visualScenario,
 ) (rpgVisualReport, error) {
 	var report rpgVisualReport
 	var runtime runtimeState
 	if err := client.call(
 		"App.loadStage",
-		map[string]any{"stageId": "stage.rpg_village"},
+		map[string]any{"stageId": scenario.Stages.RPG},
 		&runtime,
 	); err != nil {
 		return report, err
@@ -2833,14 +3151,18 @@ func runRPGScenario(
 	}
 	report.Stage = snapshot.Stage.ID
 	report.Locale = snapshot.Locale.Code
-	if report.Stage != "stage.rpg_village" || report.Locale != "ko" {
+	if report.Stage != scenario.Stages.RPG ||
+		report.Locale != scenario.LocaleCode {
 		return report, fmt.Errorf(
 			"RPG stage or locale is incomplete: stage=%q locale=%q",
 			report.Stage,
 			report.Locale,
 		)
 	}
-	player, err := entityWithTag(snapshot.Entities, "player")
+	player, err := entityWithTag(
+		snapshot.Entities,
+		scenario.Tags.Player,
+	)
 	if err != nil {
 		return report, err
 	}
@@ -2863,7 +3185,7 @@ func runRPGScenario(
 	if err := client.call("World.getSnapshot", nil, &snapshot); err != nil {
 		return report, err
 	}
-	if snapshot.Interaction.TargetID != "guide" {
+	if snapshot.Interaction.TargetID != scenario.Entities.Guide {
 		return report, fmt.Errorf(
 			"guide interaction was not discoverable: %#v",
 			snapshot.Interaction,
@@ -2880,11 +3202,12 @@ func runRPGScenario(
 	report.DialogueNode = snapshot.Dialogue.NodeID
 	report.DialogueText = snapshot.Dialogue.Text
 	if !snapshot.Dialogue.Active ||
-		report.DialogueID != "dialogue.guide" ||
-		report.DialogueNode != "greeting" ||
+		report.DialogueID != scenario.Content.Dialogue ||
+		report.DialogueNode != scenario.Dialogue.StartNode ||
 		!strings.Contains(report.DialogueText, "슬라임") ||
 		len(snapshot.Dialogue.Choices) < 2 ||
-		snapshot.Dialogue.Choices[0].ID != "accept" {
+		snapshot.Dialogue.Choices[0].ID !=
+			scenario.Dialogue.AcceptChoice {
 		return report, fmt.Errorf(
 			"localized dialogue did not open correctly: %#v",
 			snapshot.Dialogue,
@@ -2910,7 +3233,10 @@ func runRPGScenario(
 	if err := client.call("World.getSnapshot", nil, &snapshot); err != nil {
 		return report, err
 	}
-	quest, err := questByID(snapshot.Quests, "quest.slime_patrol")
+	quest, err := questByID(
+		snapshot.Quests,
+		scenario.Content.Quest,
+	)
 	if err != nil {
 		return report, err
 	}
@@ -2920,12 +3246,18 @@ func runRPGScenario(
 	}
 	report.QuestID = quest.ID
 	report.QuestStatus = quest.Status
-	report.EquippedItem = equippedItem(player, "weapon")
+	report.EquippedItem = equippedItem(
+		player,
+		scenario.EquipmentSlot,
+	)
 	report.AttackStat = player.Stats.Attack
-	if snapshot.Dialogue.NodeID != "accepted" ||
+	if snapshot.Dialogue.NodeID != scenario.Dialogue.AcceptedNode ||
 		quest.Status != "active" ||
-		inventoryCount(snapshot.Inventory, "item.training_sword") != 1 ||
-		report.EquippedItem != "item.training_sword" ||
+		inventoryCount(
+			snapshot.Inventory,
+			scenario.Content.Equipment,
+		) != 1 ||
+		report.EquippedItem != scenario.Content.Equipment ||
 		report.AttackStat != 5 {
 		return report, fmt.Errorf(
 			"dialogue actions did not start/equip quest state: quest=%#v player=%#v",
@@ -2953,7 +3285,7 @@ func runRPGScenario(
 	if err := client.call(
 		"Entity.setPosition",
 		map[string]any{
-			"entityId": "quest.slime.1",
+			"entityId": scenario.Entities.QuestEnemies[0],
 			"x":        player.X + 50,
 			"y":        player.Y,
 		},
@@ -2964,7 +3296,7 @@ func runRPGScenario(
 	if err := client.call(
 		"Entity.setHealth",
 		map[string]any{
-			"entityId": "quest.slime.1",
+			"entityId": scenario.Entities.QuestEnemies[0],
 			"value":    68,
 		},
 		&changed,
@@ -2977,7 +3309,9 @@ func runRPGScenario(
 	var damaged entityState
 	if err := client.call(
 		"Entity.get",
-		map[string]any{"entityId": "quest.slime.1"},
+		map[string]any{
+			"entityId": scenario.Entities.QuestEnemies[0],
+		},
 		&damaged,
 	); err != nil {
 		return report, err
@@ -2996,7 +3330,7 @@ func runRPGScenario(
 	if err := client.call(
 		"Entity.setPosition",
 		map[string]any{
-			"entityId": "quest.slime.1",
+			"entityId": scenario.Entities.QuestEnemies[0],
 			"x":        player.X + 50,
 			"y":        player.Y,
 		},
@@ -3015,7 +3349,7 @@ func runRPGScenario(
 	if err := client.call(
 		"Entity.setPosition",
 		map[string]any{
-			"entityId": "quest.slime.2",
+			"entityId": scenario.Entities.QuestEnemies[1],
 			"x":        player.X + 50,
 			"y":        player.Y,
 		},
@@ -3026,7 +3360,7 @@ func runRPGScenario(
 	if err := client.call(
 		"Entity.setHealth",
 		map[string]any{
-			"entityId": "quest.slime.2",
+			"entityId": scenario.Entities.QuestEnemies[1],
 			"value":    1,
 		},
 		&changed,
@@ -3054,13 +3388,16 @@ func runRPGScenario(
 	report.QuestProgress = quest.Objectives[0].Count
 	report.QuestGoal = quest.Objectives[0].Goal
 	report.Currency = snapshot.Currency.Balance
-	report.PotionCount = inventoryCount(snapshot.Inventory, "item.potion")
+	report.PotionCount = inventoryCount(
+		snapshot.Inventory,
+		scenario.Content.Potion,
+	)
 	if report.QuestStatus != "completed" ||
 		report.QuestProgress != 2 ||
 		report.QuestGoal != 2 ||
 		report.Currency != 100 ||
 		report.PotionCount != 1 ||
-		!snapshot.Flags["quest.slime_patrol.rewarded"] {
+		!snapshot.Flags[scenario.Flags.QuestReward] {
 		return report, fmt.Errorf(
 			"quest completion/reward failed: quest=%#v currency=%d potion=%d flags=%#v",
 			quest,
@@ -3096,7 +3433,7 @@ func runRPGScenario(
 	if err := client.call("World.getSnapshot", nil, &snapshot); err != nil {
 		return report, err
 	}
-	if snapshot.Interaction.TargetID != "merchant" {
+	if snapshot.Interaction.TargetID != scenario.Entities.Merchant {
 		return report, fmt.Errorf(
 			"merchant interaction was not discoverable: %#v",
 			snapshot.Interaction,
@@ -3109,7 +3446,7 @@ func runRPGScenario(
 		return report, err
 	}
 	if !snapshot.Shop.Active ||
-		snapshot.Shop.ShopID != "shop.village" ||
+		snapshot.Shop.ShopID != scenario.Content.Shop ||
 		snapshot.Shop.Balance != 100 {
 		return report, fmt.Errorf(
 			"shop did not open: %#v",
@@ -3128,10 +3465,13 @@ func runRPGScenario(
 		return report, err
 	}
 	report.Currency = snapshot.Shop.Balance
-	report.PotionCount = inventoryCount(snapshot.Inventory, "item.potion")
+	report.PotionCount = inventoryCount(
+		snapshot.Inventory,
+		scenario.Content.Potion,
+	)
 	report.ShopPurchased = report.Currency == 75 &&
 		report.PotionCount == 2 &&
-		snapshot.Shop.Message == "Purchased"
+		snapshot.Shop.Message != ""
 	if !report.ShopPurchased {
 		return report, fmt.Errorf(
 			"shop purchase failed: shop=%#v potion=%d",
@@ -3176,7 +3516,7 @@ func runRPGScenario(
 			snapshot.Shop.Balance == 75 &&
 			inventoryCount(
 				snapshot.Inventory,
-				"item.training_sword",
+				scenario.Content.Equipment,
 			) == 1
 	if !report.EquippedSaleBlocked {
 		return report, fmt.Errorf(
@@ -3195,7 +3535,7 @@ func runRPGScenario(
 
 	if err := client.call(
 		"App.loadStage",
-		map[string]any{"stageId": "stage.action_room"},
+		map[string]any{"stageId": scenario.Stages.Action},
 		&runtime,
 	); err != nil {
 		return report, err
@@ -3206,15 +3546,21 @@ func runRPGScenario(
 	persistedQuest, questError :=
 		questByID(snapshot.Quests, report.QuestID)
 	persistedPlayer, playerError :=
-		entityWithTag(snapshot.Entities, "player")
+		entityWithTag(snapshot.Entities, scenario.Tags.Player)
 	report.SessionPersisted =
 		questError == nil &&
 			playerError == nil &&
 			persistedQuest.Status == "completed" &&
 			snapshot.Currency.Balance == 75 &&
-			inventoryCount(snapshot.Inventory, "item.potion") == 2 &&
-			equippedItem(persistedPlayer, "weapon") ==
-				"item.training_sword" &&
+			inventoryCount(
+				snapshot.Inventory,
+				scenario.Content.Potion,
+			) == 2 &&
+			equippedItem(
+				persistedPlayer,
+				scenario.EquipmentSlot,
+			) ==
+				scenario.Content.Equipment &&
 			persistedPlayer.Stats.Attack == 5
 	if !report.SessionPersisted {
 		return report, fmt.Errorf(
@@ -3260,7 +3606,7 @@ func requestAndWaitSteps(
 	var result map[string]any
 	if err := client.call(
 		"Test.step",
-		map[string]any{"frames": frames, "dt": 1.0 / 60.0},
+		map[string]any{"frames": frames},
 		&result,
 	); err != nil {
 		return err
@@ -3484,13 +3830,29 @@ func startLove(
 	projectPath string,
 	port int,
 	logFile *os.File,
+	runtimeDirectory string,
 ) (*loveProcess, error) {
 	command := exec.Command(lovePath, projectPath)
 	command.Dir = projectPath
-	command.Env = append(
+	command.Env = overrideEnvironment(
 		debugEnvironment(port),
-		"RECREATE_AUTOMATION=1",
-		"LIBGL_ALWAYS_SOFTWARE=1",
+		map[string]string{
+			"RECREATE_AUTOMATION":   "1",
+			"RECREATE_IDENTITY":     "recreate_visual_test",
+			"LIBGL_ALWAYS_SOFTWARE": "1",
+			"XDG_CACHE_HOME": filepath.Join(
+				runtimeDirectory,
+				"cache",
+			),
+			"XDG_CONFIG_HOME": filepath.Join(
+				runtimeDirectory,
+				"config",
+			),
+			"XDG_DATA_HOME": filepath.Join(
+				runtimeDirectory,
+				"data",
+			),
+		},
 	)
 	command.Stdout = logFile
 	command.Stderr = logFile

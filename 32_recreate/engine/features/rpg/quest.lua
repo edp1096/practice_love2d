@@ -208,28 +208,30 @@ function feature:register(host)
         local source = payload and payload.source_id and
             world:get(payload.source_id) or nil
         local target = world:findByTag("player")[1]
-        for index, action in ipairs(actions or {}) do
-            local result, action_error = world:execute(action, {
+        local result, action_error, failure =
+            world:executeActions(actions, {
                 source = source,
                 target = target,
                 quest = definition_value,
                 quest_id = definition_value.id,
                 event_payload = payload,
             })
-            if result == nil or result == false then
-                world.events:emit("quest.action_failed", {
-                    quest_id = definition_value.id,
-                    scope = scope,
-                    action_index = index,
-                    error = action_error,
-                })
-                return false
-            end
-            if type(result) == "table" and result.stop_effects then
-                break
-            end
+        if not result then
+            return nil, action_error, {
+                quest_id = definition_value.id,
+                scope = scope,
+                action_index = failure and failure.index or nil,
+                action_type = failure and failure.action.type or nil,
+                error = action_error,
+            }
         end
         return true
+    end
+
+    local function emitActionFailure(world, failure)
+        if failure then
+            world.events:emit("quest.action_failed", failure)
+        end
     end
 
     local function completeIfReady(world, definition_value, entry, payload)
@@ -240,13 +242,14 @@ function feature:register(host)
             end
         end
         entry.status = "completed"
-        executeActions(
+        local executed, action_error, failure = executeActions(
             world,
             definition_value,
             definition_value.on_complete,
             "complete",
             payload
         )
+        if not executed then return nil, action_error, failure end
         world.events:emit("quest.completed", {
             quest_id = definition_value.id,
         })
@@ -266,28 +269,40 @@ function feature:register(host)
                 status = existing.status,
             }
         end
-        local entry = {
-            status = "active",
-            objectives = {},
-        }
-        for _, objective in ipairs(definition_value.objectives) do
-            entry.objectives[objective.id] = 0
+        local action_failure
+        local result, start_error = world:transaction(function()
+            local entry = {
+                status = "active",
+                objectives = {},
+            }
+            for _, objective in ipairs(definition_value.objectives) do
+                entry.objectives[objective.id] = 0
+            end
+            state.quests[quest_id] = entry
+            local executed, action_error, failure = executeActions(
+                world,
+                definition_value,
+                definition_value.on_start,
+                "start"
+            )
+            if not executed then
+                action_failure = failure
+                return nil, action_error
+            end
+            world.events:emit("quest.started", {
+                quest_id = quest_id,
+            })
+            return {
+                applied = true,
+                quest_id = quest_id,
+                status = entry.status,
+            }
+        end)
+        if not result then
+            emitActionFailure(world, action_failure)
+            return nil, start_error
         end
-        state.quests[quest_id] = entry
-        executeActions(
-            world,
-            definition_value,
-            definition_value.on_start,
-            "start"
-        )
-        world.events:emit("quest.started", {
-            quest_id = quest_id,
-        })
-        return {
-            applied = true,
-            quest_id = quest_id,
-            status = entry.status,
-        }
+        return result
     end
 
     function quest:state(quest_id)
@@ -299,37 +314,60 @@ function feature:register(host)
             local entry = definition_value.kind == "quest" and
                 entryFor(definition_value.id) or nil
             if entry and entry.status == "active" then
-                local changed = false
-                for _, objective in ipairs(
-                    definition_value.objectives
-                ) do
+                local matching = {}
+                for _, objective in ipairs(definition_value.objectives) do
                     local goal = objective.count or 1
                     local current =
                         entry.objectives[objective.id] or 0
                     if objective.event == event_name and
                        current < goal and
                        matches(payload, objective.where) then
-                        current = math.min(goal, current + 1)
-                        entry.objectives[objective.id] = current
-                        changed = true
-                        world.events:emit(
-                            "quest.objective_progress",
-                            {
-                                quest_id = definition_value.id,
-                                objective_id = objective.id,
-                                count = current,
-                                goal = goal,
-                            }
-                        )
+                        matching[#matching + 1] = objective
                     end
                 end
-                if changed then
-                    completeIfReady(
-                        world,
-                        definition_value,
-                        entry,
-                        payload
-                    )
+                if #matching > 0 then
+                    local action_failure
+                    local progressed, progress_error =
+                        world:transaction(function()
+                            for _, objective in ipairs(matching) do
+                                local goal = objective.count or 1
+                                local current = math.min(
+                                    goal,
+                                    (entry.objectives[objective.id] or 0) + 1
+                                )
+                                entry.objectives[objective.id] = current
+                                world.events:emit(
+                                    "quest.objective_progress",
+                                    {
+                                        quest_id = definition_value.id,
+                                        objective_id = objective.id,
+                                        count = current,
+                                        goal = goal,
+                                    }
+                                )
+                            end
+                            local completed, complete_error, failure =
+                                completeIfReady(
+                                    world,
+                                    definition_value,
+                                    entry,
+                                    payload
+                                )
+                            if completed == nil then
+                                action_failure = failure
+                                return nil, complete_error
+                            end
+                            return {
+                                applied = true,
+                                completed = completed,
+                            }
+                        end)
+                    if not progressed then
+                        if action_failure then
+                            action_failure.error = progress_error
+                        end
+                        emitActionFailure(world, action_failure)
+                    end
                 end
             end
         end

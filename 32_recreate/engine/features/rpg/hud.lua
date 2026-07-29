@@ -43,9 +43,12 @@ function hud_system:draw(world)
     end
     if player and player.stats then
         lines[#lines + 1] = string.format(
-            "ATK %g   DEF %g   MOVE %.2f",
+            "%s %g   %s %g   %s %.2f",
+            locale:text("ui.stat.attack", "ATK"),
             player.stats.attack,
+            locale:text("ui.stat.defense", "DEF"),
             player.stats.defense,
+            locale:text("ui.stat.move", "MOVE"),
             player.stats.move_speed
         )
     end

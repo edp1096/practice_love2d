@@ -218,6 +218,23 @@ function feature:register(host)
             }
         end,
     })
+    host.services.lifecycle:registerDeathHandler(
+        "action.dodge",
+        50,
+        function(entity, world)
+            local dodge = dodgeOf(entity)
+            if dodge and dodge.active then
+                dodge.active = false
+                dodge.remaining = 0
+                dodge.velocity_x = 0
+                dodge.velocity_y = 0
+                world.events:emit("dodge.interrupted", {
+                    entity_id = entity.id,
+                    reason = "death",
+                })
+            end
+        end
+    )
 
     local function gate(entity)
         local dodge = dodgeOf(entity)

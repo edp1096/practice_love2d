@@ -118,7 +118,12 @@ function Validator:keys(value, allowed, path)
     local allowed_set = {}
     for _, key in ipairs(allowed) do allowed_set[key] = true end
     for key in pairs(value) do
-        if type(key) == "string" and not allowed_set[key] then
+        if type(key) ~= "string" then
+            self:error(
+                string.format("%s[%s]", path, tostring(key)),
+                "object fields must use string keys"
+            )
+        elseif not allowed_set[key] then
             self:error(
                 path .. "." .. key,
                 "is not a recognized field"

@@ -5,6 +5,9 @@ local util = require "engine.core.util"
 local Bridge = {}
 Bridge.__index = Bridge
 
+local MAX_INPUT_BYTES = 1024 * 1024
+local MAX_OUTPUT_BYTES = 32 * 1024 * 1024
+
 function Bridge.new(app)
     return setmetatable({
         app = app,
@@ -12,6 +15,7 @@ function Bridge.new(app)
         port = tonumber(os.getenv("RECREATE_DEBUG_PORT")) or 19832,
         server_fd = nil,
         client_fd = nil,
+        client_generation = 0,
         input_buffer = "",
         output_buffer = "",
         screenshot_request = nil,
@@ -19,7 +23,7 @@ function Bridge.new(app)
         quit_when_flushed = false,
         simulation_paused = false,
         step_frames = 0,
-        step_dt = 1 / 60,
+        step_dt = app.fixed_dt,
         simulated_frames = 0,
     }, Bridge)
 end
@@ -43,8 +47,12 @@ function Bridge:_queue(id, result, error_message)
     else
         response.result = result or {}
     end
-    self.output_buffer =
-        self.output_buffer .. json.encode(response) .. "\n"
+    local encoded = json.encode(response) .. "\n"
+    if #self.output_buffer + #encoded > MAX_OUTPUT_BYTES then
+        self:_closeClient()
+        return
+    end
+    self.output_buffer = self.output_buffer .. encoded
 end
 
 function Bridge:_runtimeState()
@@ -59,17 +67,30 @@ function Bridge:_runtimeState()
 end
 
 function Bridge:_handle(line)
+    local request, decode_error = json.decode(line)
+    if not request or type(request) ~= "table" then
+        self:_queue(0, nil, "invalid JSON request: " .. tostring(decode_error))
+        return
+    end
+    line = request
     local id = requestId(line)
     local method = json.getString(line, "method")
     if not method then
         self:_queue(id, nil, "missing method")
         return
     end
+    local params = request.params
+    if params == nil or params == json.null then params = {} end
+    if type(params) ~= "table" then
+        self:_queue(id, nil, "params must be a JSON object")
+        return
+    end
+    line = params
 
     if method == "Runtime.ping" then
         self:_queue(id, {
             pong = true,
-            protocol = 5,
+            protocol = 8,
             semantic_world = true,
             content_validation = true,
             canonical_maps = true,
@@ -77,13 +98,14 @@ function Bridge:_handle(line)
         })
     elseif method == "Runtime.getProtocol" then
         self:_queue(id, {
-            version = 5,
+            version = 8,
             methods = {
                 "Runtime.ping",
                 "Runtime.getState",
                 "Runtime.getProtocol",
                 "Content.getSummary",
                 "Content.getDefinition",
+                "Content.validateDefinition",
                 "Content.getGraph",
                 "World.getSnapshot",
                 "World.worldToScreen",
@@ -104,6 +126,8 @@ function Bridge:_handle(line)
                 "Test.step",
                 "Overlay.set",
                 "Page.captureScreenshot",
+                "App.startNewGame",
+                "App.returnToTitle",
                 "App.loadStage",
                 "App.reloadContent",
                 "App.reloadStage",
@@ -131,6 +155,22 @@ function Bridge:_handle(line)
                 source = self.app.host.catalog.sources[definition.id],
                 definition = util.deepCopy(definition),
             })
+        end
+    elseif method == "Content.validateDefinition" then
+        local content_id = json.getString(line, "contentId")
+        local definition = line.definition
+        if not content_id then
+            self:_queue(id, nil, "missing contentId")
+        elseif type(definition) ~= "table" or
+               definition == json.null then
+            self:_queue(id, nil, "definition must be a JSON object")
+        else
+            local result, validation_error =
+                self.app:validateContentDefinition(
+                    content_id,
+                    definition
+                )
+            self:_queue(id, result, validation_error)
         end
     elseif method == "Content.getGraph" then
         self:_queue(id, self.app.host.catalog:dependencyGraph())
@@ -226,9 +266,17 @@ function Bridge:_handle(line)
         if not health or value == nil then
             self:_queue(id, nil, "missing entity health or value")
         else
-            health.current = util.clamp(value, 0, health.max)
-            entity.dead = health.current == 0
-            self:_queue(id, findSnapshotEntity(self.app, entity_id))
+            local result, health_error =
+                self.app.world:service("lifecycle"):setHealth(
+                    self.app.world,
+                    entity,
+                    value
+                )
+            if not result then
+                self:_queue(id, nil, health_error)
+            else
+                self:_queue(id, findSnapshotEntity(self.app, entity_id))
+            end
         end
     elseif method == "Entity.requestAbility" then
         local entity_id = json.getString(line, "entityId")
@@ -360,15 +408,23 @@ function Bridge:_handle(line)
         end
     elseif method == "Test.step" then
         local frames = math.floor(json.getNumber(line, "frames") or 1)
-        local dt = json.getNumber(line, "dt") or self.step_dt
+        local requested_dt = json.getNumber(line, "dt")
         if frames < 1 or frames > 3600 then
             self:_queue(id, nil, "frames must be between 1 and 3600")
-        elseif dt <= 0 or dt > 0.25 then
-            self:_queue(id, nil, "dt must be greater than 0 and at most 0.25")
+        elseif requested_dt and
+               math.abs(requested_dt - self.app.fixed_dt) > 1e-9 then
+            self:_queue(
+                id,
+                nil,
+                string.format(
+                    "Test.step uses the fixed simulation dt %.12g",
+                    self.app.fixed_dt
+                )
+            )
         else
             self.simulation_paused = true
             self.step_frames = self.step_frames + frames
-            self.step_dt = dt
+            self.step_dt = self.app.fixed_dt
             self:_queue(id, {
                 paused = true,
                 pending_frames = self.step_frames,
@@ -387,7 +443,10 @@ function Bridge:_handle(line)
         if self.screenshot_request or self.screenshot_in_flight then
             self:_queue(id, nil, "screenshot already in progress")
         else
-            self.screenshot_request = {id = id}
+            self.screenshot_request = {
+                id = id,
+                generation = self.client_generation,
+            }
         end
     elseif method == "App.reloadStage" then
         local loaded, load_error = self.app:reloadStage()
@@ -395,6 +454,23 @@ function Bridge:_handle(line)
             id,
             loaded and self:_runtimeState() or nil,
             load_error
+        )
+    elseif method == "App.startNewGame" then
+        local stage_id = json.getString(line, "stageId")
+        local spawn_id = json.getString(line, "spawnId")
+        local started, start_error =
+            self.app:startNewGame(stage_id, spawn_id)
+        self:_queue(
+            id,
+            started and self:_runtimeState() or nil,
+            start_error
+        )
+    elseif method == "App.returnToTitle" then
+        local returned, return_error = self.app:returnToTitle()
+        self:_queue(
+            id,
+            returned and self:_runtimeState() or nil,
+            return_error
         )
     elseif method == "App.loadStage" then
         local stage_id = json.getString(line, "stageId")
@@ -428,6 +504,8 @@ end
 function Bridge:_closeClient()
     debug_socket.close(self.client_fd)
     self.client_fd = nil
+    self.screenshot_request = nil
+    self.client_generation = self.client_generation + 1
     self.input_buffer = ""
     self.output_buffer = ""
 end
@@ -436,7 +514,10 @@ function Bridge:_acceptClient()
     if self.client_fd then return end
     local client, accept_error = debug_socket.accept(self.server_fd)
     if accept_error then print("[recreate debug] " .. accept_error) end
-    if client then self.client_fd = client end
+    if client then
+        self.client_fd = client
+        self.client_generation = self.client_generation + 1
+    end
 end
 
 function Bridge:_receive()
@@ -446,6 +527,11 @@ function Bridge:_receive()
             debug_socket.receive(self.client_fd, 8192)
         if received then
             self.input_buffer = self.input_buffer .. received
+            if #self.input_buffer > MAX_INPUT_BYTES then
+                print("[recreate debug] request exceeds input limit")
+                self:_closeClient()
+                return
+            end
         elseif status == "closed" then
             self:_closeClient()
             return
@@ -531,12 +617,15 @@ function Bridge:afterDraw()
                 "base64",
                 encoded:getString()
             )
-            self:_queue(request.id, {
-                data = base64,
-                format = "png",
-                width = image_data:getWidth(),
-                height = image_data:getHeight(),
-            })
+            if self.client_fd and
+               request.generation == self.client_generation then
+                self:_queue(request.id, {
+                    data = base64,
+                    format = "png",
+                    width = image_data:getWidth(),
+                    height = image_data:getHeight(),
+                })
+            end
             self.screenshot_in_flight = false
         end
     )

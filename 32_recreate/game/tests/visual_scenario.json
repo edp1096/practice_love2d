@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "project": "recreate.maker_runtime",
+  "locale_code": "ko",
+  "tags": {
+    "player": "player",
+    "enemy": "enemy",
+    "boss": "boss"
+  },
+  "stages": {
+    "action": "stage.action_room",
+    "encounter": "stage.encounter_room",
+    "platformer": "stage.platformer_room",
+    "world_hub": "stage.world_hub",
+    "world_grove": "stage.world_grove",
+    "rpg": "stage.rpg_village"
+  },
+  "content": {
+    "projectile": "projectile.fire_bolt",
+    "burning_status": "status.burning",
+    "multi_hit_ability": "ability.whirlwind",
+    "enraged_status": "status.enraged",
+    "preview_actor": "actor.slime",
+    "preview_ability": "ability.sword_slash",
+    "dialogue": "dialogue.guide",
+    "quest": "quest.slime_patrol",
+    "shop": "shop.village",
+    "potion": "item.potion",
+    "equipment": "item.training_sword"
+  },
+  "entities": {
+    "guide": "guide",
+    "merchant": "merchant",
+    "quest_enemies": [
+      "quest.slime.1",
+      "quest.slime.2"
+    ]
+  },
+  "encounter": {
+    "placement": "arena",
+    "first_wave": "scouts",
+    "boss_wave": "boss",
+    "phase": "enraged",
+    "completion_event": "encounter.slime_trial_completed"
+  },
+  "flags": {
+    "quest_reward": "quest.slime_patrol.rewarded"
+  },
+  "dialogue": {
+    "start_node": "greeting",
+    "accepted_node": "accepted",
+    "accept_choice": "accept"
+  },
+  "events": {
+    "grove_discovered": "world.grove_discovered"
+  },
+  "equipment_slot": "weapon"
+}

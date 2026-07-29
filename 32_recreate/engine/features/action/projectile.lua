@@ -54,6 +54,28 @@ local function validateProjectile(definition, validator, host)
             "projectile actor requires motion.kinematics"
         )
     end
+    if body and body.collision_layer ~= "projectile" then
+        validator:error(
+            "actor",
+            "projectile actor body collision_layer must be 'projectile'"
+        )
+    end
+    if body then
+        local collision_mask = body.collision_mask or {"world", "actor"}
+        if not util.arrayContains(collision_mask, "world") then
+            validator:error(
+                "actor",
+                "projectile actor body collision_mask must include 'world'"
+            )
+        end
+        if util.arrayContains(collision_mask, "actor") then
+            validator:error(
+                "actor",
+                "projectile actor must hit actors through hurtboxes; " ..
+                    "remove 'actor' from body collision_mask"
+            )
+        end
+    end
     validator:positive(definition.speed, "speed", true)
     validator:positive(definition.lifetime, "lifetime", true)
     local offset =
@@ -126,29 +148,48 @@ local function targetCenter(entity)
 end
 
 local function hitTarget(world, entity, state, definition, target)
-    state.hit_targets[target.id] = true
-    state.hits = state.hits + 1
     local source = state.source_id and world:get(state.source_id) or nil
-    for _, action in ipairs(definition.effects) do
-        local result = world:execute(action, {
-            source = source or entity,
-            target = target,
-            ability = state.ability_id and
-                world.host.catalog:get(state.ability_id) or nil,
-            projectile = definition,
-            projectile_entity = entity,
-        })
-        if type(result) == "table" and result.stop_effects then
-            break
+    local action_failure
+    local result, hit_error = world:transaction(function()
+        state.hit_targets[target.id] = true
+        state.hits = state.hits + 1
+        local effects, effect_error, failure =
+            world:executeActions(definition.effects, {
+                source = source or entity,
+                target = target,
+                ability = state.ability_id and
+                    world.host.catalog:get(state.ability_id) or nil,
+                projectile = definition,
+                projectile_entity = entity,
+            })
+        if not effects then
+            action_failure = failure
+            return nil, effect_error
         end
+        world.events:emit("projectile.hit", {
+            entity_id = entity.id,
+            projectile_id = definition.id,
+            source_id = state.source_id,
+            target_id = target.id,
+            hit_index = state.hits,
+        })
+        return {applied = true}
+    end)
+    if not result then
+        world.events:emit("projectile.action_failed", {
+            entity_id = entity.id,
+            projectile_id = definition.id,
+            source_id = state.source_id,
+            target_id = target.id,
+            action_index =
+                action_failure and action_failure.index or nil,
+            action_type = action_failure and
+                action_failure.action.type or nil,
+            error = hit_error,
+        })
+        world:remove(entity, "projectile_action_failed")
+        return true
     end
-    world.events:emit("projectile.hit", {
-        entity_id = entity.id,
-        projectile_id = definition.id,
-        source_id = state.source_id,
-        target_id = target.id,
-        hit_index = state.hits,
-    })
     if state.hits > (definition.pierce or 0) then
         world:remove(entity, "projectile_hit")
         return true
@@ -178,65 +219,89 @@ function projectile_system:update(world, dt)
                 state.direction_x * definition.speed * dt
             local desired_y =
                 state.direction_y * definition.speed * dt
-            local moved_x, moved_y = motion:move(
-                world,
-                entity,
-                desired_x,
-                desired_y
-            )
+            local blocker =
+                motion:sweepCircle(world, entity, desired_x, desired_y)
+            local blocker_fraction = blocker and
+                blocker.fraction or math.huge
+            local candidates = {}
+            for _, target in ipairs(
+                world:query(
+                    "transform",
+                    "action.hurtbox",
+                    "action.health",
+                    "action.combat"
+                )
+            ) do
+                local combat = target.components["action.combat"]
+                if target ~= entity and
+                   target.id ~= state.source_id and
+                   not target.dead and
+                   combat.team ~= state.team and
+                   not state.hit_targets[target.id] then
+                    local target_x, target_y, target_radius =
+                        targetCenter(target)
+                    local fraction = geometry.sweptCircleFraction(
+                        start_x,
+                        start_y,
+                        start_x + desired_x,
+                        start_y + desired_y,
+                        body.radius,
+                        target_x,
+                        target_y,
+                        target_radius
+                    )
+                    if fraction ~= nil and
+                       fraction < blocker_fraction - 1e-9 then
+                        candidates[#candidates + 1] = {
+                            target = target,
+                            fraction = fraction,
+                        }
+                    end
+                end
+            end
+            table.sort(candidates, function(left, right)
+                if math.abs(left.fraction - right.fraction) > 1e-9 then
+                    return left.fraction < right.fraction
+                end
+                return left.target.id < right.target.id
+            end)
+
+            local travel_fraction =
+                blocker and math.max(0, blocker.fraction - 1e-7) or 1
+            local consumed = false
+            for _, candidate in ipairs(candidates) do
+                if hitTarget(
+                    world,
+                    entity,
+                    state,
+                    definition,
+                    candidate.target
+                ) then
+                    consumed = true
+                    travel_fraction = candidate.fraction
+                    break
+                end
+            end
+            transform.x = start_x + desired_x * travel_fraction
+            transform.y = start_y + desired_y * travel_fraction
+            local moved_x = transform.x - start_x
+            local moved_y = transform.y - start_y
             motion:setVelocity(
                 entity,
                 moved_x / dt,
                 moved_y / dt
             )
 
-            local hit_wall =
-                math.abs(moved_x - desired_x) > 0.0001 or
-                math.abs(moved_y - desired_y) > 0.0001
-            if hit_wall and definition.destroy_on_wall ~= false then
+            if blocker and not consumed and
+               definition.destroy_on_wall ~= false then
                 world.events:emit("projectile.blocked", {
                     entity_id = entity.id,
                     projectile_id = definition.id,
                     source_id = state.source_id,
+                    blocker_kind = blocker.kind,
+                    blocker_id = blocker.id,
                 })
                 world:remove(entity, "projectile_blocked")
-            else
-                for _, target in ipairs(
-                    world:query(
-                        "transform",
-                        "action.hurtbox",
-                        "action.health",
-                        "action.combat"
-                    )
-                ) do
-                    local combat = target.components["action.combat"]
-                    if target ~= entity and
-                       target.id ~= state.source_id and
-                       not target.dead and
-                       combat.team ~= state.team and
-                       not state.hit_targets[target.id] then
-                        local target_x, target_y, target_radius =
-                            targetCenter(target)
-                        if geometry.sweptCirclesIntersect(
-                            start_x,
-                            start_y,
-                            transform.x,
-                            transform.y,
-                            body.radius,
-                            target_x,
-                            target_y,
-                            target_radius
-                        ) and hitTarget(
-                            world,
-                            entity,
-                            state,
-                            definition,
-                            target
-                        ) then
-                            break
-                        end
-                    end
-                end
             end
 
             state.remaining =

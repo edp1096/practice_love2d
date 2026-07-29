@@ -52,6 +52,53 @@ function util.deepCopy(value, seen)
     return copy
 end
 
+function util.captureTable(value)
+    assert(type(value) == "table", "captured value must be a table")
+    local seen = {}
+    local references = {}
+
+    local function capture(item)
+        if type(item) ~= "table" then return item end
+        if seen[item] then return seen[item] end
+        local copy = {}
+        seen[item] = copy
+        references[copy] = item
+        for key, child in pairs(item) do
+            copy[capture(key)] = capture(child)
+        end
+        return copy
+    end
+
+    return {
+        value = capture(value),
+        references = references,
+    }
+end
+
+function util.restoreCaptured(captured)
+    assert(
+        type(captured) == "table" and
+            type(captured.value) == "table" and
+            type(captured.references) == "table",
+        "invalid captured table"
+    )
+    local restored = {}
+
+    local function restore(snapshot)
+        if type(snapshot) ~= "table" then return snapshot end
+        if restored[snapshot] then return restored[snapshot] end
+        local target = captured.references[snapshot] or {}
+        restored[snapshot] = target
+        for key in pairs(target) do target[key] = nil end
+        for key, value in pairs(snapshot) do
+            target[restore(key)] = restore(value)
+        end
+        return target
+    end
+
+    return restore(captured.value)
+end
+
 function util.merge(base, override)
     local result = util.deepCopy(base or {})
     for key, value in pairs(override or {}) do

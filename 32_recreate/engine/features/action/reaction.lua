@@ -112,6 +112,18 @@ function feature:register(host)
             }
         end,
     })
+    host.services.lifecycle:registerDeathHandler(
+        "action.reaction",
+        30,
+        function(entity)
+            local reaction = reactionOf(entity)
+            if reaction then
+                reaction.stagger_remaining = 0
+                reaction.invulnerable_remaining = 0
+                reaction.flash_remaining = 0
+            end
+        end
+    )
 
     host.rules:registerAction("stagger", {
         validate = validateDuration,
@@ -139,8 +151,8 @@ function feature:register(host)
         validate = validateDuration,
         execute = function(action, context)
             local reaction = reactionOf(context.target)
-            if not reaction then
-                return false, "target has no reaction component"
+            if not reaction or context.target.dead then
+                return false, "target has no live reaction component"
             end
             reaction.invulnerable_remaining = math.max(
                 reaction.invulnerable_remaining,
@@ -155,7 +167,7 @@ function feature:register(host)
         "reaction.invulnerability",
         20,
         function(action, context, nextHandler)
-            if context.damage_kind == "periodic" then
+            if context.debug or context.damage_kind == "periodic" then
                 return nextHandler()
             end
             local target = context.target
@@ -178,7 +190,8 @@ function feature:register(host)
             end
 
             local result, execute_error = nextHandler()
-            if type(result) == "table" and result.applied then
+            if type(result) == "table" and result.applied and
+               not target.dead then
                 reaction.invulnerable_remaining =
                     reaction.hit_invulnerability
                 reaction.flash_remaining = reaction.flash_duration

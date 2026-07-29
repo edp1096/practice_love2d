@@ -218,7 +218,7 @@ end
 
 local function validateStage(definition, validator, host)
     local allowed = {
-        "schema_version", "kind", "id", "name",
+        "schema_version", "kind", "id", "name", "name_key",
         "width", "height", "mode", "background", "spawns", "metadata",
     }
     for _, section in ipairs(host.stage_section_order) do
@@ -230,6 +230,7 @@ local function validateStage(definition, validator, host)
         "content"
     )
     validator:string(definition.name, "name", false)
+    validator:string(definition.name_key, "name_key", false)
     validator:positive(definition.width, "width", true)
     validator:positive(definition.height, "height", true)
     validator:string(definition.mode, "mode", false)
@@ -310,6 +311,21 @@ function feature:register(host)
 
     host:registerComponent("body", {
         validate = validateBody,
+        validateEntity = function(
+            config,
+            _,
+            validator,
+            path
+        )
+            if config.shape and config.shape ~= "circle" and
+               config.static ~= true and config.solid ~= false then
+                validator:error(
+                    path .. ".static",
+                    "dynamic solid bodies must use shape 'circle'; " ..
+                        "set static = true or solid = false"
+                )
+            end
+        end,
         create = function(config)
             local body = util.merge({
                 shape = "circle",

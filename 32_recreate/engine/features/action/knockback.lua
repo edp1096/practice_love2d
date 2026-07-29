@@ -2,7 +2,10 @@ local util = require "engine.core.util"
 
 local feature = {
     id = "action.knockback",
-    requires = {"engine.features.motion"},
+    requires = {
+        "engine.features.motion",
+        "engine.features.action.health",
+    },
 }
 
 local function validateComponent(config, validator, path)
@@ -123,6 +126,18 @@ function feature:register(host)
             }
         end,
     })
+    host.services.lifecycle:registerDeathHandler(
+        "action.knockback",
+        40,
+        function(entity)
+            local knockback = knockbackOf(entity)
+            if knockback then
+                knockback.remaining = 0
+                knockback.velocity_x = 0
+                knockback.velocity_y = 0
+            end
+        end
+    )
 
     host.rules:registerAction("knockback", {
         validate = validateAction,

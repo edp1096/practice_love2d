@@ -185,11 +185,54 @@ local hud_system = {
     draw_space = "screen",
 }
 
+local function inputHints(world)
+    local input = world.host.input
+    local locale = world:service("locale")
+    local function text(key, fallback)
+        return locale and locale:text(key, fallback) or fallback
+    end
+    local hints = {}
+    if input:hasAction("move_up") and
+       input:hasAction("move_down") and
+       input:hasAction("move_left") and
+       input:hasAction("move_right") then
+        hints[#hints + 1] = text(
+            "ui.input.move",
+            "Move: WASD/arrows"
+        )
+    end
+    local optional = {
+        {
+            "jump", "ui.input.jump", "Jump: W/Up",
+            world.stage.mode == "platformer",
+        },
+        {"attack", "ui.input.attack", "Attack: Space"},
+        {"special", "ui.input.special", "Special: F"},
+        {"technique", "ui.input.technique", "Technique: Q"},
+        {"dodge", "ui.input.dodge", "Dodge: Shift"},
+        {"parry", "ui.input.parry", "Parry: C"},
+        {"interact", "ui.input.interact", "Interact: E"},
+        {"restart", "ui.input.restart", "Restart: R"},
+        {"debug_overlay", "ui.input.debug", "Debug: F1"},
+    }
+    for _, entry in ipairs(optional) do
+        if input:hasAction(entry[1]) and entry[4] ~= false then
+            hints[#hints + 1] = text(entry[2], entry[3])
+        end
+    end
+    return table.concat(hints, "  ")
+end
+
 function hud_system:draw(world)
     love.graphics.setColor(0.02, 0.025, 0.04, 0.82)
     love.graphics.rectangle("fill", 12, 12, 390, 62, 8, 8)
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.print(world.stage.name or world.stage.id, 24, 20)
+    local locale = world:service("locale")
+    local stage_name = world.stage.name or world.stage.id
+    if locale and world.stage.name_key then
+        stage_name = locale:text(world.stage.name_key, stage_name)
+    end
+    love.graphics.print(stage_name, 24, 20)
 
     local player = world:findByTag("player")[1]
     local status = "No active player"
@@ -206,8 +249,7 @@ function hud_system:draw(world)
     love.graphics.setColor(0.78, 0.82, 0.9, 1)
     local view = world:view()
     love.graphics.printf(
-        "Move: WASD/arrows  Jump: W/Up  Attack: Space  Skills: F/Q\n" ..
-            "Dodge: Shift  Parry: C  Interact: E  Restart: R  Debug: F1",
+        inputHints(world),
         18,
         view.height - 42,
         view.width - 36,

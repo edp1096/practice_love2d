@@ -130,7 +130,7 @@ function feature:register(host)
         "rpg.stats.damage",
         1,
         function(action, context, nextHandler)
-            if context.damage_kind == "periodic" then
+            if context.debug or context.damage_kind == "periodic" then
                 return nextHandler()
             end
             local attack = stats:value(

@@ -18,6 +18,7 @@ return {
     },
     mode = "topdown",
     name = "Quiet Grove",
+    name_key = "stage.world_grove.name",
     portals = {
         {
             cooldown = 0.25,
@@ -51,10 +52,10 @@ return {
             },
         },
         {
-            actor = "actor.slime",
-            id = "enemy.slime.grove",
+            actor = "actor.grove_guardian",
+            id = "boss.grove_guardian",
             position = {
-                x = 530,
+                x = 620,
                 y = 288,
             },
         },

@@ -124,6 +124,157 @@ end
 
 local motion = {}
 
+local function chooseSweepHit(best, fraction, kind, id, value)
+    if fraction == nil or fraction < 0 or fraction > 1 then
+        return best
+    end
+    local key = kind .. ":" .. tostring(id)
+    if not best or fraction < best.fraction - 1e-9 or
+       (math.abs(fraction - best.fraction) <= 1e-9 and
+        key < best.key) then
+        return {
+            fraction = fraction,
+            kind = kind,
+            id = id,
+            value = value,
+            key = key,
+        }
+    end
+    return best
+end
+
+local function bodyShape(transform, body)
+    if body.shape == "rectangle" then
+        return {
+            type = "rectangle",
+            x = transform.x,
+            y = transform.y,
+            width = body.width,
+            height = body.height,
+        }
+    elseif body.shape == "polygon" then
+        return {
+            type = "polygon",
+            points = geometry.bodyPoints(transform, body),
+        }
+    end
+    return nil
+end
+
+function motion:sweepCircle(world, entity, delta_x, delta_y)
+    local transform = entity and entity.components.transform
+    local body = entity and entity.components.body
+    if not transform or not body or body.shape ~= "circle" then
+        return nil
+    end
+    local start_x, start_y = transform.x, transform.y
+    local end_x = start_x + delta_x
+    local end_y = start_y + delta_y
+    local best
+
+    if body.collision_mask_set.world then
+        local stage_geometry = world:service("geometry")
+        local hit = stage_geometry and stage_geometry:sweepCircle(
+            world,
+            start_x,
+            start_y,
+            end_x,
+            end_y,
+            body.radius
+        )
+        if hit then
+            best = chooseSweepHit(
+                best,
+                hit.fraction,
+                "wall",
+                hit.wall.id,
+                hit.wall
+            )
+        end
+    end
+
+    for _, obstacle in ipairs(world:query("transform", "body")) do
+        if obstacle ~= entity and
+           not world.pending_removal[obstacle.id] then
+            local obstacle_body = obstacle.components.body
+            if obstacle_body.solid and
+               bodiesCanCollide(body, obstacle_body) then
+                local obstacle_transform =
+                    obstacle.components.transform
+                local fraction
+                if obstacle_body.shape == "circle" then
+                    fraction = geometry.sweptCircleFraction(
+                        start_x,
+                        start_y,
+                        end_x,
+                        end_y,
+                        body.radius,
+                        obstacle_transform.x,
+                        obstacle_transform.y,
+                        obstacle_body.radius
+                    )
+                else
+                    fraction = geometry.sweptCircleShapeFraction(
+                        start_x,
+                        start_y,
+                        end_x,
+                        end_y,
+                        body.radius,
+                        bodyShape(obstacle_transform, obstacle_body)
+                    )
+                end
+                best = chooseSweepHit(
+                    best,
+                    fraction,
+                    "entity",
+                    obstacle.id,
+                    obstacle
+                )
+            end
+        end
+    end
+
+    local minimum_x = body.radius
+    local maximum_x = world.stage.width - body.radius
+    local minimum_y = body.radius
+    local maximum_y = world.stage.height - body.radius
+    if delta_x < 0 and end_x < minimum_x then
+        best = chooseSweepHit(
+            best,
+            (minimum_x - start_x) / delta_x,
+            "bounds",
+            "left",
+            world.stage
+        )
+    elseif delta_x > 0 and end_x > maximum_x then
+        best = chooseSweepHit(
+            best,
+            (maximum_x - start_x) / delta_x,
+            "bounds",
+            "right",
+            world.stage
+        )
+    end
+    if delta_y < 0 and end_y < minimum_y then
+        best = chooseSweepHit(
+            best,
+            (minimum_y - start_y) / delta_y,
+            "bounds",
+            "top",
+            world.stage
+        )
+    elseif delta_y > 0 and end_y > maximum_y then
+        best = chooseSweepHit(
+            best,
+            (maximum_y - start_y) / delta_y,
+            "bounds",
+            "bottom",
+            world.stage
+        )
+    end
+    return best
+end
+
 local function advanceAxis(world, entity, axis, delta)
     if delta == 0 then return end
     local transform = entity.components.transform

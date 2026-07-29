@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "profile": "action",
+  "stage": "stage.start",
+  "player_tag": "player",
+  "movement": {
+    "action": "move_right",
+    "frames": 18,
+    "minimum_delta": 20
+  },
+  "combat": {
+    "target_tag": "enemy",
+    "action": "attack",
+    "frames": 24,
+    "minimum_damage": 1
+  }
+}

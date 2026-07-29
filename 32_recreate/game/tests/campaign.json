@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "project": "recreate.maker_runtime",
+  "profile": "action-rpg",
+  "save_slot": "campaign",
+  "stages": {
+    "village": "stage.village",
+    "field": "stage.world_hub",
+    "grove": "stage.world_grove"
+  },
+  "entities": {
+    "guide": "guide",
+    "merchant": "merchant",
+    "field_enemies": [
+      "enemy.slime.1",
+      "enemy.slime.2"
+    ],
+    "guardian": "boss.grove_guardian"
+  },
+  "content": {
+    "quest": "quest.grove_guardian",
+    "equipment": "item.training_sword",
+    "potion": "item.potion"
+  },
+  "equipment_slot": "weapon"
+}

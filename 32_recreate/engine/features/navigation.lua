@@ -266,25 +266,21 @@ function navigation_system:update(world, dt)
             trigger_id = trigger.id,
             entity_id = actor.id,
         })
-        local succeeded = true
-        for index, action in ipairs(trigger.actions) do
-            local result, action_error = world:execute(action, context)
-            if result == nil or result == false then
-                succeeded = false
-                world.events:emit("trigger.action_failed", {
-                    trigger_id = trigger.id,
-                    entity_id = actor.id,
-                    action_index = index,
-                    error = action_error,
-                })
-                break
-            end
-        end
-        if succeeded then
+        local result, action_error, failure =
+            world:executeActions(trigger.actions, context)
+        if result then
             if trigger.once then state.fired[trigger.id] = true end
             if (trigger.cooldown or 0) > 0 then
                 state.cooldowns[key] = trigger.cooldown
             end
+        else
+            world.events:emit("trigger.action_failed", {
+                trigger_id = trigger.id,
+                entity_id = actor.id,
+                action_index = failure and failure.index or nil,
+                action_type = failure and failure.action.type or nil,
+                error = action_error,
+            })
         end
     end)
 

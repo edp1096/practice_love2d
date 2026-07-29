@@ -215,9 +215,56 @@ func TestReferenceScaffoldsRequireTheCorrectContentKind(t *testing.T) {
 	}
 	if err := runScaffold(
 		t.TempDir(),
-		[]string{"projectile", "missing_reference"},
-	); err == nil || !strings.Contains(err.Error(), "ACTOR_ID") {
-		t.Fatalf("expected projectile usage error, got %v", err)
+		[]string{"projectile", "generated_bolt"},
+	); err != nil {
+		t.Fatalf("expected projectile actor generation, got %v", err)
+	}
+}
+
+func TestProjectileScaffoldGeneratesACompatibleActor(t *testing.T) {
+	root := t.TempDir()
+	if err := runScaffold(
+		root,
+		[]string{"projectile", "ice_bolt"},
+	); err != nil {
+		t.Fatal(err)
+	}
+	projectile, err := os.ReadFile(filepath.Join(
+		root,
+		"game",
+		"content",
+		"projectiles",
+		"ice_bolt.lua",
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+	actor, err := os.ReadFile(filepath.Join(
+		root,
+		"game",
+		"content",
+		"actors",
+		"projectile_ice_bolt.lua",
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{
+		`actor = "actor.projectile_ice_bolt"`,
+	} {
+		if !strings.Contains(string(projectile), expected) {
+			t.Fatalf("projectile lacks %q:\n%s", expected, projectile)
+		}
+	}
+	for _, expected := range []string{
+		`id = "actor.projectile_ice_bolt"`,
+		`collision_layer = "projectile"`,
+		`collision_mask = {"world"}`,
+		`["motion.kinematics"] = {}`,
+	} {
+		if !strings.Contains(string(actor), expected) {
+			t.Fatalf("actor lacks %q:\n%s", expected, actor)
+		}
 	}
 }
 

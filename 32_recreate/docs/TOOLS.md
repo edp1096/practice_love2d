@@ -4,6 +4,33 @@
 semantic debug protocol과 transactional reload를 사용해 콘텐츠 제작을
 돕는다.
 
+## 로컬 Maker 화면
+
+```bash
+go run ./tools/lovectl maker
+go run ./tools/lovectl maker --no-open --listen 127.0.0.1:0
+```
+
+`maker`는 실제 프로젝트를 읽는 격리된 LÖVE 미리보기와 loopback 전용
+Go HTTP 서버를 시작한다. 브라우저에서는 다음 작업을 할 수 있다.
+
+- 종류별 콘텐츠 검색과 순·역방향 참조 탐색
+- 객체·배열 구조 편집과 전체 JSON 편집
+- 현재 엔진의 Catalog/Validator를 이용한 draft 검증
+- actor, ability, dialogue와 stage 미리보기
+- 게임 화면 자동 캡처와 의미 입력
+- 검증된 scaffold를 이용한 새 콘텐츠 생성
+
+브라우저가 Lua 파일을 직접 쓰거나 임의 debug RPC를 호출하지 않는다.
+서버는 `game/content` 아래의 실제 Catalog source만 수정하며 generated
+stage는 읽기 전용이다. 저장 요청은 읽을 때 받은 SHA-256 revision을
+반드시 제시해야 한다. 전체 draft 검증과 transactional runtime reload가
+성공한 경우에만 새 파일을 유지하며, 외부 수정과 충돌하면 덮어쓰지
+않는다.
+
+Maker 미리보기의 save identity와 XDG 디렉터리는 실제 플레이 데이터와
+분리된다. 타일맵 편집은 [MAPS.md](MAPS.md)의 Tiled 작업 흐름을 사용한다.
+
 ## 콘텐츠 생성
 
 ```bash

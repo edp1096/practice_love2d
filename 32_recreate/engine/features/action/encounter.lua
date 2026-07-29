@@ -281,27 +281,34 @@ local function executeActions(
     context,
     failure_scope
 )
-    for index, action in ipairs(actions or {}) do
-        local result, action_error = world:execute(action, context)
-        if result == nil or result == false then
-            world.events:emit("encounter.action_failed", {
-                encounter_id = context.encounter_id,
-                wave_id = context.wave_id,
-                phase_id = context.phase_id,
-                scope = failure_scope,
-                action_index = index,
-                error = action_error,
-            })
-            return false
-        end
-        if type(result) == "table" and result.stop_effects then
-            break
-        end
+    local result, action_error, failure =
+        world:executeActions(actions, context)
+    if not result then
+        return nil, action_error, {
+            encounter_id = context.encounter_id,
+            wave_id = context.wave_id,
+            phase_id = context.phase_id,
+            scope = failure_scope,
+            action_index = failure and failure.index or nil,
+            action_type = failure and failure.action.type or nil,
+            error = action_error,
+        }
     end
     return true
 end
 
 local encounter = {}
+
+local function failEncounter(world, state, failure, failure_error)
+    state.status = "failed"
+    state.error = tostring(failure_error or "encounter action failed")
+    failure = failure or {
+        encounter_id = state.id,
+        error = state.error,
+    }
+    failure.error = state.error
+    world.events:emit("encounter.action_failed", failure)
+end
 
 function encounter:start(world, encounter_id)
     local state = stateFor(world, encounter_id)
@@ -333,52 +340,69 @@ function encounter:state(world, encounter_id)
 end
 
 local function beginWave(world, state)
-    state.wave_index = state.wave_index + 1
-    local wave = state.definition.waves[state.wave_index]
-    state.status = "active"
-    state.remaining = 0
-    state.live_ids = {}
-    state.spawn_entities = {}
-    state.entered_phases = {}
+    local action_failure
+    local result, begin_error = world:transaction(function()
+        state.wave_index = state.wave_index + 1
+        local wave = state.definition.waves[state.wave_index]
+        state.status = "active"
+        state.error = nil
+        state.remaining = 0
+        state.live_ids = {}
+        state.spawn_entities = {}
+        state.entered_phases = {}
 
-    local target = actionTarget(world, state.definition)
-    executeActions(world, wave.on_start, {
-        source = target,
-        target = target,
-        encounter_id = state.id,
-        wave_id = wave.id,
-    }, "wave_start")
-
-    for _, spawn in ipairs(wave.spawns) do
-        local instance = util.deepCopy(spawn)
-        instance.id = string.format(
-            "encounter.%s.wave.%d.%s",
-            state.id,
-            state.wave_index,
-            spawn.id
+        local target = actionTarget(world, state.definition)
+        local executed, action_error, failure = executeActions(
+            world,
+            wave.on_start,
+            {
+                source = target,
+                target = target,
+                encounter_id = state.id,
+                wave_id = wave.id,
+            },
+            "wave_start"
         )
-        instance.position = {
-            x = state.x + spawn.position.x,
-            y = state.y + spawn.position.y,
-        }
-        local entity, spawn_error =
-            world:spawn(spawn.actor, instance)
-        if not entity then
-            error(
-                "validated encounter spawn failed: " ..
-                    tostring(spawn_error)
-            )
+        if not executed then
+            action_failure = failure
+            return nil, action_error
         end
-        state.live_ids[#state.live_ids + 1] = entity.id
-        state.spawn_entities[spawn.id] = entity.id
-    end
 
-    world.events:emit("encounter.wave_started", {
-        encounter_id = state.id,
-        wave_id = wave.id,
-        wave_index = state.wave_index,
-        actor_count = #state.live_ids,
-    })
+        for _, spawn in ipairs(wave.spawns) do
+            local instance = util.deepCopy(spawn)
+            instance.id = string.format(
+                "encounter.%s.wave.%d.%s",
+                state.id,
+                state.wave_index,
+                spawn.id
+            )
+            instance.position = {
+                x = state.x + spawn.position.x,
+                y = state.y + spawn.position.y,
+            }
+            local entity, spawn_error =
+                world:spawn(spawn.actor, instance)
+            if not entity then
+                return nil, "validated encounter spawn failed: " ..
+                    tostring(spawn_error)
+            end
+            state.live_ids[#state.live_ids + 1] = entity.id
+            state.spawn_entities[spawn.id] = entity.id
+        end
+
+        world.events:emit("encounter.wave_started", {
+            encounter_id = state.id,
+            wave_id = wave.id,
+            wave_index = state.wave_index,
+            actor_count = #state.live_ids,
+        })
+        return {applied = true}
+    end)
+    if not result then
+        failEncounter(world, state, action_failure, begin_error)
+        return nil, begin_error
+    end
+    return true
 end
 
 local function allDefeated(world, state)
@@ -399,56 +423,109 @@ local function updateBossPhases(world, state, wave)
             if health and not boss.dead and
                health.current / health.max <=
                    phase.health_ratio_at_most then
-                state.entered_phases[phase.id] = true
-                executeActions(world, phase.actions, {
-                    source = boss,
-                    target = boss,
-                    encounter_id = state.id,
-                    wave_id = wave.id,
-                    phase_id = phase.id,
-                }, "boss_phase")
-                world.events:emit("boss.phase_entered", {
-                    encounter_id = state.id,
-                    wave_id = wave.id,
-                    phase_id = phase.id,
-                    entity_id = boss.id,
-                    health_ratio = health.current / health.max,
-                })
+                local action_failure
+                local result, phase_error =
+                    world:transaction(function()
+                        state.entered_phases[phase.id] = true
+                        local executed, action_error, failure =
+                            executeActions(
+                                world,
+                                phase.actions,
+                                {
+                                    source = boss,
+                                    target = boss,
+                                    encounter_id = state.id,
+                                    wave_id = wave.id,
+                                    phase_id = phase.id,
+                                },
+                                "boss_phase"
+                            )
+                        if not executed then
+                            action_failure = failure
+                            return nil, action_error
+                        end
+                        world.events:emit("boss.phase_entered", {
+                            encounter_id = state.id,
+                            wave_id = wave.id,
+                            phase_id = phase.id,
+                            entity_id = boss.id,
+                            health_ratio = health.current / health.max,
+                        })
+                        return {applied = true}
+                    end)
+                if not result then
+                    failEncounter(
+                        world,
+                        state,
+                        action_failure,
+                        phase_error
+                    )
+                    return nil, phase_error
+                end
             end
         end
     end
+    return true
 end
 
 local function completeWave(world, state, wave)
-    local target = actionTarget(world, state.definition)
-    executeActions(world, wave.on_complete, {
-        source = target,
-        target = target,
-        encounter_id = state.id,
-        wave_id = wave.id,
-    }, "wave_complete")
-    world.events:emit("encounter.wave_completed", {
-        encounter_id = state.id,
-        wave_id = wave.id,
-        wave_index = state.wave_index,
-    })
-
-    local next_wave = state.definition.waves[state.wave_index + 1]
-    if next_wave then
-        state.status = "pending"
-        state.remaining = next_wave.delay or 0
-    else
-        state.status = "completed"
-        executeActions(world, state.definition.on_complete, {
-            source = target,
-            target = target,
+    local action_failure
+    local result, complete_error = world:transaction(function()
+        local target = actionTarget(world, state.definition)
+        local executed, action_error, failure = executeActions(
+            world,
+            wave.on_complete,
+            {
+                source = target,
+                target = target,
+                encounter_id = state.id,
+                wave_id = wave.id,
+            },
+            "wave_complete"
+        )
+        if not executed then
+            action_failure = failure
+            return nil, action_error
+        end
+        world.events:emit("encounter.wave_completed", {
             encounter_id = state.id,
-        }, "encounter_complete")
-        world.events:emit("encounter.completed", {
-            encounter_id = state.id,
-            definition_id = state.definition.id,
+            wave_id = wave.id,
+            wave_index = state.wave_index,
         })
+
+        local next_wave = state.definition.waves[state.wave_index + 1]
+        if next_wave then
+            state.status = "pending"
+            state.remaining = next_wave.delay or 0
+        else
+            state.status = "completed"
+            local finished, finish_error, finish_failure =
+                executeActions(
+                    world,
+                    state.definition.on_complete,
+                    {
+                        source = target,
+                        target = target,
+                        encounter_id = state.id,
+                    },
+                    "encounter_complete"
+                )
+            if not finished then
+                action_failure = finish_failure
+                return nil, finish_error
+            end
+            world.events:emit("encounter.completed", {
+                encounter_id = state.id,
+                definition_id = state.definition.id,
+            })
+        end
+        return {applied = true}
+    end)
+    if not result then
+        failEncounter(world, state, action_failure, complete_error)
+        return nil, complete_error
     end
+    return true
 end
 
 local encounter_system = {
@@ -463,11 +540,11 @@ function encounter_system:update(world, dt)
     for _, state in ipairs(feature_state.order) do
         if state.status == "pending" then
             state.remaining = util.countdown(state.remaining, dt)
-            if state.remaining == 0 then beginWave(world, state) end
+                if state.remaining == 0 then beginWave(world, state) end
         elseif state.status == "active" then
             local wave = state.definition.waves[state.wave_index]
-            updateBossPhases(world, state, wave)
-            if allDefeated(world, state) then
+            local phases_updated = updateBossPhases(world, state, wave)
+            if phases_updated and allDefeated(world, state) then
                 completeWave(world, state, wave)
             end
         end
@@ -558,7 +635,7 @@ function feature:register(host)
             )
             validator:enum(
                 condition.state,
-                {"idle", "pending", "active", "completed"},
+                {"idle", "pending", "active", "completed", "failed"},
                 path .. ".state",
                 true
             )
@@ -592,6 +669,7 @@ function feature:register(host)
                 wave_id = state.wave_index > 0 and
                     state.definition.waves[state.wave_index].id or nil,
                 remaining = state.remaining,
+                error = state.error,
                 living = living,
                 entered_phases =
                     util.sortedKeys(state.entered_phases),

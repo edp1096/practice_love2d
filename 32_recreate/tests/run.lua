@@ -106,6 +106,336 @@ test("event subscriptions can be removed", function()
     equal(#events:recent(10), 2)
 end)
 
+test("event transactions buffer commits and discard rollbacks", function()
+    local Events = require "engine.core.events"
+    local events = Events.new(10)
+    local trace = {}
+    events:on("first", function()
+        trace[#trace + 1] = "first"
+        events:emit("second")
+    end)
+    events:on("second", function()
+        trace[#trace + 1] = "second"
+    end)
+
+    local discarded = events:beginTransaction()
+    events:emit("first")
+    equal(#trace, 0)
+    equal(#events:recent(10), 0)
+    events:rollbackTransaction(discarded)
+    equal(#trace, 0)
+    equal(#events:recent(10), 0)
+
+    local committed = events:beginTransaction()
+    events:emit("first")
+    events:commitTransaction(committed)
+    equal(table.concat(trace, ","), "first,second")
+    local history = events:recent(10)
+    equal(#history, 2)
+    equal(history[1].name, "first")
+    equal(history[1].sequence, 1)
+    equal(history[2].name, "second")
+    equal(history[2].sequence, 2)
+end)
+
+test("debug JSON parser honors top-level fields and Unicode", function()
+    local json = require "engine.debug.json"
+    local decoded, decode_error = json.decode(
+        '{"method":"Runtime.ping",' ..
+        '"params":{"method":"spoof"},' ..
+        '"label":"\\uc548\\ub155"}'
+    )
+    truthy(decoded, decode_error)
+    equal(json.getString(decoded, "method"), "Runtime.ping")
+    equal(json.getString(decoded, "label"), "안녕")
+    local numbers, number_error =
+        json.decode('[0,-12,3.5,6e2,-7.25E-1]')
+    truthy(numbers, number_error)
+    equal(numbers[1], 0)
+    equal(numbers[2], -12)
+    equal(numbers[3], 3.5)
+    equal(numbers[4], 600)
+    equal(numbers[5], -0.725)
+
+    local invalid, invalid_error =
+        json.decode('{"method":"first","method":"second"}')
+    equal(invalid, nil)
+    truthy(invalid_error:match("duplicate object key"))
+    for _, source in ipairs({
+        "01", "-01", "1.", "1.e2", "1e", "1e+", "--1",
+    }) do
+        local value = json.decode(source)
+        equal(value, nil, "accepted invalid JSON number " .. source)
+    end
+end)
+
+test("debug bridge reads command arguments only from params", function()
+    local Bridge = require "engine.debug.bridge"
+    local json = require "engine.debug.json"
+    local bridge = Bridge.new({fixed_dt = 1 / 60})
+    bridge:_handle(
+        '{"id":7,"method":"Test.setPaused","enabled":false,' ..
+        '"params":{"enabled":true}}'
+    )
+    truthy(bridge.simulation_paused)
+    local response, response_error =
+        json.decode(bridge.output_buffer:match("([^\n]+)"))
+    truthy(response, response_error)
+    equal(response.id, 7)
+    truthy(response.result.paused)
+
+    bridge.output_buffer = ""
+    bridge:_handle(
+        '{"id":8,"method":"Test.setPaused","params":"bad"}'
+    )
+    response, response_error =
+        json.decode(bridge.output_buffer:match("([^\n]+)"))
+    truthy(response, response_error)
+    equal(response.id, 8)
+    equal(response.error.message, "params must be a JSON object")
+end)
+
+test("world action batches roll back state, spawns, and events", function()
+    local Rules = require "engine.core.rules"
+    local World = require "engine.runtime.world"
+    local session = {currency = 0}
+    local actor = {
+        kind = "actor",
+        id = "actor.marker",
+        components = {},
+    }
+    local host = {
+        systems = {},
+        rules = Rules.new(),
+        components = {},
+        services = {},
+        gates = {},
+        time_filters = {},
+        entity_inspectors = {},
+        world_inspectors = {},
+        debug_drawers = {},
+        session_store = {
+            values = {test = session},
+            versions = {test = 1},
+        },
+        catalog = {
+            get = function(_, id)
+                if id == actor.id then return actor end
+                return nil
+            end,
+        },
+    }
+    host.rules:registerAction("grant", {
+        execute = function(_, context)
+            session.currency = session.currency + 10
+            context.world:spawn("actor.marker", {id = "temporary"})
+            context.world.events:emit("reward.granted")
+            return {applied = true}
+        end,
+    })
+    host.rules:registerAction("fail", {
+        execute = function()
+            return nil, "expected failure"
+        end,
+    })
+    local world = World.new(host, {
+        id = "stage.test",
+        width = 100,
+        height = 100,
+    })
+    local result, batch_error = world:executeActions({
+        {type = "grant"},
+        {type = "fail"},
+    })
+    equal(result, nil)
+    truthy(batch_error:match("action%[2%]"))
+    equal(session.currency, 0)
+    equal(world:get("temporary"), nil)
+    equal(#world.entity_order, 0)
+    equal(world.spawn_sequence, 0)
+    equal(#world.events:recent(10), 0)
+end)
+
+test("successful world action batches execute each action exactly once", function()
+    local Rules = require "engine.core.rules"
+    local World = require "engine.runtime.world"
+    local state = {count = 0}
+    local host = {
+        systems = {},
+        rules = Rules.new(),
+        components = {},
+        services = {},
+        gates = {},
+        time_filters = {},
+        entity_inspectors = {},
+        world_inspectors = {},
+        debug_drawers = {},
+        session_store = {
+            values = {test = state},
+            versions = {test = 1},
+        },
+        catalog = {get = function() return nil end},
+    }
+    host.rules:registerAction("increment", {
+        execute = function(action, context)
+            state.count = state.count + action.amount
+            context.world.events:emit("counter.incremented", {
+                amount = action.amount,
+            })
+            return {applied = true}
+        end,
+    })
+    local world = World.new(host, {
+        id = "stage.test",
+        width = 100,
+        height = 100,
+    })
+    local result, batch_error = world:executeActions({
+        {type = "increment", amount = 2},
+        {type = "increment", amount = 3},
+    })
+    truthy(result, batch_error)
+    equal(state.count, 5)
+    local events = world.events:recent(10)
+    equal(#events, 2)
+    equal(events[1].payload.amount, 2)
+    equal(events[2].payload.amount, 3)
+end)
+
+test("world removal compacts order and emits in spawn order", function()
+    local Rules = require "engine.core.rules"
+    local World = require "engine.runtime.world"
+    local actor = {
+        kind = "actor",
+        id = "actor.marker",
+        components = {},
+    }
+    local host = {
+        systems = {},
+        rules = Rules.new(),
+        components = {},
+        services = {},
+        gates = {},
+        time_filters = {},
+        entity_inspectors = {},
+        world_inspectors = {},
+        debug_drawers = {},
+        session_store = {values = {}, versions = {}},
+        catalog = {
+            get = function() return actor end,
+        },
+    }
+    local world = World.new(host, {
+        id = "stage.test",
+        width = 100,
+        height = 100,
+    })
+    world:spawn(actor.id, {id = "first"})
+    world:spawn(actor.id, {id = "second"})
+    world:spawn(actor.id, {id = "third"})
+    local duplicate = world:spawn(actor.id, {id = "third"})
+    equal(duplicate, nil)
+    equal(world.spawn_sequence, 3)
+    world:remove("second", "test")
+    world:remove("first", "test")
+    world:update(1 / 60)
+
+    equal(#world.entity_order, 1)
+    equal(world.entity_order[1], "third")
+    local removed = {}
+    for _, event in ipairs(world.events:recent(10)) do
+        if event.name == "entity.removed" then
+            removed[#removed + 1] = event.payload.entity_id
+        end
+    end
+    equal(table.concat(removed, ","), "first,second")
+end)
+
+test("world action recursion is bounded and resets after failure", function()
+    local Rules = require "engine.core.rules"
+    local World = require "engine.runtime.world"
+    local host = {
+        manifest = {maximum_action_depth = 4},
+        systems = {},
+        rules = Rules.new(),
+        components = {},
+        services = {},
+        gates = {},
+        time_filters = {},
+        entity_inspectors = {},
+        world_inspectors = {},
+        debug_drawers = {},
+        session_store = {values = {}, versions = {}},
+        catalog = {get = function() return nil end},
+    }
+    host.rules:registerAction("recurse", {
+        execute = function(action, context)
+            return context.world:execute(action, context)
+        end,
+    })
+    host.rules:registerAction("ok", {
+        execute = function()
+            return {applied = true}
+        end,
+    })
+    local world = World.new(host, {
+        id = "stage.test",
+        width = 100,
+        height = 100,
+    })
+    local result, recursion_error =
+        world:execute({type = "recurse"})
+    equal(result, nil)
+    truthy(recursion_error:match("maximum depth 4"))
+    equal(world.action_depth, 0)
+    truthy(world:execute({type = "ok"}).applied)
+end)
+
+test("spawn and remove stress leaves no entity-order tombstones", function()
+    local Rules = require "engine.core.rules"
+    local World = require "engine.runtime.world"
+    local actor = {
+        kind = "actor",
+        id = "actor.marker",
+        components = {},
+    }
+    local host = {
+        systems = {},
+        rules = Rules.new(),
+        components = {},
+        services = {},
+        gates = {},
+        time_filters = {},
+        entity_inspectors = {},
+        world_inspectors = {},
+        debug_drawers = {},
+        session_store = {values = {}, versions = {}},
+        catalog = {get = function() return actor end},
+    }
+    local world = World.new(host, {
+        id = "stage.test",
+        width = 100,
+        height = 100,
+    })
+    local total = 0
+    for batch = 1, 100 do
+        for index = 1, 50 do
+            total = total + 1
+            local entity = world:spawn(
+                actor.id,
+                {id = string.format("marker.%d.%d", batch, index)}
+            )
+            truthy(entity)
+            world:remove(entity, "stress")
+        end
+        world:update(1 / 60)
+        equal(#world.entity_order, 0)
+        equal(#world:query(), 0)
+    end
+    equal(world.spawn_sequence, total)
+    equal(#world.entities, 0)
+end)
+
 test("rule actions and nested conditions are extensible", function()
     local Rules = require "engine.core.rules"
     local rules = Rules.new()
@@ -235,6 +565,61 @@ test("catalog rejects executable values", function()
     })
     equal(valid, false)
     truthy(table.concat(errors, "\n"):match("forbidden function"))
+end)
+
+test("asset validation compares declared and runtime image dimensions", function()
+    local files = {
+        ["content/assets/icon.lua"] = {
+            schema_version = 1,
+            kind = "asset",
+            id = "image.icon",
+            asset_type = "image",
+            path = "assets/icon.png",
+            width = 16,
+            height = 8,
+        },
+        ["assets/icon.png"] = "image bytes",
+    }
+    local filesystem = fakeFilesystem(files)
+    function filesystem:imageDimensions()
+        return 12, 8
+    end
+    local Host = require "engine.runtime.host"
+    local host = Host.new({
+        content_roots = {"content"},
+        features = {"engine.features.assets"},
+        input = {actions = {}},
+    }, filesystem)
+    local booted, boot_error = host:boot()
+    equal(booted, nil)
+    truthy(boot_error:match("image is 12x8"))
+
+    files["content/assets/icon.lua"].width = 12
+    host = Host.new({
+        content_roots = {"content"},
+        features = {"engine.features.assets"},
+        input = {actions = {}},
+    }, filesystem)
+    truthy(host:boot())
+end)
+
+test("object validators reject numeric keys and condition typos", function()
+    local Validator = require "engine.content.validator"
+    local Rules = require "engine.core.rules"
+    local rules = Rules.new()
+    local validator = Validator.new({get = function() end}, {})
+    validator:setSource("test")
+    rules:validateCondition(
+        {type = "always", typo = true},
+        validator,
+        "condition"
+    )
+    validator:keys({[1] = "unexpected"}, {}, "object")
+    local valid, errors = validator:finish()
+    equal(valid, false)
+    local message = table.concat(errors, "\n")
+    truthy(message:match("condition%.typo"))
+    truthy(message:match("object%[1%]"))
 end)
 
 test("catalog exposes validated dependency paths in both directions", function()
@@ -717,6 +1102,95 @@ test("projectile is destroyed by canonical stage wall", function()
     truthy(blocked, "projectile.blocked should be emitted")
 end)
 
+test("projectile hits the nearest target before a later wall", function()
+    local files = runtimeDefinitions()
+    addProjectileDefinitions(files, 6000)
+    files["content/stages/test.lua"].spawns[2].position.x = 190
+    files["content/stages/test.lua"].spawns[3] = {
+        id = "near",
+        actor = "actor.enemy",
+        position = {x = 150, y = 100},
+    }
+    files["content/stages/test.lua"].walls = {
+        {
+            id = "wall.behind_target",
+            shape = {
+                type = "rectangle",
+                x = 175,
+                y = 100,
+                width = 4,
+                height = 80,
+            },
+        },
+    }
+    local manifest = runtimeManifest()
+    table.insert(manifest.features, "engine.features.geometry")
+    local host, world = createRuntime(files, manifest)
+    local near = world:get("near")
+    local far = world:get("enemy")
+    local near_health = near.components["action.health"].current
+    local far_health = far.components["action.health"].current
+
+    host.input:setAction("special", 1, 1)
+    world:update(1 / 60)
+    host.input:endFrame()
+
+    equal(near.components["action.health"].current, near_health - 7)
+    equal(far.components["action.health"].current, far_health)
+end)
+
+test("projectile pierce resolves every crossed target in distance order", function()
+    local files = runtimeDefinitions()
+    addProjectileDefinitions(files, 6000)
+    files["content/projectiles/bolt.lua"].pierce = 1
+    files["content/stages/test.lua"].spawns[2] = {
+        id = "far",
+        actor = "actor.enemy",
+        position = {x = 180, y = 100},
+    }
+    files["content/stages/test.lua"].spawns[3] = {
+        id = "near",
+        actor = "actor.enemy",
+        position = {x = 150, y = 100},
+    }
+    local host, world = createRuntime(files)
+    host.input:setAction("special", 1, 1)
+    world:update(1 / 60)
+    host.input:endFrame()
+
+    equal(world:get("near").components["action.health"].current, 23)
+    equal(world:get("far").components["action.health"].current, 23)
+    local hit_order = {}
+    for _, event in ipairs(world.events:recent(20)) do
+        if event.name == "projectile.hit" then
+            hit_order[#hit_order + 1] = event.payload.target_id
+        end
+    end
+    equal(table.concat(hit_order, ","), "near,far")
+end)
+
+test("projectile equal-time targets use stable entity id order", function()
+    local files = runtimeDefinitions()
+    addProjectileDefinitions(files, 6000)
+    files["content/stages/test.lua"].spawns[2] = {
+        id = "zeta",
+        actor = "actor.enemy",
+        position = {x = 160, y = 100},
+    }
+    files["content/stages/test.lua"].spawns[3] = {
+        id = "alpha",
+        actor = "actor.enemy",
+        position = {x = 160, y = 100},
+    }
+    local host, world = createRuntime(files)
+    host.input:setAction("special", 1, 1)
+    world:update(1 / 60)
+    host.input:endFrame()
+
+    equal(world:get("alpha").components["action.health"].current, 23)
+    equal(world:get("zeta").components["action.health"].current, 30)
+end)
+
 test("stacked statuses tick, slow, and expire deterministically", function()
     local host, world = createRuntime(runtimeDefinitions())
     local enemy = world:get("enemy")
@@ -765,6 +1239,38 @@ test("stacked statuses tick, slow, and expire deterministically", function()
         if event.name == "status.expired" then expired = true end
     end
     truthy(expired, "status.expired should be emitted")
+end)
+
+test("status expiration may safely reapply the same status", function()
+    local files = runtimeDefinitions()
+    files["content/statuses/renewing.lua"] = {
+        schema_version = 1,
+        kind = "status",
+        id = "status.renewing",
+        duration = 1 / 60,
+        on_expire = {
+            {
+                type = "apply_status",
+                status = "status.renewing",
+            },
+        },
+    }
+    local host, world = createRuntime(files)
+    local enemy = world:get("enemy")
+    truthy(world:execute({
+        type = "apply_status",
+        status = "status.renewing",
+    }, {
+        source = world:get("player"),
+        target = enemy,
+    }))
+
+    world:update(1 / 60)
+    host.input:endFrame()
+    local entry =
+        enemy.components["action.status"].active["status.renewing"]
+    truthy(entry, "on_expire reapplication must survive old expiration")
+    truthy(entry.remaining > 0)
 end)
 
 test("status damage modifiers transform damage without mutating content", function()
@@ -829,6 +1335,24 @@ test("dynamic solid actors block each other by collision layer", function()
         "actor"
     )
     truthy(player.components.body.collision_mask_set.actor)
+end)
+
+test("dynamic solid rectangles fail before runtime", function()
+    local files = runtimeDefinitions()
+    files["content/actors/enemy.lua"].components.body = {
+        shape = "rectangle",
+        width = 20,
+        height = 20,
+        solid = true,
+    }
+    local Host = require "engine.runtime.host"
+    local host = Host.new(runtimeManifest(), fakeFilesystem(files))
+    local booted, boot_error = host:boot()
+    equal(booted, nil)
+    truthy(
+        boot_error:match("dynamic solid bodies must use shape 'circle'"),
+        boot_error
+    )
 end)
 
 test("repeat hitbox applies a bounded number of timed hits", function()
@@ -1079,6 +1603,151 @@ test("ability effects damage hostile components", function()
     equal(events[3].name, "ability.hit")
 end)
 
+test("death cancels transient action state and revive is explicit", function()
+    local _, world = createRuntime(runtimeDefinitions())
+    local player = world:get("player")
+    local combat = player.components["action.combat"]
+    local status = player.components["action.status"]
+    combat.active = {
+        ability_id = "ability.hit",
+        phase = "active",
+        remaining = 1,
+        hit_targets = {},
+        hit_count = 0,
+    }
+    truthy(world:execute({
+        type = "apply_status",
+        status = "status.vulnerable",
+    }, {
+        source = player,
+        target = player,
+    }))
+
+    local killed = world:service("lifecycle"):setHealth(
+        world,
+        player,
+        0
+    )
+    truthy(killed.killed)
+    truthy(player.dead)
+    equal(player.life_state, "dying")
+    equal(combat.active, nil)
+    equal(next(status.active), nil)
+
+    local healed, heal_error = world:execute({
+        type = "heal",
+        amount = 5,
+    }, {
+        source = player,
+        target = player,
+    })
+    equal(healed, false)
+    truthy(heal_error:match("use revive"))
+
+    local revived = world:execute({
+        type = "revive",
+        amount = 12,
+    }, {
+        target = player,
+    })
+    truthy(revived.applied)
+    equal(player.dead, false)
+    equal(player.life_state, "alive")
+    equal(player.components["action.health"].current, 12)
+end)
+
+test("debug health mutation is exact while preserving lifecycle events", function()
+    local files = runtimeDefinitions()
+    files["content/actors/player.lua"].components["rpg.stats"] = {
+        defense = 10,
+    }
+    local manifest = runtimeManifest()
+    table.insert(manifest.features, "engine.features.rpg.stats")
+    local _, world = createRuntime(files, manifest)
+    local player = world:get("player")
+    truthy(world:execute({
+        type = "apply_status",
+        status = "status.vulnerable",
+    }, {
+        source = player,
+        target = player,
+    }))
+    player.components["action.reaction"].invulnerable_remaining = 1
+    player.components["action.parry"].active = true
+    player.components["action.parry"].remaining = 0.2
+
+    local result = world:service("lifecycle"):setHealth(
+        world,
+        player,
+        7
+    )
+    truthy(result.applied)
+    equal(player.components["action.health"].current, 7)
+    truthy(player.components["action.parry"].active)
+    equal(
+        player.components["action.reaction"].invulnerable_remaining,
+        1
+    )
+    local damage_event
+    for _, event in ipairs(world.events:recent(10)) do
+        if event.name == "actor.damaged" then damage_event = event end
+    end
+    truthy(damage_event)
+    equal(damage_event.payload.amount, 43)
+end)
+
+test("debug health mutation rolls back when an event subscriber fails", function()
+    local manifest = runtimeManifest()
+    table.insert(
+        manifest.features,
+        "engine.features.presentation.impact"
+    )
+    local _, world = createRuntime(runtimeDefinitions(), manifest)
+    local player = world:get("player")
+    local original_health =
+        player.components["action.health"].current
+    local original_events = #world.events:recent(100)
+    world.events:on("actor.damaged", function()
+        error("expected subscriber failure")
+    end)
+
+    local result, mutation_error =
+        world:service("lifecycle"):setHealth(
+            world,
+            player,
+            7
+        )
+    equal(result, nil)
+    truthy(
+        mutation_error:match("expected subscriber failure"),
+        mutation_error
+    )
+    equal(player.components["action.health"].current, original_health)
+    equal(#world.events:recent(100), original_events)
+    equal(world:view().shake_remaining, 0)
+end)
+
+test("debug health mutation rejects non-finite values", function()
+    local _, world = createRuntime(runtimeDefinitions())
+    local player = world:get("player")
+    local original_health =
+        player.components["action.health"].current
+    for _, value in ipairs({0 / 0, math.huge, -math.huge}) do
+        local result, mutation_error =
+            world:service("lifecycle"):setHealth(
+                world,
+                player,
+                value
+            )
+        equal(result, nil)
+        truthy(mutation_error:match("finite number"), mutation_error)
+        equal(
+            player.components["action.health"].current,
+            original_health
+        )
+    end
+end)
+
 test("active hitbox catches a target entering late and only hits once", function()
     local host, world = createRuntime(runtimeDefinitions())
     local enemy = world:get("enemy")
@@ -1148,6 +1817,262 @@ test("perfect parry cancels damage and staggers the attacker", function()
     equal(player.components["action.health"].current, 50)
     truthy(enemy.components["action.reaction"].stagger_remaining >= 1)
     equal(world.events:recent(1)[1].name, "attack.parried")
+end)
+
+test("impact feedback turns a perfect parry into camera shake", function()
+    local manifest = runtimeManifest()
+    table.insert(
+        manifest.features,
+        "engine.features.presentation.impact"
+    )
+    local files = runtimeDefinitions()
+    files["content/stages/test.lua"].camera = {
+        viewport_width = 200,
+        viewport_height = 150,
+        follow_tag = "player",
+    }
+    local host, world = createRuntime(files, manifest)
+    local player = world:get("player")
+    local enemy = world:get("enemy")
+
+    host.input:setAction("parry", 1, 1)
+    world:update(1 / 60)
+    host.input:endFrame()
+    local result = world:execute({
+        type = "damage",
+        amount = 10,
+    }, {
+        source = enemy,
+        target = player,
+    })
+    truthy(result.parried)
+    truthy(result.perfect)
+
+    local view = world:view()
+    truthy(view.shake_remaining > 0)
+    equal(view.shake_magnitude, 10)
+    truthy(
+        math.abs(view.shake_offset_x) > 0 or
+            math.abs(view.shake_offset_y) > 0
+    )
+end)
+
+test("camera shake action is deterministic and decays to rest", function()
+    local function runShake()
+        local manifest = runtimeManifest()
+        table.insert(manifest.features, "engine.features.camera")
+        local files = runtimeDefinitions()
+        files["content/stages/test.lua"].camera = {
+            viewport_width = 200,
+            viewport_height = 150,
+            follow_tag = "player",
+        }
+        local _, world = createRuntime(files, manifest)
+        local result = world:execute({
+            type = "camera_shake",
+            duration = 0.1,
+            magnitude = 8,
+            frequency = 24,
+        })
+        truthy(result.applied)
+        local initial = world:view()
+        for _ = 1, 7 do world:update(1 / 60) end
+        local finished = world:view()
+        equal(finished.shake_remaining, 0)
+        equal(finished.shake_magnitude, 0)
+        equal(finished.shake_offset_x, 0)
+        equal(finished.shake_offset_y, 0)
+        return initial.shake_offset_x, initial.shake_offset_y
+    end
+
+    local first_x, first_y = runShake()
+    local second_x, second_y = runShake()
+    truthy(math.abs(first_x) > 0 or math.abs(first_y) > 0)
+    equal(first_x, second_x)
+    equal(first_y, second_y)
+end)
+
+test("camera shake stays inside stage bounds", function()
+    local manifest = runtimeManifest()
+    table.insert(manifest.features, "engine.features.camera")
+    local files = runtimeDefinitions()
+    files["content/stages/test.lua"].camera = {
+        viewport_width = 400,
+        viewport_height = 300,
+        follow_tag = "player",
+    }
+    local _, world = createRuntime(files, manifest)
+    local result = world:execute({
+        type = "camera_shake",
+        duration = 0.2,
+        magnitude = 10,
+        frequency = 40,
+    })
+    truthy(result.applied)
+    local view = world:view()
+    equal(view.x, 0)
+    equal(view.y, 0)
+    equal(view.shake_offset_x, 0)
+    equal(view.shake_offset_y, 0)
+    truthy(
+        math.abs(view.shake_raw_offset_x) > 0 or
+            math.abs(view.shake_raw_offset_y) > 0
+    )
+
+    files = runtimeDefinitions()
+    files["content/stages/test.lua"].camera = {
+        viewport_width = 200,
+        viewport_height = 150,
+        follow_tag = "player",
+    }
+    local _, edge_world = createRuntime(files, manifest)
+    local player = edge_world:get("player")
+    player.components.transform.x = 400
+    player.components.transform.y = 300
+    edge_world:update(1 / 60)
+    edge_world:execute({
+        type = "camera_shake",
+        duration = 0.2,
+        magnitude = 10,
+        frequency = 40,
+    })
+    view = edge_world:view()
+    truthy(view.x >= 0 and view.x <= 200)
+    truthy(view.y >= 0 and view.y <= 150)
+end)
+
+test("camera shake advances on unscaled time during hitstop", function()
+    local manifest = runtimeManifest()
+    table.insert(manifest.features, "engine.features.camera")
+    local files = runtimeDefinitions()
+    files["content/stages/test.lua"].camera = {
+        viewport_width = 200,
+        viewport_height = 150,
+        follow_tag = "player",
+    }
+    local _, world = createRuntime(files, manifest)
+    truthy(world:execute({
+        type = "camera_shake",
+        duration = 0.2,
+        magnitude = 10,
+        frequency = 40,
+    }).applied)
+    truthy(world:execute({
+        type = "hitstop",
+        duration = 0.05,
+    }).applied)
+    local before = world:view()
+    local advanced = world:update(1 / 60)
+    equal(advanced, false)
+    equal(world.time, 0)
+    local during = world:view()
+    truthy(during.shake_remaining < before.shake_remaining)
+    truthy(
+        during.shake_raw_offset_x ~= before.shake_raw_offset_x or
+            during.shake_raw_offset_y ~= before.shake_raw_offset_y
+    )
+end)
+
+test("impact feedback manifest rejects unknown fields", function()
+    local manifest = runtimeManifest()
+    table.insert(
+        manifest.features,
+        "engine.features.presentation.impact"
+    )
+    manifest.impact_feedback = {
+        perfect_pary = {
+            magnitude = 12,
+        },
+    }
+    local Host = require "engine.runtime.host"
+    local host = Host.new(
+        manifest,
+        fakeFilesystem(runtimeDefinitions())
+    )
+    local booted, boot_error = host:boot()
+    equal(booted, nil)
+    truthy(boot_error:match("perfect_pary"), boot_error)
+end)
+
+test("impact feedback manifest reports invalid values without crashing", function()
+    local cases = {
+        {
+            value = 42,
+            expected = "impact_feedback must be a table",
+        },
+        {
+            value = {damage = "strong"},
+            expected = "impact_feedback.damage must be a table",
+        },
+        {
+            value = {damage = {duration = 0 / 0}},
+            expected = "must be a finite positive number",
+        },
+    }
+    for _, case in ipairs(cases) do
+        local manifest = runtimeManifest()
+        table.insert(
+            manifest.features,
+            "engine.features.presentation.impact"
+        )
+        manifest.impact_feedback = case.value
+        local Host = require "engine.runtime.host"
+        local host = Host.new(
+            manifest,
+            fakeFilesystem(runtimeDefinitions())
+        )
+        local booted, boot_error = host:boot()
+        equal(booted, nil)
+        truthy(boot_error:match(case.expected), boot_error)
+        equal(boot_error:match("could not register"), nil)
+    end
+end)
+
+test("impact feedback manifest diagnostics are deterministic", function()
+    local manifest = runtimeManifest()
+    table.insert(
+        manifest.features,
+        "engine.features.presentation.impact"
+    )
+    manifest.impact_feedback = {
+        zeta = true,
+        alpha = true,
+    }
+    local Host = require "engine.runtime.host"
+    local host = Host.new(
+        manifest,
+        fakeFilesystem(runtimeDefinitions())
+    )
+    local booted, boot_error = host:boot()
+    equal(booted, nil)
+    local alpha = boot_error:find("'alpha'", 1, true)
+    local zeta = boot_error:find("'zeta'", 1, true)
+    truthy(alpha and zeta and alpha < zeta, boot_error)
+end)
+
+test("debug kills keep lifecycle events but skip impact shake", function()
+    local manifest = runtimeManifest()
+    table.insert(
+        manifest.features,
+        "engine.features.presentation.impact"
+    )
+    local _, world = createRuntime(runtimeDefinitions(), manifest)
+    local player = world:get("player")
+    local result, mutation_error =
+        world:service("lifecycle"):setHealth(
+            world,
+            player,
+            0
+        )
+    truthy(result, mutation_error)
+    truthy(result.killed)
+    equal(world:view().shake_remaining, 0)
+    local killed
+    for _, event in ipairs(world.events:recent(20)) do
+        if event.name == "actor.killed" then killed = event end
+    end
+    truthy(killed)
+    truthy(killed.payload.debug)
 end)
 
 test("parry only guards attacks inside its facing arc", function()
@@ -1405,6 +2330,69 @@ test("failed content reload keeps the running world", function()
     truthy(app.world:get("player"))
 end)
 
+test("content edit candidates validate without mutating files or world", function()
+    local App = require "engine.core.app"
+    local util = require "engine.core.util"
+    local files = runtimeDefinitions()
+    local app = App.new(
+        runtimeManifest(),
+        fakeFilesystem(files)
+    )
+    local loaded, load_error = app:load()
+    truthy(loaded, load_error)
+    local original_world = app.world
+    local original_cooldown =
+        files["content/abilities/hit.lua"].cooldown
+
+    local candidate =
+        util.deepCopy(files["content/abilities/hit.lua"])
+    candidate.cooldown = 0.75
+    local validated, validation_error =
+        app:validateContentDefinition("ability.hit", candidate)
+    truthy(validated, validation_error)
+    truthy(validated.valid)
+    equal(validated.definition.cooldown, 0.75)
+    equal(
+        files["content/abilities/hit.lua"].cooldown,
+        original_cooldown
+    )
+    equal(app.host.catalog:get("ability.hit").cooldown, original_cooldown)
+    equal(app.world, original_world)
+
+    candidate.damge = 999
+    validated, validation_error =
+        app:validateContentDefinition("ability.hit", candidate)
+    equal(validated, nil)
+    truthy(validation_error:match("damge"), validation_error)
+    equal(app.world, original_world)
+end)
+
+test("failed stage entry restores session tables by identity", function()
+    local App = require "engine.core.app"
+    local app = App.new({
+        fixed_dt = 1 / 60,
+    }, {})
+    local flags = {ready = true}
+    app.session.values.flags = flags
+    app.session.versions.flags = 1
+    app.host = {
+        services = {},
+        createWorld = function()
+            flags.ready = nil
+            flags.leaked = true
+            app.session.values.extra = {bad = true}
+            return nil, "stage initializer failed"
+        end,
+    }
+    local loaded, load_error = app:loadStage("stage.bad")
+    equal(loaded, nil)
+    truthy(load_error:match("initializer failed"))
+    equal(app.session.values.flags, flags)
+    truthy(flags.ready)
+    equal(flags.leaked, nil)
+    equal(app.session.values.extra, nil)
+end)
+
 local function worldStageDefinitions()
     local files = runtimeDefinitions()
     local stage = files["content/stages/test.lua"]
@@ -1542,6 +2530,89 @@ test("stage trigger executes validated rule actions once", function()
     equal(health.current, 35)
 end)
 
+test("stage overlap uses hurtbox offsets and non-circle body extents", function()
+    local files = worldStageDefinitions()
+    local stage = files["content/stages/test.lua"]
+    files["content/actors/player.lua"].components[
+        "action.hurtbox"
+    ] = {
+        radius = 5,
+        offset_x = 40,
+        offset_y = 0,
+    }
+    stage.triggers = {
+        {
+            id = "trigger.offset",
+            shape = {
+                type = "rectangle",
+                x = 140,
+                y = 100,
+                width = 4,
+                height = 4,
+            },
+            once = true,
+            actions = {
+                {type = "emit", name = "offset.detected"},
+            },
+        },
+    }
+    local host, world = createRuntime(files, worldStageManifest())
+    world:update(1 / 60)
+    host.input:endFrame()
+    equal(
+        world:snapshot().navigation.fired_triggers[1],
+        "trigger.offset"
+    )
+
+    files = worldStageDefinitions()
+    files["content/actors/sensor.lua"] = {
+        schema_version = 1,
+        kind = "actor",
+        id = "actor.sensor",
+        tags = {"player"},
+        components = {
+            transform = {},
+            body = {
+                shape = "rectangle",
+                width = 80,
+                height = 10,
+                solid = false,
+            },
+        },
+    }
+    stage = files["content/stages/test.lua"]
+    stage.spawns = {
+        {
+            id = "sensor",
+            actor = "actor.sensor",
+            position = {x = 100, y = 100},
+        },
+    }
+    stage.triggers = {
+        {
+            id = "trigger.extent",
+            shape = {
+                type = "rectangle",
+                x = 140,
+                y = 100,
+                width = 4,
+                height = 4,
+            },
+            once = true,
+            actions = {
+                {type = "emit", name = "extent.detected"},
+            },
+        },
+    }
+    host, world = createRuntime(files, worldStageManifest())
+    world:update(1 / 60)
+    host.input:endFrame()
+    equal(
+        world:snapshot().navigation.fired_triggers[1],
+        "trigger.extent"
+    )
+end)
+
 test("failed one-shot trigger remains available for retry", function()
     local Host = require "engine.runtime.host"
     local files = worldStageDefinitions()
@@ -1559,6 +2630,10 @@ test("failed one-shot trigger remains available for retry", function()
             cooldown = 10,
             actions = {
                 {
+                    type = "heal",
+                    amount = 5,
+                },
+                {
                     type = "start_encounter",
                     encounter = "missing",
                 },
@@ -1574,10 +2649,13 @@ test("failed one-shot trigger remains available for retry", function()
     local world, world_error = host:createWorld("stage.test")
     truthy(world, world_error)
     local player = world:get("player")
+    local health = player.components["action.health"]
+    health.current = 10
 
     world:update(1 / 60)
     host.input:endFrame()
     equal(#world:snapshot().navigation.fired_triggers, 0)
+    equal(health.current, 10)
 
     player.components.transform.x = 50
     world:update(1 / 60)
@@ -1594,6 +2672,7 @@ test("failed one-shot trigger remains available for retry", function()
     end
     equal(failures, 2)
     equal(#world:snapshot().navigation.fired_triggers, 0)
+    equal(health.current, 10)
 end)
 
 test("overlapping tilemap gid ranges fail validation", function()
@@ -1673,6 +2752,12 @@ test("portal request atomically enters target spawn point", function()
     )
     local loaded, load_error = app:load()
     truthy(loaded, load_error)
+    truthy(app.world:service("camera"):shake(app.world, {
+        duration = 0.2,
+        magnitude = 8,
+        frequency = 30,
+    }).applied)
+    truthy(app.world:view().shake_remaining > 0)
     local player = app.world:get("player")
     player.components.transform.x = 250
     player.components.transform.y = 100
@@ -1684,6 +2769,12 @@ test("portal request atomically enters target spawn point", function()
     local entered = app.world:get("player").components.transform
     equal(entered.x, 300)
     equal(entered.y, 200)
+    local entered_view = app.world:view()
+    equal(entered_view.target_id, "player")
+    equal(entered_view.shake_remaining, 0)
+    equal(entered_view.shake_sequence, 0)
+    truthy(entered_view.x >= 0 and entered_view.x <= 300)
+    truthy(entered_view.y >= 0 and entered_view.y <= 150)
 end)
 
 test("portal target spawn is checked across stage content", function()
@@ -1698,6 +2789,104 @@ test("portal target spawn is checked across stage content", function()
     local booted, boot_error = host:boot()
     equal(booted, nil)
     truthy(boot_error:match("has no spawn point 'missing'"))
+end)
+
+test("game flow connects title, play, pause, save, gameover, and ending", function()
+    local App = require "engine.core.app"
+    local files = {
+        ["content/actors/player.lua"] = {
+            schema_version = 1,
+            kind = "actor",
+            id = "actor.player",
+            tags = {"player"},
+            components = {
+                transform = {},
+            },
+        },
+        ["content/stages/test.lua"] = {
+            schema_version = 1,
+            kind = "stage",
+            id = "stage.test",
+            name = "Test",
+            width = 320,
+            height = 180,
+            spawns = {
+                {
+                    id = "player",
+                    actor = "actor.player",
+                    position = {x = 80, y = 90},
+                },
+            },
+        },
+    }
+    local manifest = {
+        id = "test.flow",
+        profile = "action-rpg",
+        title = "Flow Test",
+        initial_stage = "stage.test",
+        content_roots = {"content"},
+        features = {
+            "engine.features.game_flow",
+        },
+        flow = {
+            save_slot = "campaign",
+            start_stage = "stage.test",
+        },
+        input = {
+            actions = {
+                menu_up = {keys = {}},
+                menu_down = {keys = {}},
+                menu_confirm = {keys = {}},
+                menu_cancel = {keys = {}},
+                pause = {keys = {}},
+                restart = {keys = {}},
+                debug_overlay = {keys = {}},
+            },
+        },
+    }
+    local filesystem = fakeFilesystem(files)
+    local app = App.new(manifest, filesystem)
+    local loaded, load_error = app:load()
+    truthy(loaded, load_error)
+    equal(app.world:snapshot().game_flow.mode, "title")
+    app:update(1 / 60)
+    equal(app.world.time, 0)
+
+    app.host.input:setAction("menu_confirm", 1, 1)
+    app:update(1 / 60)
+    equal(app.world:snapshot().game_flow.mode, "playing")
+    truthy(app.world:snapshot().game_flow.started)
+
+    app.host.input:setAction("pause", 1, 1)
+    app:update(1 / 60)
+    equal(app.world:snapshot().game_flow.mode, "paused")
+    app.host.input:setAction("menu_confirm", 1, 1)
+    app:update(1 / 60)
+    equal(app.world:snapshot().game_flow.mode, "playing")
+
+    local saved, save_error = app:save("campaign")
+    truthy(saved, save_error)
+    local returned, return_error = app:returnToTitle()
+    truthy(returned, return_error)
+    local title_state = app.world:snapshot().game_flow
+    equal(title_state.mode, "title")
+    truthy(title_state.has_save)
+    equal(title_state.options[2], "continue")
+
+    local continued, continue_error = app:loadSave("campaign")
+    truthy(continued, continue_error)
+    equal(app.world:snapshot().game_flow.mode, "playing")
+    app.world.events:emit("actor.killed", {target_id = "player"})
+    equal(app.world:snapshot().game_flow.mode, "gameover")
+
+    local fresh, fresh_error = app:startNewGame("stage.test")
+    truthy(fresh, fresh_error)
+    local finished, finish_error =
+        app.world:execute({type = "finish_game"})
+    truthy(finished, finish_error)
+    local ending = app.world:snapshot().game_flow
+    equal(ending.mode, "ending")
+    truthy(ending.completed)
 end)
 
 test("session flags survive stages and transactional content reload", function()
@@ -1830,6 +3019,12 @@ test("save load restores feature state and rejects bad data transactionally", fu
     truthy(changed.applied)
     loaded, load_error = app:loadStage("stage.other", "entry")
     truthy(loaded, load_error)
+    truthy(app.world:service("camera"):shake(app.world, {
+        duration = 0.2,
+        magnitude = 8,
+        frequency = 30,
+    }).applied)
+    truthy(app.world:view().shake_remaining > 0)
 
     local saved, save_error = app:save("unit_slot")
     truthy(saved, save_error)
@@ -1843,6 +3038,9 @@ test("save load restores feature state and rejects bad data transactionally", fu
     equal(app.current_stage_id, "stage.other")
     equal(app.current_spawn_id, "entry")
     truthy(app.host.services.flags:get("story.saved"))
+    equal(app.world:view().target_id, "player")
+    equal(app.world:view().shake_remaining, 0)
+    equal(app.world:view().shake_sequence, 0)
 
     local invalid, export_error = app:exportSave()
     truthy(invalid, export_error)
@@ -1916,6 +3114,47 @@ test("inventory gives, validates, and consumes data-driven items", function()
         item = "item.potion",
         amount = 1,
     }))
+end)
+
+test("failed consumable effects roll back healing and item removal", function()
+    local files = runtimeDefinitions()
+    files["content/items/unstable.lua"] = {
+        schema_version = 1,
+        kind = "item",
+        id = "item.unstable",
+        name = "Unstable Potion",
+        stack_limit = 1,
+        consumable = true,
+        effects = {
+            {type = "heal", amount = 10},
+            {
+                type = "start_encounter",
+                encounter = "missing.runtime.placement",
+            },
+        },
+    }
+    local manifest = runtimeManifest()
+    table.insert(
+        manifest.features,
+        "engine.features.rpg.inventory"
+    )
+    local _, world = createRuntime(files, manifest)
+    local inventory = world:service("inventory")
+    local player = world:get("player")
+    player.components["action.health"].current = 20
+    truthy(inventory:give(world, "item.unstable", 1))
+
+    local result, use_error = world:execute({
+        type = "use_item",
+        item = "item.unstable",
+    }, {
+        source = player,
+        target = player,
+    })
+    equal(result, nil)
+    truthy(use_error:match("item effects failed"))
+    equal(player.components["action.health"].current, 20)
+    equal(inventory:count("item.unstable"), 1)
 end)
 
 test("consumable item requires validated effects", function()
@@ -2419,6 +3658,67 @@ test("quest subscribes to events across world transitions", function()
     )
     truthy(host.services.flags:get("quest.slime_hunt.completed"))
     equal(world:snapshot().quests[1].status, "completed")
+end)
+
+test("failed quest rewards roll back progress and remain retryable", function()
+    local files = questDefinitions()
+    files["content/items/reward.lua"].stack_limit = 1
+    files["content/quests/hunt.lua"].objectives[1].count = 1
+    files["content/quests/hunt.lua"].on_complete = {
+        {
+            type = "set_flag",
+            name = "quest.slime_hunt.completed",
+        },
+        {
+            type = "give_item",
+            item = "item.quest_reward",
+        },
+    }
+    local host, world = createRuntime(files, questManifest())
+    local inventory = host.services.inventory
+    truthy(inventory:give(world, "item.quest_reward", 1))
+    truthy(world:execute({
+        type = "start_quest",
+        quest = "quest.slime_hunt",
+    }))
+
+    truthy(world:execute({
+        type = "damage",
+        amount = 30,
+    }, {
+        source = world:get("player"),
+        target = world:get("enemy"),
+    }))
+    local state = host.services.quest:state("quest.slime_hunt")
+    equal(state.status, "active")
+    equal(state.objectives.defeat_slimes, 0)
+    equal(inventory:count("item.quest_reward"), 1)
+    equal(host.services.flags:get("quest.slime_hunt.completed"), false)
+    local failure_seen = false
+    for _, event in ipairs(world.events:recent(20)) do
+        if event.name == "quest.action_failed" then
+            failure_seen = true
+        end
+    end
+    truthy(failure_seen)
+
+    truthy(inventory:take(world, "item.quest_reward", 1))
+    world.events:emit("actor.killed", {
+        source_id = "player",
+        target_id = "retry",
+        actor_id = "actor.enemy",
+    })
+    equal(state.status, "completed")
+    equal(state.objectives.defeat_slimes, 1)
+    equal(inventory:count("item.quest_reward"), 1)
+    truthy(host.services.flags:get("quest.slime_hunt.completed"))
+
+    world.events:emit("actor.killed", {
+        source_id = "player",
+        target_id = "duplicate",
+        actor_id = "actor.enemy",
+    })
+    equal(inventory:count("item.quest_reward"), 1)
 end)
 
 test("quest objective ids and references are strict", function()

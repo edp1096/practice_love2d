@@ -3,6 +3,7 @@
  <properties>
   <property name="stage_id" value="stage.world_grove"/>
   <property name="display_name" value="Quiet Grove"/>
+  <property name="display_name_key" value="stage.world_grove.name"/>
   <property name="mode" value="topdown"/>
   <property name="camera_width" type="float" value="800"/>
   <property name="camera_height" type="float" value="450"/>
@@ -43,9 +44,9 @@
    </properties>
    <point/>
   </object>
-  <object id="2" name="enemy.slime.grove" class="spawn" x="530" y="288">
+  <object id="2" name="boss.grove_guardian" class="spawn" x="620" y="288">
    <properties>
-    <property name="actor" value="actor.slime"/>
+    <property name="actor" value="actor.grove_guardian"/>
    </properties>
    <point/>
   </object>

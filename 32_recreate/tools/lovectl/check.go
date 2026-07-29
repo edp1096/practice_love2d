@@ -78,11 +78,10 @@ func runChecks(options globalOptions, projectPath string) error {
 
 	content := exec.Command(options.lovePath, projectPath)
 	content.Dir = projectPath
-	content.Env = append(
-		os.Environ(),
-		"RECREATE_CHECK=1",
-		"RECREATE_HEADLESS=1",
-	)
+	content.Env = overrideEnvironment(os.Environ(), map[string]string{
+		"RECREATE_CHECK":    "1",
+		"RECREATE_HEADLESS": "1",
+	})
 	content.Stdout = os.Stdout
 	content.Stderr = os.Stderr
 	if err := content.Run(); err != nil {

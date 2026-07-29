@@ -2,7 +2,14 @@
 
 local socket = {}
 local ffi = require "ffi"
-local platform = love.system.getOS()
+local platform
+if love and love.system and love.system.getOS then
+    platform = love.system.getOS()
+elseif jit and jit.os == "OSX" then
+    platform = "OS X"
+else
+    platform = jit and jit.os or "Linux"
+end
 local is_windows = platform == "Windows"
 local is_macos = platform == "OS X"
 

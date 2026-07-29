@@ -9,12 +9,16 @@ function Rules.new()
     }, Rules)
 
     self:registerCondition("always", {
+        validate = function(condition, validator, path)
+            validator:keys(condition, {"type"}, path)
+        end,
         evaluate = function()
             return true
         end,
     })
     self:registerCondition("all", {
         validate = function(condition, validator, path, rules)
+            validator:keys(condition, {"type", "conditions"}, path)
             local conditions = validator:array(
                 condition.conditions,
                 path .. ".conditions",
@@ -37,6 +41,7 @@ function Rules.new()
     })
     self:registerCondition("any", {
         validate = function(condition, validator, path, rules)
+            validator:keys(condition, {"type", "conditions"}, path)
             local conditions = validator:array(
                 condition.conditions,
                 path .. ".conditions",
@@ -59,6 +64,7 @@ function Rules.new()
     })
     self:registerCondition("not", {
         validate = function(condition, validator, path, rules)
+            validator:keys(condition, {"type", "condition"}, path)
             if validator:table(condition.condition, path .. ".condition", true) then
                 rules:validateCondition(
                     condition.condition,

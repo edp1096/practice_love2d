@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Recreate Maker</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body data-maker-token="__RECREATE_MAKER_TOKEN__">
+  <a class="skip-link" href="#content-editor">편집기로 건너뛰기</a>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">R</div>
+      <div>
+        <p class="eyebrow">RECREATE 2D</p>
+        <h1>Maker</h1>
+      </div>
+    </div>
+
+    <div class="project-summary" aria-live="polite">
+      <div>
+        <span class="summary-label">프로젝트</span>
+        <strong id="project-name">불러오는 중…</strong>
+      </div>
+      <div>
+        <span class="summary-label">프로필</span>
+        <strong id="project-profile">—</strong>
+      </div>
+      <div>
+        <span class="summary-label">현재 스테이지</span>
+        <strong id="project-stage">—</strong>
+      </div>
+      <span id="runtime-status" class="status-pill pending">연결 중</span>
+    </div>
+
+    <div class="top-actions">
+      <button id="refresh-project" class="button ghost" type="button">
+        전체 새로고침
+      </button>
+      <button id="open-create" class="button primary" type="button">
+        + 새 콘텐츠
+      </button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="library-panel" aria-label="콘텐츠 라이브러리">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">DATABASE</p>
+          <h2>콘텐츠</h2>
+        </div>
+        <button
+          id="refresh-graph"
+          class="icon-button"
+          type="button"
+          title="참조 그래프 새로고침"
+          aria-label="참조 그래프 새로고침"
+        >↻</button>
+      </div>
+
+      <label class="search-box" for="content-search">
+        <span aria-hidden="true">⌕</span>
+        <input
+          id="content-search"
+          type="search"
+          placeholder="ID 또는 파일 검색"
+          autocomplete="off"
+        >
+      </label>
+
+      <nav id="kind-list" class="kind-list" aria-label="콘텐츠 종류"></nav>
+
+      <div class="list-meta">
+        <span id="content-count">0개</span>
+        <span id="graph-edge-count">참조 0개</span>
+      </div>
+      <div id="content-list" class="content-list" role="listbox"></div>
+    </aside>
+
+    <section id="content-editor" class="editor-panel" tabindex="-1">
+      <div id="empty-editor" class="empty-state">
+        <div class="empty-glyph" aria-hidden="true">◇</div>
+        <h2>편집할 콘텐츠를 선택하세요</h2>
+        <p>
+          왼쪽 데이터베이스에서 actor, quest, dialogue, stage 등을
+          선택하거나 새 콘텐츠를 만드세요.
+        </p>
+      </div>
+
+      <div id="editor-shell" class="editor-shell" hidden>
+        <header class="editor-header">
+          <div class="editor-title-block">
+            <div class="title-line">
+              <span id="content-kind" class="kind-badge">—</span>
+              <span id="dirty-indicator" class="dirty-indicator" hidden>
+                수정됨
+              </span>
+              <span id="readonly-indicator" class="readonly-badge" hidden>
+                읽기 전용
+              </span>
+            </div>
+            <h2 id="content-id">—</h2>
+            <p id="content-source" class="source-path">—</p>
+            <p id="content-revision" class="revision-label">revision —</p>
+          </div>
+          <div class="editor-actions">
+            <button id="preview-selected" class="button ghost" type="button">
+              미리보기
+            </button>
+            <button id="validate-content" class="button secondary" type="button">
+              검증
+            </button>
+            <button id="save-content" class="button primary" type="button">
+              저장
+            </button>
+          </div>
+        </header>
+
+        <div class="editor-tabs" role="tablist" aria-label="편집 방식">
+          <button
+            id="form-tab"
+            class="editor-tab active"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            aria-controls="form-pane"
+            data-tab="form"
+          >구조 편집</button>
+          <button
+            id="json-tab"
+            class="editor-tab"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="json-pane"
+            data-tab="json"
+          >JSON 고급 편집</button>
+          <button
+            id="relations-tab"
+            class="editor-tab"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="relations-pane"
+            data-tab="relations"
+          >참조 관계</button>
+        </div>
+
+        <div id="form-pane" class="editor-pane" role="tabpanel">
+          <div class="pane-help">
+            객체와 배열을 펼쳐 값을 수정할 수 있습니다. 필드 추가·이름
+            변경·형식 변환·삭제도 여기에서 처리합니다.
+          </div>
+          <div id="structured-form" class="structured-form"></div>
+        </div>
+
+        <div id="json-pane" class="editor-pane" role="tabpanel" hidden>
+          <div class="pane-help">
+            현재 draft 전체입니다. 최상위 값은 JSON 객체여야 하며,
+            저장 전 동일한 엔진 validator를 통과합니다.
+          </div>
+          <label class="sr-only" for="json-editor">콘텐츠 JSON</label>
+          <textarea
+            id="json-editor"
+            class="json-editor"
+            spellcheck="false"
+            autocomplete="off"
+          ></textarea>
+          <p id="json-status" class="inline-status" aria-live="polite"></p>
+        </div>
+
+        <div id="relations-pane" class="editor-pane" role="tabpanel" hidden>
+          <div class="relations-grid">
+            <section>
+              <div class="relation-heading">
+                <h3>이 콘텐츠가 참조함</h3>
+                <span id="dependency-count" class="count-badge">0</span>
+              </div>
+              <div id="dependency-list" class="relation-list"></div>
+            </section>
+            <section>
+              <div class="relation-heading">
+                <h3>이 콘텐츠를 참조함</h3>
+                <span id="dependent-count" class="count-badge">0</span>
+              </div>
+              <div id="dependent-list" class="relation-list"></div>
+            </section>
+          </div>
+        </div>
+
+        <div
+          id="validation-result"
+          class="validation-result neutral"
+          aria-live="polite"
+        >
+          아직 현재 draft를 검증하지 않았습니다.
+        </div>
+      </div>
+    </section>
+
+    <aside class="preview-panel" aria-label="실행 미리보기">
+      <div class="panel-heading preview-heading">
+        <div>
+          <p class="eyebrow">LIVE RUNTIME</p>
+          <h2>게임 화면</h2>
+        </div>
+        <label class="live-toggle">
+          <input id="live-screenshot" type="checkbox" checked>
+          <span>실시간</span>
+        </label>
+      </div>
+
+      <div class="screen-frame">
+        <img id="game-screen" alt="LÖVE 게임 미리보기 화면">
+        <div id="screen-placeholder" class="screen-placeholder">
+          게임 화면을 가져오는 중…
+        </div>
+        <span id="screen-status" class="screen-status">대기</span>
+      </div>
+
+      <div class="world-stats" aria-live="polite">
+        <div><span>Stage</span><strong id="world-stage">—</strong></div>
+        <div><span>Entities</span><strong id="world-entities">—</strong></div>
+        <div><span>Flow</span><strong id="world-flow">—</strong></div>
+      </div>
+
+      <section class="preview-card">
+        <div class="card-heading">
+          <h3>콘텐츠 미리보기</h3>
+          <button id="refresh-screen" class="mini-button" type="button">
+            화면 갱신
+          </button>
+        </div>
+        <form id="preview-form">
+          <div class="form-grid two">
+            <label>
+              <span>종류</span>
+              <select id="preview-type">
+                <option value="stage">Stage</option>
+                <option value="actor">Actor</option>
+                <option value="dialogue">Dialogue</option>
+                <option value="ability">Ability</option>
+              </select>
+            </label>
+            <label>
+              <span>콘텐츠 ID</span>
+              <select id="preview-id" required></select>
+            </label>
+          </div>
+
+          <div id="stage-preview-fields" class="conditional-fields">
+            <label>
+              <span>Spawn ID <small>(선택)</small></span>
+              <input id="preview-spawn" type="text" placeholder="default">
+            </label>
+          </div>
+
+          <div id="actor-preview-fields" class="conditional-fields" hidden>
+            <label class="checkbox-row">
+              <input id="preview-position" type="checkbox">
+              <span>좌표를 직접 지정</span>
+            </label>
+            <div class="form-grid two">
+              <label>
+                <span>X</span>
+                <input id="preview-x" type="number" step="any" value="480">
+              </label>
+              <label>
+                <span>Y</span>
+                <input id="preview-y" type="number" step="any" value="270">
+              </label>
+            </div>
+          </div>
+
+          <div id="dialogue-preview-fields" class="conditional-fields" hidden>
+            <label>
+              <span>Speaker Entity ID <small>(선택)</small></span>
+              <input id="preview-speaker" type="text" placeholder="guide">
+            </label>
+          </div>
+
+          <div id="ability-preview-fields" class="conditional-fields" hidden>
+            <label>
+              <span>Entity ID <small>(비우면 player)</small></span>
+              <input id="preview-entity" type="text" placeholder="player">
+            </label>
+          </div>
+
+          <button class="button secondary full" type="submit">실행</button>
+        </form>
+        <pre id="preview-result" class="preview-result">준비됨</pre>
+      </section>
+
+      <section class="preview-card input-card">
+        <div class="card-heading">
+          <h3>의미 입력</h3>
+          <label class="frames-field">
+            <span>프레임</span>
+            <input id="input-frames" type="number" min="1" max="600" value="8">
+          </label>
+        </div>
+
+        <div class="movement-pad" aria-label="이동 입력">
+          <button type="button" data-input-action="move_up" aria-label="위">▲</button>
+          <button type="button" data-input-action="move_left" aria-label="왼쪽">◀</button>
+          <button type="button" data-input-action="move_down" aria-label="아래">▼</button>
+          <button type="button" data-input-action="move_right" aria-label="오른쪽">▶</button>
+        </div>
+
+        <div id="action-pad" class="action-pad">
+          <button type="button" data-input-action="attack">공격</button>
+          <button type="button" data-input-action="special">특수</button>
+          <button type="button" data-input-action="technique">기술</button>
+          <button type="button" data-input-action="interact">상호작용</button>
+          <button type="button" data-input-action="parry">패링</button>
+          <button type="button" data-input-action="dodge">회피</button>
+          <button type="button" data-input-action="jump">점프</button>
+          <button type="button" data-input-action="pause">일시정지</button>
+        </div>
+
+        <details class="menu-inputs">
+          <summary>메뉴 입력</summary>
+          <div class="action-pad compact">
+            <button type="button" data-input-action="menu_up">메뉴 위</button>
+            <button type="button" data-input-action="menu_down">메뉴 아래</button>
+            <button type="button" data-input-action="menu_left">메뉴 왼쪽</button>
+            <button type="button" data-input-action="menu_right">메뉴 오른쪽</button>
+            <button type="button" data-input-action="menu_confirm">확인</button>
+            <button type="button" data-input-action="menu_cancel">취소</button>
+            <button type="button" data-input-action="restart">재시작</button>
+          </div>
+        </details>
+        <p class="keyboard-hint">
+          폼 밖에서는 WASD/방향키, Space, E, C, Shift도 바로 전달됩니다.
+        </p>
+      </section>
+    </aside>
+  </main>
+
+  <dialog id="create-dialog" class="create-dialog">
+    <form id="create-form">
+      <header>
+        <div>
+          <p class="eyebrow">NEW CONTENT</p>
+          <h2>새 콘텐츠 만들기</h2>
+        </div>
+        <button
+          id="close-create"
+          class="icon-button"
+          type="button"
+          aria-label="닫기"
+        >×</button>
+      </header>
+
+      <label>
+        <span>콘텐츠 종류</span>
+        <select id="create-kind" required>
+          <option value="actor">Actor</option>
+          <option value="ability">Ability</option>
+          <option value="projectile">Projectile</option>
+          <option value="status">Status</option>
+          <option value="encounter">Encounter</option>
+          <option value="stage">Stage</option>
+          <option value="item">Item</option>
+          <option value="equipment">Equipment</option>
+          <option value="dialogue">Dialogue</option>
+          <option value="quest">Quest</option>
+          <option value="shop">Shop</option>
+          <option value="locale">Locale</option>
+        </select>
+      </label>
+
+      <label>
+        <span>이름</span>
+        <input
+          id="create-name"
+          type="text"
+          required
+          pattern="[a-z][a-z0-9_]*"
+          placeholder="forest_guardian"
+          autocomplete="off"
+        >
+        <small>소문자로 시작하고 소문자·숫자·밑줄만 사용합니다.</small>
+      </label>
+
+      <label id="create-reference-row" hidden>
+        <span id="create-reference-label">참조 콘텐츠</span>
+        <select id="create-reference"></select>
+        <small id="create-reference-help"></small>
+      </label>
+
+      <div class="dialog-actions">
+        <button id="cancel-create" class="button ghost" type="button">취소</button>
+        <button id="submit-create" class="button primary" type="submit">
+          만들기
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <div
+    id="toast-region"
+    class="toast-region"
+    aria-live="polite"
+    aria-atomic="true"
+  ></div>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

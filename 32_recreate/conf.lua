@@ -4,7 +4,9 @@ local headless =
 local automation = os.getenv("RECREATE_AUTOMATION") == "1"
 
 function love.conf(t)
-    t.identity = "practice_love2d_recreate"
+    t.identity =
+        os.getenv("RECREATE_IDENTITY") or
+        "practice_love2d_recreate"
     t.version = "11.5"
     t.console = true
 
@@ -25,7 +27,8 @@ function love.conf(t)
     t.modules.event = true
     t.modules.font = not headless
     t.modules.graphics = not headless
-    t.modules.image = not headless
+    -- Content checks read image metadata without opening a window.
+    t.modules.image = true
     t.modules.joystick = not headless
     t.modules.keyboard = not headless
     t.modules.math = true

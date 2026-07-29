@@ -44,6 +44,7 @@ geometry + tilemap + navigation + camera feature
 |---|---:|---|---|
 | `stage_id` | 예 | `stage.world_hub` | 콘텐츠 전체에서 쓰는 stage ID |
 | `display_name` | 아니오 | `World Hub` | HUD 표시명 |
+| `display_name_key` | 아니오 | `stage.world_hub.name` | locale 표시명 key |
 | `mode` | 아니오 | `topdown` | 제작 메타데이터. `topdown`, `platformer` |
 | `camera_width` | 아니오 | `800` | 논리 viewport 폭 |
 | `camera_height` | 아니오 | `450` | 논리 viewport 높이 |

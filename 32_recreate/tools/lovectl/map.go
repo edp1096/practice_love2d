@@ -198,6 +198,7 @@ type stageTileLayer struct {
 type compiledStage struct {
 	ID             string
 	Name           string
+	NameKey        string
 	Mode           string
 	Width          int
 	Height         int
@@ -859,8 +860,8 @@ func parseTMX(path, source string) (compiledStage, error) {
 	if err := rejectUnknownProperties(
 		mapProperties,
 		[]string{
-			"stage_id", "display_name", "mode", "camera_width",
-			"camera_height", "background",
+			"stage_id", "display_name", "display_name_key", "mode",
+			"camera_width", "camera_height", "background",
 		},
 		"map "+source,
 	); err != nil {
@@ -889,6 +890,15 @@ func parseTMX(path, source string) (compiledStage, error) {
 	}
 	if stage.Name == "" {
 		stage.Name = stage.ID
+	}
+	stage.NameKey, err = stringProperty(
+		mapProperties,
+		"display_name_key",
+		false,
+		"map "+source,
+	)
+	if err != nil {
+		return stage, err
 	}
 	stage.Mode, err = stringProperty(mapProperties, "mode", false, "map "+source)
 	if err != nil {
@@ -1376,7 +1386,7 @@ func compiledStageValue(stage compiledStage) map[string]any {
 		}
 		triggers = append(triggers, value)
 	}
-	return map[string]any{
+	result := map[string]any{
 		"schema_version": 1,
 		"kind":           "stage",
 		"id":             stage.ID,
@@ -1407,6 +1417,10 @@ func compiledStageValue(stage compiledStage) map[string]any {
 		"portals":      portals,
 		"triggers":     triggers,
 	}
+	if stage.NameKey != "" {
+		result["name_key"] = stage.NameKey
+	}
+	return result
 }
 
 func encodeStage(stage compiledStage) []byte {
@@ -1468,6 +1482,121 @@ func generatedFileName(stageID string) string {
 	return sanitizeID(name) + ".lua"
 }
 
+func copyDirectory(source string, destination string) error {
+	info, err := os.Stat(source)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%s is not a directory", source)
+	}
+	return filepath.WalkDir(
+		source,
+		func(path string, entry os.DirEntry, walkError error) error {
+			if walkError != nil {
+				return walkError
+			}
+			relative, err := filepath.Rel(source, path)
+			if err != nil {
+				return err
+			}
+			if relative == "." {
+				return nil
+			}
+			target := filepath.Join(destination, relative)
+			info, err := entry.Info()
+			if err != nil {
+				return err
+			}
+			if info.Mode()&os.ModeSymlink != 0 {
+				return fmt.Errorf(
+					"generated directory must not contain symlink %s",
+					path,
+				)
+			}
+			if entry.IsDir() {
+				return os.MkdirAll(target, info.Mode().Perm())
+			}
+			if !info.Mode().IsRegular() {
+				return fmt.Errorf(
+					"generated directory contains non-regular file %s",
+					path,
+				)
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			return os.WriteFile(target, data, info.Mode().Perm())
+		},
+	)
+}
+
+func replaceDirectory(
+	target string,
+	prepare func(temporary string) error,
+) error {
+	parent := filepath.Dir(target)
+	if err := os.MkdirAll(parent, 0o755); err != nil {
+		return err
+	}
+	temporary, err := os.MkdirTemp(
+		parent,
+		"."+filepath.Base(target)+".tmp-",
+	)
+	if err != nil {
+		return err
+	}
+	keepTemporary := false
+	defer func() {
+		if !keepTemporary {
+			_ = os.RemoveAll(temporary)
+		}
+	}()
+	if err := copyDirectory(target, temporary); err != nil {
+		return err
+	}
+	if err := prepare(temporary); err != nil {
+		return err
+	}
+
+	backup, err := os.MkdirTemp(
+		parent,
+		"."+filepath.Base(target)+".backup-",
+	)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(backup); err != nil {
+		return err
+	}
+	hadTarget := false
+	if _, err := os.Stat(target); err == nil {
+		hadTarget = true
+		if err := os.Rename(target, backup); err != nil {
+			return err
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	if err := os.Rename(temporary, target); err != nil {
+		if hadTarget {
+			_ = os.Rename(backup, target)
+		}
+		return err
+	}
+	keepTemporary = true
+	if hadTarget {
+		if err := os.RemoveAll(backup); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func compileMaps(
 	projectPath string,
 	sourceArguments []string,
@@ -1478,7 +1607,8 @@ func compileMaps(
 	if err != nil {
 		return err
 	}
-	if len(sources) == 0 {
+	selectedSources := len(sourceArguments) != 0
+	if len(sources) == 0 && selectedSources {
 		return errors.New("no TMX maps found")
 	}
 	output := outputArgument
@@ -1493,12 +1623,6 @@ func compileMaps(
 	} else if !filepath.IsAbs(output) {
 		output = filepath.Join(projectPath, output)
 	}
-	if write {
-		if err := os.MkdirAll(output, 0o755); err != nil {
-			return err
-		}
-	}
-
 	type mapOutput struct {
 		stage       compiledStage
 		source      string
@@ -1582,14 +1706,38 @@ func compileMaps(
 	}
 
 	if write {
-		for _, output := range compiled {
-			if err := os.WriteFile(
-				output.destination,
-				output.encoded,
-				0o644,
-			); err != nil {
-				return err
+		err := replaceDirectory(output, func(temporary string) error {
+			if !selectedSources {
+				entries, err := os.ReadDir(temporary)
+				if err != nil {
+					return err
+				}
+				for _, entry := range entries {
+					if !entry.IsDir() &&
+						filepath.Ext(entry.Name()) == ".lua" {
+						if err := os.Remove(
+							filepath.Join(temporary, entry.Name()),
+						); err != nil {
+							return err
+						}
+					}
+				}
 			}
+			for _, item := range compiled {
+				if err := os.WriteFile(
+					filepath.Join(temporary, item.fileName),
+					item.encoded,
+					0o644,
+				); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		for _, output := range compiled {
 			fmt.Printf(
 				"Compiled %s -> %s\n",
 				output.source,
@@ -1615,19 +1763,26 @@ func compileMaps(
 				)
 			}
 		}
-		entries, err := os.ReadDir(output)
-		if err != nil {
-			return err
-		}
-		for _, entry := range entries {
-			if entry.IsDir() || filepath.Ext(entry.Name()) != ".lua" {
-				continue
+		if !selectedSources {
+			entries, err := os.ReadDir(output)
+			if err != nil {
+				if os.IsNotExist(err) && len(compiled) == 0 {
+					entries = nil
+				} else {
+					return err
+				}
 			}
-			if _, expected := outputs[entry.Name()]; !expected {
-				return fmt.Errorf(
-					"orphan generated map: %s",
-					filepath.Join(output, entry.Name()),
-				)
+			for _, entry := range entries {
+				if entry.IsDir() ||
+					filepath.Ext(entry.Name()) != ".lua" {
+					continue
+				}
+				if _, expected := outputs[entry.Name()]; !expected {
+					return fmt.Errorf(
+						"orphan generated map: %s",
+						filepath.Join(output, entry.Name()),
+					)
+				}
 			}
 		}
 	}

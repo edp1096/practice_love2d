@@ -133,11 +133,10 @@ func loadContentGraph(
 ) (contentGraph, error) {
 	command := exec.Command(options.lovePath, projectPath)
 	command.Dir = projectPath
-	command.Env = append(
-		os.Environ(),
-		"RECREATE_GRAPH=1",
-		"RECREATE_HEADLESS=1",
-	)
+	command.Env = overrideEnvironment(os.Environ(), map[string]string{
+		"RECREATE_GRAPH":    "1",
+		"RECREATE_HEADLESS": "1",
+	})
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	command.Stdout = &stdout

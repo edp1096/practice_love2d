@@ -92,18 +92,62 @@ function service:circleBlocked(world, x, y, radius)
     return false
 end
 
+function service:sweepCircle(
+    world,
+    start_x,
+    start_y,
+    end_x,
+    end_y,
+    radius
+)
+    local best
+    for _, wall in ipairs(self:walls(world)) do
+        local fraction = geometry.sweptCircleShapeFraction(
+            start_x,
+            start_y,
+            end_x,
+            end_y,
+            radius,
+            wall.shape
+        )
+        if fraction ~= nil and
+           (not best or fraction < best.fraction or
+            (fraction == best.fraction and wall.id < best.wall.id)) then
+            best = {
+                fraction = fraction,
+                wall = wall,
+            }
+        end
+    end
+    return best
+end
+
 function service:containsEntity(shape, entity)
     local transform = entity and entity.components.transform
     if not transform then return false end
     local body = entity.components.body
     local hurtbox = entity.components["action.hurtbox"]
+    local x = transform.x + (hurtbox and hurtbox.offset_x or 0)
+    local y = transform.y + (hurtbox and hurtbox.offset_y or 0)
     local radius =
         hurtbox and hurtbox.radius or
         body and body.shape == "circle" and body.radius or
         0
+    if not hurtbox and body and body.shape == "rectangle" then
+        radius = math.sqrt(
+            (body.width / 2) ^ 2 + (body.height / 2) ^ 2
+        )
+    elseif not hurtbox and body and body.shape == "polygon" then
+        for _, point in ipairs(body.points or {}) do
+            radius = math.max(
+                radius,
+                math.sqrt(point.x * point.x + point.y * point.y)
+            )
+        end
+    end
     return geometry.circleIntersectsShape(
-        transform.x,
-        transform.y,
+        x,
+        y,
         radius,
         shape
     )

@@ -40,6 +40,32 @@ return {
             position = {x = 700, y = 325},
         },
     },
+    spawn_points = {
+        {
+            id = "default",
+            x = 150,
+            y = 270,
+        },
+        {
+            id = "field_return",
+            x = 850,
+            y = 270,
+        },
+    },
+    portals = {
+        {
+            id = "to_field",
+            shape = {
+                type = "rectangle",
+                x = 944,
+                y = 270,
+                width = 32,
+                height = 128,
+            },
+            target_stage = "stage.world_hub",
+            target_spawn = "village_entry",
+        },
+    },
     walls = {
         {
             id = "north",
@@ -59,6 +85,36 @@ return {
                 y = 524,
                 width = 960,
                 height = 32,
+            },
+        },
+        {
+            id = "west",
+            shape = {
+                type = "rectangle",
+                x = 16,
+                y = 270,
+                width = 32,
+                height = 540,
+            },
+        },
+        {
+            id = "east_north",
+            shape = {
+                type = "rectangle",
+                x = 944,
+                y = 103,
+                width = 32,
+                height = 206,
+            },
+        },
+        {
+            id = "east_south",
+            shape = {
+                type = "rectangle",
+                x = 944,
+                y = 437,
+                width = 32,
+                height = 206,
             },
         },
     },

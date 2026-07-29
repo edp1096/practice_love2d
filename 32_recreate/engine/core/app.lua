@@ -29,6 +29,13 @@ local function validateManifest(manifest)
     expect(manifest.features, "table", "features")
     expect(manifest.content_roots, "table", "content_roots")
     expect(manifest.input, "table", "input")
+    if manifest.profile ~= nil and
+       manifest.profile ~= "rpg" and
+       manifest.profile ~= "action-rpg" and
+       manifest.profile ~= "action" then
+        errors[#errors + 1] =
+            "game manifest profile must be rpg, action-rpg, or action"
+    end
     if manifest.input then
         expect(manifest.input.actions, "table", "input.actions")
     end
@@ -36,6 +43,15 @@ local function validateManifest(manifest)
        (type(manifest.fixed_dt) ~= "number" or manifest.fixed_dt <= 0) then
         errors[#errors + 1] =
             "game manifest fixed_dt must be a positive number"
+    end
+    for _, field in ipairs({"maximum_steps", "maximum_action_depth"}) do
+        local value = manifest[field]
+        if value ~= nil and
+           (type(value) ~= "number" or value < 1 or value % 1 ~= 0) then
+            errors[#errors + 1] =
+                "game manifest " .. field ..
+                " must be a positive integer"
+        end
     end
 
     if #errors > 0 then return nil, table.concat(errors, "\n") end
@@ -149,14 +165,69 @@ local function createEnteredWorld(host, stage_id, spawn_id)
 end
 
 function App:loadStage(stage_id, spawn_id)
+    local session_snapshot = util.captureTable(self.session)
     local world, world_error =
         createEnteredWorld(self.host, stage_id, spawn_id)
-    if not world then return nil, world_error end
+    if not world then
+        util.restoreCaptured(session_snapshot)
+        return nil, world_error
+    end
     self.world = world
     self.current_stage_id = stage_id
     self.current_spawn_id = spawn_id
     self.accumulator = 0
     return true
+end
+
+function App:startNewGame(stage_id, spawn_id)
+    stage_id = stage_id or
+        (self.manifest.flow and self.manifest.flow.start_stage) or
+        self.manifest.initial_stage
+    local candidate_session = newSessionStore()
+    local host, boot_error = self:_bootHost(candidate_session)
+    if not host then return nil, boot_error end
+
+    local flow = host.services.game_flow
+    if flow and flow.prepareNewGame then
+        local prepared, prepare_error = flow:prepareNewGame()
+        if not prepared then return nil, prepare_error end
+    end
+    local world, world_error =
+        createEnteredWorld(host, stage_id, spawn_id)
+    if not world then return nil, world_error end
+
+    self.session = candidate_session
+    self.host = host
+    self.world = world
+    self.current_stage_id = stage_id
+    self.current_spawn_id = spawn_id
+    self.accumulator = 0
+    self.simulation_steps = 0
+    self.transitions = 0
+    world.events:emit("game.started", {
+        stage_id = stage_id,
+        spawn_id = spawn_id,
+    })
+    return self:state()
+end
+
+function App:returnToTitle()
+    local candidate_session = newSessionStore()
+    local host, boot_error = self:_bootHost(candidate_session)
+    if not host then return nil, boot_error end
+    local world, world_error =
+        createEnteredWorld(host, self.manifest.initial_stage)
+    if not world then return nil, world_error end
+
+    self.session = candidate_session
+    self.host = host
+    self.world = world
+    self.current_stage_id = self.manifest.initial_stage
+    self.current_spawn_id = nil
+    self.accumulator = 0
+    self.simulation_steps = 0
+    self.transitions = 0
+    return self:state()
 end
 
 function App:reloadStage()
@@ -183,6 +254,65 @@ function App:reloadContent()
     self.current_stage_id = stage_id
     self.accumulator = 0
     return true
+end
+
+local function overlayFilesystem(base, source, definition)
+    local overlay = setmetatable({}, {__index = base})
+    function overlay:loadTable(path)
+        if path == source then
+            return util.deepCopy(definition)
+        end
+        return base:loadTable(path)
+    end
+    return overlay
+end
+
+function App:validateContentDefinition(content_id, definition)
+    if type(content_id) ~= "string" or content_id == "" then
+        return nil, "content ID is required"
+    end
+    if type(definition) ~= "table" then
+        return nil, "content definition must be a table"
+    end
+    local current = self.host and self.host.catalog:get(content_id)
+    if not current then
+        return nil, "unknown content '" .. content_id .. "'"
+    end
+    if definition.id ~= content_id then
+        return nil, "content definition id must remain '" ..
+            content_id .. "'"
+    end
+    if definition.kind ~= current.kind then
+        return nil, "content definition kind must remain '" ..
+            tostring(current.kind) .. "'"
+    end
+
+    local source = self.host.catalog.sources[content_id]
+    local candidate_app = App.new(
+        self.manifest,
+        overlayFilesystem(self.filesystem, source, definition)
+    )
+    candidate_app.session = util.deepCopy(self.session)
+    local host, boot_error =
+        candidate_app:_bootHost(candidate_app.session)
+    if not host then return nil, boot_error end
+
+    local stage_id = self.current_stage_id or self.manifest.initial_stage
+    local world, world_error = createEnteredWorld(
+        host,
+        stage_id,
+        self.current_spawn_id
+    )
+    if not world then return nil, world_error end
+
+    return {
+        valid = true,
+        id = content_id,
+        kind = current.kind,
+        source = source,
+        definition = util.deepCopy(host.catalog:get(content_id)),
+        summary = host.catalog:summary(),
+    }
 end
 
 local function validateSlot(slot)
@@ -389,6 +519,54 @@ function App:_handleWorldRequests(source_world)
             if not loaded then return nil, load_error end
             self.transitions = self.transitions + 1
             return true
+        elseif request.type == "new_game" then
+            local started, start_error = self:startNewGame(
+                request.stage_id,
+                request.spawn_id
+            )
+            if not started then return nil, start_error end
+            return true
+        elseif request.type == "return_to_title" then
+            local returned, return_error = self:returnToTitle()
+            if not returned then return nil, return_error end
+            return true
+        elseif request.type == "restart_stage" then
+            local restarted, restart_error = self:reloadStage()
+            if not restarted then return nil, restart_error end
+            return true
+        elseif request.type == "save_game" then
+            local saved, save_error = self:save(request.slot)
+            local flow = self.host.services.game_flow
+            if flow and flow.notify then
+                flow:notify(
+                    self.world,
+                    saved and "saved" or tostring(save_error),
+                    saved ~= nil
+                )
+            end
+            if not saved and not flow then return nil, save_error end
+        elseif request.type == "load_game" then
+            local loaded, load_error = self:loadSave(request.slot)
+            if not loaded then
+                local flow = self.host.services.game_flow
+                if flow and flow.notify then
+                    flow:notify(
+                        self.world,
+                        tostring(load_error),
+                        false
+                    )
+                else
+                    return nil, load_error
+                end
+            else
+                return true
+            end
+        elseif request.type == "quit" then
+            love.event.quit()
+            return true
+        else
+            return nil, "unknown world request '" ..
+                tostring(request.type) .. "'"
         end
     end
     return false
@@ -402,6 +580,12 @@ function App:update(dt)
     local steps = 0
     while self.accumulator >= self.fixed_dt and
           steps < self.maximum_steps do
+        local controller_consumed = false
+        for _, controller in ipairs(self.host.app_controllers or {}) do
+            if controller.handler(self.world, self.fixed_dt) then
+                controller_consumed = true
+            end
+        end
         if self.host.input:consumePressed("restart") then
             local reloaded, reload_error = self:reloadStage()
             if not reloaded then error(reload_error) end
@@ -412,7 +596,9 @@ function App:update(dt)
 
         local updated_world = self.world
         local advanced = updated_world:update(self.fixed_dt)
-        if advanced then self.host.input:endFrame() end
+        if advanced or controller_consumed then
+            self.host.input:endFrame()
+        end
         self.accumulator = self.accumulator - self.fixed_dt
         self.simulation_steps = self.simulation_steps + 1
         steps = steps + 1
@@ -555,6 +741,7 @@ function App:state()
     end
     return {
         project = self.manifest.id,
+        profile = self.manifest.profile,
         title = self.manifest.title,
         love_version = love_version,
         lua_version = _VERSION,

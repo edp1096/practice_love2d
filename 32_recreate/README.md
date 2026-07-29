@@ -45,6 +45,7 @@ LÖVE 11.5용 2D 제작 런타임이다.
 - authoring 원본을 제외하는 결정적 runtime-only `.love` 패키지
 - 실행 전 스키마·파일·교차 참조 검증
 - 원격 월드 검사, 엔티티 제어, 프레임 스텝, 화면 캡처
+- 엔진 validator와 실시간 LÖVE 화면을 연결한 로컬 브라우저 Maker
 - Go 기반 검사·콘텐츠 생성·실화면 테스트
 
 RPG 기능은 action/condition/event 계약 위의 독립 feature다. 순수 액션
@@ -81,7 +82,9 @@ Go 1.26과 LÖVE 11.5가 설치된 환경에서 실행한다.
 
 ```bash
 go run ./tools/lovectl check
+go run ./tools/lovectl smoke
 go run ./tools/lovectl test
+go run ./tools/lovectl campaign
 ```
 
 `check`는 Lua 문법, Lua 단위 테스트, 콘텐츠 참조와 Go 테스트를
@@ -123,6 +126,23 @@ go run ./tools/lovectl reload
 
 `reload`은 모든 콘텐츠를 다시 읽어 검증한 다음 월드를 교체한다.
 검증에 실패하면 실행 중인 정상 월드는 유지된다.
+
+## 로컬 Maker
+
+```bash
+go run ./tools/lovectl maker
+```
+
+loopback 주소에 브라우저 제작 화면을 열고 격리된 LÖVE 11.5
+미리보기 프로세스를 함께 실행한다. 콘텐츠 검색, 재귀 구조 편집과 JSON
+고급 편집, 엔진 검증, 참조 탐색, 새 콘텐츠 생성, 실시간 화면과 의미
+입력을 한 화면에서 사용할 수 있다. 저장은 원본 revision을 확인한 뒤
+원자적으로 교체하고, reload가 실패하면 원본을 복구한다. 외부 편집이
+먼저 저장되었으면 `409 Conflict`로 거부한다.
+
+이 화면은 현재 데이터베이스 편집과 런타임 제어 도구다. 타일 페인팅은
+계속 Tiled가 담당하며, RPG Maker식 이벤트 명령 빌더·대화 노드 그래프·
+애니메이션 타임라인은 아직 구현되지 않았다.
 
 콘텐츠를 저장할 때마다 자동 반영하려면 또 다른 터미널에서 실행한다.
 
