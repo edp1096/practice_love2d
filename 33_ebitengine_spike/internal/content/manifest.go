@@ -27,6 +27,7 @@ type ProjectManifest struct {
 	FixedDT      float64                  `json:"fixed_dt"`
 	Locale       ProjectLocale            `json:"locale"`
 	Flow         ProjectFlow              `json:"flow"`
+	Input        ProjectInput             `json:"input"`
 	Font         ProjectFont              `json:"font"`
 	Audio        ProjectAudio             `json:"audio"`
 	Warnings     []ProjectManifestWarning `json:"warnings"`
@@ -49,6 +50,18 @@ type ProjectFlow struct {
 type ProjectFlowCopy struct {
 	HeadingKey string `json:"heading_key"`
 	MessageKey string `json:"message_key"`
+}
+
+// ProjectInput is an ordered, runtime-neutral form of the action bindings
+// authored as the input.actions object in game/game.lua.
+type ProjectInput struct {
+	Actions []ProjectInputAction `json:"actions"`
+}
+
+type ProjectInputAction struct {
+	ID      string   `json:"id"`
+	Keys    []string `json:"keys"`
+	Buttons []string `json:"buttons"`
 }
 
 type ProjectFont struct {
@@ -105,6 +118,24 @@ func (catalog *Catalog) ValidateProjectReferences() error {
 }
 
 func cloneProjectManifest(manifest ProjectManifest) ProjectManifest {
+	manifest.Input.Actions = append(
+		[]ProjectInputAction(nil),
+		manifest.Input.Actions...,
+	)
+	for index := range manifest.Input.Actions {
+		keys := manifest.Input.Actions[index].Keys
+		manifest.Input.Actions[index].Keys = make([]string, len(keys))
+		copy(manifest.Input.Actions[index].Keys, keys)
+		buttons := manifest.Input.Actions[index].Buttons
+		manifest.Input.Actions[index].Buttons = make(
+			[]string,
+			len(buttons),
+		)
+		copy(manifest.Input.Actions[index].Buttons, buttons)
+	}
+	if manifest.Input.Actions == nil {
+		manifest.Input.Actions = []ProjectInputAction{}
+	}
 	manifest.Audio.Cues = append(
 		[]ProjectAudioCue(nil),
 		manifest.Audio.Cues...,
@@ -147,6 +178,12 @@ func normalizeLegacyProjectAudio(manifest *ProjectManifest) {
 	}
 }
 
+func normalizeLegacyProjectInput(manifest *ProjectManifest) {
+	if manifest != nil && manifest.Input.Actions == nil {
+		manifest.Input.Actions = []ProjectInputAction{}
+	}
+}
+
 func compileProjectManifest(data map[string]any) (ProjectManifest, error) {
 	const source = projectManifestSource
 	if data == nil {
@@ -163,6 +200,7 @@ func compileProjectManifest(data map[string]any) (ProjectManifest, error) {
 		"audio":         {},
 		"id":            {},
 		"initial_stage": {},
+		"input":         {},
 		"locale":        {},
 		"profile":       {},
 		"title":         {},
@@ -272,6 +310,10 @@ func compileProjectManifest(data map[string]any) (ProjectManifest, error) {
 	if err != nil {
 		return ProjectManifest{}, err
 	}
+	input, err := compileProjectInput(data)
+	if err != nil {
+		return ProjectManifest{}, err
+	}
 
 	flowData, err := manifestObject(data, "flow", source)
 	if err != nil {
@@ -337,6 +379,7 @@ func compileProjectManifest(data map[string]any) (ProjectManifest, error) {
 			GameOver:   gameOverCopy,
 			Ending:     endingCopy,
 		},
+		Input: input,
 		Font: ProjectFont{
 			Asset: fontAsset,
 			Size:  fontSize,
@@ -348,6 +391,134 @@ func compileProjectManifest(data map[string]any) (ProjectManifest, error) {
 		return ProjectManifest{}, err
 	}
 	return manifest, nil
+}
+
+func compileProjectInput(data map[string]any) (ProjectInput, error) {
+	result := ProjectInput{Actions: []ProjectInputAction{}}
+	raw, exists := data["input"]
+	if !exists {
+		return result, nil
+	}
+	input, ok := raw.(map[string]any)
+	if !ok {
+		return ProjectInput{}, fmt.Errorf(
+			"%s.input must be an object",
+			projectManifestSource,
+		)
+	}
+	currentPath := projectManifestSource + ".input"
+	if err := rejectUnknownManifestFields(
+		input,
+		currentPath,
+		"actions",
+	); err != nil {
+		return ProjectInput{}, err
+	}
+	actions, err := manifestObject(input, "actions", currentPath)
+	if err != nil {
+		return ProjectInput{}, err
+	}
+	ids := make([]string, 0, len(actions))
+	for id := range actions {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		actionPath := currentPath + ".actions." + id
+		rawAction := actions[id]
+		action, ok := rawAction.(map[string]any)
+		if !ok {
+			return ProjectInput{}, fmt.Errorf(
+				"%s must be an object",
+				actionPath,
+			)
+		}
+		if err := rejectUnknownManifestFields(
+			action,
+			actionPath,
+			"buttons",
+			"keys",
+		); err != nil {
+			return ProjectInput{}, err
+		}
+		keys, err := manifestStringList(action, "keys", actionPath)
+		if err != nil {
+			return ProjectInput{}, err
+		}
+		buttons, err := manifestStringList(
+			action,
+			"buttons",
+			actionPath,
+		)
+		if err != nil {
+			return ProjectInput{}, err
+		}
+		result.Actions = append(result.Actions, ProjectInputAction{
+			ID:      id,
+			Keys:    keys,
+			Buttons: buttons,
+		})
+	}
+	return result, nil
+}
+
+func manifestStringList(
+	data map[string]any,
+	field string,
+	currentPath string,
+) ([]string, error) {
+	value, exists := data[field]
+	if !exists {
+		return nil, fmt.Errorf("%s.%s is required", currentPath, field)
+	}
+	var raw []any
+	switch typed := value.(type) {
+	case []any:
+		raw = typed
+	case map[string]any:
+		// An empty Lua table has no shape information. The project decoder
+		// represents it as an empty object, but bindings intentionally permit
+		// keys={} and buttons={}.
+		if len(typed) != 0 {
+			return nil, fmt.Errorf(
+				"%s.%s must be an array",
+				currentPath,
+				field,
+			)
+		}
+		raw = []any{}
+	default:
+		return nil, fmt.Errorf(
+			"%s.%s must be an array",
+			currentPath,
+			field,
+		)
+	}
+	result := make([]string, 0, len(raw))
+	seen := make(map[string]struct{}, len(raw))
+	for index, value := range raw {
+		text, ok := value.(string)
+		if !ok || strings.TrimSpace(text) == "" {
+			return nil, fmt.Errorf(
+				"%s.%s[%d] must be a non-empty string",
+				currentPath,
+				field,
+				index+1,
+			)
+		}
+		if _, exists := seen[text]; exists {
+			return nil, fmt.Errorf(
+				"%s.%s contains duplicate value %q",
+				currentPath,
+				field,
+				text,
+			)
+		}
+		seen[text] = struct{}{}
+		result = append(result, text)
+	}
+	sort.Strings(result)
+	return result, nil
 }
 
 func compileProjectAudio(data map[string]any) (ProjectAudio, error) {
@@ -705,6 +876,63 @@ func validateProjectManifest(manifest ProjectManifest) error {
 		!simpleManifestValue(manifest.Flow.StartSpawn) {
 		return fmt.Errorf("%s.flow.start_spawn is invalid", manifest.Source)
 	}
+	for index, action := range manifest.Input.Actions {
+		if !simpleManifestValue(action.ID) {
+			return fmt.Errorf(
+				"%s.input.actions[%d].id is invalid",
+				manifest.Source,
+				index+1,
+			)
+		}
+		if index > 0 &&
+			manifest.Input.Actions[index-1].ID >= action.ID {
+			return fmt.Errorf(
+				"%s.input.actions must have unique sorted ids",
+				manifest.Source,
+			)
+		}
+		if action.Keys == nil {
+			return fmt.Errorf(
+				"%s.input.actions.%s.keys must be an array",
+				manifest.Source,
+				action.ID,
+			)
+		}
+		if action.Buttons == nil {
+			return fmt.Errorf(
+				"%s.input.actions.%s.buttons must be an array",
+				manifest.Source,
+				action.ID,
+			)
+		}
+		for field, values := range map[string][]string{
+			"buttons": action.Buttons,
+			"keys":    action.Keys,
+		} {
+			for valueIndex, value := range values {
+				if !simpleInputValue(value) {
+					return fmt.Errorf(
+						"%s.input.actions.%s.%s[%d] is invalid",
+						manifest.Source,
+						action.ID,
+						field,
+						valueIndex+1,
+					)
+				}
+				if valueIndex > 0 && values[valueIndex-1] >= value {
+					return fmt.Errorf(
+						"%s.input.actions.%s.%s must contain unique sorted values",
+						manifest.Source,
+						action.ID,
+						field,
+					)
+				}
+			}
+		}
+	}
+	if manifest.Input.Actions == nil {
+		return fmt.Errorf("%s.input.actions must be an array", manifest.Source)
+	}
 	for name, copy := range map[string]ProjectFlowCopy{
 		"ending":    manifest.Flow.Ending,
 		"game_over": manifest.Flow.GameOver,
@@ -997,6 +1225,18 @@ func simpleManifestValue(value string) bool {
 			continue
 		}
 		return false
+	}
+	return true
+}
+
+func simpleInputValue(value string) bool {
+	if value == "" || len(value) > MaxContentIDBytes {
+		return false
+	}
+	for _, character := range value {
+		if character < '!' || character > '~' {
+			return false
+		}
 	}
 	return true
 }

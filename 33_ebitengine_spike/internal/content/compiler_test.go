@@ -82,6 +82,22 @@ func TestCompileRecreateCatalogAcceptance(t *testing.T) {
 	}); got != want {
 		t.Fatalf("font = %#v, want %#v", got, want)
 	}
+	if len(project.Input.Actions) != 20 ||
+		!reflect.DeepEqual(project.Input.Actions[0], ProjectInputAction{
+			ID:      "attack",
+			Keys:    []string{"space", "z"},
+			Buttons: []string{"x"},
+		}) ||
+		!reflect.DeepEqual(
+			project.Input.Actions[len(project.Input.Actions)-1],
+			ProjectInputAction{
+				ID:      "technique",
+				Keys:    []string{"q"},
+				Buttons: []string{"rightshoulder"},
+			},
+		) {
+		t.Fatalf("input = %#v", project.Input)
+	}
 	if project.Audio.MasterVolume != 0.8 ||
 		project.Audio.MusicVolume != 0.45 ||
 		project.Audio.SFXVolume != 0.8 ||
@@ -112,12 +128,16 @@ func TestCompileRecreateCatalogAcceptance(t *testing.T) {
 		"content_roots",
 		"features",
 		"impact_feedback",
-		"input",
 		"maximum_action_depth",
 		"maximum_steps",
 	}
 	if got := warningPaths(project.Warnings); !reflect.DeepEqual(got, wantWarningPaths) {
 		t.Fatalf("project warning paths = %#v, want %#v", got, wantWarningPaths)
+	}
+	inputCopy := first.Project()
+	inputCopy.Input.Actions[0].Keys[0] = "mutated"
+	if first.Project().Input.Actions[0].Keys[0] == "mutated" {
+		t.Fatal("Project leaked mutable input binding storage")
 	}
 	firstJSON, err := MarshalCanonical(first)
 	if err != nil {
@@ -680,6 +700,153 @@ func TestCompileProjectManifestWarningsAreExplicitAndDeterministic(t *testing.T)
 			warning.Message != unsupportedProjectFieldText {
 			t.Fatalf("unexpected warning: %#v", warning)
 		}
+	}
+}
+
+func TestCompileProjectInputContract(t *testing.T) {
+	t.Parallel()
+
+	const validInput = `
+    input={
+        actions={
+            attack={keys={"z", "space"}, buttons={"x"}},
+            debug_overlay={keys={"f1"}, buttons={}},
+        },
+    },
+`
+	tests := []struct {
+		name       string
+		input      string
+		wantError  string
+		wantAction []ProjectInputAction
+	}{
+		{
+			name:  "canonical",
+			input: validInput,
+			wantAction: []ProjectInputAction{
+				{
+					ID:      "attack",
+					Keys:    []string{"space", "z"},
+					Buttons: []string{"x"},
+				},
+				{
+					ID:      "debug_overlay",
+					Keys:    []string{"f1"},
+					Buttons: []string{},
+				},
+			},
+		},
+		{
+			name: "duplicate key",
+			input: `
+    input={actions={attack={keys={"z", "z"}, buttons={"x"}}}},
+`,
+			wantError: `contains duplicate value "z"`,
+		},
+		{
+			name: "missing buttons",
+			input: `
+    input={actions={attack={keys={"z"}}}},
+`,
+			wantError: "attack.buttons is required",
+		},
+		{
+			name: "unknown binding field",
+			input: `
+    input={actions={attack={
+        keys={"z"}, buttons={"x"}, axis="leftx",
+    }}},
+`,
+			wantError: "attack.axis is not supported",
+		},
+		{
+			name: "invalid action id",
+			input: `
+    input={actions={Attack={keys={"z"}, buttons={"x"}}}},
+`,
+			wantError: "input.actions[1].id is invalid",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			project := newProject(t)
+			manifest := strings.Replace(
+				testProjectManifest,
+				"    font={",
+				test.input+"    font={",
+				1,
+			)
+			writeProjectManifest(t, project, manifest)
+			writeDefinition(
+				t,
+				project,
+				"valid.lua",
+				`return {schema_version=1, kind="test", id="test.valid"}`,
+			)
+			catalog, err := Compile(context.Background(), project)
+			if test.wantError != "" {
+				if err == nil ||
+					!strings.Contains(err.Error(), test.wantError) {
+					t.Fatalf(
+						"Compile error = %v, want %q",
+						err,
+						test.wantError,
+					)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := catalog.Project().Input.Actions; !reflect.DeepEqual(
+				got,
+				test.wantAction,
+			) {
+				t.Fatalf("input actions = %#v, want %#v", got, test.wantAction)
+			}
+		})
+	}
+}
+
+func TestLoadNormalizesCatalogsBeforeCompiledInputManifest(t *testing.T) {
+	t.Parallel()
+
+	project := newProject(t)
+	writeDefinition(
+		t,
+		project,
+		"valid.lua",
+		`return {schema_version=1, kind="test", id="test.valid"}`,
+	)
+	catalog, err := Compile(context.Background(), project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := MarshalCanonical(catalog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var legacy map[string]any
+	if err := json.Unmarshal(data, &legacy); err != nil {
+		t.Fatal(err)
+	}
+	projectData, ok := legacy["project"].(map[string]any)
+	if !ok {
+		t.Fatalf("project JSON = %#v", legacy["project"])
+	}
+	delete(projectData, "input")
+	data, err = json.Marshal(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := LoadBytes(data)
+	if err != nil {
+		t.Fatalf("LoadBytes legacy catalog: %v", err)
+	}
+	if got := loaded.Project().Input.Actions; got == nil || len(got) != 0 {
+		t.Fatalf("normalized legacy input actions = %#v", got)
 	}
 }
 

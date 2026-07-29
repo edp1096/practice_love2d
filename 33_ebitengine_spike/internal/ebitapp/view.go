@@ -31,6 +31,19 @@ type AudioResourceProvider interface {
 	AudioResources() AudioResourceManifest
 }
 
+// InputResourceProvider optionally supplies the project-authored semantic
+// action bindings. An absent or empty manifest selects the legacy defaults so
+// catalogs produced before input compilation remain playable.
+type InputResourceProvider interface {
+	InputResources() []InputActionResource
+}
+
+type InputActionResource struct {
+	Action  string
+	Keys    []string
+	Buttons []string
+}
+
 type ImageResource struct {
 	ID     string
 	Path   string

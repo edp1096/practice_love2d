@@ -89,8 +89,11 @@ presentation, runtime Maker editing, WebAssembly packaging gate와
 - 기존 콘텐츠 정의, 방어구·장신구와 audio asset을 포함한 정의 56개,
   dependency path 88개 보존
 - canonical catalog SHA-256:
-  `c8dbc5bde518937ffb988b658930f76361ffcb258702a76956c30f2b7ff931e0`
+  `bee359b0647af6c499e719458f3e51d872b109ac98639d58dae4f066fac0edc2`
 - `game/game.lua`의 project manifest를 schema v2 catalog에 함께 컴파일
+- `input.actions`를 canonical manifest에 보존하고 LÖVE 키·표준 gamepad
+  이름을 Ebitengine 의미 입력으로 변환하여 게임별 바인딩을 런타임 간
+  공유
 - `lovectl init`의 `rpg`, `action-rpg`, `action` 생성물을 같은 compiler로
   검증하고 각각 title·gameplay 제한 실행
 - locale/font가 없는 순수 action manifest, 단일 locale의 자기 fallback,

@@ -3,8 +3,101 @@ package ebitapp
 import (
 	"math"
 	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/hajimehoshi/ebiten/v2"
 )
+
+func TestInputBindingsTranslateLoveNamesAndRemainDataDriven(t *testing.T) {
+	t.Parallel()
+
+	bindings, err := newInputBindings([]InputActionResource{
+		{
+			Action:  "attack",
+			Keys:    []string{"return", "lctrl", "rshift"},
+			Buttons: []string{"x", "rightshoulder"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := bindings["attack"]
+	if want := []ebiten.Key{
+		ebiten.KeyEnter,
+		ebiten.KeyControlLeft,
+		ebiten.KeyShiftRight,
+	}; !reflect.DeepEqual(got.keys, want) {
+		t.Fatalf("translated keys = %#v, want %#v", got.keys, want)
+	}
+	if want := []ebiten.StandardGamepadButton{
+		ebiten.StandardGamepadButtonRightLeft,
+		ebiten.StandardGamepadButtonFrontTopRight,
+	}; !reflect.DeepEqual(got.buttons, want) {
+		t.Fatalf("translated buttons = %#v, want %#v", got.buttons, want)
+	}
+	if !bindings.keyHeld("attack", func(key ebiten.Key) bool {
+		return key == ebiten.KeyControlLeft
+	}) {
+		t.Fatal("authored key did not activate its semantic action")
+	}
+	if !bindings.buttonPressed(
+		"attack",
+		func(button ebiten.StandardGamepadButton) bool {
+			return button == ebiten.StandardGamepadButtonFrontTopRight
+		},
+	) {
+		t.Fatal("authored button did not activate its semantic action")
+	}
+	if bindings.keyHeld("missing", func(ebiten.Key) bool { return true }) {
+		t.Fatal("missing semantic action was activated")
+	}
+}
+
+func TestInputBindingsRejectUnsupportedOrDuplicateResources(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		resources []InputActionResource
+		contains  string
+	}{
+		{
+			name: "key",
+			resources: []InputActionResource{{
+				Action: "attack",
+				Keys:   []string{"not-a-love-key"},
+			}},
+			contains: `unsupported LÖVE key "not-a-love-key"`,
+		},
+		{
+			name: "button",
+			resources: []InputActionResource{{
+				Action:  "attack",
+				Buttons: []string{"turbo"},
+			}},
+			contains: `unsupported LÖVE gamepad button "turbo"`,
+		},
+		{
+			name: "duplicate action",
+			resources: []InputActionResource{
+				{Action: "attack"},
+				{Action: "attack"},
+			},
+			contains: `duplicate input action "attack"`,
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := newInputBindings(test.resources)
+			if err == nil || !strings.Contains(err.Error(), test.contains) {
+				t.Fatalf("error = %v, want %q", err, test.contains)
+			}
+		})
+	}
+}
 
 func TestMapRawInputNormalizesDigitalDiagonals(t *testing.T) {
 	t.Parallel()

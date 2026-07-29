@@ -8,6 +8,23 @@ import (
 	"practice_love2d/33_ebitengine_spike/internal/gamebuild"
 )
 
+// InputResources exposes the compiled game/game.lua input.actions contract to
+// the platform adapter instead of duplicating project controls in Go.
+func (runtime *Runtime) InputResources() []ebitapp.InputActionResource {
+	runtime.mu.RLock()
+	defer runtime.mu.RUnlock()
+	source := runtime.catalog.Project().Input.Actions
+	result := make([]ebitapp.InputActionResource, len(source))
+	for index, action := range source {
+		result[index] = ebitapp.InputActionResource{
+			Action:  action.ID,
+			Keys:    append([]string(nil), action.Keys...),
+			Buttons: append([]string(nil), action.Buttons...),
+		}
+	}
+	return result
+}
+
 // ImageResources exposes the immutable compiled image manifest to the
 // Ebitengine adapter. The returned slice owns all of its values.
 func (runtime *Runtime) ImageResources() []ebitapp.ImageResource {

@@ -357,7 +357,7 @@ func TestDialogueBoxDoesNotCoverAutomationOverlay(t *testing.T) {
 		)
 	}
 	if dialogueChoiceHelp !=
-		"↑ / ↓  선택    Enter / E  확인    Esc  취소" {
+		"↑ / ↓  선택    Enter / Space  확인    Esc  취소" {
 		t.Fatalf("dialogue choice help = %q", dialogueChoiceHelp)
 	}
 }
@@ -489,7 +489,7 @@ func TestShopPanelFitsBelowAutomationOverlay(t *testing.T) {
 		)
 	}
 	if shopActionHelp !=
-		"↑ / ↓  선택    Enter / E  구매    Q  판매    Esc  닫기" {
+		"↑ / ↓  선택    Enter / Space  구매    Q  판매    Esc  닫기" {
 		t.Fatalf("shop action help = %q", shopActionHelp)
 	}
 }
@@ -672,7 +672,7 @@ func TestInventoryDetailLabelsAndPanelFitScreen(t *testing.T) {
 		)
 	}
 	if inventoryActionHelp !=
-		"↑ / ↓  선택    Enter / E  사용·장착    Q  해제    Esc / I  닫기" {
+		"↑ / ↓  선택    Enter / Space  사용·장착    Q  해제    Esc / I  닫기" {
 		t.Fatalf("inventory action help = %q", inventoryActionHelp)
 	}
 }
@@ -844,7 +844,7 @@ func TestFlowModePalettesAndPanelFitScreen(t *testing.T) {
 		)
 	}
 	if flowActionHelp !=
-		"↑ / ↓  선택    Enter / E  확인    Esc  뒤로" {
+		"↑ / ↓  선택    Enter / Space  확인    Esc  뒤로" {
 		t.Fatalf("flow action help = %q", flowActionHelp)
 	}
 }

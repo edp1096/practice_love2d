@@ -98,6 +98,7 @@ func Load(reader io.Reader) (*Catalog, error) {
 		return nil, fmt.Errorf("decode content catalog: trailing data: %w", err)
 	}
 	normalizeLegacyProjectAudio(&catalog.Manifest)
+	normalizeLegacyProjectInput(&catalog.Manifest)
 	if err := validateCatalog(&catalog); err != nil {
 		return nil, err
 	}

@@ -44,8 +44,8 @@ const (
 	maxDialogueSpeakerRunes   = 40
 	maxVisibleDialogueChoices = 3
 
-	dialogueContinueHelp = "Enter / E  계속    Esc  닫기"
-	dialogueChoiceHelp   = "↑ / ↓  선택    Enter / E  확인    Esc  취소"
+	dialogueContinueHelp = "Enter / Space  계속    Esc  닫기"
+	dialogueChoiceHelp   = "↑ / ↓  선택    Enter / Space  확인    Esc  취소"
 
 	shopPanelX      = 48
 	shopPanelY      = 330
@@ -56,7 +56,7 @@ const (
 	maxShopOfferNameRunes = 22
 	maxShopStatusRunes    = 62
 	maxVisibleShopOffers  = 3
-	shopActionHelp        = "↑ / ↓  선택    Enter / E  구매    Q  판매    Esc  닫기"
+	shopActionHelp        = "↑ / ↓  선택    Enter / Space  구매    Q  판매    Esc  닫기"
 	shopEmptyHelp         = "Esc  닫기"
 	shopEmptyMessage      = "판매 중인 상품이 없습니다."
 	shopFallbackName      = "상점"
@@ -81,7 +81,7 @@ const (
 	maxInventorySlotRunes        = 16
 	maxVisibleInventoryItems     = 6
 
-	inventoryActionHelp        = "↑ / ↓  선택    Enter / E  사용·장착    Q  해제    Esc / I  닫기"
+	inventoryActionHelp        = "↑ / ↓  선택    Enter / Space  사용·장착    Q  해제    Esc / I  닫기"
 	inventoryEmptyHelp         = "Esc / I  닫기"
 	inventoryFallbackTitle     = "소지품"
 	inventoryFallbackItemName  = "이름 없는 아이템"
@@ -106,7 +106,7 @@ const (
 	maxFlowOptionRunes    = 26
 	maxVisibleFlowOptions = 5
 
-	flowActionHelp        = "↑ / ↓  선택    Enter / E  확인    Esc  뒤로"
+	flowActionHelp        = "↑ / ↓  선택    Enter / Space  확인    Esc  뒤로"
 	flowBackHelp          = "Esc  뒤로"
 	flowFallbackOption    = "이름 없는 항목"
 	flowFallbackHeading   = "메뉴"
@@ -224,6 +224,7 @@ type Game struct {
 	audio   *audioManager
 	font    *text.GoTextFaceSource
 	capture chan captureRequest
+	input   inputBindings
 
 	options      Options
 	updates      uint64
@@ -252,6 +253,14 @@ func NewWithOptions(model Model, options Options) (*Game, error) {
 		return nil, errors.New(
 			"a screenshot path requires a non-zero stop limit",
 		)
+	}
+	var inputResources []InputActionResource
+	if provider, ok := model.(InputResourceProvider); ok {
+		inputResources = provider.InputResources()
+	}
+	input, err := newInputBindings(inputResources)
+	if err != nil {
+		return nil, fmt.Errorf("load input resources: %w", err)
 	}
 	resources := defaultImageResources()
 	if provider, ok := model.(ImageResourceProvider); ok {
@@ -296,6 +305,7 @@ func NewWithOptions(model Model, options Options) (*Game, error) {
 		audio:   audioManager,
 		font:    font,
 		capture: make(chan captureRequest, 8),
+		input:   input,
 		options: options,
 	}, nil
 }
@@ -448,7 +458,9 @@ func (game *Game) Update() error {
 		}
 		return nil
 	}
-	if err := game.model.Tick(actionsForView(PollActions(), view)); err != nil {
+	if err := game.model.Tick(
+		actionsForView(pollActions(game.input), view),
+	); err != nil {
 		return err
 	}
 	game.updates++

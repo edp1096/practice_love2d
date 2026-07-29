@@ -18,6 +18,8 @@ stage에 배치한 encounter는 작성된 target tag·지연·웨이브·spawn
 override·보스 체력 단계·완료 event를 결정적인 순서로 실행한다.
 프로젝트 manifest의 stage music과 전투·퀘스트·UI semantic cue도
 동일한 data-driven 경계를 거쳐 WAV BGM/SFX로 재생한다.
+`input.actions`의 키보드·표준 게임패드 바인딩도 같은 canonical
+catalog로 컴파일되어 LÖVE와 Ebitengine 런타임이 한 설정을 공유한다.
 
 ## 실행
 
@@ -27,7 +29,7 @@ Ubuntu 22.04 arm64:
 go run ./cmd/recreate
 ```
 
-조작:
+현재 샘플 manifest의 기본 조작:
 
 - `WASD`/방향키: 이동
 - 플랫포머 actor의 `W`/위 방향키: 점프
@@ -42,7 +44,7 @@ go run ./cmd/recreate
 - `R`: 재시작
 
 대화·상점·인벤토리·흐름 메뉴에서는 `W/S` 또는 방향키로 이동하고
-`Enter`/`E`로 결정한다. 상점의 `Q`는 판매, 인벤토리의 `Q`는 장착
+`Enter`/`Space`로 결정한다. 상점의 `Q`는 판매, 인벤토리의 `Q`는 장착
 해제이며 `Esc`/`Backspace`는 닫기다.
 
 자동 화면 검증:
@@ -282,6 +284,13 @@ cue, stage별 music을 선언한다. `asset_type = "audio"`인 WAV만 패키징�
 누락된 asset, 중복 event/stage, 범위를 벗어난 volume은 컴파일 전에
 거부된다. 샘플 음원은 저장소의 `tools/audiofixtures`로 생성한 원본이며
 출처와 해시는 `assets/AUDIO_SOURCES.md`에 기록한다.
+
+같은 파일의 `input.actions`는 의미 action별 LÖVE 키 이름과 표준
+게임패드 버튼 이름을 선언한다. compiler가 action·키·버튼 목록을
+정렬·중복 검사해 catalog에 넣고 Ebitengine adapter가 시작할 때 실제
+키와 표준 패드 버튼으로 변환한다. 따라서 게임별 조작 변경에 Go 코드
+수정이 필요 없다. 입력 manifest가 없던 이전 schema v2 catalog는 기존
+기본 바인딩으로 호환 실행한다.
 
 기본 catalog는 실행 파일에 embed된다. `-catalog path/to/catalog.json`은
 개발 중 외부 catalog를 reload할 때만 쓰는 override다.

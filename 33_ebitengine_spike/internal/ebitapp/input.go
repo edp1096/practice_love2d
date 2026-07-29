@@ -1,7 +1,9 @@
 package ebitapp
 
 import (
+	"fmt"
 	"math"
+	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -86,6 +88,204 @@ type rawInput struct {
 	flowCancel                   bool
 }
 
+type inputBinding struct {
+	keys    []ebiten.Key
+	buttons []ebiten.StandardGamepadButton
+}
+
+type inputBindings map[string]inputBinding
+
+func newInputBindings(resources []InputActionResource) (inputBindings, error) {
+	if len(resources) == 0 {
+		resources = defaultInputResources()
+	}
+	result := make(inputBindings, len(resources))
+	for _, resource := range resources {
+		if strings.TrimSpace(resource.Action) == "" {
+			return nil, fmt.Errorf("input action name is empty")
+		}
+		if _, exists := result[resource.Action]; exists {
+			return nil, fmt.Errorf(
+				"duplicate input action %q",
+				resource.Action,
+			)
+		}
+		binding := inputBinding{
+			keys: make([]ebiten.Key, 0, len(resource.Keys)),
+			buttons: make(
+				[]ebiten.StandardGamepadButton,
+				0,
+				len(resource.Buttons),
+			),
+		}
+		for _, name := range resource.Keys {
+			key, err := loveKey(name)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"input action %q: %w",
+					resource.Action,
+					err,
+				)
+			}
+			binding.keys = append(binding.keys, key)
+		}
+		for _, name := range resource.Buttons {
+			button, err := loveGamepadButton(name)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"input action %q: %w",
+					resource.Action,
+					err,
+				)
+			}
+			binding.buttons = append(binding.buttons, button)
+		}
+		result[resource.Action] = binding
+	}
+	return result, nil
+}
+
+func loveKey(name string) (ebiten.Key, error) {
+	normalized := strings.ToLower(strings.TrimSpace(name))
+	aliases := map[string]string{
+		"`":      "backquote",
+		"\\":     "backslash",
+		"'":      "quote",
+		",":      "comma",
+		"-":      "minus",
+		".":      "period",
+		"/":      "slash",
+		";":      "semicolon",
+		"=":      "equal",
+		"[":      "bracketleft",
+		"]":      "bracketright",
+		"lalt":   "altleft",
+		"lctrl":  "controlleft",
+		"lgui":   "metaleft",
+		"lshift": "shiftleft",
+		"kp+":    "kpadd",
+		"kp.":    "kpdecimal",
+		"kp/":    "kpdivide",
+		"kp=":    "kpequal",
+		"kp*":    "kpmultiply",
+		"kp-":    "kpsubtract",
+		"ralt":   "altright",
+		"rctrl":  "controlright",
+		"return": "enter",
+		"rgui":   "metaright",
+		"rshift": "shiftright",
+	}
+	if alias, exists := aliases[normalized]; exists {
+		normalized = alias
+	}
+	var key ebiten.Key
+	if err := key.UnmarshalText([]byte(normalized)); err != nil {
+		return 0, fmt.Errorf("unsupported LÖVE key %q", name)
+	}
+	return key, nil
+}
+
+func loveGamepadButton(
+	name string,
+) (ebiten.StandardGamepadButton, error) {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "a":
+		return ebiten.StandardGamepadButtonRightBottom, nil
+	case "b":
+		return ebiten.StandardGamepadButtonRightRight, nil
+	case "x":
+		return ebiten.StandardGamepadButtonRightLeft, nil
+	case "y":
+		return ebiten.StandardGamepadButtonRightTop, nil
+	case "back":
+		return ebiten.StandardGamepadButtonCenterLeft, nil
+	case "guide":
+		return ebiten.StandardGamepadButtonCenterCenter, nil
+	case "start":
+		return ebiten.StandardGamepadButtonCenterRight, nil
+	case "leftstick":
+		return ebiten.StandardGamepadButtonLeftStick, nil
+	case "rightstick":
+		return ebiten.StandardGamepadButtonRightStick, nil
+	case "leftshoulder":
+		return ebiten.StandardGamepadButtonFrontTopLeft, nil
+	case "rightshoulder":
+		return ebiten.StandardGamepadButtonFrontTopRight, nil
+	case "dpup":
+		return ebiten.StandardGamepadButtonLeftTop, nil
+	case "dpdown":
+		return ebiten.StandardGamepadButtonLeftBottom, nil
+	case "dpleft":
+		return ebiten.StandardGamepadButtonLeftLeft, nil
+	case "dpright":
+		return ebiten.StandardGamepadButtonLeftRight, nil
+	default:
+		return 0, fmt.Errorf("unsupported LÖVE gamepad button %q", name)
+	}
+}
+
+func defaultInputResources() []InputActionResource {
+	return []InputActionResource{
+		{Action: "move_up", Keys: []string{"w", "up"}, Buttons: []string{"dpup"}},
+		{Action: "move_down", Keys: []string{"s", "down"}, Buttons: []string{"dpdown"}},
+		{Action: "move_left", Keys: []string{"a", "left"}, Buttons: []string{"dpleft"}},
+		{Action: "move_right", Keys: []string{"d", "right"}, Buttons: []string{"dpright"}},
+		{Action: "attack", Keys: []string{"space", "z"}, Buttons: []string{"x"}},
+		{Action: "special", Keys: []string{"f", "v"}, Buttons: []string{"y"}},
+		{Action: "technique", Keys: []string{"q"}, Buttons: []string{"rightshoulder"}},
+		{Action: "jump", Keys: []string{"w", "up"}, Buttons: []string{"a"}},
+		{Action: "parry", Keys: []string{"c", "lctrl", "rctrl"}, Buttons: []string{"leftshoulder"}},
+		{Action: "dodge", Keys: []string{"lshift", "rshift", "x"}, Buttons: []string{"b"}},
+		{Action: "interact", Keys: []string{"e"}, Buttons: []string{"x"}},
+		{Action: "menu_up", Keys: []string{"w", "up"}, Buttons: []string{"dpup"}},
+		{Action: "menu_down", Keys: []string{"s", "down"}, Buttons: []string{"dpdown"}},
+		{Action: "menu_left", Keys: []string{"a", "left"}, Buttons: []string{"dpleft"}},
+		{Action: "menu_right", Keys: []string{"d", "right"}, Buttons: []string{"dpright"}},
+		{Action: "menu_confirm", Keys: []string{"return", "space"}, Buttons: []string{"a"}},
+		{Action: "menu_cancel", Keys: []string{"escape", "backspace"}, Buttons: []string{"b"}},
+		{Action: "pause", Keys: []string{"escape", "p"}, Buttons: []string{"start"}},
+		{Action: "restart", Keys: []string{"r"}, Buttons: []string{"back"}},
+	}
+}
+
+func (bindings inputBindings) keyHeld(
+	action string,
+	read func(ebiten.Key) bool,
+) bool {
+	for _, key := range bindings[action].keys {
+		if read(key) {
+			return true
+		}
+	}
+	return false
+}
+
+func (bindings inputBindings) keyPressed(
+	action string,
+	read func(ebiten.Key) bool,
+) bool {
+	return bindings.keyHeld(action, read)
+}
+
+func (bindings inputBindings) buttonHeld(
+	action string,
+	read func(ebiten.StandardGamepadButton) bool,
+) bool {
+	for _, button := range bindings[action].buttons {
+		if read(button) {
+			return true
+		}
+	}
+	return false
+}
+
+func (bindings inputBindings) buttonPressed(
+	action string,
+	read func(ebiten.StandardGamepadButton) bool,
+) bool {
+	return bindings.buttonHeld(action, read)
+}
+
 func mapRawInput(raw rawInput) Actions {
 	x, y := raw.stickX, raw.stickY
 	if raw.left {
@@ -156,7 +356,7 @@ func mapRawInput(raw rawInput) Actions {
 
 // actionsForView gives the highest-priority active modal exclusive ownership
 // of shared gameplay and menu keys. Flow precedes dialogue, then shop, then
-// inventory. E, Enter, Q, Escape, I, and the directional keys intentionally
+// inventory. Enter, Space, Q, Escape, I, and the directional keys intentionally
 // map to more than one semantic action in PollActions; this routing step
 // prevents one physical edge from triggering multiple layers. The dedicated
 // P/gamepad pause edge remains available.
@@ -320,84 +520,65 @@ func flowActions(actions Actions, view FlowView) Actions {
 	return result
 }
 
-// PollActions reads keyboard and the first standard-layout gamepad.
+// PollActions reads keyboard and the first standard-layout gamepad using the
+// legacy defaults. Production Game instances use their project manifest.
 func PollActions() Actions {
-	raw := rawInput{
-		left: ebiten.IsKeyPressed(ebiten.KeyA) ||
-			ebiten.IsKeyPressed(ebiten.KeyArrowLeft),
-		right: ebiten.IsKeyPressed(ebiten.KeyD) ||
-			ebiten.IsKeyPressed(ebiten.KeyArrowRight),
-		up: ebiten.IsKeyPressed(ebiten.KeyW) ||
-			ebiten.IsKeyPressed(ebiten.KeyArrowUp),
-		down: ebiten.IsKeyPressed(ebiten.KeyS) ||
-			ebiten.IsKeyPressed(ebiten.KeyArrowDown),
+	bindings, err := newInputBindings(nil)
+	if err != nil {
+		panic(err)
+	}
+	return pollActions(bindings)
+}
 
-		attack: inpututil.IsKeyJustPressed(ebiten.KeySpace) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyZ),
-		special: inpututil.IsKeyJustPressed(ebiten.KeyF) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyV),
-		technique: inpututil.IsKeyJustPressed(ebiten.KeyQ),
-		parry: inpututil.IsKeyJustPressed(ebiten.KeyC) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyControlLeft) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyControlRight),
-		dodge: inpututil.IsKeyJustPressed(ebiten.KeyX) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyShiftLeft) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyShiftRight),
-		jump: inpututil.IsKeyJustPressed(ebiten.KeyW) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyArrowUp),
-		interact: inpututil.IsKeyJustPressed(ebiten.KeyE),
-		confirm: inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
-			inpututil.IsKeyJustPressed(ebiten.KeySpace),
-		cancel: inpututil.IsKeyJustPressed(ebiten.KeyEscape) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyBackspace),
-		pause: inpututil.IsKeyJustPressed(ebiten.KeyEscape) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyP),
-		restart: inpututil.IsKeyJustPressed(ebiten.KeyR),
-		menuUp: inpututil.IsKeyJustPressed(ebiten.KeyW) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyArrowUp),
-		menuDown: inpututil.IsKeyJustPressed(ebiten.KeyS) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyArrowDown),
-		menuLeft: inpututil.IsKeyJustPressed(ebiten.KeyA) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyArrowLeft),
-		menuRight: inpututil.IsKeyJustPressed(ebiten.KeyD) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyArrowRight),
-		dialogueUp: inpututil.IsKeyJustPressed(ebiten.KeyW) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyArrowUp),
-		dialogueDown: inpututil.IsKeyJustPressed(ebiten.KeyS) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyArrowDown),
-		dialogueConfirm: inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyE),
-		dialogueCancel: inpututil.IsKeyJustPressed(ebiten.KeyEscape) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyBackspace),
-		shopUp: inpututil.IsKeyJustPressed(ebiten.KeyW) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyArrowUp),
-		shopDown: inpututil.IsKeyJustPressed(ebiten.KeyS) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyArrowDown),
-		shopBuy: inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyE),
-		shopSell: inpututil.IsKeyJustPressed(ebiten.KeyQ),
-		shopCancel: inpututil.IsKeyJustPressed(ebiten.KeyEscape) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyBackspace),
+func pollActions(bindings inputBindings) Actions {
+	keyHeld := func(action string) bool {
+		return bindings.keyHeld(action, ebiten.IsKeyPressed)
+	}
+	keyPressed := func(action string) bool {
+		return bindings.keyPressed(action, inpututil.IsKeyJustPressed)
+	}
+	raw := rawInput{
+		left:  keyHeld("move_left"),
+		right: keyHeld("move_right"),
+		up:    keyHeld("move_up"),
+		down:  keyHeld("move_down"),
+
+		attack:          keyPressed("attack"),
+		special:         keyPressed("special"),
+		technique:       keyPressed("technique"),
+		parry:           keyPressed("parry"),
+		dodge:           keyPressed("dodge"),
+		jump:            keyPressed("jump"),
+		interact:        keyPressed("interact"),
+		confirm:         keyPressed("menu_confirm"),
+		cancel:          keyPressed("menu_cancel"),
+		pause:           keyPressed("pause"),
+		restart:         keyPressed("restart"),
+		menuUp:          keyPressed("menu_up"),
+		menuDown:        keyPressed("menu_down"),
+		menuLeft:        keyPressed("menu_left"),
+		menuRight:       keyPressed("menu_right"),
+		dialogueUp:      keyPressed("menu_up"),
+		dialogueDown:    keyPressed("menu_down"),
+		dialogueConfirm: keyPressed("menu_confirm"),
+		dialogueCancel:  keyPressed("menu_cancel"),
+		shopUp:          keyPressed("menu_up"),
+		shopDown:        keyPressed("menu_down"),
+		shopBuy:         keyPressed("menu_confirm"),
+		shopSell:        inpututil.IsKeyJustPressed(ebiten.KeyQ),
+		shopCancel:      keyPressed("menu_cancel"),
 		inventoryToggle: inpututil.IsKeyJustPressed(ebiten.KeyI) ||
 			inpututil.IsKeyJustPressed(ebiten.KeyTab),
-		inventoryUp: inpututil.IsKeyJustPressed(ebiten.KeyW) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyArrowUp),
-		inventoryDown: inpututil.IsKeyJustPressed(ebiten.KeyS) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyArrowDown),
-		inventoryActivate: inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyE),
-		inventoryUnequip: inpututil.IsKeyJustPressed(ebiten.KeyQ),
-		inventoryCancel: inpututil.IsKeyJustPressed(ebiten.KeyEscape) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyBackspace) ||
+		inventoryUp:       keyPressed("menu_up"),
+		inventoryDown:     keyPressed("menu_down"),
+		inventoryActivate: keyPressed("menu_confirm"),
+		inventoryUnequip:  inpututil.IsKeyJustPressed(ebiten.KeyQ),
+		inventoryCancel: keyPressed("menu_cancel") ||
 			inpututil.IsKeyJustPressed(ebiten.KeyI),
-		flowUp: inpututil.IsKeyJustPressed(ebiten.KeyW) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyArrowUp),
-		flowDown: inpututil.IsKeyJustPressed(ebiten.KeyS) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyArrowDown),
-		flowConfirm: inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyE),
-		flowCancel: inpututil.IsKeyJustPressed(ebiten.KeyEscape) ||
-			inpututil.IsKeyJustPressed(ebiten.KeyBackspace),
+		flowUp:      keyPressed("menu_up"),
+		flowDown:    keyPressed("menu_down"),
+		flowConfirm: keyPressed("menu_confirm"),
+		flowCancel:  keyPressed("menu_cancel"),
 	}
 	gamepads := ebiten.AppendGamepadIDs(nil)
 	if len(gamepads) == 0 {
@@ -418,75 +599,56 @@ func PollActions() Actions {
 	pressed := func(button ebiten.StandardGamepadButton) bool {
 		return inpututil.IsStandardGamepadButtonJustPressed(gamepad, button)
 	}
-	raw.left = raw.left || held(ebiten.StandardGamepadButtonLeftLeft)
-	raw.right = raw.right || held(ebiten.StandardGamepadButtonLeftRight)
-	raw.up = raw.up || held(ebiten.StandardGamepadButtonLeftTop)
-	raw.down = raw.down || held(ebiten.StandardGamepadButtonLeftBottom)
-	raw.attack = raw.attack ||
-		pressed(ebiten.StandardGamepadButtonRightLeft)
-	raw.special = raw.special ||
-		pressed(ebiten.StandardGamepadButtonRightTop)
-	raw.technique = raw.technique ||
-		pressed(ebiten.StandardGamepadButtonFrontTopRight)
-	raw.parry = raw.parry ||
-		pressed(ebiten.StandardGamepadButtonFrontTopLeft)
-	raw.dodge = raw.dodge ||
-		pressed(ebiten.StandardGamepadButtonRightRight)
-	raw.jump = raw.jump ||
-		pressed(ebiten.StandardGamepadButtonRightBottom)
-	raw.interact = raw.interact ||
-		pressed(ebiten.StandardGamepadButtonRightLeft)
-	raw.confirm = raw.confirm ||
-		pressed(ebiten.StandardGamepadButtonRightBottom)
-	raw.cancel = raw.cancel ||
-		pressed(ebiten.StandardGamepadButtonRightRight)
-	raw.pause = raw.pause ||
-		pressed(ebiten.StandardGamepadButtonCenterRight)
-	raw.menuUp = raw.menuUp ||
-		pressed(ebiten.StandardGamepadButtonLeftTop)
-	raw.menuDown = raw.menuDown ||
-		pressed(ebiten.StandardGamepadButtonLeftBottom)
-	raw.menuLeft = raw.menuLeft ||
-		pressed(ebiten.StandardGamepadButtonLeftLeft)
-	raw.menuRight = raw.menuRight ||
-		pressed(ebiten.StandardGamepadButtonLeftRight)
-	raw.dialogueUp = raw.dialogueUp ||
-		pressed(ebiten.StandardGamepadButtonLeftTop)
-	raw.dialogueDown = raw.dialogueDown ||
-		pressed(ebiten.StandardGamepadButtonLeftBottom)
+	buttonHeld := func(action string) bool {
+		return bindings.buttonHeld(action, held)
+	}
+	buttonPressed := func(action string) bool {
+		return bindings.buttonPressed(action, pressed)
+	}
+	raw.left = raw.left || buttonHeld("move_left")
+	raw.right = raw.right || buttonHeld("move_right")
+	raw.up = raw.up || buttonHeld("move_up")
+	raw.down = raw.down || buttonHeld("move_down")
+	raw.attack = raw.attack || buttonPressed("attack")
+	raw.special = raw.special || buttonPressed("special")
+	raw.technique = raw.technique || buttonPressed("technique")
+	raw.parry = raw.parry || buttonPressed("parry")
+	raw.dodge = raw.dodge || buttonPressed("dodge")
+	raw.jump = raw.jump || buttonPressed("jump")
+	raw.interact = raw.interact || buttonPressed("interact")
+	raw.confirm = raw.confirm || buttonPressed("menu_confirm")
+	raw.cancel = raw.cancel || buttonPressed("menu_cancel")
+	raw.pause = raw.pause || buttonPressed("pause")
+	raw.restart = raw.restart || buttonPressed("restart")
+	raw.menuUp = raw.menuUp || buttonPressed("menu_up")
+	raw.menuDown = raw.menuDown || buttonPressed("menu_down")
+	raw.menuLeft = raw.menuLeft || buttonPressed("menu_left")
+	raw.menuRight = raw.menuRight || buttonPressed("menu_right")
+	raw.dialogueUp = raw.dialogueUp || buttonPressed("menu_up")
+	raw.dialogueDown = raw.dialogueDown || buttonPressed("menu_down")
 	raw.dialogueConfirm = raw.dialogueConfirm ||
-		pressed(ebiten.StandardGamepadButtonRightBottom)
+		buttonPressed("menu_confirm")
 	raw.dialogueCancel = raw.dialogueCancel ||
-		pressed(ebiten.StandardGamepadButtonRightRight)
-	raw.shopUp = raw.shopUp ||
-		pressed(ebiten.StandardGamepadButtonLeftTop)
-	raw.shopDown = raw.shopDown ||
-		pressed(ebiten.StandardGamepadButtonLeftBottom)
-	raw.shopBuy = raw.shopBuy ||
-		pressed(ebiten.StandardGamepadButtonRightBottom)
+		buttonPressed("menu_cancel")
+	raw.shopUp = raw.shopUp || buttonPressed("menu_up")
+	raw.shopDown = raw.shopDown || buttonPressed("menu_down")
+	raw.shopBuy = raw.shopBuy || buttonPressed("menu_confirm")
 	raw.shopSell = raw.shopSell ||
 		pressed(ebiten.StandardGamepadButtonRightLeft)
-	raw.shopCancel = raw.shopCancel ||
-		pressed(ebiten.StandardGamepadButtonRightRight)
+	raw.shopCancel = raw.shopCancel || buttonPressed("menu_cancel")
 	raw.inventoryToggle = raw.inventoryToggle ||
 		pressed(ebiten.StandardGamepadButtonCenterLeft)
-	raw.inventoryUp = raw.inventoryUp ||
-		pressed(ebiten.StandardGamepadButtonLeftTop)
-	raw.inventoryDown = raw.inventoryDown ||
-		pressed(ebiten.StandardGamepadButtonLeftBottom)
+	raw.inventoryUp = raw.inventoryUp || buttonPressed("menu_up")
+	raw.inventoryDown = raw.inventoryDown || buttonPressed("menu_down")
 	raw.inventoryActivate = raw.inventoryActivate ||
-		pressed(ebiten.StandardGamepadButtonRightBottom)
+		buttonPressed("menu_confirm")
 	raw.inventoryUnequip = raw.inventoryUnequip ||
 		pressed(ebiten.StandardGamepadButtonRightLeft)
 	raw.inventoryCancel = raw.inventoryCancel ||
-		pressed(ebiten.StandardGamepadButtonRightRight)
-	raw.flowUp = raw.flowUp ||
-		pressed(ebiten.StandardGamepadButtonLeftTop)
-	raw.flowDown = raw.flowDown ||
-		pressed(ebiten.StandardGamepadButtonLeftBottom)
-	raw.flowConfirm = raw.flowConfirm ||
-		pressed(ebiten.StandardGamepadButtonRightBottom)
-	raw.flowCancel = raw.flowCancel ||
-		pressed(ebiten.StandardGamepadButtonRightRight)
+		buttonPressed("menu_cancel")
+	raw.flowUp = raw.flowUp || buttonPressed("menu_up")
+	raw.flowDown = raw.flowDown || buttonPressed("menu_down")
+	raw.flowConfirm = raw.flowConfirm || buttonPressed("menu_confirm")
+	raw.flowCancel = raw.flowCancel || buttonPressed("menu_cancel")
 	return mapRawInput(raw)
 }

@@ -28,6 +28,206 @@
         "message_key": "flow.ending.message"
       }
     },
+    "input": {
+      "actions": [
+        {
+          "id": "attack",
+          "keys": [
+            "space",
+            "z"
+          ],
+          "buttons": [
+            "x"
+          ]
+        },
+        {
+          "id": "debug_overlay",
+          "keys": [
+            "f1"
+          ],
+          "buttons": []
+        },
+        {
+          "id": "dodge",
+          "keys": [
+            "lshift",
+            "rshift",
+            "x"
+          ],
+          "buttons": [
+            "b"
+          ]
+        },
+        {
+          "id": "interact",
+          "keys": [
+            "e"
+          ],
+          "buttons": [
+            "x"
+          ]
+        },
+        {
+          "id": "jump",
+          "keys": [
+            "up",
+            "w"
+          ],
+          "buttons": [
+            "a"
+          ]
+        },
+        {
+          "id": "menu_cancel",
+          "keys": [
+            "backspace",
+            "escape"
+          ],
+          "buttons": [
+            "b"
+          ]
+        },
+        {
+          "id": "menu_confirm",
+          "keys": [
+            "return",
+            "space"
+          ],
+          "buttons": [
+            "a"
+          ]
+        },
+        {
+          "id": "menu_down",
+          "keys": [
+            "down",
+            "s"
+          ],
+          "buttons": [
+            "dpdown"
+          ]
+        },
+        {
+          "id": "menu_left",
+          "keys": [
+            "a",
+            "left"
+          ],
+          "buttons": [
+            "dpleft"
+          ]
+        },
+        {
+          "id": "menu_right",
+          "keys": [
+            "d",
+            "right"
+          ],
+          "buttons": [
+            "dpright"
+          ]
+        },
+        {
+          "id": "menu_up",
+          "keys": [
+            "up",
+            "w"
+          ],
+          "buttons": [
+            "dpup"
+          ]
+        },
+        {
+          "id": "move_down",
+          "keys": [
+            "down",
+            "s"
+          ],
+          "buttons": [
+            "dpdown"
+          ]
+        },
+        {
+          "id": "move_left",
+          "keys": [
+            "a",
+            "left"
+          ],
+          "buttons": [
+            "dpleft"
+          ]
+        },
+        {
+          "id": "move_right",
+          "keys": [
+            "d",
+            "right"
+          ],
+          "buttons": [
+            "dpright"
+          ]
+        },
+        {
+          "id": "move_up",
+          "keys": [
+            "up",
+            "w"
+          ],
+          "buttons": [
+            "dpup"
+          ]
+        },
+        {
+          "id": "parry",
+          "keys": [
+            "c",
+            "lctrl",
+            "rctrl"
+          ],
+          "buttons": [
+            "leftshoulder"
+          ]
+        },
+        {
+          "id": "pause",
+          "keys": [
+            "escape",
+            "p"
+          ],
+          "buttons": [
+            "start"
+          ]
+        },
+        {
+          "id": "restart",
+          "keys": [
+            "r"
+          ],
+          "buttons": [
+            "back"
+          ]
+        },
+        {
+          "id": "special",
+          "keys": [
+            "f",
+            "v"
+          ],
+          "buttons": [
+            "y"
+          ]
+        },
+        {
+          "id": "technique",
+          "keys": [
+            "q"
+          ],
+          "buttons": [
+            "rightshoulder"
+          ]
+        }
+      ]
+    },
     "font": {
       "asset": "font.ui",
       "size": 16
@@ -135,11 +335,6 @@
       {
         "code": "unsupported_project_field",
         "path": "impact_feedback",
-        "message": "project setting is not compiled into the runtime manifest"
-      },
-      {
-        "code": "unsupported_project_field",
-        "path": "input",
         "message": "project setting is not compiled into the runtime manifest"
       },
       {
