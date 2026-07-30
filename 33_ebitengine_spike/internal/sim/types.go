@@ -6,6 +6,8 @@
 // can be driven by tests, a debug server, or another renderer.
 package sim
 
+import "encoding/json"
+
 // UnitsPerPixel is the number of fixed-point coordinate units in one logical
 // pixel. Converting to float is a presentation concern:
 //
@@ -401,12 +403,15 @@ type Config struct {
 	InteractionRange Coord
 }
 
-// EntityInput is a semantic command for one entity. MoveX and MoveY are digital
-// axes in [-1, 1]. Action booleans are press edges, not held states.
+// EntityInput is a semantic command for one entity. Move and aim axes are
+// digital values in [-1, 1]. Aim is optional and lets AI face a target while
+// retreating or orbiting it. Action booleans are press edges, not held states.
 type EntityInput struct {
 	EntityID  string
 	MoveX     int8
 	MoveY     int8
+	AimX      int8
+	AimY      int8
 	Attack    bool
 	AbilityID string
 	Parry     bool
@@ -548,31 +553,33 @@ func IsReservedEventType(eventType EventType) bool {
 // Event is an immutable-by-copy simulation event. Only fields relevant to Type
 // are populated.
 type Event struct {
-	Tick         uint64    `json:"tick"`
-	Type         EventType `json:"type"`
-	EntityID     string    `json:"entity_id,omitempty"`
-	SourceID     string    `json:"source_id,omitempty"`
-	TargetID     string    `json:"target_id,omitempty"`
-	QuestID      string    `json:"quest_id,omitempty"`
-	DialogueID   string    `json:"dialogue_id,omitempty"`
-	AbilityID    string    `json:"ability_id,omitempty"`
-	ProjectileID string    `json:"projectile_id,omitempty"`
-	StatusID     string    `json:"status_id,omitempty"`
-	EncounterID  string    `json:"encounter_id,omitempty"`
-	DefinitionID string    `json:"definition_id,omitempty"`
-	WaveID       string    `json:"wave_id,omitempty"`
-	WaveIndex    int       `json:"wave_index,omitempty"`
-	PhaseID      string    `json:"phase_id,omitempty"`
-	Scope        string    `json:"scope,omitempty"`
-	ActionIndex  int       `json:"action_index,omitempty"`
-	ActionType   string    `json:"action_type,omitempty"`
-	Stacks       int       `json:"stacks,omitempty"`
-	Amount       int       `json:"amount,omitempty"`
-	Progress     int       `json:"progress,omitempty"`
-	Required     int       `json:"required,omitempty"`
-	Blocked      bool      `json:"blocked,omitempty"`
-	Perfect      bool      `json:"perfect,omitempty"`
-	Reason       string    `json:"reason,omitempty"`
+	Tick         uint64          `json:"tick"`
+	Type         EventType       `json:"type"`
+	EntityID     string          `json:"entity_id,omitempty"`
+	SourceID     string          `json:"source_id,omitempty"`
+	TargetID     string          `json:"target_id,omitempty"`
+	QuestID      string          `json:"quest_id,omitempty"`
+	DialogueID   string          `json:"dialogue_id,omitempty"`
+	AbilityID    string          `json:"ability_id,omitempty"`
+	ProjectileID string          `json:"projectile_id,omitempty"`
+	StatusID     string          `json:"status_id,omitempty"`
+	EncounterID  string          `json:"encounter_id,omitempty"`
+	DefinitionID string          `json:"definition_id,omitempty"`
+	TriggerID    string          `json:"trigger_id,omitempty"`
+	WaveID       string          `json:"wave_id,omitempty"`
+	WaveIndex    int             `json:"wave_index,omitempty"`
+	PhaseID      string          `json:"phase_id,omitempty"`
+	Scope        string          `json:"scope,omitempty"`
+	ActionIndex  int             `json:"action_index,omitempty"`
+	ActionType   string          `json:"action_type,omitempty"`
+	Stacks       int             `json:"stacks,omitempty"`
+	Amount       int             `json:"amount,omitempty"`
+	Progress     int             `json:"progress,omitempty"`
+	Required     int             `json:"required,omitempty"`
+	Blocked      bool            `json:"blocked,omitempty"`
+	Perfect      bool            `json:"perfect,omitempty"`
+	Reason       string          `json:"reason,omitempty"`
+	Data         json.RawMessage `json:"data,omitempty"`
 }
 
 // AttackSnapshot is detached from mutable simulation state.

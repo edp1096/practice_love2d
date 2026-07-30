@@ -17,10 +17,13 @@ return {
             actor = "actor.player",
             position = {x = 180, y = 270},
         },
+    },
+    encounters = {
         {
-            id = "enemy",
-            actor = "actor.enemy",
+            id = "training",
+            encounter = "encounter.training",
             position = {x = 520, y = 270},
+            auto_start = true,
         },
     },
 }

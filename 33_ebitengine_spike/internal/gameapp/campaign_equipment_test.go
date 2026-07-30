@@ -346,7 +346,7 @@ func TestEquipmentProtocolRejectsAmbiguousWorldAndModalStatesAtomically(
 			runtime,
 			protocol.MethodWorldSetWall,
 			protocol.SetWallParams{
-				WallID: "north",
+				WallID: "north_boundary",
 				X:      0,
 				Y:      2,
 				Width:  960,

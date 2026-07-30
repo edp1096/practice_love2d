@@ -888,3 +888,49 @@ func TestMakerUIAssetsAreEmbeddedAndCSPCompatible(t *testing.T) {
 		t.Fatal("Maker token was not injected into the initial document")
 	}
 }
+
+func TestMakerUIIncludesGuidedAuthoringContracts(t *testing.T) {
+	app, err := makerUI.ReadFile("maker_ui/app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, marker := range []string{
+		"function actionPreset(",
+		"function conditionPreset(",
+		"function guidedCutsceneEditor(",
+		"function guidedDialogueEditor(",
+		"function guidedQuestEditor(",
+		"function guidedEventPages(",
+		"function guidedActorEditor(",
+		"function guidedTurnSkillEditor(",
+		"function guidedTurnBattleEditor(",
+		"function guidedWorldPages(",
+		"function guidedStageInspector(",
+		"function addEventPage(",
+		"function addWorldPage(",
+		"function addWorldLayer(",
+		"function addCutsceneStep(",
+		"start_cutscene: \"컷신 시작\"",
+		"start_turn_battle: \"턴제 전투 시작\"",
+		"async function saveMapObject(",
+		"async function saveMapWorldPages(",
+		"button.dataset.editorAction = \"add-action\"",
+	} {
+		if !bytes.Contains(app, []byte(marker)) {
+			t.Fatalf("Maker app is missing guided contract %q", marker)
+		}
+	}
+
+	index, err := makerUI.ReadFile("maker_ui/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, marker := range []string{
+		"목적별 간편 화면",
+		"전체 원본 필드는 필요할 때만 고급 영역",
+	} {
+		if !bytes.Contains(index, []byte(marker)) {
+			t.Fatalf("Maker index is missing guided copy %q", marker)
+		}
+	}
+}

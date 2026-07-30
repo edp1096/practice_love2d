@@ -27,6 +27,7 @@ type ProjectManifest struct {
 	FixedDT      float64                  `json:"fixed_dt"`
 	Locale       ProjectLocale            `json:"locale"`
 	Flow         ProjectFlow              `json:"flow"`
+	World        ProjectWorld             `json:"world"`
 	Input        ProjectInput             `json:"input"`
 	Font         ProjectFont              `json:"font"`
 	Audio        ProjectAudio             `json:"audio"`
@@ -48,8 +49,16 @@ type ProjectFlow struct {
 }
 
 type ProjectFlowCopy struct {
+	Heading    string `json:"heading,omitempty"`
 	HeadingKey string `json:"heading_key"`
+	Message    string `json:"message,omitempty"`
 	MessageKey string `json:"message_key"`
+}
+
+type ProjectWorld struct {
+	StartTime     string  `json:"start_time"`
+	StartMinute   int     `json:"start_minute"`
+	SecondsPerDay float64 `json:"seconds_per_day"`
 }
 
 // ProjectInput is an ordered, runtime-neutral form of the action bindings
@@ -184,6 +193,15 @@ func normalizeLegacyProjectInput(manifest *ProjectManifest) {
 	}
 }
 
+func normalizeLegacyProjectWorld(manifest *ProjectManifest) {
+	if manifest != nil && manifest.World == (ProjectWorld{}) {
+		manifest.World = ProjectWorld{
+			StartTime:   "08:00",
+			StartMinute: 8 * 60,
+		}
+	}
+}
+
 func compileProjectManifest(data map[string]any) (ProjectManifest, error) {
 	const source = projectManifestSource
 	if data == nil {
@@ -204,6 +222,7 @@ func compileProjectManifest(data map[string]any) (ProjectManifest, error) {
 		"locale":        {},
 		"profile":       {},
 		"title":         {},
+		"world":         {},
 	}
 	warnings := make([]ProjectManifestWarning, 0)
 	for key := range data {
@@ -314,6 +333,10 @@ func compileProjectManifest(data map[string]any) (ProjectManifest, error) {
 	if err != nil {
 		return ProjectManifest{}, err
 	}
+	world, err := compileProjectWorld(data)
+	if err != nil {
+		return ProjectManifest{}, err
+	}
 
 	flowData, err := manifestObject(data, "flow", source)
 	if err != nil {
@@ -379,6 +402,7 @@ func compileProjectManifest(data map[string]any) (ProjectManifest, error) {
 			GameOver:   gameOverCopy,
 			Ending:     endingCopy,
 		},
+		World: world,
 		Input: input,
 		Font: ProjectFont{
 			Asset: fontAsset,
@@ -391,6 +415,70 @@ func compileProjectManifest(data map[string]any) (ProjectManifest, error) {
 		return ProjectManifest{}, err
 	}
 	return manifest, nil
+}
+
+func compileProjectWorld(data map[string]any) (ProjectWorld, error) {
+	result := ProjectWorld{
+		StartTime:   "08:00",
+		StartMinute: 8 * 60,
+	}
+	raw, exists := data["world"]
+	if !exists {
+		return result, nil
+	}
+	world, ok := raw.(map[string]any)
+	if !ok {
+		return ProjectWorld{}, fmt.Errorf(
+			"%s.world must be an object",
+			projectManifestSource,
+		)
+	}
+	currentPath := projectManifestSource + ".world"
+	if err := rejectUnknownManifestFields(
+		world,
+		currentPath,
+		"seconds_per_day",
+		"start_time",
+	); err != nil {
+		return ProjectWorld{}, err
+	}
+	startTime, err := manifestString(world, "start_time", currentPath)
+	if err != nil {
+		return ProjectWorld{}, err
+	}
+	startMinute, ok := parseManifestClock(startTime)
+	if !ok {
+		return ProjectWorld{}, fmt.Errorf(
+			"%s.start_time must use 24-hour HH:MM time",
+			currentPath,
+		)
+	}
+	secondsPerDay, err := manifestNumber(
+		world,
+		"seconds_per_day",
+		currentPath,
+	)
+	if err != nil {
+		return ProjectWorld{}, err
+	}
+	return ProjectWorld{
+		StartTime:     startTime,
+		StartMinute:   startMinute,
+		SecondsPerDay: secondsPerDay,
+	}, nil
+}
+
+func parseManifestClock(value string) (int, bool) {
+	var hour, minute int
+	if _, err := fmt.Sscanf(value, "%d:%d", &hour, &minute); err != nil {
+		return 0, false
+	}
+	canonical := fmt.Sprintf("%02d:%02d", hour, minute)
+	if value != canonical || hour < 0 || hour > 23 ||
+		minute < 0 || minute > 59 {
+		return 0, false
+	}
+	return hour*60 + minute, true
 }
 
 func compileProjectInput(data map[string]any) (ProjectInput, error) {
@@ -697,12 +785,22 @@ func compileProjectFlowCopy(
 	if err := rejectUnknownManifestFields(
 		data,
 		copyPath,
+		"heading",
 		"heading_key",
+		"message",
 		"message_key",
 	); err != nil {
 		return ProjectFlowCopy{}, err
 	}
+	headingText, err := optionalManifestString(data, "heading", copyPath)
+	if err != nil {
+		return ProjectFlowCopy{}, err
+	}
 	heading, err := optionalManifestString(data, "heading_key", copyPath)
+	if err != nil {
+		return ProjectFlowCopy{}, err
+	}
+	messageText, err := optionalManifestString(data, "message", copyPath)
 	if err != nil {
 		return ProjectFlowCopy{}, err
 	}
@@ -711,7 +809,9 @@ func compileProjectFlowCopy(
 		return ProjectFlowCopy{}, err
 	}
 	return ProjectFlowCopy{
+		Heading:    headingText,
 		HeadingKey: heading,
+		Message:    messageText,
 		MessageKey: message,
 	}, nil
 }
@@ -839,6 +939,20 @@ func validateProjectManifest(manifest ProjectManifest) error {
 		math.IsInf(manifest.FixedDT, 0) {
 		return fmt.Errorf(
 			"%s.fixed_dt must be 1/60; the runtime currently supports 60 TPS only",
+			manifest.Source,
+		)
+	}
+	if minute, ok := parseManifestClock(manifest.World.StartTime); !ok || minute != manifest.World.StartMinute {
+		return fmt.Errorf(
+			"%s.world.start_time must use 24-hour HH:MM time",
+			manifest.Source,
+		)
+	}
+	if manifest.World.SecondsPerDay < 0 ||
+		math.IsNaN(manifest.World.SecondsPerDay) ||
+		math.IsInf(manifest.World.SecondsPerDay, 0) {
+		return fmt.Errorf(
+			"%s.world.seconds_per_day must be non-negative",
 			manifest.Source,
 		)
 	}

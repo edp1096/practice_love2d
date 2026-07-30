@@ -2,6 +2,7 @@ package campaign
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strings"
 )
@@ -49,6 +50,21 @@ func (config Config) Validate() error {
 				config.DefaultLocale,
 			)
 		}
+	}
+	if math.IsNaN(config.WorldStartMinute) ||
+		math.IsInf(config.WorldStartMinute, 0) ||
+		config.WorldStartMinute < 0 ||
+		config.WorldStartMinute >= 24*60 {
+		return fmt.Errorf(
+			"world start minute must be in [0, 1440)",
+		)
+	}
+	if math.IsNaN(config.WorldSecondsPerDay) ||
+		math.IsInf(config.WorldSecondsPerDay, 0) ||
+		config.WorldSecondsPerDay < 0 {
+		return fmt.Errorf(
+			"world seconds per day must be non-negative",
+		)
 	}
 
 	if len(config.Stages) == 0 {
@@ -184,6 +200,16 @@ func (config Config) Validate() error {
 			}
 		}
 	}
+	battleSet := make(map[string]struct{}, len(config.TurnBattles))
+	for index, battle := range config.TurnBattles {
+		if err := validateIdentifier("turn battle id", battle.ID); err != nil {
+			return fmt.Errorf("turn_battles[%d]: %w", index, err)
+		}
+		if _, exists := battleSet[battle.ID]; exists {
+			return fmt.Errorf("duplicate turn battle id %q", battle.ID)
+		}
+		battleSet[battle.ID] = struct{}{}
+	}
 	return nil
 }
 
@@ -223,6 +249,22 @@ func validateState(state State, config Config) error {
 	if err := validateFlow(state.Flow, state.Mode); err != nil {
 		return err
 	}
+	switch state.Accessibility.Motion {
+	case "full", "reduced", "off":
+	default:
+		return fmt.Errorf(
+			"accessibility motion %q must be full, reduced, or off",
+			state.Accessibility.Motion,
+		)
+	}
+	switch state.Accessibility.NoticeDuration {
+	case "normal", "long":
+	default:
+		return fmt.Errorf(
+			"accessibility notice duration %q must be normal or long",
+			state.Accessibility.NoticeDuration,
+		)
+	}
 	if len(config.Locales) == 0 {
 		if state.Locale != "" {
 			return fmt.Errorf(
@@ -235,6 +277,18 @@ func validateState(state State, config Config) error {
 	}
 	if err := validateLocation(state, config); err != nil {
 		return err
+	}
+	if state.World.Day < 1 || state.World.Day > MaxJSONInteger {
+		return fmt.Errorf(
+			"world day must be in [1, %d]",
+			MaxJSONInteger,
+		)
+	}
+	if math.IsNaN(state.World.Minute) ||
+		math.IsInf(state.World.Minute, 0) ||
+		state.World.Minute < 0 ||
+		state.World.Minute >= 24*60 {
+		return fmt.Errorf("world minute must be in [0, 1440)")
 	}
 	if state.Currency < 0 || state.Currency > MaxJSONInteger {
 		return fmt.Errorf(
@@ -391,8 +445,47 @@ func validateState(state State, config Config) error {
 		}
 	}
 
+	if len(state.TurnBattles) != len(config.TurnBattles) {
+		return fmt.Errorf(
+			"state has %d turn battles; expected %d",
+			len(state.TurnBattles),
+			len(config.TurnBattles),
+		)
+	}
+	seenBattles := make(map[string]struct{}, len(state.TurnBattles))
+	for index, battle := range state.TurnBattles {
+		if _, exists := seenBattles[battle.ID]; exists {
+			return fmt.Errorf(
+				"state has duplicate turn battle id %q",
+				battle.ID,
+			)
+		}
+		seenBattles[battle.ID] = struct{}{}
+		expected := config.TurnBattles[index].ID
+		if battle.ID != expected {
+			return fmt.Errorf(
+				"state turn battle %d is %q; expected %q",
+				index,
+				battle.ID,
+				expected,
+			)
+		}
+		switch battle.Outcome {
+		case TurnBattleNever,
+			TurnBattleWon,
+			TurnBattleLost,
+			TurnBattleEscaped:
+		default:
+			return fmt.Errorf(
+				"turn battle %q has invalid outcome %q",
+				battle.ID,
+				battle.Outcome,
+			)
+		}
+	}
+
 	if !state.Flow.Started {
-		if err := validatePristineCampaign(state); err != nil {
+		if err := validatePristineCampaign(state, config); err != nil {
 			return err
 		}
 	}
@@ -536,7 +629,11 @@ func validateQuestState(
 	return nil
 }
 
-func validatePristineCampaign(state State) error {
+func validatePristineCampaign(state State, config Config) error {
+	if state.World.Day != 1 ||
+		state.World.Minute != config.WorldStartMinute {
+		return fmt.Errorf("unstarted campaign has invalid world time")
+	}
 	if state.Currency != 0 {
 		return fmt.Errorf("unstarted campaign cannot retain currency")
 	}
@@ -570,6 +667,15 @@ func validatePristineCampaign(state State) error {
 				"unstarted campaign cannot retain quest %q status %q",
 				quest.ID,
 				quest.Status,
+			)
+		}
+	}
+	for _, battle := range state.TurnBattles {
+		if battle.Outcome != TurnBattleNever {
+			return fmt.Errorf(
+				"unstarted campaign cannot retain turn battle %q outcome %q",
+				battle.ID,
+				battle.Outcome,
 			)
 		}
 	}

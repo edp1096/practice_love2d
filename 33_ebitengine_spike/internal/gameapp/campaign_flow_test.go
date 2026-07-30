@@ -28,7 +28,7 @@ func TestFlowProtocolControlsTheVisibleSemanticMenu(t *testing.T) {
 		initial.SelectedIndex != 0 ||
 		!reflect.DeepEqual(
 			flowStateOptionIDs(initial),
-			[]string{"new_game", "quit"},
+			[]string{"new_game", "accessibility", "quit"},
 		) {
 		t.Fatalf("initial protocol flow = %#v", initial)
 	}
@@ -87,6 +87,85 @@ func TestFlowProtocolControlsTheVisibleSemanticMenu(t *testing.T) {
 	}
 }
 
+func TestAccessibilityMenuPersistsAcrossNewGameSaveAndRestart(
+	t *testing.T,
+) {
+	root := t.TempDir()
+	processA := newFlowRuntime(t, root)
+
+	panel := activateFlow(t, processA, "accessibility")
+	if panel.Panel != "accessibility" ||
+		panel.Mode != campaign.ModeTitle ||
+		!reflect.DeepEqual(
+			flowStateOptionIDs(panel),
+			[]string{
+				"accessibility_motion",
+				"accessibility_hit_flash",
+				"accessibility_notice_duration",
+				"accessibility_back",
+			},
+		) {
+		t.Fatalf("accessibility panel = %#v", panel)
+	}
+	panel = activateFlow(t, processA, "accessibility_motion")
+	panel = activateFlow(t, processA, "accessibility_hit_flash")
+	panel = activateFlow(t, processA, "accessibility_notice_duration")
+	if panel.Accessibility != (campaign.AccessibilitySettings{
+		Motion:         "reduced",
+		HitFlash:       false,
+		NoticeDuration: "long",
+	}) {
+		t.Fatalf("changed accessibility = %#v", panel.Accessibility)
+	}
+
+	activateFlow(t, processA, "accessibility_back")
+	activateFlow(t, processA, "new_game")
+	if got := processA.CampaignState().Accessibility; got !=
+		panel.Accessibility {
+		t.Fatalf(
+			"new game accessibility = %#v, want %#v",
+			got,
+			panel.Accessibility,
+		)
+	}
+	if err := processA.Tick(ebitapp.Actions{Pause: true}); err != nil {
+		t.Fatal(err)
+	}
+	activateFlow(t, processA, "save")
+
+	// A fresh Runtime restores global preferences before Continue is chosen.
+	processB := newFlowRuntime(t, root)
+	if got := processB.CampaignState().Accessibility; got !=
+		panel.Accessibility {
+		t.Fatalf(
+			"restart title accessibility = %#v, want %#v",
+			got,
+			panel.Accessibility,
+		)
+	}
+	activateFlow(t, processB, "continue")
+	if got := processB.CampaignState().Accessibility; got !=
+		panel.Accessibility {
+		t.Fatalf(
+			"continued accessibility = %#v, want %#v",
+			got,
+			panel.Accessibility,
+		)
+	}
+	if err := processB.Tick(ebitapp.Actions{Pause: true}); err != nil {
+		t.Fatal(err)
+	}
+	activateFlow(t, processB, "title")
+	if got := processB.CampaignState().Accessibility; got !=
+		panel.Accessibility {
+		t.Fatalf(
+			"returned-title accessibility = %#v, want %#v",
+			got,
+			panel.Accessibility,
+		)
+	}
+}
+
 func TestEmulationStepRejectsSemanticFlowAndCannotAdvanceHiddenWorld(
 	t *testing.T,
 ) {
@@ -141,6 +220,7 @@ func TestEmulationStepRejectsSemanticFlowAndCannotAdvanceHiddenWorld(
 	}); err != nil {
 		t.Fatalf("step while playing: %v", err)
 	}
+	finishVillageArrivalCutscene(t, runtime)
 	if err := runtime.Tick(ebitapp.Actions{Pause: true}); err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +302,7 @@ func TestAuthoredTitleStartsAndFreezesWorldWithoutAutomationPause(
 		view.Flow.Heading != "고요한 숲의 수호자" ||
 		!reflect.DeepEqual(
 			flowOptionIDs(view.Flow),
-			[]string{"new_game", "quit"},
+			[]string{"new_game", "accessibility", "quit"},
 		) {
 		t.Fatalf("initial title view = %#v", view.Flow)
 	}
@@ -274,7 +354,7 @@ func TestEscapePauseIsSemanticAndResumesWithoutFreezingAutomation(
 		!view.Flow.Active ||
 		!reflect.DeepEqual(
 			flowOptionIDs(view.Flow),
-			[]string{"resume", "save", "title"},
+			[]string{"resume", "save", "accessibility", "title"},
 		) {
 		t.Fatalf(
 			"semantic pause state=%#v automation=%v view=%#v",
@@ -342,7 +422,7 @@ func TestPauseSaveProvidesValidatedContinueAfterProcessRestart(
 	title := processB.View().Flow
 	if !reflect.DeepEqual(
 		flowOptionIDs(title),
-		[]string{"new_game", "continue", "quit"},
+		[]string{"new_game", "continue", "accessibility", "quit"},
 	) || !processB.continueAvailable {
 		t.Fatalf("restart title = %#v", title)
 	}
@@ -383,7 +463,7 @@ func TestCorruptSaveIsNotAdvertisedAsContinue(t *testing.T) {
 	if runtime.continueAvailable ||
 		!reflect.DeepEqual(
 			flowOptionIDs(runtime.View().Flow),
-			[]string{"new_game", "quit"},
+			[]string{"new_game", "accessibility", "quit"},
 		) {
 		t.Fatalf("corrupt-save title = %#v", runtime.View().Flow)
 	}
@@ -475,12 +555,7 @@ func TestCompletedCampaignShowsEndingAndTitleCreatesPristineSession(
 
 func TestTitleQuitRequestsEbitengineTermination(t *testing.T) {
 	runtime := newFlowRuntime(t, t.TempDir())
-	if err := runtime.Tick(ebitapp.Actions{FlowDown: true}); err != nil {
-		t.Fatal(err)
-	}
-	if err := runtime.Tick(ebitapp.Actions{FlowConfirm: true}); err != nil {
-		t.Fatal(err)
-	}
+	activateFlow(t, runtime, "quit")
 	if !runtime.View().Quit {
 		t.Fatal("title quit did not request termination")
 	}

@@ -29,10 +29,10 @@ func TestCompileRecreateCatalogAcceptance(t *testing.T) {
 		t.Fatalf("Compile second: %v", err)
 	}
 
-	if got, want := first.DependencyGraph.Total, 56; got != want {
+	if got, want := first.DependencyGraph.Total, 65; got != want {
 		t.Fatalf("definition total = %d, want %d", got, want)
 	}
-	if got, want := first.DependencyGraph.EdgeCount, 88; got != want {
+	if got, want := first.DependencyGraph.EdgeCount, 113; got != want {
 		t.Fatalf("dependency paths = %d, want %d", got, want)
 	}
 	project := first.Project()
@@ -56,6 +56,13 @@ func TestCompileRecreateCatalogAcceptance(t *testing.T) {
 		Fallback: "locale.en",
 	}); got != want {
 		t.Fatalf("locale = %#v, want %#v", got, want)
+	}
+	if got, want := project.World, (ProjectWorld{
+		StartTime:     "08:00",
+		StartMinute:   8 * 60,
+		SecondsPerDay: 0,
+	}); got != want {
+		t.Fatalf("world = %#v, want %#v", got, want)
 	}
 	if got, want := project.Flow, (ProjectFlow{
 		SaveSlot:   "campaign",
@@ -102,7 +109,7 @@ func TestCompileRecreateCatalogAcceptance(t *testing.T) {
 		project.Audio.MusicVolume != 0.45 ||
 		project.Audio.SFXVolume != 0.8 ||
 		len(project.Audio.Cues) != 9 ||
-		len(project.Audio.StageMusic) != 7 ||
+		len(project.Audio.StageMusic) != 9 ||
 		project.Audio.Cues[0] != (ProjectAudioCue{
 			Event:  "actor.killed",
 			Asset:  "audio.kill",
@@ -110,7 +117,7 @@ func TestCompileRecreateCatalogAcceptance(t *testing.T) {
 		}) ||
 		project.Audio.StageMusic[0] != (ProjectStageMusic{
 			Stage:  "stage.action_room",
-			Asset:  "audio.forest_theme",
+			Asset:  "audio.road_theme",
 			Volume: 0.75,
 		}) {
 		t.Fatalf("audio = %#v", project.Audio)
@@ -164,7 +171,7 @@ func TestCompileRecreateCatalogAcceptance(t *testing.T) {
 	}
 
 	ids := loaded.IDs()
-	if len(ids) != 56 || !sort.StringsAreSorted(ids) {
+	if len(ids) != 65 || !sort.StringsAreSorted(ids) {
 		t.Fatalf("IDs are not complete and sorted: %v", ids)
 	}
 	if ids[0] != "ability.fire_bolt" ||
@@ -581,6 +588,39 @@ return {
 				1,
 			),
 			contains: "flow.title.extra is not supported",
+		},
+		{
+			name: "non-canonical world clock",
+			source: strings.Replace(
+				testProjectManifest,
+				"    font={\n",
+				"    world={start_time=\"8:00\", seconds_per_day=0},\n"+
+					"    font={\n",
+				1,
+			),
+			contains: "world.start_time must use 24-hour HH:MM time",
+		},
+		{
+			name: "negative world day duration",
+			source: strings.Replace(
+				testProjectManifest,
+				"    font={\n",
+				"    world={start_time=\"08:00\", seconds_per_day=-1},\n"+
+					"    font={\n",
+				1,
+			),
+			contains: "world.seconds_per_day must be non-negative",
+		},
+		{
+			name: "unknown world field",
+			source: strings.Replace(
+				testProjectManifest,
+				"    font={\n",
+				"    world={start_time=\"08:00\", seconds_per_day=0, weather=true},\n"+
+					"    font={\n",
+				1,
+			),
+			contains: "world.weather is not supported",
 		},
 	}
 	for _, test := range tests {

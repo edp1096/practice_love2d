@@ -25,7 +25,7 @@ func TestRunValidatesCompleteProjectBeforeWriting(t *testing.T) {
 	}
 	if !strings.Contains(
 		stdout.String(),
-		"7 stages, 22 entry builds and 110 derived campaign builds "+
+		"9 stages, 34 entry builds and 170 derived campaign builds "+
 			"across 2 locales",
 	) {
 		t.Fatalf("run() stdout = %q", stdout.String())

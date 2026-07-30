@@ -11,23 +11,35 @@
 
 1. 저장 파일이 없으면 title에 `new_game`, `quit`가 보인다.
 2. 새 게임은 `stage.village/default`에서 시작한다.
-3. 안내인 대화의 `accept` 선택은 다음을 한 transaction으로 실행한다.
+3. 첫 월드 tick에서 `cutscene.village_arrival`이 열리고 World가
+   정지한다. 정상 진행과 건너뛰기는 모두
+   `story.village_arrival_seen=true`와 도입 알림을 남긴다.
+4. 안내인 대화의 `accept` 선택은 다음을 한 transaction으로 실행한다.
    - `quest.grove_guardian` 시작
    - `item.training_sword` 1개 지급
    - `weapon` 슬롯에 검 장착
    - currency 25 지급
-4. 상점에서 potion을 25에 사면 currency 0, potion 1이 된다.
-5. pause menu에서 `campaign` 슬롯을 저장하고 프로세스를 종료한다.
-6. 새 프로세스의 title은 `continue`를 제공한다. 불러온 상태는 마을,
+5. `to_shop` portal로 `stage.village_shop/entry`에 들어가 실제 상인
+   interaction으로 상점을 연다. potion을 25에 사면 currency 0,
+   potion 1이 되고 `to_village/shop_return`으로 돌아온다.
+6. `to_home` portal로 `stage.village_home/entry`에 들어간다. 집의
+   `rest_area` trigger는 진입한 player를 30 회복하고, 실내
+   `to_village/home_return`으로 마을에 돌아온다.
+7. pause menu에서 `campaign` 슬롯을 저장하고 프로세스를 종료한다.
+8. 새 프로세스의 title은 `continue`를 제공한다. 불러온 상태는 마을,
    active quest, 장착한 검, potion 1, currency 0을 보존한다.
-7. 마을 portal은 `stage.world_hub/village_entry`로 이동시킨다.
-8. slime 두 마리를 처치하면 `defeat_slimes=2`지만 quest는 active다.
-9. field portal은 `stage.world_grove/west_entry`로 이동시킨다.
-10. guardian을 처치하면 `defeat_guardian=1`과 함께 quest가 completed가
-    되고 potion 1, currency 75, reward flag를 정확히 한 번 지급한다.
-11. grove → field → village로 돌아가 안내인의 completed 선택을 고르면
-    `thanks` node의 `finish_game`이 ending을 연다.
-12. 별도 새 게임에서 player가 죽으면 gameover가 열린다.
+9. 마을 portal은 `stage.world_hub/village_entry`로 이동시킨다.
+10. slime 두 마리를 처치하면 `defeat_slimes=2`지만 quest는 active다.
+11. field portal은 `stage.world_grove/west_entry`로 이동시킨다.
+12. `grove_discovery`의 1회성 authored `emit` trigger를 typed event로
+    실행한다.
+13. guardian을 처치하면 `defeat_guardian=1`과 함께 quest가 completed가
+    되고 potion 1, currency 75, reward flag를 정확히 한 번 지급하며
+    저장 가능한 월드 시각을 18:30으로 바꾼다.
+14. grove → field → village로 돌아가 안내인의 completed 선택을 고르면
+    `dusk` 월드 page의 저녁 색조가 보인다. 안내인의 completed 선택을
+    고르면 `thanks` node의 `finish_game`이 ending을 연다.
+15. 별도 새 게임에서 player가 죽으면 gameover가 열린다.
 
 32와 33의 실행 가능한 계약은 모두 **guardian 처치 즉시 보상**이다.
 귀환 보고는 보상 지급이 아니라 completed 대화와 ending을 여는
@@ -49,7 +61,8 @@ Runtime/App
 ```
 
 `CampaignState`에는 location, locale, flags, quest objective, inventory,
-equipment, currency를 둔다. entity 위치, 적 사망 목록, 공격 phase,
+equipment, currency, world day/minute를 둔다. entity 위치, 적 사망 목록,
+활성 world page·region, 공격 phase,
 hitstop, camera shake, 열린 dialogue, portal cooldown, Maker preview는
 player save에 넣지 않는다.
 
@@ -77,21 +90,32 @@ automation pause를 게임의 pause menu와 합치지 않는다.
   shop/inventory/HUD 화면
 - [x] title/pause/continue/gameover/ending
 - [x] authored tilemap·background·image resource presentation
+- [x] stage trigger의 condition/action/once/cooldown과 authored emit
+- [x] NPC interaction·stage trigger의 조건부 event page와 page별
+  priority/once/cooldown
+- [x] 타일 기반 마을과 집·잡화점 실내, 실제 NPC 배치
 - [x] 프로세스 재시작을 포함한 headless campaign acceptance
 - [x] projectile/status/secondary ability/multi-hit 전투 fixture
 - [x] actor-local platformer 이동과 authored shape presentation fixture
 - [x] authored encounter wave·boss phase·session fixture
 - [x] sprite clip·instance override·ability visual의 data-driven presentation
 - [x] audio cue와 전체 오디오의 data-driven presentation
+- [x] typed `show_notice`, modal pause와 debug snapshot presentation
 - [x] browser campaign storage와 결정적 WebAssembly 배포·화면 acceptance
+- [x] 생성 RPG profile의 data-driven 턴제 전투와 완결 ending
+- [x] data-driven 컷신, World freeze, 정상 진행·건너뛰기와 debug View
+- [x] 저장 가능한 일자·시각, 자동 하루 진행, region edge와 마지막 일치
+  world page의 tint·tile layer·hook
 
 ## 현재 인수 근거
 
 `internal/gameapp/campaign_acceptance_test.go`의
 `TestCompleteAuthoredCampaignAcrossProcessRestart`가 위 완료 시나리오
-1~11을 하나의 실행 경로로 검증한다.
+1~14를 하나의 실행 경로로 검증한다.
 
 - 저장 파일이 없는 title의 `new_game`부터 시작한다.
+- 마을 도입 컷신의 현재 step을 확인하고 안전하게 건너뛴 뒤 완료 flag와
+  후속 알림이 남는지 검사한다.
 - 실제 안내인·상인 interaction과 dialogue/shop protocol을 사용한다.
 - pause의 `save` 뒤 같은 파일 저장소로 새 `Runtime`을 생성한다.
 - 새 title의 `continue`로 quest, potion, currency, equipment를 복원한다.
@@ -104,24 +128,41 @@ automation pause를 게임의 pause menu와 합치지 않는다.
   defense 3, move_speed 1.25를 같은 값으로 보는지 검증한다.
 - `internal/sim/rpg_stats_test.go`는 직접 피해의 공격·방어, 주기 피해의
   stat 우회, RPG 이동속도와 status 이동 배율의 결합 순서를 검증한다.
-- village → field → grove → field → village portal을 모두 통과한다.
+- village → shop → village → home → village → field → grove → field
+  → village portal을 모두 통과한다.
+- 집의 heal trigger가 대상 player에게만 적용되고, 숲의 once emit이
+  authored payload와 trigger/entity identity를 보존하는지 확인한다.
 - 두 목표, 즉시 보상, completed 대화와 ending을 확인한다.
+- 보스 보상으로 시각이 18:30이 되고 귀환한 마을에서 `dusk` page와
+  화면 tint가 선택되는지 확인한다.
 
-시나리오 12의 player death → gameover → retry는
+시나리오 15의 player death → gameover → retry는
 `TestPlayerDeathOpensGameOverAndRetryBuildsFreshWorld`가 별도로 검증한다.
 모든 테스트는 Ebitengine 창을 생성하지 않는다.
 
+별도 생성 RPG profile은 `turn_skill.strike`, `turn_skill.mend`,
+`turn_battle.training_slime`과 player/enemy `rpg.turn_battler`를
+canonical catalog로 컴파일한다. 실제 Ubuntu arm64 창과 protocol에서
+guide 수락, slime interaction, 두 차례 Strike, `turn_battle.won`
+objective, potion 1·currency 25, guide 보고와 profile별 ending을
+확인했다. 전투 중 World tick은 정지하며 최종 `won/lost/escaped`만
+`rpg.turn_battles` save section에 남는다.
+
+`stage.village`, `stage.village_home`, `stage.village_shop`과
 `stage.world_hub/default`의 authored tilemap, background, image resource는
 `gamebuild → gameapp View → Ebitengine renderer` 경계를 그대로 통과한다.
 실제 Ubuntu arm64 창을 2 tick만 실행해 960×540 PNG를 캡처하고 자동
-종료하는 visual acceptance로 타일 레이어, 카메라 변환, Tiled flip flag와
-충돌벽 overlay를 확인했다. 같은 제한 실행에서 grove 보스의 authored
+종료하는 visual acceptance로 타일 레이어, 카메라 변환과 Tiled flip
+flag를 확인했다. tilemap stage의 wall은 충돌·protocol 데이터로
+유지하되 화면 위에 회색 도형으로 중복 렌더링하지 않는다. 같은 제한
+실행에서 grove 보스의 authored
 `scale=4`와 보라 tint를 확인했다. sprite sheet geometry, clip FPS/loop,
 state map, non-looping 공격 시간과 `ability.sword_slash.visual`은 typed
 `gamebuild → View → Ebitengine` 경계를 사용한다. 같은 project manifest의
 stage music과 semantic cue도 `gamebuild → AudioView → Ebitengine
-audio.Context` 경계를 통과한다. 저장소에서 직접 생성한 BGM 1개와
-SFX 9개를 패키징했고, 실제 Ubuntu arm64 창을 `-frames 2 -action attack`
+audio.Context` 경계를 통과한다. 저장소에서 직접 생성한 마을·길·숲
+BGM 3개와 SFX 9개를 패키징했고, 실제 Ubuntu arm64 창을
+`-frames 2 -action attack`
 제한으로 실행해 stage BGM·공격 cue 경로와 공격 화면이 함께 동작한 뒤
 자동 종료하는 것을 확인했다. 반복 View는 sequence를 재생하지 않으며,
 취소된 원자적 step은 cue ring까지 되돌린다.
@@ -177,5 +218,7 @@ headless Chromium에서 실제 Ebitengine 960×540 canvas와 타이틀 PNG를
 - quest completion과 보상은 같은 transaction이며 보상은 한 번뿐이다.
 - player save는 project/content identity와 schema version이 다르면
   현재 runtime을 변경하지 않고 거부한다.
+- save의 `world.state`는 day/minute만 보존하고 활성 page·region은
+  새 stage World에서 다시 계산한다.
 - transition을 일으킨 input edge는 새 World에 다시 전달하지 않는다.
 - 손상된 save는 title의 정상 `continue` 항목으로 간주하지 않는다.

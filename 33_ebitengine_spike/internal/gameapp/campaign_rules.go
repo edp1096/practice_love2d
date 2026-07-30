@@ -1,12 +1,14 @@
 package gameapp
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 
 	"practice_love2d/33_ebitengine_spike/internal/campaign"
 	"practice_love2d/33_ebitengine_spike/internal/content"
+	"practice_love2d/33_ebitengine_spike/internal/ebitapp"
 	"practice_love2d/33_ebitengine_spike/internal/gamebuild"
 	"practice_love2d/33_ebitengine_spike/internal/rulesruntime"
 	"practice_love2d/33_ebitengine_spike/internal/sim"
@@ -74,6 +76,9 @@ func (runtime *Runtime) resetRulePresentationLocked() {
 	runtime.inventorySelected = 0
 	runtime.inventoryStatus = ""
 	runtime.equipmentRebuildPending = false
+	runtime.notice = ebitapp.NoticeView{}
+	runtime.turnBattle = nil
+	runtime.cutscene = nil
 }
 
 // handleDomainInteractionLocked selects the nearest eligible authored
@@ -127,7 +132,19 @@ func (runtime *Runtime) handleDomainInteractionLocked(
 		interaction, exists := runtime.contentRules.Interaction(
 			metadata.ActorID,
 		)
-		if !exists || interaction.Input != "interact" {
+		if !exists {
+			continue
+		}
+		interaction, eligible, err :=
+			runtime.resolveInteractionPageLocked(interaction)
+		if err != nil {
+			return false, fmt.Errorf(
+				"handle authored interaction %q page: %w",
+				metadata.ActorID,
+				err,
+			)
+		}
+		if !eligible || interaction.Input != "interact" {
 			continue
 		}
 		entity, exists := entities[metadata.ID]
@@ -146,20 +163,6 @@ func (runtime *Runtime) handleDomainInteractionLocked(
 		deltaY := entity.Position.Y - controlled.Position.Y
 		distance := squaredCoords(deltaX, deltaY)
 		if distance > squaredCoords(rangeLimit, 0) {
-			continue
-		}
-		eligible, err := runtime.ruleExecutor.EvaluateCondition(
-			runtime.campaign,
-			interaction.Condition,
-		)
-		if err != nil {
-			return false, fmt.Errorf(
-				"handle authored interaction %q condition: %w",
-				metadata.ActorID,
-				err,
-			)
-		}
-		if !eligible {
 			continue
 		}
 		if selected == nil || distance < selected.distance ||
@@ -204,6 +207,41 @@ func (runtime *Runtime) handleDomainInteractionLocked(
 		)
 	}
 	return true, nil
+}
+
+func (runtime *Runtime) resolveInteractionPageLocked(
+	interaction gamebuild.ActorInteractionRule,
+) (gamebuild.ActorInteractionRule, bool, error) {
+	eligible, err := runtime.evaluateRuleConditionLocked(
+		interaction.Condition,
+	)
+	if err != nil || !eligible {
+		return gamebuild.ActorInteractionRule{}, eligible, err
+	}
+	if len(interaction.Pages) == 0 {
+		return interaction, true, nil
+	}
+	for index := len(interaction.Pages) - 1; index >= 0; index-- {
+		page := interaction.Pages[index]
+		matched, err := runtime.evaluateRuleConditionLocked(
+			page.Condition,
+		)
+		if err != nil {
+			return gamebuild.ActorInteractionRule{}, false, err
+		}
+		if !matched {
+			continue
+		}
+		interaction.Input = page.Input
+		interaction.Prompt = page.Prompt
+		interaction.PromptKey = page.PromptKey
+		interaction.Range = page.Range
+		interaction.Condition = page.Condition
+		interaction.Actions = page.Actions
+		interaction.Pages = nil
+		return interaction, true, nil
+	}
+	return gamebuild.ActorInteractionRule{}, false, nil
 }
 
 // applyObjectiveEventsLocked translates the simulation's instance identity to
@@ -310,9 +348,37 @@ func (runtime *Runtime) applyRuleIntentsLocked(
 	intents []rulesruntime.Intent,
 	speakerID string,
 ) error {
+	return runtime.applyRuleIntentsForTargetLocked(
+		intents,
+		speakerID,
+		"",
+		"",
+	)
+}
+
+func (runtime *Runtime) applyRuleIntentsForTargetLocked(
+	intents []rulesruntime.Intent,
+	speakerID string,
+	healTargetID string,
+	triggerID string,
+) error {
 	for _, intent := range intents {
 		switch intent.Type {
 		case rulesruntime.IntentStartDialogue:
+			if runtime.cutscene != nil {
+				return fmt.Errorf(
+					"dialogue %q cannot start while cutscene %q is active",
+					intent.DialogueID,
+					runtime.cutscene.CutsceneID,
+				)
+			}
+			if runtime.turnBattle != nil {
+				return fmt.Errorf(
+					"dialogue %q cannot start while turn battle %q is active",
+					intent.DialogueID,
+					runtime.turnBattle.BattleID,
+				)
+			}
 			if runtime.dialogue != nil {
 				return fmt.Errorf(
 					"dialogue %q cannot start while another dialogue is active",
@@ -342,14 +408,30 @@ func (runtime *Runtime) applyRuleIntentsLocked(
 			runtime.dialogue = session
 			runtime.dialogueSpeakerID = speakerID
 			runtime.dialogueChoiceIndex = 0
-			if err := runtime.applyRuleIntentsLocked(
+			if err := runtime.applyRuleIntentsForTargetLocked(
 				result.Intents,
 				speakerID,
+				healTargetID,
+				triggerID,
 			); err != nil {
 				return err
 			}
 
 		case rulesruntime.IntentOpenShop:
+			if runtime.cutscene != nil {
+				return fmt.Errorf(
+					"shop %q cannot open while cutscene %q is active",
+					intent.ShopID,
+					runtime.cutscene.CutsceneID,
+				)
+			}
+			if runtime.turnBattle != nil {
+				return fmt.Errorf(
+					"shop %q cannot open while turn battle %q is active",
+					intent.ShopID,
+					runtime.turnBattle.BattleID,
+				)
+			}
 			if runtime.dialogue != nil {
 				return fmt.Errorf(
 					"shop %q cannot open while a dialogue is active",
@@ -366,9 +448,61 @@ func (runtime *Runtime) applyRuleIntentsLocked(
 			runtime.shopSelectedIndex = 0
 			runtime.shopStatus = ""
 
+		case rulesruntime.IntentDamage:
+			if err := runtime.applyDamageIntentLocked(
+				intent.DamageAmount,
+				healTargetID,
+			); err != nil {
+				return err
+			}
+			if runtime.campaign.Snapshot().Mode != campaign.ModePlaying {
+				return nil
+			}
+
 		case rulesruntime.IntentHeal:
 			if err := runtime.applyHealIntentLocked(
 				intent.HealAmount,
+				healTargetID,
+			); err != nil {
+				return err
+			}
+
+		case rulesruntime.IntentEmit:
+			if err := runtime.applyAuthoredEventIntentLocked(
+				intent,
+				healTargetID,
+				triggerID,
+			); err != nil {
+				return err
+			}
+
+		case rulesruntime.IntentShowNotice:
+			ticks := noticeTicks(
+				intent.NoticeTicks,
+				runtime.campaign.Snapshot().Accessibility,
+			)
+			runtime.notice = ebitapp.NoticeView{
+				Active: true,
+				Text: runtime.localizeRuleTextLocked(
+					intent.NoticeText,
+					intent.NoticeKey,
+				),
+				TextKey:        intent.NoticeKey,
+				Tone:           intent.NoticeTone,
+				RemainingTicks: ticks,
+			}
+
+		case rulesruntime.IntentStartTurnBattle:
+			if err := runtime.startTurnBattleLocked(intent.BattleID); err != nil {
+				return err
+			}
+
+		case rulesruntime.IntentStartCutscene:
+			if err := runtime.startCutsceneLocked(
+				intent.CutsceneID,
+				speakerID,
+				healTargetID,
+				triggerID,
 			); err != nil {
 				return err
 			}
@@ -380,26 +514,117 @@ func (runtime *Runtime) applyRuleIntentsLocked(
 	return nil
 }
 
-func (runtime *Runtime) applyHealIntentLocked(amount float64) error {
+func (runtime *Runtime) advanceNoticeLocked() {
+	if !runtime.notice.Active {
+		return
+	}
+	runtime.notice.RemainingTicks--
+	if runtime.notice.RemainingTicks <= 0 {
+		runtime.notice = ebitapp.NoticeView{}
+	}
+}
+
+func (runtime *Runtime) applyAuthoredEventIntentLocked(
+	intent rulesruntime.Intent,
+	targetID string,
+	triggerID string,
+) error {
+	if targetID == "" {
+		targetID = runtime.built.Config.Camera.TargetEntityID
+	}
+	payload := make(map[string]any)
+	if len(intent.EventData) != 0 {
+		if err := json.Unmarshal(intent.EventData, &payload); err != nil {
+			return fmt.Errorf(
+				"decode authored event %q data: %w",
+				intent.EventName,
+				err,
+			)
+		}
+	}
+	if targetID != "" {
+		payload["entity_id"] = targetID
+	}
+	if triggerID != "" {
+		payload["trigger_id"] = triggerID
+	}
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf(
+			"encode authored event %q data: %w",
+			intent.EventName,
+			err,
+		)
+	}
+	if err := runtime.simulation.EmitAuthoredEvent(
+		sim.EventType(intent.EventName),
+		targetID,
+		triggerID,
+		encoded,
+	); err != nil {
+		return fmt.Errorf("emit authored event %q: %w", intent.EventName, err)
+	}
+	runtime.queueAudioEventLocked(intent.EventName)
+	if !runtime.hasActiveObjectiveRemainingLocked(
+		intent.EventName,
+		payload,
+	) {
+		return nil
+	}
+	result, err := runtime.ruleExecutor.ApplyObjectiveEvent(
+		runtime.campaign,
+		rulesruntime.ObjectiveEvent{
+			Event:   intent.EventName,
+			Payload: payload,
+			Count:   1,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"apply authored event %q to quests: %w",
+			intent.EventName,
+			err,
+		)
+	}
+	if err := runtime.applyRuleIntentsForTargetLocked(
+		result.Intents,
+		"",
+		targetID,
+		triggerID,
+	); err != nil {
+		return err
+	}
+	for range result.CompletedQuestIDs {
+		runtime.queueAudioEventLocked("quest.completed")
+	}
+	return nil
+}
+
+func (runtime *Runtime) applyHealIntentLocked(
+	amount float64,
+	targetID string,
+) error {
 	if math.IsNaN(amount) || math.IsInf(amount, 0) ||
 		amount <= 0 || math.Trunc(amount) != amount ||
 		amount > float64(math.MaxInt) {
 		return fmt.Errorf("heal amount %v is invalid", amount)
 	}
 	state := runtime.simulation.SaveSession()
-	controlledID := runtime.built.Config.Camera.TargetEntityID
+	if targetID == "" {
+		targetID = runtime.built.Config.Camera.TargetEntityID
+	}
 	for index := range state.Entities {
-		if state.Entities[index].ID != controlledID {
+		if state.Entities[index].ID != targetID {
 			continue
 		}
 		if state.Entities[index].Dead {
 			return errors.New("heal intent cannot revive the controlled actor")
 		}
-		definition, exists := runtime.entityConfig(controlledID)
+		definition, exists := runtime.entityConfig(targetID)
 		if !exists {
 			return fmt.Errorf(
-				"heal intent controlled entity %q has no definition",
-				controlledID,
+				"heal intent target entity %q has no definition",
+				targetID,
 			)
 		}
 		increment := int(amount)
@@ -413,9 +638,34 @@ func (runtime *Runtime) applyHealIntentLocked(amount float64) error {
 		return nil
 	}
 	return fmt.Errorf(
-		"heal intent controlled entity %q is missing",
-		controlledID,
+		"heal intent target entity %q is missing",
+		targetID,
 	)
+}
+
+func (runtime *Runtime) applyDamageIntentLocked(
+	amount float64,
+	targetID string,
+) error {
+	if math.IsNaN(amount) || math.IsInf(amount, 0) ||
+		amount <= 0 || math.Trunc(amount) != amount ||
+		amount > float64(math.MaxInt) {
+		return fmt.Errorf("damage amount %v is invalid", amount)
+	}
+	if targetID == "" {
+		targetID = runtime.built.Config.Camera.TargetEntityID
+	}
+	events, err := runtime.simulation.ApplyDamage(targetID, int(amount))
+	if err != nil {
+		return fmt.Errorf("apply damage intent: %w", err)
+	}
+	if runtime.controlledActorKilledLocked(events) {
+		if err := runtime.enterGameOverLocked(); err != nil {
+			return err
+		}
+	}
+	runtime.publishAudioEventsLocked(events)
+	return nil
 }
 
 // DialogueState returns a detached transient dialogue view. When a Maker

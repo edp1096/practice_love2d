@@ -518,7 +518,7 @@ func TestShopTransientClearsAcrossWorldAndContentLifecycles(t *testing.T) {
 			action: func(t *testing.T, runtime *Runtime) {
 				t.Helper()
 				runtime.mu.Lock()
-				portal := findPortal(t, runtime, "to_field")
+				portal := findPortal(t, runtime, "to_village")
 				err := runtime.transitionPortalLocked(portal)
 				if err == nil {
 					runtime.revision++
@@ -646,14 +646,30 @@ func acceptVillageGuideQuest(t *testing.T, runtime *Runtime) {
 
 func openVillageMerchantShop(t *testing.T, runtime *Runtime) ShopState {
 	t.Helper()
+	if runtime.CampaignState().CurrentStageID == "stage.village" {
+		transitionThroughPortal(
+			t,
+			runtime,
+			"to_shop",
+			"stage.village_shop",
+			"entry",
+		)
+	}
+	if runtime.CampaignState().CurrentStageID != "stage.village_shop" {
+		t.Fatalf(
+			"merchant shop requires village shop stage, got %q",
+			runtime.CampaignState().CurrentStageID,
+		)
+	}
+	merchant := entitySnapshot(t, runtime, "merchant")
 	callRuntime(
 		t,
 		runtime,
 		protocol.MethodEntitySetPosition,
 		protocol.SetPositionParams{
 			EntityID: "player",
-			X:        450,
-			Y:        240,
+			X:        coordPixels(merchant.Position.X) + 40,
+			Y:        coordPixels(merchant.Position.Y),
 		},
 	)
 	scheduleProtocolAction(t, runtime, "interact")

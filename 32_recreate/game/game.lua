@@ -11,17 +11,26 @@ return {
     content_roots = {
         "game/content",
     },
+    world = {
+        start_time = "08:00",
+        -- Set to a positive number for an automatic day/night cycle.
+        -- Zero keeps time under explicit event control.
+        seconds_per_day = 0,
+    },
 
     features = {
+        "engine.features.accessibility",
         "engine.features.game_flow",
         "engine.features.movement.topdown",
         "engine.features.movement.platformer",
         "engine.features.geometry",
         "engine.features.navigation",
         "engine.features.camera",
+        "engine.features.cutscene",
         "engine.features.presentation.impact",
         "engine.features.tilemap",
-        "engine.features.action.chase_ai",
+        "engine.features.world_state",
+        "engine.features.action.behavior_ai",
         "engine.features.action.hitstop",
         "engine.features.action.knockback",
         "engine.features.action.projectile",
@@ -105,7 +114,7 @@ return {
         stage_music = {
             {
                 stage = "stage.action_room",
-                asset = "audio.forest_theme",
+                asset = "audio.road_theme",
                 volume = 0.75,
             },
             {
@@ -115,18 +124,28 @@ return {
             },
             {
                 stage = "stage.platformer_room",
-                asset = "audio.forest_theme",
+                asset = "audio.road_theme",
                 volume = 0.7,
             },
             {
                 stage = "stage.rpg_village",
-                asset = "audio.forest_theme",
+                asset = "audio.village_theme",
                 volume = 0.65,
             },
             {
                 stage = "stage.village",
-                asset = "audio.forest_theme",
+                asset = "audio.village_theme",
                 volume = 0.65,
+            },
+            {
+                stage = "stage.village_home",
+                asset = "audio.village_theme",
+                volume = 0.45,
+            },
+            {
+                stage = "stage.village_shop",
+                asset = "audio.village_theme",
+                volume = 0.5,
             },
             {
                 stage = "stage.world_grove",
@@ -135,7 +154,7 @@ return {
             },
             {
                 stage = "stage.world_hub",
-                asset = "audio.forest_theme",
+                asset = "audio.road_theme",
                 volume = 0.7,
             },
         },

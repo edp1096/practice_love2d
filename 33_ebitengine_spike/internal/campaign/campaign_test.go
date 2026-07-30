@@ -849,6 +849,12 @@ func applyProgress(t *testing.T, game *Campaign) {
 		state.CurrentStageID = "stage.field"
 		state.EntrySpawnID = "village_entry"
 		state.Locale = "en"
+		state.World = WorldProgress{Day: 3, Minute: 18*60 + 30}
+		state.Accessibility = AccessibilitySettings{
+			Motion:         "reduced",
+			HitFlash:       false,
+			NoticeDuration: "long",
+		}
 		flagState(t, state, "quest.guardian.rewarded").Value = true
 		inventoryEntry(t, state, "item.potion").Quantity = 2
 		inventoryEntry(

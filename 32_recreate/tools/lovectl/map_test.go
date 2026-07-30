@@ -70,6 +70,73 @@ func TestParseTMXCanonicalObjects(t *testing.T) {
 	}
 }
 
+func TestParseTMXTriggerEventPagesWithoutBaseActions(t *testing.T) {
+	paged := strings.Replace(
+		validTMX,
+		`<property name="actions" value="[{&quot;type&quot;:&quot;heal&quot;,&quot;amount&quot;:5}]"/>`,
+		`<property name="pages" value="[{&quot;id&quot;:&quot;before&quot;,&quot;actions&quot;:[{&quot;type&quot;:&quot;heal&quot;,&quot;amount&quot;:5}]}]"/>`,
+		1,
+	)
+	path := writeTMXFixture(t, paged)
+	stage, err := parseTMX(path, "game/maps/map.tmx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stage.Triggers) != 1 ||
+		len(stage.Triggers[0].Actions) != 0 ||
+		len(stage.Triggers[0].Pages) != 1 {
+		t.Fatalf("event-page trigger = %#v", stage.Triggers)
+	}
+	encoded := string(encodeStage(stage))
+	if !strings.Contains(encoded, `id = "before"`) ||
+		!strings.Contains(encoded, "pages =") {
+		t.Fatalf("event pages were not encoded:\n%s", encoded)
+	}
+}
+
+func TestParseTMXWorldPagesAndRegion(t *testing.T) {
+	withPages := strings.Replace(
+		validTMX,
+		`<property name="display_name" value="Test Map"/>`,
+		`<property name="display_name" value="Test Map"/>
+  <property name="world_pages" value="[{&quot;id&quot;:&quot;night&quot;,&quot;condition&quot;:{&quot;type&quot;:&quot;time_between&quot;,&quot;start&quot;:&quot;18:00&quot;,&quot;finish&quot;:&quot;06:00&quot;},&quot;tint&quot;:[0.02,0.04,0.12,0.5]}]"/>`,
+		1,
+	)
+	withRegion := strings.Replace(
+		withPages,
+		`</objectgroup>`,
+		`  <object id="4" name="square" class="region" x="4" y="5" width="20" height="10">
+   <properties>
+    <property name="on_enter" value="[{&quot;type&quot;:&quot;emit&quot;,&quot;name&quot;:&quot;square.entered&quot;}]"/>
+   </properties>
+  </object>
+ </objectgroup>`,
+		1,
+	)
+	path := writeTMXFixture(t, withRegion)
+	stage, err := parseTMX(path, "game/maps/map.tmx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stage.WorldPages) != 1 ||
+		len(stage.Regions) != 1 ||
+		stage.Regions[0].ID != "square" ||
+		len(stage.Regions[0].OnEnter) != 1 {
+		t.Fatalf("unexpected world state: %#v %#v", stage.WorldPages, stage.Regions)
+	}
+	encoded := string(encodeStage(stage))
+	for _, fragment := range []string{
+		"world_state =",
+		`id = "night"`,
+		`id = "square"`,
+		"on_enter =",
+	} {
+		if !strings.Contains(encoded, fragment) {
+			t.Fatalf("missing %q in encoded stage:\n%s", fragment, encoded)
+		}
+	}
+}
+
 func TestEncodeStageKeepsJSONNumbersNumeric(t *testing.T) {
 	path := writeTMXFixture(t, validTMX)
 	stage, err := parseTMX(path, "game/maps/map.tmx")
@@ -85,6 +152,33 @@ func TestEncodeStageKeepsJSONNumbersNumeric(t *testing.T) {
 	}
 	if second := string(encodeStage(stage)); second != encoded {
 		t.Fatal("stage encoding is not deterministic")
+	}
+}
+
+func TestEncodeStageOmitsEmptyOptionalArrays(t *testing.T) {
+	path := writeTMXFixture(t, validTMX)
+	stage, err := parseTMX(path, "game/maps/map.tmx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stage.Walls = nil
+	stage.SpawnPoints = nil
+	stage.Portals = nil
+	stage.Triggers = nil
+	stage.Regions = nil
+	stage.WorldPages = nil
+
+	encoded := string(encodeStage(stage))
+	for _, field := range []string{
+		"walls =",
+		"spawn_points =",
+		"portals =",
+		"triggers =",
+		"world_state =",
+	} {
+		if strings.Contains(encoded, field) {
+			t.Fatalf("empty optional field %q was encoded:\n%s", field, encoded)
+		}
 	}
 }
 

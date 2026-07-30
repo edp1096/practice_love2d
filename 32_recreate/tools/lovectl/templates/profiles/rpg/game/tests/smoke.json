@@ -16,5 +16,19 @@
   },
   "persistence": {
     "item": "item.potion"
+  },
+  "journey": {
+    "steps": [
+      {"target_tag": "npc", "action": "interact", "frames": 2},
+      {"action": "menu_confirm", "frames": 1},
+      {"action": "menu_confirm", "frames": 1},
+      {"target_tag": "turn_enemy", "action": "interact", "frames": 2},
+      {"action": "menu_confirm", "frames": 1, "repeat": 2},
+      {"target_tag": "npc", "action": "interact", "frames": 2},
+      {"action": "menu_confirm", "frames": 1}
+    ],
+    "expected_flow": "ending",
+    "expected_quest": "quest.first_steps",
+    "expected_battle": "turn_battle.training_slime"
   }
 }

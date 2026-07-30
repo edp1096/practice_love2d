@@ -51,6 +51,59 @@ func (values *boolMap) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type stringMap map[string]string
+
+func (values *stringMap) UnmarshalJSON(data []byte) error {
+	if string(data) == "[]" || string(data) == "null" {
+		*values = stringMap{}
+		return nil
+	}
+
+	var decoded map[string]string
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*values = decoded
+	return nil
+}
+
+type navigationPointState struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+
+type navigationShapeState struct {
+	Type   string                 `json:"type"`
+	X      float64                `json:"x"`
+	Y      float64                `json:"y"`
+	Width  float64                `json:"width"`
+	Height float64                `json:"height"`
+	Points []navigationPointState `json:"points"`
+}
+
+type navigationSpawnState struct {
+	ID string  `json:"id"`
+	X  float64 `json:"x"`
+	Y  float64 `json:"y"`
+}
+
+type navigationTriggerState struct {
+	ID       string               `json:"id"`
+	Shape    navigationShapeState `json:"shape"`
+	ActorTag string               `json:"actor_tag"`
+	Once     bool                 `json:"once"`
+	Cooldown float64              `json:"cooldown"`
+}
+
+type navigationPortalState struct {
+	ID          string               `json:"id"`
+	Shape       navigationShapeState `json:"shape"`
+	ActorTag    string               `json:"actor_tag"`
+	TargetStage string               `json:"target_stage"`
+	TargetSpawn string               `json:"target_spawn"`
+	Cooldown    float64              `json:"cooldown"`
+}
+
 type worldSnapshot struct {
 	Available        bool    `json:"available"`
 	HitstopRemaining float64 `json:"hitstop_remaining"`
@@ -77,6 +130,11 @@ type worldSnapshot struct {
 		ShakeOffsetY   float64 `json:"shake_offset_y"`
 		ShakeSequence  int     `json:"shake_sequence"`
 	} `json:"camera"`
+	Accessibility struct {
+		Motion         string `json:"motion"`
+		HitFlash       bool   `json:"hit_flash"`
+		NoticeDuration string `json:"notice_duration"`
+	} `json:"accessibility"`
 	Tilemap struct {
 		Available    bool   `json:"available"`
 		LayerCount   int    `json:"layer_count"`
@@ -87,12 +145,15 @@ type worldSnapshot struct {
 		WallCount int `json:"wall_count"`
 	} `json:"geometry"`
 	Navigation struct {
-		SpawnPointCount   int      `json:"spawn_point_count"`
-		TriggerCount      int      `json:"trigger_count"`
-		PortalCount       int      `json:"portal_count"`
-		ActiveOverlaps    int      `json:"active_overlaps"`
-		FiredTriggers     []string `json:"fired_triggers"`
-		TransitionPending bool     `json:"transition_requested"`
+		SpawnPointCount   int                      `json:"spawn_point_count"`
+		TriggerCount      int                      `json:"trigger_count"`
+		PortalCount       int                      `json:"portal_count"`
+		SpawnPoints       []navigationSpawnState   `json:"spawn_points"`
+		Triggers          []navigationTriggerState `json:"triggers"`
+		Portals           []navigationPortalState  `json:"portals"`
+		ActiveOverlaps    int                      `json:"active_overlaps"`
+		FiredTriggers     []string                 `json:"fired_triggers"`
+		TransitionPending bool                     `json:"transition_requested"`
 	} `json:"navigation"`
 	EncounterCount int              `json:"encounter_count"`
 	Encounters     []encounterState `json:"encounters"`
@@ -101,11 +162,30 @@ type worldSnapshot struct {
 	Currency       struct {
 		Balance int `json:"balance"`
 	} `json:"currency"`
-	Quests      []questState     `json:"quests"`
+	Quests   []questState `json:"quests"`
+	Cutscene struct {
+		Active     bool   `json:"active"`
+		ID         string `json:"cutscene_id"`
+		StepID     string `json:"step_id"`
+		StepIndex  int    `json:"step_index"`
+		StepCount  int    `json:"step_count"`
+		Text       string `json:"text"`
+		Speaker    string `json:"speaker"`
+		Skippable  bool   `json:"skippable"`
+		Background string `json:"background"`
+	} `json:"cutscene"`
 	Dialogue    dialogueState    `json:"dialogue"`
 	Interaction interactionState `json:"interaction"`
 	Shop        shopState        `json:"shop"`
-	GameFlow    struct {
+	Notice      struct {
+		Active    bool    `json:"active"`
+		Text      string  `json:"text"`
+		TextKey   string  `json:"text_key"`
+		Tone      string  `json:"tone"`
+		Duration  float64 `json:"duration"`
+		Remaining float64 `json:"remaining"`
+	} `json:"notice"`
+	GameFlow struct {
 		Mode      string   `json:"mode"`
 		Selected  int      `json:"selected"`
 		Options   []string `json:"options"`
@@ -113,7 +193,14 @@ type worldSnapshot struct {
 		Started   bool     `json:"started"`
 		Completed bool     `json:"completed"`
 		Notice    string   `json:"notice"`
+		Panel     string   `json:"panel"`
 	} `json:"game_flow"`
+	TurnBattle struct {
+		Active  bool      `json:"active"`
+		Battle  string    `json:"battle_id"`
+		Result  string    `json:"result"`
+		Results stringMap `json:"results"`
+	} `json:"turn_battle"`
 	Locale struct {
 		ID   string `json:"id"`
 		Code string `json:"code"`
@@ -267,6 +354,10 @@ type entityState struct {
 	VelocityX             float64          `json:"velocity_x"`
 	VelocityY             float64          `json:"velocity_y"`
 	Moving                bool             `json:"moving"`
+	AITargetTag           string           `json:"ai_target_tag"`
+	AIPattern             string           `json:"ai_pattern"`
+	AIAttackIndex         int              `json:"ai_attack_index"`
+	AINextAbility         string           `json:"ai_next_ability"`
 	Grounded              bool             `json:"grounded"`
 	PlatformerSpeed       float64          `json:"platformer_speed"`
 	PlatformerGravity     float64          `json:"platformer_gravity"`

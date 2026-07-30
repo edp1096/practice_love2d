@@ -7,12 +7,19 @@ return {
     maximum_steps = 8,
     maximum_action_depth = 64,
     content_roots = {"game/content"},
+    world = {
+        start_time = "08:00",
+        seconds_per_day = 0,
+    },
     features = {
+        "engine.features.accessibility",
         "engine.features.game_flow",
         "engine.features.movement.topdown",
         "engine.features.camera",
+        "engine.features.world_state",
+        "engine.features.cutscene",
         "engine.features.presentation.impact",
-        "engine.features.action.chase_ai",
+        "engine.features.action.behavior_ai",
         "engine.features.action.hitstop",
         "engine.features.action.knockback",
         "engine.features.action.projectile",
@@ -37,6 +44,18 @@ return {
     flow = {
         save_slot = "campaign",
         start_stage = "stage.start",
+        title = {
+            heading = "{{PROJECT_TITLE_LUA}}",
+            message = "Accept the guide's request, defeat the enemy, and report back.",
+        },
+        game_over = {
+            heading = "Quest Failed",
+            message = "Retry with attacks, projectiles, dodge, and parry.",
+        },
+        ending = {
+            heading = "Quest Complete",
+            message = "The enemy is defeated and the reward has been received.",
+        },
     },
     input = {
         actions = {

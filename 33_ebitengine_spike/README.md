@@ -6,20 +6,35 @@
 
 기본 실행은 하드코딩된 시험장이 아니라 `game/game.lua`에서 컴파일한
 project manifest의 `stage.village/default`를 사용한다. 플레이어,
-실제 안내인·상인 sprite, 벽, 카메라가 보이며 전투 fixture와 Maker
-preview에서는 슬라임을 생성할 수 있다. 이동·충돌·공격·피해·경직·
+실제 안내인 sprite와 타일 마을이 보이고, 집·잡화점 실내와 상인은
+portal로 연결된다. 전투 fixture와 Maker preview에서는 슬라임을
+생성할 수 있다. 이동·충돌·공격·피해·경직·
 넉백·히트스톱·패링·퍼펙트 패링·회피·대화·퀘스트·상점·인벤토리·
 장비·세이브와 게임 흐름이 고정 60 tick 시뮬레이션으로 동작한다.
+`turn_skill`, `turn_battle`, `rpg.turn_battler`도 같은 catalog에서
+컴파일되며 필드 World를 멈춘 상태에서 공격·회복·도주, 적 차례,
+승패 hook, quest event와 저장 가능한 최종 결과를 실행한다.
 작성 데이터의 보조 능력, 연속 다중 hit, 연속 충돌 투사체와
 중첩·주기 피해·배율·면역 상태이상도 같은 경계를 사용한다.
 `movement.platformer` actor는 같은 충돌 경계에서 가속·중력·코요테
 타임·점프 버퍼를 사용한다.
 stage에 배치한 encounter는 작성된 target tag·지연·웨이브·spawn
 override·보스 체력 단계·완료 event를 결정적인 순서로 실행한다.
+stage trigger와 NPC interaction도 같은 typed condition/action 실행기를
+사용한다. 둘 다 마지막 일치 항목 우선의 조건부 event page를 지원하며
+trigger는 target actor, 진입 edge, page별 once/cooldown과 authored emit
+payload를 보존한다.
+프로젝트 일자·시각은 독립된 `world.state` save section으로 보존하고,
+stage region의 진입·이탈 action과 마지막 일치 world page의 색조·tile
+layer override를 같은 typed rule runtime으로 실행한다.
 프로젝트 manifest의 stage music과 전투·퀘스트·UI semantic cue도
 동일한 data-driven 경계를 거쳐 WAV BGM/SFX로 재생한다.
 `input.actions`의 키보드·표준 게임패드 바인딩도 같은 canonical
 catalog로 컴파일되어 LÖVE와 Ebitengine 런타임이 한 설정을 공유한다.
+title과 pause의 접근성 메뉴에서는 카메라 움직임 감소/끄기, 피격
+flash 끄기, 알림 시간 연장을 설정할 수 있다. 이 설정은 새 게임과
+타이틀 복귀에 유지되고 player save의 독립 section으로 저장되어
+프로세스 재시작 직후 title에서도 복원된다.
 
 ## 실행
 
@@ -45,7 +60,8 @@ go run ./cmd/recreate
 
 대화·상점·인벤토리·흐름 메뉴에서는 `W/S` 또는 방향키로 이동하고
 `Enter`/`Space`로 결정한다. 상점의 `Q`는 판매, 인벤토리의 `Q`는 장착
-해제이며 `Esc`/`Backspace`는 닫기다.
+해제이며 `Esc`/`Backspace`는 닫기다. 턴제 전투도 같은 메뉴 입력을
+사용하며 허용된 전투에서 `Esc`로 도주한다.
 
 자동 화면 검증:
 
@@ -144,6 +160,8 @@ go run ./cmd/recreatectl unequip weapon
 go run ./cmd/recreatectl ability player ability.fire_bolt
 go run ./cmd/recreatectl ability preview.slime ability.slime_bump
 go run ./cmd/recreatectl encounter-start arena
+go run ./cmd/recreatectl action menu_confirm --frames 1
+go run ./cmd/recreatectl step --frames 1
 go run ./cmd/recreatectl remove preview.slime
 go run ./cmd/recreatectl position quest.slime.1 190 270
 go run ./cmd/recreatectl health quest.slime.1 1
@@ -170,6 +188,10 @@ go run ./cmd/recreatectl new-game stage.action_room default locale.ko
 직접 피해는 `ability damage + source attack - target defense`(최소 1),
 주기 피해는 RPG 공격·방어를 건너뛰며, 이동속도는 authored 이동량에
 `move_speed`와 정렬된 status multiplier를 차례로 적용한다.
+`world.turn_battle`은 전투 ID, turn, 플레이어·적 HP, 선택 가능한 스킬,
+현재 선택, 메시지와 모든 durable 결과를 반환한다. 전투 중
+`menu_up`, `menu_down`, `menu_confirm`, `menu_cancel`, `pause`도
+`action`과 `step`으로 실제 화면 입력과 같은 모델을 구동한다.
 
 `step`은 요청한 프레임을 원자적으로 진행한 뒤 실행 전 pause 상태를
 복원한다. 따라서 실행 중인 창에 `step`을 호출해도 멈춘 채 남지 않는다.
@@ -240,14 +262,20 @@ placement/definition ID, idle·pending·active·completed·failed 상태,
 현재 wave와 남은 지연 tick, 생존 수, 진입한 boss phase를 반환한다.
 `encounter-start`는 `auto_start=false`인 배치를 안정적인 placement ID로
 시작하며, 이미 시작한 배치에 대한 반복 호출은 상태를 바꾸지 않는다.
+같은 응답의 `world_state`에는 day, minute, `HH:MM` clock, 활성 page와
+정렬된 region ID, 작성된 region/page 수와 하루 진행 속도가 포함된다.
 
 `save`/`load`는 stage와 진입 spawn, locale, 게임 진행, flag, inventory,
-equipment, quest, 재화를 담은 versioned campaign 저장이다. 체력·위치·
+equipment, quest, 재화, 턴제 전투의 마지막 승패·도주 결과를 담은
+versioned campaign 저장이며 `world.state`에 일자와 시각도 담는다.
+활성 region과 page는 현재 stage에서 다시 계산한다. 체력·위치·
 전투·대화·카메라·portal cooldown 같은 현재 World 상태와 가상 입력,
 자동화 pause, Maker preview는 저장하지 않는다. `load`는 저장된 stage를
 authored content에서 새로 빌드하므로 World는 항상 해당 spawn의 초기
 상태로 시작한다. 동적 entity, entity 삭제 예약, 직접 dialogue 같은
 Maker preview가 남아 있으면 `save`와 `load`를 모두 명시적으로 거부한다.
+활성 턴제 전투와 컷신도 중간 상태를 저장하지 않으며 종료 전 save를
+거부한다.
 자동화는 저장 파일을 simulation checkpoint처럼 재사용하지 말고 setup
 명령과 고정 `step`을 다시 실행한다.
 
@@ -273,17 +301,43 @@ go run ./cmd/contentc \
   -output game/catalog.json
 ```
 
-현재 결과는 정의 56개, dependency path 88개다. canonical 파일을 쓰기
-전에 7개 stage의 모든 entry spawn과 2개 locale, 총 22개 조합을
+현재 결과는 정의 65개, dependency path 113개다. canonical 파일을 쓰기
+전에 9개 stage의 모든 entry spawn과 2개 locale, 총 34개 조합을
 attack/defense/move_speed 극값과 단독 장비를 포함한 5개 고유 Campaign
-프로필로 simulation까지 구성한다. 동일 입력은 byte-for-byte 같은
-catalog를 만든다.
+프로필, 즉 170개 파생 build로 simulation까지 구성한다. 동일 입력은
+byte-for-byte 같은 catalog를 만든다.
 
 `game/game.lua`의 `audio`는 master/music/SFX volume, semantic event별
 cue, stage별 music을 선언한다. `asset_type = "audio"`인 WAV만 패키징하며
 누락된 asset, 중복 event/stage, 범위를 벗어난 volume은 컴파일 전에
 거부된다. 샘플 음원은 저장소의 `tools/audiofixtures`로 생성한 원본이며
 출처와 해시는 `assets/AUDIO_SOURCES.md`에 기록한다.
+
+canonical `show_notice` action은 `text` 또는 `text_key`, `info`,
+`success`, `warning` tone과 초 단위 duration을 typed tick 표현으로
+컴파일한다.
+알림은 Campaign save가 아닌 일시적 View 상태이며 dialogue, shop,
+inventory modal 동안 표시와 시간이 함께 멈춘다. 현재 알림 전체는
+debug snapshot에도 그대로 노출된다.
+
+flow의 title/game_over/ending은 locale key뿐 아니라 profile 템플릿이
+직접 작성한 `heading`, `message`도 보존한다. `start_turn_battle` action과
+`turn_battle_state` condition은 참조와 상태 enum을 닫힌 타입으로
+컴파일한다.
+Campaign rule compiler는 `always`, `all`, `any`, `not`, `flag`,
+`quest_state`, `turn_battle_state`, `cutscene_active`, `time_between`,
+`region_active` 10개 조건을
+재귀적인 typed tree로 컴파일한다. NPC interaction과 stage trigger의
+`pages`도 같은 tree를 사용하며 현재 Campaign snapshot에서 마지막으로
+일치한 page 하나만 실행한다.
+`set_world_time`, `advance_world_time` action도 닫힌 타입으로 컴파일해
+대화·퀘스트·trigger·컷신과 월드 page hook에서 같은 transaction 경계를
+사용한다.
+
+`cutscene` 콘텐츠와 `start_cutscene` action도 같은 typed compiler를
+통과한다. 현재 step의 다국어 문장·화자·배경·남은 tick을 View와 debug
+snapshot에 노출하고, 컷신 동안 World tick을 정지한다. 정상 진행과
+건너뛰기 모두 아직 실행되지 않은 step action과 `on_complete`를 보존한다.
 
 같은 파일의 `input.actions`는 의미 action별 LÖVE 키 이름과 표준
 게임패드 버튼 이름을 선언한다. compiler가 action·키·버튼 목록을
@@ -303,7 +357,8 @@ cue, stage별 music을 선언한다. `asset_type = "audio"`인 WAV만 패키징�
 
 스키마상 유효하지만 현재 adapter가 적용하지 못하는 정의는 RPC 오류로
 버리지 않고 `fully_applied=false`, `runtime_compatible=false`와 구체적인
-warning을 반환한다. action 32종, condition 17종, stage section 7종도
+warning을 반환한다. content kind 16종, action 37종, condition 21종,
+stage section 8종도
 payload와 참조까지 닫힌 규칙으로 검사한다.
 
 ## 구조
@@ -326,7 +381,8 @@ Maker / debug client ──protocol v8──▶ gameapp
 - `internal/projectcheck`: 모든 stage·entry·locale과 Campaign/rule
   topology 사전 검증
 - `internal/campaign`: stage와 분리된 장기 진행 및 versioned player save
-- `internal/rulesruntime`: 대화·quest·inventory·shop의 원자적 규칙 실행
+- `internal/rulesruntime`: 대화·quest·inventory·shop·턴제 전투·컷신
+  hook의 원자적 규칙 실행
 - `internal/sim`: 렌더러와 분리된 고정소수점 결정적 게임 상태
 - `internal/gameapp`: AI, 저장, 화면 DTO, 프로토콜 backend
 - `internal/ebitapp`: Ebitengine 입력·스프라이트·화면·WAV 오디오 출력

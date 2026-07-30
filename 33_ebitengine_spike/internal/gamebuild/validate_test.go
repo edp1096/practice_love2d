@@ -269,6 +269,71 @@ func TestValidateDefinitionChecksDodgeRelationships(t *testing.T) {
 	}
 }
 
+func TestValidateDefinitionChecksBehaviorAIRelationships(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name   string
+		mutate func(map[string]any)
+	}{
+		{
+			name: "attack outside combat loadout",
+			mutate: func(components map[string]any) {
+				behavior := components["action.behavior_ai"].(map[string]any)
+				pattern := behavior["patterns"].([]any)[0].(map[string]any)
+				attack := pattern["attacks"].([]any)[0].(map[string]any)
+				attack["ability"] = "ability.sword_slash"
+			},
+		},
+		{
+			name: "first pattern is conditional",
+			mutate: func(components map[string]any) {
+				behavior := components["action.behavior_ai"].(map[string]any)
+				pattern := behavior["patterns"].([]any)[0].(map[string]any)
+				pattern["health_ratio_at_most"] = 0.75
+			},
+		},
+		{
+			name: "phase threshold is not descending",
+			mutate: func(components map[string]any) {
+				behavior := components["action.behavior_ai"].(map[string]any)
+				patterns := behavior["patterns"].([]any)
+				patterns[1].(map[string]any)["health_ratio_at_most"] = 1
+			},
+		},
+		{
+			name: "attack exceeds aggro range",
+			mutate: func(components map[string]any) {
+				behavior := components["action.behavior_ai"].(map[string]any)
+				pattern := behavior["patterns"].([]any)[1].(map[string]any)
+				attack := pattern["attacks"].([]any)[0].(map[string]any)
+				attack["maximum_range"] = 521
+			},
+		},
+	} {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			catalog := loadCatalog(t)
+			draft := definitionMap(t, catalog, "actor.grove_guardian")
+			components := draft["components"].(map[string]any)
+			test.mutate(components)
+			candidate := withDefinition(
+				t,
+				catalog,
+				"actor.grove_guardian",
+				draft,
+			)
+			if _, err := ValidateDefinition(
+				candidate,
+				"actor.grove_guardian",
+			); err == nil {
+				t.Fatal("invalid behavior AI passed semantic validation")
+			}
+		})
+	}
+}
+
 func TestValidateDefinitionChecksStageSectionPayloads(t *testing.T) {
 	t.Parallel()
 
@@ -328,7 +393,7 @@ func TestValidateDefinitionReportsSpawnWallCollisionAsRuntimeGap(t *testing.T) {
 	}
 }
 
-func TestValidateDefinitionChecksInteractableConditionRecursively(t *testing.T) {
+func TestValidateDefinitionAppliesInteractableConditionRecursively(t *testing.T) {
 	t.Parallel()
 
 	catalog := loadCatalog(t)
@@ -354,8 +419,8 @@ func TestValidateDefinitionChecksInteractableConditionRecursively(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.SchemaValid || result.FullyApplied ||
-		!warningsContain(result.Warnings, "conditions are not executed") {
+	if !result.SchemaValid ||
+		warningsContain(result.Warnings, "conditions are not executed") {
 		t.Fatalf("validation result = %#v", result)
 	}
 
@@ -370,7 +435,7 @@ func TestValidateDefinitionChecksInteractableConditionRecursively(t *testing.T) 
 	}
 }
 
-func TestValidateDefinitionAllowsOmittedInteractableRangeAsRuntimeGap(
+func TestValidateDefinitionAppliesOmittedInteractableRangeDefault(
 	t *testing.T,
 ) {
 	t.Parallel()
@@ -386,8 +451,8 @@ func TestValidateDefinitionAllowsOmittedInteractableRangeAsRuntimeGap(
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.SchemaValid || result.FullyApplied ||
-		!warningsContain(
+	if !result.SchemaValid ||
+		warningsContain(
 			result.Warnings,
 			"does not apply the rpg.interactable.range default",
 		) {

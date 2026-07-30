@@ -39,13 +39,51 @@ return {
         },
         ["action.combat"] = {
             team = "enemy",
-            abilities = {"ability.slime_bump"},
+            abilities = {
+                "ability.slime_bump",
+                "ability.fire_bolt",
+                "ability.whirlwind",
+            },
             primary = "ability.slime_bump",
         },
-        ["action.chase_ai"] = {
+        ["action.behavior_ai"] = {
             target_tag = "player",
             aggro_range = 520,
-            attack_distance = 44,
+            patterns = {
+                {
+                    id = "sentinel",
+                    movement = {
+                        minimum_range = 0,
+                        preferred_range = 44,
+                    },
+                    attacks = {
+                        {
+                            ability = "ability.slime_bump",
+                            maximum_range = 44,
+                        },
+                    },
+                },
+                {
+                    id = "awakened",
+                    health_ratio_at_most = 0.5,
+                    movement = {
+                        minimum_range = 88,
+                        preferred_range = 156,
+                        orbit = true,
+                    },
+                    attacks = {
+                        {
+                            ability = "ability.fire_bolt",
+                            minimum_range = 72,
+                            maximum_range = 320,
+                        },
+                        {
+                            ability = "ability.whirlwind",
+                            maximum_range = 56,
+                        },
+                    },
+                },
+            },
         },
     },
 }

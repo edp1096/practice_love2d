@@ -249,6 +249,16 @@ func TestWallPolygonScreenPointsUsesExactVerticesAndCameraTransform(
 	}
 }
 
+func TestTilemapOwnsStageVisualsInsteadOfCollisionGeometry(t *testing.T) {
+	t.Parallel()
+	if !shouldDrawCollisionGeometry(View{}) {
+		t.Fatal("shape-only stage hid its collision placeholders")
+	}
+	if shouldDrawCollisionGeometry(View{Tilemap: &TilemapView{}}) {
+		t.Fatal("tilemapped stage would paint collision geometry over its tiles")
+	}
+}
+
 func TestLayoutDialogueClampsSelectionAndKeepsEligibleOrder(
 	t *testing.T,
 ) {

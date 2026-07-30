@@ -12,6 +12,7 @@ import (
 	"sort"
 
 	"practice_love2d/33_ebitengine_spike/internal/campaign"
+	"practice_love2d/33_ebitengine_spike/internal/ebitapp"
 	"practice_love2d/33_ebitengine_spike/internal/gamebuild"
 	"practice_love2d/33_ebitengine_spike/internal/protocol"
 	"practice_love2d/33_ebitengine_spike/internal/sim"
@@ -815,6 +816,8 @@ var supportedActions = map[string]struct{}{
 	"move_x": {}, "move_y": {},
 	"attack": {}, "special": {}, "technique": {},
 	"parry": {}, "dodge": {}, "jump": {}, "interact": {},
+	"menu_up": {}, "menu_down": {}, "menu_confirm": {}, "menu_cancel": {},
+	"pause": {},
 }
 
 func (runtime *Runtime) scheduleAction(
@@ -834,7 +837,10 @@ func (runtime *Runtime) scheduleAction(
 		)
 	}
 	if (name == "attack" || name == "parry" ||
-		name == "dodge" || name == "interact") &&
+		name == "dodge" || name == "interact" ||
+		name == "menu_up" || name == "menu_down" ||
+		name == "menu_confirm" || name == "menu_cancel" ||
+		name == "pause") &&
 		(params.Value < 0 || params.Value > 1) {
 		return nil, fmt.Errorf("%s value must be between 0 and 1", name)
 	}
@@ -894,10 +900,31 @@ func (runtime *Runtime) step(ctx context.Context, frames int) (any, error) {
 				mode,
 			)
 		}
+		if handled, err := runtime.handleCutsceneActionsLocked(
+			ebitapp.Actions{},
+		); handled {
+			if err != nil {
+				runtime.restoreCheckpointLocked(checkpoint)
+				runtime.automationPaused = originalPaused
+				return nil, err
+			}
+			continue
+		}
+		if handled, err := runtime.handleTurnBattleActionsLocked(
+			ebitapp.Actions{},
+		); handled {
+			if err != nil {
+				runtime.restoreCheckpointLocked(checkpoint)
+				runtime.automationPaused = originalPaused
+				return nil, err
+			}
+			continue
+		}
 		input := sim.Input{}
 		if runtime.dialogue == nil &&
 			runtime.activeShopID == "" &&
-			!runtime.inventoryOpen {
+			!runtime.inventoryOpen &&
+			runtime.cutscene == nil {
 			runtime.mergeVirtualInputLocked(&input)
 		}
 		if err := runtime.tickLocked(input); err != nil {
@@ -941,8 +968,26 @@ func cloneBoolMap(source map[string]bool) map[string]bool {
 	return result
 }
 
+func cloneIntMap(source map[string]int) map[string]int {
+	result := make(map[string]int, len(source))
+	for id, value := range source {
+		result[id] = value
+	}
+	return result
+}
+
 func cloneStringMap(source map[string]string) map[string]string {
 	result := make(map[string]string, len(source))
+	for id, value := range source {
+		result[id] = value
+	}
+	return result
+}
+
+func cloneBehaviorAIStates(
+	source map[string]behaviorAIState,
+) map[string]behaviorAIState {
+	result := make(map[string]behaviorAIState, len(source))
 	for id, value := range source {
 		result[id] = value
 	}
@@ -974,6 +1019,18 @@ func (runtime *Runtime) save(ctx context.Context, slot string) (any, error) {
 		runtime.mu.RUnlock()
 		return nil, errors.New(
 			"save is unavailable while an authored equipment rebuild is pending",
+		)
+	}
+	if runtime.turnBattle != nil {
+		runtime.mu.RUnlock()
+		return nil, errors.New(
+			"save is unavailable while a turn battle is active",
+		)
+	}
+	if runtime.cutscene != nil {
+		runtime.mu.RUnlock()
+		return nil, errors.New(
+			"save is unavailable while a cutscene is active",
 		)
 	}
 	if runtime.simulation.HasTemporaryPreview() ||
@@ -1126,6 +1183,7 @@ func (runtime *Runtime) load(ctx context.Context, slot string) (any, error) {
 	runtime.campaign = activeCampaign
 	runtime.virtual = make(map[string]virtualAction)
 	runtime.pendingAbilities = make(map[string]string)
+	runtime.behaviorAI = make(map[string]behaviorAIState)
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
@@ -1133,6 +1191,7 @@ func (runtime *Runtime) load(ctx context.Context, slot string) (any, error) {
 	runtime.resetFlowPresentationLocked()
 	runtime.portalCooldownTicks = 0
 	runtime.portalInside = portalInside
+	runtime.resetTriggerStateLocked()
 	runtime.revision++
 
 	return campaignLoadResult{

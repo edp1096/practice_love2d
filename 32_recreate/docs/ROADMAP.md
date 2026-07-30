@@ -17,7 +17,7 @@
 - 넉백과 히트스톱
 - 이동형 무적 회피
 - 방향성 패링과 퍼펙트 패링
-- 추적 AI
+- 체력 단계·거리대·공전·스킬 순환 행동 AI
 - 기존 애셋 기반 sprite animation
 - 원격 의미 검사와 실화면 자동 테스트
 
@@ -84,6 +84,7 @@
 - 원자적 buy/sell을 보장하는 shop/economy
 - 기본 언어, fallback과 런타임 전환을 갖는 locale
 - NPC interactable, RPG HUD와 한글 font asset
+- 데이터 기반 스킬·적 편성·승패 후속 명령을 갖는 턴제 전투
 
 완료 조건:
 
@@ -95,11 +96,13 @@
 - 장착 아이템 판매를 차단하고 거래 잔액·수량을 원자적으로 유지
 - stage 전환과 성공·실패 콘텐츠 reload 뒤 session 상태 보존
 - 실제 LÖVE 한글 대화·HUD·상점 화면과 semantic snapshot 동시 확보
+- 순수 RPG profile에서 의뢰 수락 → 턴제 전투 → 보상 → 보고 → 엔딩
+  실제 화면 완주
 
 ## 5. 제작 경험 — 완료
 
 - actor, ability, projectile, status, encounter, stage, item, equipment,
-  dialogue, quest, shop, locale용 `lovectl new`
+  dialogue, quest, shop, locale, turn-skill, turn-battle용 `lovectl new`
 - 검증된 참조만 기록하는 순·역방향 dependency graph와 JSON 출력
 - 원격 content definition, stage·actor·ability·dialogue preview
 - 콘텐츠·TMX·runtime asset 변경 감지와 transactional hot reload
@@ -140,3 +143,39 @@
 
 Windows와 macOS의 실행 파일 패키징, 서명과 파일 교체 동작 검증은 해당
 환경을 준비하는 다음 배포 단계로 분리한다.
+
+## 7. 30·31 샘플 형태 복원 — R1 완료, 리뉴얼 진행 중
+
+재작성된 내부 기능만 통과하는 상태와 실제 한 편의 게임이 보이는 상태를
+구분한다. 세부 계획과 체크 결과는
+[SAMPLE_RENEWAL.md](SAMPLE_RENEWAL.md)를 기준으로 한다.
+
+- `30_misc`의 타일 마을과 집·잡화점 실내를 canonical TMX stage로 복원
+- 안내인과 상인의 실제 위치 및 왕복 portal 동선 복원
+- 집의 회복 trigger를 LÖVE와 Ebitengine의 공통 rule 계약으로 실행
+- runtime이 공개한 portal geometry로 좌표 하드코딩 없는 캠페인 자동화
+- 좁은 실내 HUD, collision-only wall과 tilemap 표현 경계 정리
+- LÖVE title → home/shop → save/restart → field/grove → ending/gameover
+  전체 화면·상태 인수
+
+R2는 도입·전투 학습·보스·귀환·엔딩 연출과 stage별 음악까지 실제
+캠페인에 넣었다. R3는 event/quest/dialogue 목적별 폼과 명령 builder,
+TMX actor·spawn 좌표와 trigger/portal property 편집까지 같은 Maker에
+연결했다. R4의 첫 단위로 순수 RPG 생성 profile에 저장 가능한 턴제
+전투를 넣었고, 세 profile 모두 생성 직후 의뢰 또는 encounter에서
+엔딩까지 가는 `journey`를 실제 LÖVE 고정 프레임 smoke로 검증한다.
+NPC interaction과 TMX trigger에는 마지막 일치 항목 우선의 조건부
+event page를 넣었고, Maker 카드·LÖVE·Ebitengine이 같은 page를
+편집·검증·실행한다. 배경·다국어 step·자동 진행·안전한 건너뛰기와
+후속 action을 갖는 컷신도 Maker 카드와 두 런타임에 연결했다. 프로젝트
+시각과 일자, 지역 진입·이탈, 마지막 일치 월드 page의 tint·tile layer·
+후속 action도 Maker/TMX와 두 런타임에 연결했고, 수호자 처치 뒤
+18:30 마을 귀환 장면을 전체 캠페인으로 검사한다. 30의 적·환경
+장치에서는 체력 단계·거리 유지·공전·스킬 순환 보스 AI, 1회성 월드
+아이템과 재진입 피해 구역을 현재 데이터 계약으로 일반화했다. 실제
+게임패드 버튼 이름만으로 22개 화면을 완주하고 카메라 움직임·피격
+flash·알림 시간 접근성 설정을 새 게임과 프로세스 재시작 뒤에도
+보존하는 검사까지 완료했다. 다음 배포 우선순위는 Windows·macOS
+호스트와 승인된 콘솔별 검증이다.
+R1~R3 완료를 RPG Maker 수준의 전체
+제작 경험 완료로 해석하지 않는다.

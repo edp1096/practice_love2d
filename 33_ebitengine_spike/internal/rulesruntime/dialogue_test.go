@@ -46,7 +46,7 @@ func TestVillageGuideDialogueRunsCompleteCampaignBranches(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertNoIntents(t, result)
+	assertNoticeIntent(t, result, "notice.quest.accepted", "success", 240)
 	state := live.Snapshot()
 	assertQuestStatus(
 		t,
@@ -582,7 +582,13 @@ func TestConcurrentDialogueChoiceCommitsExactlyOnce(t *testing.T) {
 	for outcome := range outcomes {
 		if outcome.err == nil {
 			successes++
-			assertNoIntents(t, outcome.result)
+			assertNoticeIntent(
+				t,
+				outcome.result,
+				"notice.quest.accepted",
+				"success",
+				240,
+			)
 			continue
 		}
 		if !reflect.DeepEqual(outcome.result, ActionResult{}) {
@@ -792,6 +798,25 @@ func assertNoIntents(t *testing.T, result ActionResult) {
 	t.Helper()
 	if result.Intents == nil || len(result.Intents) != 0 {
 		t.Fatalf("intents = %#v, want non-nil empty slice", result.Intents)
+	}
+}
+
+func assertNoticeIntent(
+	t *testing.T,
+	result ActionResult,
+	key string,
+	tone string,
+	ticks int,
+) {
+	t.Helper()
+	want := []Intent{{
+		Type:        IntentShowNotice,
+		NoticeKey:   key,
+		NoticeTone:  tone,
+		NoticeTicks: ticks,
+	}}
+	if !reflect.DeepEqual(result.Intents, want) {
+		t.Fatalf("intents = %#v, want %#v", result.Intents, want)
 	}
 }
 

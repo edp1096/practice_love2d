@@ -114,6 +114,17 @@ func TestRPGScaffoldsCreateTheExpectedContentKinds(t *testing.T) {
 			},
 		},
 		{
+			template:  "cutscene",
+			directory: "cutscenes",
+			name:      "arrival",
+			expected: []string{
+				`kind = "cutscene"`,
+				`id = "cutscene.arrival"`,
+				`id = "opening"`,
+				`on_complete = {}`,
+			},
+		},
+		{
 			template:  "quest",
 			directory: "quests",
 			name:      "find_ore",
@@ -131,6 +142,17 @@ func TestRPGScaffoldsCreateTheExpectedContentKinds(t *testing.T) {
 				`kind = "locale"`,
 				`id = "locale.ja"`,
 				`code = "ja"`,
+			},
+		},
+		{
+			template:  "turn-skill",
+			directory: "skills",
+			name:      "power_strike",
+			expected: []string{
+				`kind = "turn_skill"`,
+				`id = "turn_skill.power_strike"`,
+				`effect = "damage"`,
+				`target = "enemy"`,
 			},
 		},
 	}
@@ -179,6 +201,7 @@ func TestReferenceScaffoldsRequireTheCorrectContentKind(t *testing.T) {
 		{"projectile", "actor.magic_orb", `actor = "actor.magic_orb"`},
 		{"encounter", "actor.slime", `actor = "actor.slime"`},
 		{"shop", "item.potion", `item = "item.potion"`},
+		{"turn-battle", "actor.slime", `actor = "actor.slime"`},
 	}
 
 	for _, test := range tests {

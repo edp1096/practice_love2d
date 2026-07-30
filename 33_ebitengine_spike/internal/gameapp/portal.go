@@ -108,6 +108,7 @@ func (runtime *Runtime) transitionPortalLocked(
 	runtime.campaign = nextCampaign
 	runtime.virtual = make(map[string]virtualAction)
 	runtime.pendingAbilities = make(map[string]string)
+	runtime.behaviorAI = make(map[string]behaviorAIState)
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
@@ -115,6 +116,7 @@ func (runtime *Runtime) transitionPortalLocked(
 	runtime.resetFlowPresentationLocked()
 	runtime.portalCooldownTicks = portal.CooldownTicks
 	runtime.portalInside = portalInside
+	runtime.resetTriggerStateLocked()
 	return nil
 }
 

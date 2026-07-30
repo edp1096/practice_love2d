@@ -90,15 +90,16 @@ function Bridge:_handle(line)
     if method == "Runtime.ping" then
         self:_queue(id, {
             pong = true,
-            protocol = 8,
+            protocol = 9,
             semantic_world = true,
             content_validation = true,
             canonical_maps = true,
             transactional_saves = true,
+            physical_gamepad_injection = true,
         })
     elseif method == "Runtime.getProtocol" then
         self:_queue(id, {
-            version = 8,
+            version = 9,
             methods = {
                 "Runtime.ping",
                 "Runtime.getState",
@@ -122,6 +123,7 @@ function Bridge:_handle(line)
                 "Save.write",
                 "Save.load",
                 "Input.action",
+                "Input.gamepad",
                 "Test.setPaused",
                 "Test.step",
                 "Overlay.set",
@@ -393,6 +395,22 @@ function Bridge:_handle(line)
                 value = value,
                 frames = frames,
             })
+        end
+    elseif method == "Input.gamepad" then
+        local button = json.getString(line, "button")
+        local frames = math.floor(json.getNumber(line, "frames") or 1)
+        if not button then
+            self:_queue(id, nil, "missing gamepad button")
+        elseif frames < 1 or frames > 3600 then
+            self:_queue(id, nil, "frames must be between 1 and 3600")
+        else
+            local actions, input_error =
+                self.app.host.input:tapGamepad(button, frames)
+            self:_queue(id, actions and {
+                button = button,
+                actions = actions,
+                frames = frames,
+            } or nil, input_error)
         end
     elseif method == "Test.setPaused" then
         local enabled = json.getBoolean(line, "enabled")

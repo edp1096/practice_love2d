@@ -5,6 +5,42 @@ local feature = {
     requires = {"engine.features.world"},
 }
 
+local notice_tones = {
+    info = {
+        fill = {0.04, 0.09, 0.14, 0.94},
+        outline = {0.35, 0.72, 0.92, 1},
+        text = {0.9, 0.97, 1, 1},
+    },
+    success = {
+        fill = {0.035, 0.13, 0.09, 0.94},
+        outline = {0.35, 0.88, 0.57, 1},
+        text = {0.88, 1, 0.92, 1},
+    },
+    warning = {
+        fill = {0.16, 0.095, 0.025, 0.94},
+        outline = {1, 0.7, 0.24, 1},
+        text = {1, 0.95, 0.82, 1},
+    },
+}
+
+local function noticeState(world)
+    local state = world.feature_state.presentation_basic
+    if not state then
+        state = {notice = nil}
+        world.feature_state.presentation_basic = state
+    end
+    return state
+end
+
+local function noticeText(world, notice)
+    if not notice then return nil end
+    local locale = world:service("locale")
+    if notice.text_key and locale then
+        return locale:text(notice.text_key, notice.text or notice.text_key)
+    end
+    return notice.text or notice.text_key
+end
+
 local function validateColor(color, validator, path, required)
     color = validator:array(color, path, required)
     if not color then return end
@@ -224,8 +260,10 @@ local function inputHints(world)
 end
 
 function hud_system:draw(world)
+    local view = world:view()
+    local panel_width = math.min(390, math.max(0, view.width - 24))
     love.graphics.setColor(0.02, 0.025, 0.04, 0.82)
-    love.graphics.rectangle("fill", 12, 12, 390, 62, 8, 8)
+    love.graphics.rectangle("fill", 12, 12, panel_width, 62, 8, 8)
     love.graphics.setColor(1, 1, 1, 1)
     local locale = world:service("locale")
     local stage_name = world.stage.name or world.stage.id
@@ -247,14 +285,89 @@ function hud_system:draw(world)
     end
     love.graphics.print(status, 24, 42)
     love.graphics.setColor(0.78, 0.82, 0.9, 1)
-    local view = world:view()
+    local hints = inputHints(world)
+    if hints == "" then return end
+    local font = love.graphics.getFont()
+    local _, wrapped = font:getWrap(hints, math.max(1, view.width - 36))
+    local hint_height = math.max(
+        42,
+        #wrapped * font:getHeight() + 16
+    )
+    love.graphics.setColor(0.02, 0.025, 0.04, 0.82)
+    love.graphics.rectangle(
+        "fill",
+        0,
+        view.height - hint_height,
+        view.width,
+        hint_height
+    )
+    love.graphics.setColor(0.78, 0.82, 0.9, 1)
     love.graphics.printf(
-        inputHints(world),
+        hints,
         18,
-        view.height - 42,
+        view.height - hint_height + 8,
         view.width - 36,
         "left"
     )
+end
+
+local notice_system = {
+    id = "presentation.basic.notice",
+    phase = "presentation",
+    order = 1000,
+    draw_order = 9000,
+    draw_space = "screen",
+}
+
+function notice_system:updateUnscaled(world, raw_dt)
+    local state = noticeState(world)
+    local notice = state.notice
+    if not notice then return end
+    local dialogue = world.feature_state.dialogue
+    local shop = world.feature_state.shop
+    if (dialogue and dialogue.active) or (shop and shop.active) then
+        return
+    end
+    notice.remaining = math.max(0, notice.remaining - raw_dt)
+    if notice.remaining == 0 then state.notice = nil end
+end
+
+function notice_system:draw(world)
+    local notice = noticeState(world).notice
+    if not notice then return end
+    local dialogue = world.feature_state.dialogue
+    local shop = world.feature_state.shop
+    if (dialogue and dialogue.active) or (shop and shop.active) then
+        return
+    end
+    local text = noticeText(world, notice)
+    if not text or text == "" then return end
+
+    local view = world:view()
+    local width = math.min(620, math.max(0, view.width - 48))
+    if width <= 0 then return end
+    local font = love.graphics.getFont()
+    local _, wrapped = font:getWrap(text, math.max(1, width - 40))
+    local height = math.max(50, #wrapped * font:getHeight() + 24)
+    local x = (view.width - width) / 2
+    local y = math.max(12, view.height - height - 72)
+    local tone = notice_tones[notice.tone] or notice_tones.info
+
+    setColor(tone.fill)
+    love.graphics.rectangle("fill", x, y, width, height, 9, 9)
+    setColor(tone.outline)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle("line", x, y, width, height, 9, 9)
+    love.graphics.setLineWidth(1)
+    setColor(tone.text)
+    love.graphics.printf(
+        text,
+        x + 20,
+        y + (height - #wrapped * font:getHeight()) / 2,
+        width - 40,
+        "center"
+    )
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 function feature:register(host)
@@ -268,9 +381,85 @@ function feature:register(host)
             }, config)
         end,
     })
+    host.rules:registerAction("show_notice", {
+        validate = function(action, validator, path)
+            validator:keys(
+                action,
+                {"type", "text", "text_key", "duration", "tone"},
+                path
+            )
+            local text = validator:string(
+                action.text,
+                path .. ".text",
+                false
+            )
+            local text_key = validator:string(
+                action.text_key,
+                path .. ".text_key",
+                false
+            )
+            if not text and not text_key then
+                validator:error(path, "requires text or text_key")
+            end
+            validator:positive(
+                action.duration,
+                path .. ".duration",
+                false
+            )
+            validator:enum(
+                action.tone,
+                {"info", "success", "warning"},
+                path .. ".tone",
+                false
+            )
+        end,
+        execute = function(action, context)
+            local duration = action.duration or 3
+            local accessibility =
+                context.world:service("accessibility")
+            if accessibility then
+                duration = duration * accessibility:noticeScale()
+            end
+            local state = noticeState(context.world)
+            state.notice = {
+                text = action.text,
+                text_key = action.text_key,
+                tone = action.tone or "info",
+                duration = duration,
+                remaining = duration,
+            }
+            return {
+                applied = true,
+                text = noticeText(context.world, state.notice),
+                tone = state.notice.tone,
+                duration = duration,
+            }
+        end,
+    })
+    host:registerWorldInspector("presentation.basic.notice", function(world)
+        local notice = noticeState(world).notice
+        if not notice then
+            return {
+                notice = {
+                    active = false,
+                },
+            }
+        end
+        return {
+            notice = {
+                active = true,
+                text = noticeText(world, notice),
+                text_key = notice.text_key,
+                tone = notice.tone,
+                duration = notice.duration,
+                remaining = notice.remaining,
+            },
+        }
+    end)
     host:registerSystem(background_system)
     host:registerSystem(render_system)
     host:registerSystem(hud_system)
+    host:registerSystem(notice_system)
 end
 
 return feature

@@ -59,6 +59,11 @@ function Session:registerSection(name, definition)
         "session section validate must be a function"
     )
     assert(
+        definition.persistent == nil or
+            type(definition.persistent) == "boolean",
+        "session section persistent must be a boolean"
+    )
+    assert(
         not self.sections[name],
         "duplicate session section: " .. name
     )
@@ -143,6 +148,22 @@ function Session:registerSection(name, definition)
     self.versions[name] = current_version
     self.sections[name] = definition
     return candidate
+end
+
+function Session:exportPersistentStore()
+    local known, known_error = self:validateKnown()
+    if not known then return nil, known_error end
+    local result = {
+        values = {},
+        versions = {},
+    }
+    for _, name in ipairs(util.sortedKeys(self.sections)) do
+        if self.sections[name].persistent == true then
+            result.values[name] = util.deepCopy(self.values[name])
+            result.versions[name] = self.versions[name]
+        end
+    end
+    return result
 end
 
 function Session:namespace(name, defaults)

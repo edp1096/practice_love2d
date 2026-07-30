@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="2025.11.21" orientation="orthogonal" renderorder="right-down" width="13" height="14" tilewidth="32" tileheight="32" infinite="0" nextlayerid="11" nextobjectid="63">
+ <properties>
+  <property name="stage_id" value="stage.village_home"/>
+  <property name="display_name" value="Willow Village Home"/>
+  <property name="display_name_key" value="stage.village_home.name"/>
+  <property name="mode" value="topdown"/>
+  <property name="camera_width" type="float" value="416"/>
+  <property name="camera_height" type="float" value="448"/>
+  <property name="background" value="#090b10"/>
+ </properties>
+ <tileset firstgid="1" name="tileset_interior1" tilewidth="32" tileheight="32" tilecount="256" columns="16">
+  <properties>
+   <property name="asset" value="image.interior_tileset"/>
+  </properties>
+  <image source="../../assets/runtime/images/tilesets/tileset_interior1.png" trans="ff00ff" width="512" height="512"/>
+ </tileset>
+ <layer id="1" name="Ground" width="13" height="14" locked="1">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,
+43,44,45,45,45,45,45,45,45,45,45,46,47,
+59,61,126,126,126,126,126,126,126,126,126,62,63,
+59,61,126,126,126,126,126,126,126,126,126,61,63,
+59,61,126,126,126,126,126,126,126,126,126,61,63,
+59,61,126,126,126,126,126,126,126,126,126,61,63,
+59,61,126,126,126,126,126,126,126,126,126,61,63,
+59,61,126,126,126,126,126,126,126,126,126,61,63,
+59,61,126,126,126,126,125,125,125,126,126,61,63,
+75,76,77,77,77,125,125,125,125,125,77,78,79,
+91,92,93,93,93,93,125,125,125,93,93,94,95,
+0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+ <layer id="2" name="Decos" width="13" height="14">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,18,19,117,18,19,0,0,0,0,0,0,
+0,0,34,35,0,34,35,0,0,0,0,0,0,
+0,0,50,51,0,50,51,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,66,67,116,0,0,0,0,0,0,0,0,
+0,0,82,83,132,0,0,0,0,0,0,0,0,
+0,0,120,120,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+ <objectgroup id="10" name="Stage Objects">
+  <object id="52" name="player" class="spawn" x="240" y="320">
+   <properties>
+    <property name="actor" value="actor.hero"/>
+   </properties>
+   <point/>
+  </object>
+  <object id="53" name="default" class="spawn_point" x="240" y="320"><point/></object>
+  <object id="54" name="entry" class="spawn_point" x="240" y="320"><point/></object>
+  <object id="55" name="west_wall" class="wall" x="0" y="64" width="32" height="320"/>
+  <object id="56" name="south_left" class="wall" x="0" y="352" width="192" height="32"/>
+  <object id="57" name="south_right" class="wall" x="288" y="352" width="128" height="32"/>
+  <object id="58" name="east_wall" class="wall" x="384" y="64" width="32" height="320"/>
+  <object id="59" name="north_wall" class="wall" x="0" y="64" width="416" height="32"/>
+  <object id="60" name="bed_wall" class="wall" x="64" y="224" width="96" height="64"/>
+  <object id="61" name="to_village" class="portal" x="192" y="384" width="96" height="32">
+   <properties>
+    <property name="target_stage" value="stage.village"/>
+    <property name="target_spawn" value="home_return"/>
+   </properties>
+  </object>
+  <object id="62" name="rest_area" class="trigger" x="64" y="96" width="160" height="96">
+   <properties>
+    <property name="cooldown" type="float" value="1"/>
+    <property name="actions" value="[{&quot;type&quot;:&quot;heal&quot;,&quot;amount&quot;:30},{&quot;type&quot;:&quot;show_notice&quot;,&quot;text_key&quot;:&quot;notice.home.rest&quot;,&quot;tone&quot;:&quot;success&quot;,&quot;duration&quot;:3}]"/>
+   </properties>
+  </object>
+ </objectgroup>
+</map>

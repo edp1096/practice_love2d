@@ -22,14 +22,7 @@ func TestCampaignSaveRestoresDurableStateIntoFreshProcessWorld(t *testing.T) {
 
 	// These changes deliberately exercise every important class of transient
 	// state. None may enter the player-save payload.
-	callRuntime(
-		t,
-		processA,
-		protocol.MethodEntitySetPosition,
-		protocol.SetPositionParams{EntityID: "player", X: 310, Y: 240},
-	)
-	scheduleProtocolAction(t, processA, "interact")
-	stepProtocol(t, processA, 1)
+	openVillageGuideDialogue(t, processA)
 	dialogue, err := processA.DialogueState()
 	if err != nil {
 		t.Fatal(err)
@@ -141,10 +134,7 @@ func TestCampaignSaveRestoresDurableStateIntoFreshProcessWorld(t *testing.T) {
 	loadedWorld := processB.simulation.Snapshot()
 	loadedPlayer := entitySnapshot(t, processB, "player")
 	if loadedWorld.Tick != 0 || loadedWorld.WorldTick != 0 ||
-		loadedPlayer.Position != (sim.Vec{
-			X: sim.Pixels(150),
-			Y: sim.Pixels(270),
-		}) ||
+		loadedPlayer.Position != initialPlayer.Position ||
 		loadedPlayer.Health != initialPlayer.MaxHealth ||
 		loadedWorld.Dialogue.Active ||
 		loadedWorld.Camera.ShakeTicks != 0 {
@@ -423,18 +413,7 @@ func TestCampaignLoadFailuresAreFullyAtomic(t *testing.T) {
 				)
 			}
 
-			callRuntime(
-				t,
-				runtime,
-				protocol.MethodEntitySetPosition,
-				protocol.SetPositionParams{
-					EntityID: "player",
-					X:        350,
-					Y:        240,
-				},
-			)
-			scheduleProtocolAction(t, runtime, "interact")
-			stepProtocol(t, runtime, 1)
+			openVillageGuideDialogue(t, runtime)
 			if _, err := runtime.MoveDialogueSelection(1); err != nil {
 				t.Fatal(err)
 			}

@@ -37,8 +37,13 @@ func TestCompleteCampaignRulesAndNumbers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Intents) != 0 {
-		t.Fatalf("accept intents = %#v", result.Intents)
+	if got, want := result.Intents, []Intent{{
+		Type:        IntentShowNotice,
+		NoticeKey:   "notice.quest.accepted",
+		NoticeTone:  "success",
+		NoticeTicks: 240,
+	}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("accept intents = %#v, want %#v", got, want)
 	}
 	state := live.Snapshot()
 	assertQuestStatus(t, state, "quest.grove_guardian", campaign.QuestActive)
@@ -113,8 +118,13 @@ func TestCompleteCampaignRulesAndNumbers(t *testing.T) {
 		[]string{"quest.grove_guardian"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("completed quests = %q, want %q", got, want)
 	}
-	if len(completedEvent.Intents) != 0 {
-		t.Fatalf("completion intents = %#v", completedEvent.Intents)
+	if got, want := completedEvent.Intents, []Intent{{
+		Type:        IntentShowNotice,
+		NoticeKey:   "notice.quest.completed",
+		NoticeTone:  "success",
+		NoticeTicks: 240,
+	}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("completion intents = %#v, want %#v", got, want)
 	}
 
 	state = live.Snapshot()
@@ -148,6 +158,144 @@ func TestCompleteCampaignRulesAndNumbers(t *testing.T) {
 	state = live.Snapshot()
 	if !state.Flow.Completed || state.Mode != campaign.ModeEnding {
 		t.Fatalf("ending flow = %#v, mode = %q", state.Flow, state.Mode)
+	}
+}
+
+func TestCutsceneActionsStayTypedAndTransientAtTheHostBoundary(
+	t *testing.T,
+) {
+	t.Parallel()
+	executor, live, rules := newCompleteRuntime(t)
+	cutscene, exists := rules.Cutscene("cutscene.village_arrival")
+	if !exists || len(cutscene.Steps) != 2 {
+		t.Fatalf("cutscene = %#v, exists=%v", cutscene, exists)
+	}
+	result, err := executor.Execute(live, []gamebuild.RuleAction{{
+		Type:       gamebuild.RuleActionStartCutscene,
+		CutsceneID: cutscene.ID,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := result.Intents, []Intent{{
+		Type:       IntentStartCutscene,
+		CutsceneID: cutscene.ID,
+	}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("cutscene intents = %#v, want %#v", got, want)
+	}
+	active, err := executor.EvaluateCondition(
+		live,
+		&gamebuild.RuleCondition{
+			Type:       gamebuild.RuleConditionCutsceneActive,
+			CutsceneID: cutscene.ID,
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if active {
+		t.Fatal("durable executor claimed ownership of transient cutscene state")
+	}
+}
+
+func TestWorldClockActionsAndOvernightConditionAreDurable(t *testing.T) {
+	t.Parallel()
+	executor, live, _ := newCompleteRuntime(t)
+
+	if _, err := executor.Execute(live, []gamebuild.RuleAction{{
+		Type:        gamebuild.RuleActionSetWorldTime,
+		WorldDay:    5,
+		WorldMinute: 23*60 + 30,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	night := gamebuild.RuleCondition{
+		Type:         gamebuild.RuleConditionTimeBetween,
+		StartMinute:  18 * 60,
+		FinishMinute: 6 * 60,
+	}
+	matched, err := executor.EvaluateCondition(live, &night)
+	if err != nil || !matched {
+		t.Fatalf("23:30 overnight condition = %t, %v", matched, err)
+	}
+
+	if _, err := executor.Execute(live, []gamebuild.RuleAction{{
+		Type:         gamebuild.RuleActionAdvanceWorldTime,
+		WorldMinutes: 90,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	state := live.Snapshot()
+	if state.World.Day != 6 || state.World.Minute != 60 {
+		t.Fatalf("advanced world clock = %#v", state.World)
+	}
+	matched, err = executor.EvaluateCondition(live, &night)
+	if err != nil || !matched {
+		t.Fatalf("01:00 overnight condition = %t, %v", matched, err)
+	}
+
+	day := gamebuild.RuleCondition{
+		Type:         gamebuild.RuleConditionTimeBetween,
+		StartMinute:  6 * 60,
+		FinishMinute: 18 * 60,
+	}
+	matched, err = executor.EvaluateCondition(live, &day)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if matched {
+		t.Fatal("01:00 matched daytime condition")
+	}
+}
+
+func TestCompositeAndFlagConditionsUseOneCampaignSnapshot(t *testing.T) {
+	t.Parallel()
+
+	executor, live, _ := newCompleteRuntime(t)
+	if len(executor.config.Flags) == 0 {
+		t.Fatal("complete runtime has no configured flag")
+	}
+	flagName := executor.config.Flags[0]
+	flagTrue := gamebuild.RuleCondition{
+		Type:      gamebuild.RuleConditionFlag,
+		FlagName:  flagName,
+		FlagValue: true,
+	}
+	before := gamebuild.RuleCondition{
+		Type: gamebuild.RuleConditionAll,
+		Conditions: []gamebuild.RuleCondition{
+			{Type: gamebuild.RuleConditionAlways},
+			{
+				Type:      gamebuild.RuleConditionNot,
+				Condition: &flagTrue,
+			},
+		},
+	}
+	matched, err := executor.EvaluateCondition(live, &before)
+	if err != nil || !matched {
+		t.Fatalf("before condition = %v, %v", matched, err)
+	}
+	if _, err := executor.Execute(live, []gamebuild.RuleAction{{
+		Type:      gamebuild.RuleActionSetFlag,
+		FlagName:  flagName,
+		FlagValue: true,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	after := gamebuild.RuleCondition{
+		Type: gamebuild.RuleConditionAny,
+		Conditions: []gamebuild.RuleCondition{
+			{
+				Type:       gamebuild.RuleConditionQuestState,
+				QuestID:    "quest.grove_guardian",
+				QuestState: gamebuild.RuleQuestCompleted,
+			},
+			flagTrue,
+		},
+	}
+	matched, err = executor.EvaluateCondition(live, &after)
+	if err != nil || !matched {
+		t.Fatalf("after condition = %v, %v", matched, err)
 	}
 }
 

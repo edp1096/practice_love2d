@@ -4,6 +4,7 @@ local util = require "engine.core.util"
 local feature = {
     id = "game_flow",
     requires = {
+        "engine.features.accessibility",
         "engine.features.session",
         "engine.features.world",
     },
@@ -174,6 +175,7 @@ function feature:register(host)
             end
             state = {
                 mode = mode,
+                panel = nil,
                 selected = 1,
                 notice = nil,
                 notice_success = false,
@@ -200,15 +202,69 @@ function feature:register(host)
                 label = locale and locale:text(key, fallback) or fallback,
             }
         end
+        if state.panel == "accessibility" then
+            local accessibility = world:service("accessibility")
+            local settings = accessibility:inspect()
+            local locale = world:service("locale")
+            local function value(key, fallback)
+                return locale and locale:text(key, fallback) or fallback
+            end
+            add(
+                "accessibility_motion",
+                "accessibility.motion",
+                "Camera motion"
+            )
+            options[#options].label = options[#options].label .. ": " ..
+                value(
+                    "accessibility.motion." .. settings.motion,
+                    settings.motion
+                )
+            add(
+                "accessibility_hit_flash",
+                "accessibility.hit_flash",
+                "Hit flash"
+            )
+            options[#options].label = options[#options].label .. ": " ..
+                value(
+                    settings.hit_flash and
+                        "accessibility.value.on" or
+                        "accessibility.value.off",
+                    settings.hit_flash and "On" or "Off"
+                )
+            add(
+                "accessibility_notice_duration",
+                "accessibility.notice_duration",
+                "Message duration"
+            )
+            options[#options].label = options[#options].label .. ": " ..
+                value(
+                    "accessibility.notice_duration." ..
+                        settings.notice_duration,
+                    settings.notice_duration
+                )
+            add("accessibility_back", "flow.menu.back", "Back")
+            state.selected = util.clamp(state.selected, 1, #options)
+            return options
+        end
         if state.mode == "title" then
             add("new_game", "flow.menu.new_game", "New Game")
             if hasSave() then
                 add("continue", "flow.menu.continue", "Continue")
             end
+            add(
+                "accessibility",
+                "flow.menu.accessibility",
+                "Accessibility"
+            )
             add("quit", "flow.menu.quit", "Quit")
         elseif state.mode == "paused" then
             add("resume", "flow.menu.resume", "Resume")
             add("save", "flow.menu.save", "Save")
+            add(
+                "accessibility",
+                "flow.menu.accessibility",
+                "Accessibility"
+            )
             add("title", "flow.menu.title", "Return to Title")
         elseif state.mode == "gameover" then
             add("retry", "flow.menu.retry", "Retry")
@@ -251,6 +307,7 @@ function feature:register(host)
         if state.mode == mode then return false end
         local previous = state.mode
         state.mode = mode
+        state.panel = nil
         state.selected = 1
         state.notice = nil
         state.notice_remaining = 0
@@ -261,8 +318,9 @@ function feature:register(host)
         return true
     end
 
-    local function activate(world, option)
+    local function activate(world, option, direction)
         local state = stateFor(world)
+        local keep_selection = false
         if option.id == "new_game" then
             world:request({
                 type = "new_game",
@@ -287,8 +345,27 @@ function feature:register(host)
             world:request({type = "return_to_title"})
         elseif option.id == "retry" then
             world:request({type = "restart_stage"})
+        elseif option.id == "accessibility" then
+            state.panel = "accessibility"
+        elseif option.id == "accessibility_back" then
+            state.panel = nil
+        elseif option.id == "accessibility_motion" then
+            world:service("accessibility"):cycle(
+                "motion",
+                direction or 1
+            )
+            keep_selection = true
+        elseif option.id == "accessibility_hit_flash" then
+            world:service("accessibility"):cycle("hit_flash", 1)
+            keep_selection = true
+        elseif option.id == "accessibility_notice_duration" then
+            world:service("accessibility"):cycle(
+                "notice_duration",
+                direction or 1
+            )
+            keep_selection = true
         end
-        state.selected = 1
+        if not keep_selection then state.selected = 1 end
     end
 
     host:registerBootValidator("game_flow", function()
@@ -407,9 +484,24 @@ function feature:register(host)
                     state.selected = 1
                 end
             end
-            if input:consumePressed("menu_cancel") and
+            local menu_left = input:hasAction("menu_left") and
+                input:consumePressed("menu_left") or false
+            local menu_right = input:hasAction("menu_right") and
+                input:consumePressed("menu_right") or false
+            local menu_cancel = input:consumePressed("menu_cancel")
+            if menu_cancel and
+               state.panel == "accessibility" then
+                state.panel = nil
+                state.selected = 1
+            elseif menu_cancel and
                state.mode == "paused" then
                 setMode(world, "playing")
+            elseif state.panel == "accessibility" and
+               menu_left ~= menu_right then
+                local option = options[state.selected]
+                if option then
+                    activate(world, option, menu_left and -1 or 1)
+                end
             elseif input:consumePressed("menu_confirm") then
                 local option = options[state.selected]
                 if option then activate(world, option) end
@@ -433,6 +525,9 @@ function feature:register(host)
                 started = progress.started,
                 completed = progress.completed,
                 notice = state.notice,
+                panel = state.panel,
+                accessibility =
+                    world:service("accessibility"):inspect(),
             },
         }
     end)
@@ -459,7 +554,17 @@ function feature:register(host)
         local screen
         local heading
         local message
-        if state.mode == "title" then
+        if state.panel == "accessibility" then
+            local locale = world:service("locale")
+            heading = locale and locale:text(
+                "accessibility.heading",
+                "Accessibility"
+            ) or "Accessibility"
+            message = locale and locale:text(
+                "accessibility.message",
+                "Adjust visual feedback and message duration."
+            ) or "Adjust visual feedback and message duration."
+        elseif state.mode == "title" then
             screen = config.title
             heading = screenText(
                 world,
@@ -563,7 +668,7 @@ function feature:register(host)
                 1
             )
             love.graphics.printf(
-                (selected and "▶  " or "   ") .. option.label,
+                (selected and ">  " or "   ") .. option.label,
                 view.width / 2 - 150,
                 y,
                 300,
@@ -591,8 +696,8 @@ function feature:register(host)
         love.graphics.printf(
             locale and locale:text(
                 "flow.controls",
-                "↑/↓  Select    Enter  Confirm    Esc  Back"
-            ) or "↑/↓  Select    Enter  Confirm    Esc  Back",
+                "Up/Down  Select    Enter  Confirm    Esc  Back"
+            ) or "Up/Down  Select    Enter  Confirm    Esc  Back",
             40,
             view.height - 34,
             view.width - 80,

@@ -13,10 +13,11 @@ import (
 )
 
 type protocolClient struct {
-	host    string
-	port    int
-	timeout time.Duration
-	nextID  atomic.Int64
+	host      string
+	port      int
+	timeout   time.Duration
+	inputMode string
+	nextID    atomic.Int64
 }
 
 type protocolRequest struct {

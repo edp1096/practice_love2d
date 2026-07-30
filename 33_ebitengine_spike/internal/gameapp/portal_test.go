@@ -283,18 +283,7 @@ func TestPortalRoundTripRebuildsWorldAndPreservesCampaign(t *testing.T) {
 
 	// Dialogue, camera shake, and the current input edge all belong to the old
 	// World. Open authored dialogue first so its reset is observable.
-	callRuntime(
-		t,
-		runtime,
-		protocol.MethodEntitySetPosition,
-		protocol.SetPositionParams{
-			EntityID: "player",
-			X:        350,
-			Y:        240,
-		},
-	)
-	scheduleProtocolAction(t, runtime, "interact")
-	stepProtocol(t, runtime, 1)
+	openVillageGuideDialogue(t, runtime)
 	dialogue, err := runtime.DialogueState()
 	if err != nil {
 		t.Fatal(err)
@@ -364,6 +353,7 @@ func TestPortalRoundTripRebuildsWorldAndPreservesCampaign(t *testing.T) {
 			Value:    1,
 		},
 	)
+	stepProtocol(t, runtime, runtime.portalCooldownTicks)
 	moveEntityToPortal(t, runtime, "player", "to_grove")
 	beforeRevision = runtime.revision
 	scheduleProtocolAction(t, runtime, "attack")
@@ -422,9 +412,9 @@ func TestPortalRoundTripRebuildsWorldAndPreservesCampaign(t *testing.T) {
 	moveEntityToPortal(t, runtime, "player", "to_village")
 	stepProtocol(t, runtime, 1)
 	assertLocation(t, runtime, "stage.village", "field_return")
-	assertFreshWorld(t, runtime, 850, 270)
+	assertFreshWorld(t, runtime, 864, 270)
 	guide := entitySnapshot(t, runtime, "guide")
-	if guide.Position != (sim.Vec{X: sim.Pixels(310), Y: sim.Pixels(240)}) {
+	if guide.Position != (sim.Vec{X: sim.Pixels(384), Y: sim.Pixels(784)}) {
 		t.Fatalf("village guide transient position = %#v", guide.Position)
 	}
 	if got := runtime.campaign.Snapshot().Currency; got != 17 {

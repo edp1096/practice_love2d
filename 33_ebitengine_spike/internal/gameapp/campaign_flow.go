@@ -20,28 +20,42 @@ type FlowOptionState struct {
 // FlowState is the presentation/debug contract for title, pause, game-over,
 // and ending. It contains no renderer or platform-specific input state.
 type FlowState struct {
-	Active        bool              `json:"active"`
-	Mode          campaign.Mode     `json:"mode"`
-	Heading       string            `json:"heading"`
-	Message       string            `json:"message"`
-	Options       []FlowOptionState `json:"options"`
-	SelectedIndex int               `json:"selected_index"`
-	HasSave       bool              `json:"has_save"`
-	Status        string            `json:"status,omitempty"`
-	Revision      uint64            `json:"revision"`
+	Active        bool                           `json:"active"`
+	Mode          campaign.Mode                  `json:"mode"`
+	Heading       string                         `json:"heading"`
+	Message       string                         `json:"message"`
+	Options       []FlowOptionState              `json:"options"`
+	SelectedIndex int                            `json:"selected_index"`
+	HasSave       bool                           `json:"has_save"`
+	Status        string                         `json:"status,omitempty"`
+	Panel         string                         `json:"panel,omitempty"`
+	Accessibility campaign.AccessibilitySettings `json:"accessibility"`
+	Revision      uint64                         `json:"revision"`
 }
 
 type flowCommand string
 
 const (
-	flowCommandNewGame  flowCommand = "new_game"
-	flowCommandContinue flowCommand = "continue"
-	flowCommandQuit     flowCommand = "quit"
-	flowCommandResume   flowCommand = "resume"
-	flowCommandSave     flowCommand = "save"
-	flowCommandTitle    flowCommand = "title"
-	flowCommandRetry    flowCommand = "retry"
+	flowCommandNewGame               flowCommand = "new_game"
+	flowCommandContinue              flowCommand = "continue"
+	flowCommandQuit                  flowCommand = "quit"
+	flowCommandResume                flowCommand = "resume"
+	flowCommandSave                  flowCommand = "save"
+	flowCommandTitle                 flowCommand = "title"
+	flowCommandRetry                 flowCommand = "retry"
+	flowCommandAccessibility         flowCommand = "accessibility"
+	flowCommandAccessibilityMotion   flowCommand = "accessibility_motion"
+	flowCommandAccessibilityHitFlash flowCommand = "accessibility_hit_flash"
+	flowCommandAccessibilityNotice   flowCommand = "accessibility_notice_duration"
+	flowCommandAccessibilityBack     flowCommand = "accessibility_back"
 )
+
+func authoredFlowCopy(value string, fallback string) string {
+	if value != "" {
+		return value
+	}
+	return fallback
+}
 
 func (runtime *Runtime) FlowState() (FlowState, error) {
 	runtime.mu.RLock()
@@ -122,6 +136,8 @@ func (runtime *Runtime) flowStateLocked() (FlowState, error) {
 		SelectedIndex: -1,
 		HasSave:       runtime.continueAvailable,
 		Status:        runtime.flowStatus,
+		Panel:         runtime.flowPanel,
+		Accessibility: state.Accessibility,
 		Revision:      runtime.revision,
 	}
 	if !result.Active {
@@ -129,14 +145,65 @@ func (runtime *Runtime) flowStateLocked() (FlowState, error) {
 	}
 
 	project := runtime.catalog.Project()
+	if runtime.flowPanel == "accessibility" {
+		result.Heading = runtime.localizeRuleTextLocked(
+			"Accessibility",
+			"accessibility.heading",
+		)
+		result.Message = runtime.localizeRuleTextLocked(
+			"Adjust visual feedback and message duration.",
+			"accessibility.message",
+		)
+		settings := state.Accessibility
+		hitFlashKey := "accessibility.value.off"
+		hitFlashFallback := "Off"
+		if settings.HitFlash {
+			hitFlashKey = "accessibility.value.on"
+			hitFlashFallback = "On"
+		}
+		result.Options = []FlowOptionState{
+			runtime.accessibilityFlowOptionLocked(
+				flowCommandAccessibilityMotion,
+				"accessibility.motion",
+				"Camera motion",
+				"accessibility.motion."+settings.Motion,
+				settings.Motion,
+			),
+			runtime.accessibilityFlowOptionLocked(
+				flowCommandAccessibilityHitFlash,
+				"accessibility.hit_flash",
+				"Hit flash",
+				hitFlashKey,
+				hitFlashFallback,
+			),
+			runtime.accessibilityFlowOptionLocked(
+				flowCommandAccessibilityNotice,
+				"accessibility.notice_duration",
+				"Message duration",
+				"accessibility.notice_duration."+
+					settings.NoticeDuration,
+				settings.NoticeDuration,
+			),
+			runtime.flowOptionLocked(
+				flowCommandAccessibilityBack,
+				"flow.menu.back",
+				"Back",
+			),
+		}
+		result.SelectedIndex = normalizedFlowIndex(
+			result.Options,
+			runtime.flowSelectedIndex,
+		)
+		return result, nil
+	}
 	switch state.Mode {
 	case campaign.ModeTitle:
 		result.Heading = runtime.localizeRuleTextLocked(
-			project.Title,
+			authoredFlowCopy(project.Flow.Title.Heading, project.Title),
 			project.Flow.Title.HeadingKey,
 		)
 		result.Message = runtime.localizeRuleTextLocked(
-			"",
+			project.Flow.Title.Message,
 			project.Flow.Title.MessageKey,
 		)
 		result.Options = append(result.Options, runtime.flowOptionLocked(
@@ -154,6 +221,11 @@ func (runtime *Runtime) flowStateLocked() (FlowState, error) {
 				),
 			)
 		}
+		result.Options = append(result.Options, runtime.flowOptionLocked(
+			flowCommandAccessibility,
+			"flow.menu.accessibility",
+			"Accessibility",
+		))
 		result.Options = append(result.Options, runtime.flowOptionLocked(
 			flowCommandQuit,
 			"flow.menu.quit",
@@ -177,6 +249,11 @@ func (runtime *Runtime) flowStateLocked() (FlowState, error) {
 				"Save",
 			),
 			runtime.flowOptionLocked(
+				flowCommandAccessibility,
+				"flow.menu.accessibility",
+				"Accessibility",
+			),
+			runtime.flowOptionLocked(
 				flowCommandTitle,
 				"flow.menu.title",
 				"Return to Title",
@@ -185,11 +262,11 @@ func (runtime *Runtime) flowStateLocked() (FlowState, error) {
 
 	case campaign.ModeGameOver:
 		result.Heading = runtime.localizeRuleTextLocked(
-			"Game Over",
+			authoredFlowCopy(project.Flow.GameOver.Heading, "Game Over"),
 			project.Flow.GameOver.HeadingKey,
 		)
 		result.Message = runtime.localizeRuleTextLocked(
-			"",
+			project.Flow.GameOver.Message,
 			project.Flow.GameOver.MessageKey,
 		)
 		result.Options = append(result.Options, runtime.flowOptionLocked(
@@ -215,11 +292,11 @@ func (runtime *Runtime) flowStateLocked() (FlowState, error) {
 
 	case campaign.ModeEnding:
 		result.Heading = runtime.localizeRuleTextLocked(
-			"The End",
+			authoredFlowCopy(project.Flow.Ending.Heading, "The End"),
 			project.Flow.Ending.HeadingKey,
 		)
 		result.Message = runtime.localizeRuleTextLocked(
-			"",
+			project.Flow.Ending.Message,
 			project.Flow.Ending.MessageKey,
 		)
 		result.Options = []FlowOptionState{
@@ -266,6 +343,26 @@ func (runtime *Runtime) flowOptionLocked(
 	}
 }
 
+func (runtime *Runtime) accessibilityFlowOptionLocked(
+	id flowCommand,
+	labelKey string,
+	labelFallback string,
+	valueKey string,
+	valueFallback string,
+) FlowOptionState {
+	return FlowOptionState{
+		ID: string(id),
+		Label: runtime.localizeRuleTextLocked(
+			labelFallback,
+			labelKey,
+		) + ": " + runtime.localizeRuleTextLocked(
+			valueFallback,
+			valueKey,
+		),
+		Enabled: true,
+	}
+}
+
 func normalizedFlowIndex(options []FlowOptionState, selected int) int {
 	if len(options) == 0 {
 		return -1
@@ -301,6 +398,9 @@ func (runtime *Runtime) flowViewLocked() ebitapp.FlowView {
 		Message:       state.Message,
 		Options:       make([]ebitapp.FlowOptionView, len(state.Options)),
 		SelectedIndex: state.SelectedIndex,
+	}
+	if state.Panel == "accessibility" {
+		result.Mode = "accessibility"
 	}
 	for index, option := range state.Options {
 		result.Options[index] = ebitapp.FlowOptionView{
@@ -366,6 +466,10 @@ func (runtime *Runtime) consumeFlowActionsLocked(
 	state := runtime.campaign.Snapshot()
 	if state.Mode == campaign.ModePlaying {
 		return "", nil
+	}
+	if runtime.flowPanel == "accessibility" &&
+		(actions.FlowCancel || actions.Pause) {
+		return flowCommandAccessibilityBack, nil
 	}
 	switch {
 	case (actions.FlowCancel || actions.Pause) &&
@@ -436,6 +540,26 @@ func (runtime *Runtime) executeFlowCommand(command flowCommand) (err error) {
 		}
 		runtime.mu.Unlock()
 		return nil
+	case flowCommandAccessibility:
+		runtime.mu.Lock()
+		runtime.flowPanel = "accessibility"
+		runtime.flowSelectedIndex = 0
+		runtime.flowStatus = ""
+		runtime.revision++
+		runtime.mu.Unlock()
+		return nil
+	case flowCommandAccessibilityBack:
+		runtime.mu.Lock()
+		runtime.flowPanel = ""
+		runtime.flowSelectedIndex = 0
+		runtime.flowStatus = ""
+		runtime.revision++
+		runtime.mu.Unlock()
+		return nil
+	case flowCommandAccessibilityMotion,
+		flowCommandAccessibilityHitFlash,
+		flowCommandAccessibilityNotice:
+		return runtime.cycleAccessibility(command)
 	default:
 		return fmt.Errorf("execute game-flow command: unknown option %q", command)
 	}
@@ -470,6 +594,53 @@ func (runtime *Runtime) clearFlowPresentation() {
 func (runtime *Runtime) resetFlowPresentationLocked() {
 	runtime.flowSelectedIndex = 0
 	runtime.flowStatus = ""
+	runtime.flowPanel = ""
+}
+
+func (runtime *Runtime) cycleAccessibility(command flowCommand) error {
+	runtime.mu.Lock()
+	defer runtime.mu.Unlock()
+
+	if runtime.flowPanel != "accessibility" {
+		return errors.New(
+			"change accessibility setting: accessibility menu is not active",
+		)
+	}
+	if err := runtime.campaign.Transaction(
+		func(state *campaign.State) error {
+			switch command {
+			case flowCommandAccessibilityMotion:
+				switch state.Accessibility.Motion {
+				case "full":
+					state.Accessibility.Motion = "reduced"
+				case "reduced":
+					state.Accessibility.Motion = "off"
+				default:
+					state.Accessibility.Motion = "full"
+				}
+			case flowCommandAccessibilityHitFlash:
+				state.Accessibility.HitFlash =
+					!state.Accessibility.HitFlash
+			case flowCommandAccessibilityNotice:
+				if state.Accessibility.NoticeDuration == "normal" {
+					state.Accessibility.NoticeDuration = "long"
+				} else {
+					state.Accessibility.NoticeDuration = "normal"
+				}
+			default:
+				return fmt.Errorf(
+					"change accessibility setting: unknown command %q",
+					command,
+				)
+			}
+			return nil
+		},
+	); err != nil {
+		return fmt.Errorf("change accessibility setting: %w", err)
+	}
+	runtime.flowStatus = ""
+	runtime.revision++
+	return nil
 }
 
 func (runtime *Runtime) pauseFlowLocked() error {
@@ -518,6 +689,16 @@ func (runtime *Runtime) returnToTitle() error {
 	if err != nil {
 		return err
 	}
+	accessibility := runtime.campaign.Snapshot().Accessibility
+	if err := title.Transaction(func(state *campaign.State) error {
+		state.Accessibility = accessibility
+		return nil
+	}); err != nil {
+		return fmt.Errorf(
+			"return to title accessibility settings: %w",
+			err,
+		)
+	}
 	resolved := resolveBuildOptions(runtime.catalog, runtime.buildOverrides)
 	built, candidate, err := buildCampaignSimulation(
 		runtime.catalog,
@@ -539,6 +720,7 @@ func (runtime *Runtime) returnToTitle() error {
 	runtime.campaign = title
 	runtime.virtual = make(map[string]virtualAction)
 	runtime.pendingAbilities = make(map[string]string)
+	runtime.behaviorAI = make(map[string]behaviorAIState)
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
@@ -546,6 +728,7 @@ func (runtime *Runtime) returnToTitle() error {
 	runtime.resetFlowPresentationLocked()
 	runtime.portalCooldownTicks = 0
 	runtime.portalInside = portalInside
+	runtime.resetTriggerStateLocked()
 	runtime.continueAvailable = runtime.hasValidContinueLocked()
 	runtime.revision++
 	return nil
@@ -598,6 +781,7 @@ func (runtime *Runtime) retryStage() error {
 	runtime.campaign = candidateCampaign
 	runtime.virtual = make(map[string]virtualAction)
 	runtime.pendingAbilities = make(map[string]string)
+	runtime.behaviorAI = make(map[string]behaviorAIState)
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
@@ -605,25 +789,34 @@ func (runtime *Runtime) retryStage() error {
 	runtime.resetFlowPresentationLocked()
 	runtime.portalCooldownTicks = 0
 	runtime.portalInside = portalInside
+	runtime.resetTriggerStateLocked()
 	runtime.revision++
 	return nil
 }
 
 func (runtime *Runtime) hasValidContinueLocked() bool {
+	_, valid := runtime.validContinueCampaignLocked()
+	return valid
+}
+
+func (runtime *Runtime) validContinueCampaignLocked() (
+	*campaign.Campaign,
+	bool,
+) {
 	slot := runtime.catalog.Project().Flow.SaveSlot
 	data, err := runtime.store.Load(slot)
 	if err != nil {
-		return false
+		return nil, false
 	}
 	saved, err := campaign.Decode(runtime.campaignConfig, data)
 	if err != nil {
-		return false
+		return nil, false
 	}
 	state := saved.Snapshot()
 	if !state.Flow.Started ||
 		state.CurrentStageID == "" ||
 		state.EntrySpawnID == "" {
-		return false
+		return nil, false
 	}
 	options := runtime.buildOptions
 	options.StageID = state.CurrentStageID
@@ -636,10 +829,13 @@ func (runtime *Runtime) hasValidContinueLocked() bool {
 		runtime.contentRules,
 	)
 	if err != nil {
-		return false
+		return nil, false
 	}
 	_, err = portalOverlaps(built, candidate)
-	return err == nil
+	if err != nil {
+		return nil, false
+	}
+	return saved, true
 }
 
 func (runtime *Runtime) controlledActorKilledLocked(

@@ -38,6 +38,21 @@ type smokePersistence struct {
 	Item string `json:"item"`
 }
 
+type smokeJourneyStep struct {
+	TargetTag string `json:"target_tag,omitempty"`
+	Action    string `json:"action,omitempty"`
+	Frames    int    `json:"frames"`
+	Repeat    int    `json:"repeat,omitempty"`
+}
+
+type smokeJourney struct {
+	Steps             []smokeJourneyStep `json:"steps"`
+	ExpectedFlow      string             `json:"expected_flow"`
+	ExpectedQuest     string             `json:"expected_quest,omitempty"`
+	ExpectedEncounter string             `json:"expected_encounter,omitempty"`
+	ExpectedBattle    string             `json:"expected_battle,omitempty"`
+}
+
 type smokeScenario struct {
 	SchemaVersion int               `json:"schema_version"`
 	Profile       string            `json:"profile"`
@@ -47,6 +62,7 @@ type smokeScenario struct {
 	Combat        *smokeCombat      `json:"combat,omitempty"`
 	Interaction   *smokeInteraction `json:"interaction,omitempty"`
 	Persistence   *smokePersistence `json:"persistence,omitempty"`
+	Journey       *smokeJourney     `json:"journey,omitempty"`
 }
 
 type smokeReport struct {
@@ -83,6 +99,17 @@ type smokeReport struct {
 		MutatedCount  int    `json:"mutated_count"`
 		RestoredCount int    `json:"restored_count"`
 	} `json:"persistence,omitempty"`
+	Journey *struct {
+		StepCount      int    `json:"step_count"`
+		Flow           string `json:"flow"`
+		Quest          string `json:"quest,omitempty"`
+		QuestState     string `json:"quest_state,omitempty"`
+		Encounter      string `json:"encounter,omitempty"`
+		EncounterState string `json:"encounter_state,omitempty"`
+		Battle         string `json:"battle,omitempty"`
+		BattleState    string `json:"battle_state,omitempty"`
+		Screenshot     string `json:"screenshot"`
+	} `json:"journey,omitempty"`
 	SteppedFrames int    `json:"stepped_frames"`
 	Screenshot    string `json:"screenshot"`
 	Log           string `json:"log"`
@@ -214,6 +241,44 @@ func validateSmokeScenario(scenario smokeScenario) error {
 		return errors.New(
 			"smoke scenario persistence.item is required",
 		)
+	}
+	if scenario.Journey != nil {
+		if len(scenario.Journey.Steps) == 0 {
+			return errors.New(
+				"smoke scenario journey.steps must not be empty",
+			)
+		}
+		switch scenario.Journey.ExpectedFlow {
+		case "playing", "gameover", "ending":
+		default:
+			return errors.New(
+				"smoke scenario journey.expected_flow must be " +
+					"playing, gameover, or ending",
+			)
+		}
+		for index, step := range scenario.Journey.Steps {
+			if step.Action == "" && step.TargetTag != "" {
+				return fmt.Errorf(
+					"smoke scenario journey.steps[%d] target_tag "+
+						"requires action",
+					index,
+				)
+			}
+			if step.Frames < 1 || step.Frames > 3600 {
+				return fmt.Errorf(
+					"smoke scenario journey.steps[%d].frames must "+
+						"be between 1 and 3600",
+					index,
+				)
+			}
+			if step.Repeat < 0 || step.Repeat > 20 {
+				return fmt.Errorf(
+					"smoke scenario journey.steps[%d].repeat must "+
+						"be between 1 and 20 when present",
+					index,
+				)
+			}
+		}
 	}
 	return nil
 }
@@ -562,6 +627,167 @@ func runSmokePersistence(
 	return nil
 }
 
+func runSmokeJourney(
+	client *protocolClient,
+	config smokeJourney,
+	playerTag string,
+	steps *int,
+	artifacts string,
+	report *smokeReport,
+) error {
+	for _, step := range config.Steps {
+		repeat := step.Repeat
+		if repeat == 0 {
+			repeat = 1
+		}
+		for range repeat {
+			var before worldSnapshot
+			if err := client.call(
+				"World.getSnapshot",
+				nil,
+				&before,
+			); err != nil {
+				return err
+			}
+			if before.GameFlow.Mode == config.ExpectedFlow {
+				break
+			}
+			if step.TargetTag != "" {
+				player, err := entityWithTag(
+					before.Entities,
+					playerTag,
+				)
+				if err != nil {
+					return err
+				}
+				target, err := entityWithTag(
+					before.Entities,
+					step.TargetTag,
+				)
+				if err != nil {
+					return err
+				}
+				var positioned entityState
+				if err := client.call(
+					"Entity.setPosition",
+					map[string]any{
+						"entityId": player.ID,
+						"x":        target.X - 50,
+						"y":        target.Y,
+					},
+					&positioned,
+				); err != nil {
+					return err
+				}
+			}
+			if step.Action != "" {
+				var actionResult map[string]any
+				if err := client.call(
+					"Input.action",
+					map[string]any{
+						"action": step.Action,
+						"value":  1,
+						"frames": 1,
+					},
+					&actionResult,
+				); err != nil {
+					return err
+				}
+			}
+			if err := requestAndWaitSteps(
+				client,
+				*steps,
+				step.Frames,
+			); err != nil {
+				return err
+			}
+			*steps += step.Frames
+		}
+	}
+
+	var final worldSnapshot
+	if err := client.call("World.getSnapshot", nil, &final); err != nil {
+		return err
+	}
+	journeyReport := &struct {
+		StepCount      int    `json:"step_count"`
+		Flow           string `json:"flow"`
+		Quest          string `json:"quest,omitempty"`
+		QuestState     string `json:"quest_state,omitempty"`
+		Encounter      string `json:"encounter,omitempty"`
+		EncounterState string `json:"encounter_state,omitempty"`
+		Battle         string `json:"battle,omitempty"`
+		BattleState    string `json:"battle_state,omitempty"`
+		Screenshot     string `json:"screenshot"`
+	}{
+		StepCount: len(config.Steps),
+		Flow:      final.GameFlow.Mode,
+		Quest:     config.ExpectedQuest,
+		Encounter: config.ExpectedEncounter,
+		Battle:    config.ExpectedBattle,
+		Screenshot: filepath.Join(
+			artifacts,
+			"smoke-complete.png",
+		),
+	}
+	if final.GameFlow.Mode != config.ExpectedFlow {
+		return fmt.Errorf(
+			"journey flow is %q, expected %q",
+			final.GameFlow.Mode,
+			config.ExpectedFlow,
+		)
+	}
+	if config.ExpectedQuest != "" {
+		for _, quest := range final.Quests {
+			if quest.ID == config.ExpectedQuest {
+				journeyReport.QuestState = quest.Status
+				break
+			}
+		}
+		if journeyReport.QuestState != "completed" {
+			return fmt.Errorf(
+				"journey quest %q is %q, expected completed",
+				config.ExpectedQuest,
+				journeyReport.QuestState,
+			)
+		}
+	}
+	if config.ExpectedEncounter != "" {
+		for _, encounter := range final.Encounters {
+			if encounter.ID == config.ExpectedEncounter {
+				journeyReport.EncounterState = encounter.Status
+				break
+			}
+		}
+		if journeyReport.EncounterState != "completed" {
+			return fmt.Errorf(
+				"journey encounter %q is %q, expected completed",
+				config.ExpectedEncounter,
+				journeyReport.EncounterState,
+			)
+		}
+	}
+	if config.ExpectedBattle != "" {
+		journeyReport.BattleState =
+			final.TurnBattle.Results[config.ExpectedBattle]
+		if journeyReport.BattleState != "won" {
+			return fmt.Errorf(
+				"journey turn battle %q is %q, expected won",
+				config.ExpectedBattle,
+				journeyReport.BattleState,
+			)
+		}
+	}
+	if err := captureScreenshot(
+		client,
+		journeyReport.Screenshot,
+	); err != nil {
+		return err
+	}
+	report.Journey = journeyReport
+	return nil
+}
+
 func executeSmokeScenario(
 	client *protocolClient,
 	scenario smokeScenario,
@@ -665,6 +891,18 @@ func executeSmokeScenario(
 		if err := runSmokePersistence(
 			client,
 			*scenario.Persistence,
+			&report,
+		); err != nil {
+			return report, err
+		}
+	}
+	if scenario.Journey != nil {
+		if err := runSmokeJourney(
+			client,
+			*scenario.Journey,
+			scenario.PlayerTag,
+			&steps,
+			artifacts,
 			&report,
 		); err != nil {
 			return report, err

@@ -95,10 +95,15 @@ function camera:shake(world, options)
     if frequency <= 0 then
         return nil, "camera shake frequency must be greater than zero"
     end
+    local accessibility = world:service("accessibility")
+    local motion_scale = accessibility and
+        accessibility:motionScale() or 1
+    magnitude = magnitude * motion_scale
     if duration <= 0 or magnitude <= 0 then
         return {
             applied = false,
-            reason = "zero_intensity",
+            reason = motion_scale <= 0 and
+                "accessibility_disabled" or "zero_intensity",
         }
     end
 

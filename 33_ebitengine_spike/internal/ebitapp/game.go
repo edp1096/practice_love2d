@@ -115,6 +115,11 @@ const (
 	flowGameOverHeading   = "게임 오버"
 	flowEndingHeading     = "끝"
 	flowDisabledIndicator = " · 사용 불가"
+
+	cutscenePanelX      = 48
+	cutscenePanelY      = 338
+	cutscenePanelWidth  = ScreenWidth - cutscenePanelX*2
+	cutscenePanelHeight = 166
 )
 
 type dialogueChoiceLayout struct {
@@ -586,57 +591,61 @@ func (game *Game) drawView(view View) {
 	}
 	game.canvas.Fill(background)
 	game.drawGround(view)
-	for _, wall := range view.Walls {
-		fill := wall.Color
-		if fill.A == 0 {
-			fill = color.RGBA{R: 49, G: 58, B: 71, A: 255}
-		}
-		stroke := color.RGBA{R: 91, G: 107, B: 127, A: 255}
-		if points := wallPolygonScreenPoints(view, wall); len(points) >= 3 {
-			var path vector.Path
-			path.MoveTo(float32(points[0].X), float32(points[0].Y))
-			for _, point := range points[1:] {
-				path.LineTo(float32(point.X), float32(point.Y))
+	// Tilemapped stages already carry their authored visuals. Their walls are
+	// collision data, while shape-only stages still use walls as placeholders.
+	if shouldDrawCollisionGeometry(view) {
+		for _, wall := range view.Walls {
+			fill := wall.Color
+			if fill.A == 0 {
+				fill = color.RGBA{R: 49, G: 58, B: 71, A: 255}
 			}
-			path.Close()
-			fillOptions := &vector.DrawPathOptions{}
-			fillOptions.ColorScale.ScaleWithColor(fill)
-			vector.FillPath(game.canvas, &path, nil, fillOptions)
-			strokeOptions := &vector.StrokeOptions{
-				Width:      2,
-				MiterLimit: 10,
+			stroke := color.RGBA{R: 91, G: 107, B: 127, A: 255}
+			if points := wallPolygonScreenPoints(view, wall); len(points) >= 3 {
+				var path vector.Path
+				path.MoveTo(float32(points[0].X), float32(points[0].Y))
+				for _, point := range points[1:] {
+					path.LineTo(float32(point.X), float32(point.Y))
+				}
+				path.Close()
+				fillOptions := &vector.DrawPathOptions{}
+				fillOptions.ColorScale.ScaleWithColor(fill)
+				vector.FillPath(game.canvas, &path, nil, fillOptions)
+				strokeOptions := &vector.StrokeOptions{
+					Width:      2,
+					MiterLimit: 10,
+				}
+				strokeDrawOptions := &vector.DrawPathOptions{}
+				strokeDrawOptions.ColorScale.ScaleWithColor(stroke)
+				vector.StrokePath(
+					game.canvas,
+					&path,
+					strokeOptions,
+					strokeDrawOptions,
+				)
+				continue
 			}
-			strokeDrawOptions := &vector.DrawPathOptions{}
-			strokeDrawOptions.ColorScale.ScaleWithColor(stroke)
-			vector.StrokePath(
+			x, y := game.screenPoint(view, wall.X, wall.Y)
+			zoom := cameraZoom(view)
+			vector.DrawFilledRect(
 				game.canvas,
-				&path,
-				strokeOptions,
-				strokeDrawOptions,
+				float32(x),
+				float32(y),
+				float32(wall.Width*zoom),
+				float32(wall.Height*zoom),
+				fill,
+				false,
 			)
-			continue
+			vector.StrokeRect(
+				game.canvas,
+				float32(x),
+				float32(y),
+				float32(wall.Width*zoom),
+				float32(wall.Height*zoom),
+				2,
+				stroke,
+				false,
+			)
 		}
-		x, y := game.screenPoint(view, wall.X, wall.Y)
-		zoom := cameraZoom(view)
-		vector.DrawFilledRect(
-			game.canvas,
-			float32(x),
-			float32(y),
-			float32(wall.Width*zoom),
-			float32(wall.Height*zoom),
-			fill,
-			false,
-		)
-		vector.StrokeRect(
-			game.canvas,
-			float32(x),
-			float32(y),
-			float32(wall.Width*zoom),
-			float32(wall.Height*zoom),
-			2,
-			stroke,
-			false,
-		)
 	}
 
 	entities := append([]EntityView(nil), view.Entities...)
@@ -655,9 +664,28 @@ func (game *Game) drawView(view View) {
 	for _, effect := range view.Effects {
 		game.drawEffect(view, effect)
 	}
+	if view.World.Tint.A > 0 {
+		vector.DrawFilledRect(
+			game.canvas,
+			0,
+			0,
+			ScreenWidth,
+			ScreenHeight,
+			view.World.Tint,
+			false,
+		)
+	}
 	if view.Flow.Active {
 		game.drawHUD(view)
 		game.drawFlow(view.Flow)
+		return
+	}
+	if view.Cutscene.Active {
+		game.drawCutscene(view.Cutscene)
+		return
+	}
+	if view.TurnBattle.Active {
+		game.drawTurnBattle(view.TurnBattle)
 		return
 	}
 	if view.Dialogue.Active {
@@ -668,6 +696,259 @@ func (game *Game) drawView(view View) {
 		game.drawInventory(view.Inventory)
 	}
 	game.drawHUD(view)
+	if !view.Dialogue.Active &&
+		!view.Shop.Active &&
+		!view.Inventory.Active {
+		game.drawNotice(view.Notice)
+	}
+}
+
+func (game *Game) drawCutscene(view CutsceneView) {
+	if !view.Active {
+		return
+	}
+	if source := game.images[view.BackgroundID]; source != nil {
+		bounds := source.Bounds()
+		options := &ebiten.DrawImageOptions{}
+		options.GeoM.Scale(
+			float64(ScreenWidth)/float64(bounds.Dx()),
+			float64(ScreenHeight)/float64(bounds.Dy()),
+		)
+		options.Filter = game.filters[view.BackgroundID]
+		game.canvas.DrawImage(source, options)
+	}
+	vector.DrawFilledRect(
+		game.canvas,
+		0,
+		0,
+		ScreenWidth,
+		ScreenHeight,
+		color.RGBA{R: 2, G: 5, B: 12, A: 116},
+		false,
+	)
+	vector.DrawFilledRect(
+		game.canvas,
+		cutscenePanelX,
+		cutscenePanelY,
+		cutscenePanelWidth,
+		cutscenePanelHeight,
+		color.RGBA{R: 7, G: 11, B: 20, A: 246},
+		false,
+	)
+	vector.StrokeRect(
+		game.canvas,
+		cutscenePanelX,
+		cutscenePanelY,
+		cutscenePanelWidth,
+		cutscenePanelHeight,
+		2,
+		color.RGBA{R: 145, G: 169, B: 195, A: 255},
+		false,
+	)
+	if strings.TrimSpace(view.Name) != "" {
+		game.drawText(
+			ellipsizeText(view.Name, 34),
+			cutscenePanelX+24,
+			cutscenePanelY+12,
+			14,
+			color.RGBA{R: 158, G: 181, B: 205, A: 255},
+		)
+	}
+	progress := fmt.Sprintf(
+		"%d / %d",
+		min(max(view.StepIndex+1, 1), max(view.StepCount, 1)),
+		max(view.StepCount, 1),
+	)
+	game.drawText(
+		progress,
+		cutscenePanelX+cutscenePanelWidth-76,
+		cutscenePanelY+12,
+		14,
+		color.RGBA{R: 158, G: 181, B: 205, A: 255},
+	)
+	if strings.TrimSpace(view.Speaker) != "" {
+		game.drawText(
+			ellipsizeText(view.Speaker, 38),
+			cutscenePanelX+24,
+			cutscenePanelY+39,
+			18,
+			color.RGBA{R: 246, G: 214, B: 113, A: 255},
+		)
+	}
+	lines := wrapText(view.Text, 52, 3)
+	if len(lines) != 0 {
+		game.drawText(
+			strings.Join(lines, "\n"),
+			cutscenePanelX+24,
+			cutscenePanelY+67,
+			17,
+			color.RGBA{R: 238, G: 243, B: 249, A: 255},
+		)
+	}
+	continueLabel := strings.TrimSpace(view.ContinueLabel)
+	if continueLabel == "" {
+		continueLabel = "Enter / Space Continue"
+	}
+	help := continueLabel
+	if view.Skippable {
+		skipLabel := strings.TrimSpace(view.SkipLabel)
+		if skipLabel == "" {
+			skipLabel = "Esc Skip"
+		}
+		help += "    " + skipLabel
+	}
+	game.drawText(
+		help,
+		cutscenePanelX+24,
+		cutscenePanelY+cutscenePanelHeight-27,
+		14,
+		color.RGBA{R: 151, G: 203, B: 219, A: 255},
+	)
+}
+
+func (game *Game) drawTurnBattle(view TurnBattleView) {
+	vector.DrawFilledRect(
+		game.canvas,
+		0,
+		0,
+		ScreenWidth,
+		ScreenHeight,
+		color.RGBA{R: 5, G: 8, B: 18, A: 250},
+		false,
+	)
+	name := strings.TrimSpace(view.Name)
+	if name == "" {
+		name = view.BattleID
+	}
+	if name == "" {
+		name = "Turn Battle"
+	}
+	game.drawText(
+		name,
+		ScreenWidth/2-180,
+		34,
+		24,
+		color.RGBA{R: 255, G: 211, B: 83, A: 255},
+	)
+
+	for index, enemy := range view.Enemies {
+		x := float32(90 + index*220)
+		y := float32(108)
+		enemyName := strings.TrimSpace(enemy.Name)
+		if enemyName == "" {
+			enemyName = enemy.ID
+		}
+		game.drawText(
+			enemyName,
+			float64(x),
+			float64(y),
+			17,
+			color.RGBA{R: 220, G: 230, B: 255, A: 255},
+		)
+		vector.DrawFilledRect(
+			game.canvas,
+			x,
+			y+32,
+			160,
+			14,
+			color.RGBA{R: 39, G: 42, B: 57, A: 255},
+			false,
+		)
+		ratio := float32(0)
+		if enemy.MaxHealth > 0 {
+			ratio = float32(enemy.Health) / float32(enemy.MaxHealth)
+		}
+		ratio = min(max(ratio, float32(0)), float32(1))
+		vector.DrawFilledRect(
+			game.canvas,
+			x,
+			y+32,
+			160*ratio,
+			14,
+			color.RGBA{R: 235, G: 69, B: 64, A: 255},
+			false,
+		)
+		game.drawText(
+			fmt.Sprintf("%d / %d", enemy.Health, enemy.MaxHealth),
+			float64(x+48),
+			float64(y+53),
+			14,
+			color.RGBA{R: 216, G: 224, B: 239, A: 255},
+		)
+	}
+
+	const panelX = 38
+	const panelY = 335
+	const panelWidth = 884
+	const panelHeight = 166
+	vector.DrawFilledRect(
+		game.canvas,
+		panelX,
+		panelY,
+		panelWidth,
+		panelHeight,
+		color.RGBA{R: 10, G: 17, B: 27, A: 250},
+		false,
+	)
+	vector.StrokeRect(
+		game.canvas,
+		panelX,
+		panelY,
+		panelWidth,
+		panelHeight,
+		2,
+		color.RGBA{R: 76, G: 204, B: 255, A: 255},
+		false,
+	)
+	game.drawText(
+		fmt.Sprintf(
+			"%s   HP %d / %d   TURN %d",
+			view.PlayerID,
+			view.PlayerHealth,
+			view.PlayerMax,
+			view.Turn,
+		),
+		60,
+		panelY+22,
+		16,
+		color.RGBA{R: 210, G: 230, B: 255, A: 255},
+	)
+	for index, option := range view.Options {
+		selected := index == view.SelectedIndex
+		marker := "  "
+		tint := color.RGBA{R: 184, G: 199, B: 224, A: 255}
+		if selected {
+			marker = "> "
+			tint = color.RGBA{R: 255, G: 218, B: 84, A: 255}
+		}
+		game.drawText(
+			marker+option.Label,
+			72,
+			panelY+58+float64(index*25),
+			16,
+			tint,
+		)
+	}
+	if view.Message != "" {
+		game.drawText(
+			view.Message,
+			390,
+			panelY+74,
+			16,
+			color.RGBA{R: 184, G: 224, B: 255, A: 255},
+		)
+	}
+	game.drawText(
+		"Up/Down: Select   Enter: Confirm   Esc: Escape",
+		520,
+		panelY+135,
+		12,
+		color.RGBA{R: 135, G: 153, B: 180, A: 255},
+	)
+}
+
+func shouldDrawCollisionGeometry(view View) bool {
+	return view.Tilemap == nil
 }
 
 func (game *Game) drawGround(view View) {
@@ -2323,6 +2604,15 @@ func (game *Game) drawHUD(view View) {
 		!view.Dialogue.Active &&
 		!view.Shop.Active &&
 		!view.Inventory.Active {
+		vector.DrawFilledRect(
+			game.canvas,
+			0,
+			ScreenHeight-42,
+			ScreenWidth,
+			42,
+			color.RGBA{R: 10, G: 13, B: 19, A: 218},
+			false,
+		)
 		game.drawText(
 			view.HUD.Help,
 			22,
@@ -2407,6 +2697,64 @@ func (game *Game) drawHUD(view View) {
 			color.RGBA{R: 166, G: 205, B: 219, A: 255},
 		)
 	}
+}
+
+func (game *Game) drawNotice(view NoticeView) {
+	if !view.Active || strings.TrimSpace(view.Text) == "" {
+		return
+	}
+	const (
+		panelWidth = 620
+		panelX     = (ScreenWidth - panelWidth) / 2
+	)
+	lines := wrapText(view.Text, 48, 2)
+	if len(lines) == 0 {
+		return
+	}
+	panelHeight := float32(52)
+	if len(lines) > 1 {
+		panelHeight = 72
+	}
+	panelY := float32(ScreenHeight) - panelHeight - 54
+	fill := color.RGBA{R: 10, G: 24, B: 37, A: 240}
+	stroke := color.RGBA{R: 89, G: 184, B: 235, A: 255}
+	foreground := color.RGBA{R: 229, G: 247, B: 255, A: 255}
+	switch view.Tone {
+	case "success":
+		fill = color.RGBA{R: 9, G: 33, B: 23, A: 240}
+		stroke = color.RGBA{R: 89, G: 224, B: 145, A: 255}
+		foreground = color.RGBA{R: 224, G: 255, B: 235, A: 255}
+	case "warning":
+		fill = color.RGBA{R: 41, G: 24, B: 6, A: 240}
+		stroke = color.RGBA{R: 255, G: 179, B: 61, A: 255}
+		foreground = color.RGBA{R: 255, G: 242, B: 209, A: 255}
+	}
+	vector.DrawFilledRect(
+		game.canvas,
+		panelX,
+		panelY,
+		panelWidth,
+		panelHeight,
+		fill,
+		false,
+	)
+	vector.StrokeRect(
+		game.canvas,
+		panelX,
+		panelY,
+		panelWidth,
+		panelHeight,
+		2,
+		stroke,
+		false,
+	)
+	game.drawText(
+		strings.Join(lines, "\n"),
+		panelX+28,
+		float64(panelY)+float64(panelHeight)/2-float64(len(lines))*10+4,
+		16,
+		foreground,
+	)
 }
 
 func hudPanelHeight(hud HUDView) float32 {

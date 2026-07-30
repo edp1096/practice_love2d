@@ -15,12 +15,14 @@ func TestRuntimeAssetsAreEmbeddedAndDecodable(t *testing.T) {
 	t.Parallel()
 
 	wantImages := map[string]image.Point{
-		"images/effects/slash.png":           {X: 46, Y: 39},
-		"images/enemies/slime-red-sheet.png": {X: 176, Y: 64},
-		"images/npcs/guide-sheet.png":        {X: 384, Y: 96},
-		"images/npcs/merchant-sheet.png":     {X: 384, Y: 96},
-		"images/player/player-sheet.png":     {X: 384, Y: 960},
-		"images/tilesets/tileset_area1.png":  {X: 864, Y: 576},
+		"images/effects/slash.png":              {X: 46, Y: 39},
+		"images/enemies/slime-red-sheet.png":    {X: 176, Y: 64},
+		"images/items/poison-jar.png":           {X: 288, Y: 32},
+		"images/npcs/guide-sheet.png":           {X: 384, Y: 96},
+		"images/npcs/merchant-sheet.png":        {X: 384, Y: 96},
+		"images/player/player-sheet.png":        {X: 384, Y: 960},
+		"images/tilesets/tileset_area1.png":     {X: 864, Y: 576},
+		"images/tilesets/tileset_interior1.png": {X: 512, Y: 512},
 	}
 	for path, wantSize := range wantImages {
 		data, err := ReadFile(path)
@@ -49,16 +51,18 @@ func TestRuntimeAssetsAreEmbeddedAndDecodable(t *testing.T) {
 	}
 
 	audioFiles := map[string]int{
-		"audio/music/forest-theme.wav": 768044,
-		"audio/sfx/attack.wav":         17324,
-		"audio/sfx/hit.wav":            15404,
-		"audio/sfx/jump.wav":           21164,
-		"audio/sfx/kill.wav":           40364,
-		"audio/sfx/parry.wav":          32684,
-		"audio/sfx/projectile.wav":     23084,
-		"audio/sfx/quest.wav":          69164,
-		"audio/sfx/ui-cancel.wav":      11564,
-		"audio/sfx/ui-confirm.wav":     11564,
+		"audio/music/forest-theme.wav":  768044,
+		"audio/music/road-theme.wav":    768044,
+		"audio/music/village-theme.wav": 768044,
+		"audio/sfx/attack.wav":          17324,
+		"audio/sfx/hit.wav":             15404,
+		"audio/sfx/jump.wav":            21164,
+		"audio/sfx/kill.wav":            40364,
+		"audio/sfx/parry.wav":           32684,
+		"audio/sfx/projectile.wav":      23084,
+		"audio/sfx/quest.wav":           69164,
+		"audio/sfx/ui-cancel.wav":       11564,
+		"audio/sfx/ui-confirm.wav":      11564,
 	}
 	for path, wantSize := range audioFiles {
 		data, err := ReadFile(path)
@@ -99,6 +103,8 @@ func TestFilesHasOnlyTheReviewedRuntimeSet(t *testing.T) {
 	sort.Strings(got)
 	want := []string{
 		"audio/music/forest-theme.wav",
+		"audio/music/road-theme.wav",
+		"audio/music/village-theme.wav",
 		"audio/sfx/attack.wav",
 		"audio/sfx/hit.wav",
 		"audio/sfx/jump.wav",
@@ -111,10 +117,12 @@ func TestFilesHasOnlyTheReviewedRuntimeSet(t *testing.T) {
 		"fonts/Hakgyoansim_ChaekgalpiR.ttf",
 		"images/effects/slash.png",
 		"images/enemies/slime-red-sheet.png",
+		"images/items/poison-jar.png",
 		"images/npcs/guide-sheet.png",
 		"images/npcs/merchant-sheet.png",
 		"images/player/player-sheet.png",
 		"images/tilesets/tileset_area1.png",
+		"images/tilesets/tileset_interior1.png",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("embedded files = %#v, want %#v", got, want)

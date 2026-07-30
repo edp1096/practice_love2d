@@ -4,16 +4,89 @@ import (
 	"image/color"
 	"testing"
 
+	"practice_love2d/33_ebitengine_spike/internal/campaign"
 	"practice_love2d/33_ebitengine_spike/internal/ebitapp"
+	"practice_love2d/33_ebitengine_spike/internal/sim"
 )
+
+func TestAccessibilitySettingsControlMotionFlashAndNoticeDuration(
+	t *testing.T,
+) {
+	runtime := newCampaignRuntime(t)
+	session := runtime.simulation.SaveSession()
+	for index := range session.Entities {
+		if session.Entities[index].ID == "player" {
+			session.Entities[index].FlashTicks = 1
+		}
+	}
+	session.Camera.Offset = sim.Vec{
+		X: sim.Pixels(10),
+		Y: sim.Pixels(-4),
+	}
+	session.Camera.Center = sim.Vec{
+		X: session.Camera.BaseCenter.X + session.Camera.Offset.X,
+		Y: session.Camera.BaseCenter.Y + session.Camera.Offset.Y,
+	}
+	session.Camera.ShakeMagnitude = sim.Pixels(10)
+	session.Camera.ShakeDuration = 10
+	session.Camera.ShakeRemaining = 10
+	if err := runtime.simulation.LoadSession(session); err != nil {
+		t.Fatal(err)
+	}
+
+	full := runtime.View()
+	if full.Camera.ShakeX != -10 ||
+		full.Camera.ShakeY != 4 ||
+		!presentedEntity(t, full, "player").Flash {
+		t.Fatalf("full accessibility view = %#v", full)
+	}
+	if err := runtime.campaign.Transaction(
+		func(state *campaign.State) error {
+			state.Accessibility = campaign.AccessibilitySettings{
+				Motion:         "reduced",
+				HitFlash:       false,
+				NoticeDuration: "long",
+			}
+			return nil
+		},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	reduced := runtime.View()
+	if reduced.Camera.ShakeX != -3.5 ||
+		reduced.Camera.ShakeY != 1.4 ||
+		presentedEntity(t, reduced, "player").Flash {
+		t.Fatalf("reduced accessibility view = %#v", reduced)
+	}
+	if got := noticeTicks(120, runtime.CampaignState().Accessibility); got !=
+		240 {
+		t.Fatalf("long notice ticks = %d, want 240", got)
+	}
+}
+
+func presentedEntity(
+	t *testing.T,
+	view ebitapp.View,
+	entityID string,
+) ebitapp.EntityView {
+	t.Helper()
+	for _, entity := range view.Entities {
+		if entity.ID == entityID {
+			return entity
+		}
+	}
+	t.Fatalf("presented entity %q is missing", entityID)
+	return ebitapp.EntityView{}
+}
 
 func TestViewPublishesDetachedAuthoredTilemapBackgroundAndResources(
 	t *testing.T,
 ) {
 	runtime := newCampaignRuntime(t)
 	resources := runtime.ImageResources()
-	if len(resources) != 6 {
-		t.Fatalf("image resources = %d, want 6", len(resources))
+	if len(resources) != 8 {
+		t.Fatalf("image resources = %d, want 8", len(resources))
 	}
 	foundTileset := false
 	for _, resource := range resources {
@@ -64,8 +137,8 @@ func TestViewPublishesDetachedAuthoredTilemapBackgroundAndResources(
 func TestSpriteResourcesAndEntityOverridesAreDetached(t *testing.T) {
 	runtime := newCampaignRuntime(t)
 	resources := runtime.SpriteResources()
-	if len(resources) != 4 {
-		t.Fatalf("sprite resources = %d, want 4", len(resources))
+	if len(resources) != 5 {
+		t.Fatalf("sprite resources = %d, want 5", len(resources))
 	}
 	var heroIndex = -1
 	for index := range resources {
@@ -128,7 +201,7 @@ func TestAuthoredMusicAndSemanticAudioCuesReachView(t *testing.T) {
 	if resources.MasterVolume != 0.8 ||
 		resources.MusicVolume != 0.45 ||
 		resources.SFXVolume != 0.8 ||
-		len(resources.Assets) != 10 {
+		len(resources.Assets) != 12 {
 		t.Fatalf("audio resources = %#v", resources)
 	}
 	resources.Assets[0].ID = "mutated"
@@ -137,7 +210,7 @@ func TestAuthoredMusicAndSemanticAudioCuesReachView(t *testing.T) {
 	}
 
 	initial := runtime.View()
-	if initial.Audio.MusicAssetID != "audio.forest_theme" ||
+	if initial.Audio.MusicAssetID != "audio.village_theme" ||
 		initial.Audio.MusicVolume != 0.65 ||
 		len(initial.Audio.Cues) != 0 {
 		t.Fatalf("initial audio view = %#v", initial.Audio)
@@ -161,10 +234,11 @@ func TestAuthoredMusicAndSemanticAudioCuesReachView(t *testing.T) {
 		t.Fatalf("repeated audio view changed sequence = %#v", repeated)
 	}
 
+	finishVillageArrivalCutscene(t, runtime)
 	moveEntityToPortal(t, runtime, "player", "to_field")
 	stepProtocol(t, runtime, 1)
 	hub := runtime.View().Audio
-	if hub.MusicAssetID != "audio.forest_theme" ||
+	if hub.MusicAssetID != "audio.road_theme" ||
 		hub.MusicVolume != 0.7 {
 		t.Fatalf("hub music = %#v", hub)
 	}

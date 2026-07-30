@@ -3,6 +3,7 @@ package rulesruntime
 import (
 	"errors"
 	"fmt"
+	"math"
 
 	"practice_love2d/33_ebitengine_spike/internal/campaign"
 	"practice_love2d/33_ebitengine_spike/internal/gamebuild"
@@ -227,11 +228,69 @@ func (executor *Executor) applyActions(
 				DialogueID: action.DialogueID,
 			})
 
+		case gamebuild.RuleActionStartCutscene:
+			intents = append(intents, Intent{
+				Type:       IntentStartCutscene,
+				CutsceneID: action.CutsceneID,
+			})
+
+		case gamebuild.RuleActionDamage:
+			intents = append(intents, Intent{
+				Type:         IntentDamage,
+				DamageAmount: action.DamageAmount,
+			})
+
 		case gamebuild.RuleActionHeal:
 			intents = append(intents, Intent{
 				Type:       IntentHeal,
 				HealAmount: action.HealAmount,
 			})
+
+		case gamebuild.RuleActionEmit:
+			intents = append(intents, Intent{
+				Type:      IntentEmit,
+				EventName: action.EventName,
+				EventData: append(
+					[]byte(nil),
+					action.EventData...,
+				),
+			})
+
+		case gamebuild.RuleActionShowNotice:
+			intents = append(intents, Intent{
+				Type:        IntentShowNotice,
+				NoticeText:  action.NoticeText,
+				NoticeKey:   action.NoticeKey,
+				NoticeTone:  action.NoticeTone,
+				NoticeTicks: action.NoticeTicks,
+			})
+
+		case gamebuild.RuleActionStartTurnBattle:
+			intents = append(intents, Intent{
+				Type:     IntentStartTurnBattle,
+				BattleID: action.BattleID,
+			})
+		case gamebuild.RuleActionSetWorldTime:
+			day := state.World.Day
+			if action.WorldDay > 0 {
+				day = action.WorldDay
+			}
+			state.World = campaign.WorldProgress{
+				Day:    day,
+				Minute: action.WorldMinute,
+			}
+		case gamebuild.RuleActionAdvanceWorldTime:
+			total := state.World.Minute + action.WorldMinutes
+			dayOffset := int64(math.Floor(total / (24 * 60)))
+			if dayOffset > campaign.MaxJSONInteger-state.World.Day {
+				return nil, fmt.Errorf(
+					"%s: world day exceeds maximum %d",
+					path,
+					campaign.MaxJSONInteger,
+				)
+			}
+			state.World.Day += dayOffset
+			state.World.Minute = math.Mod(total, 24*60)
 
 		default:
 			return nil, fmt.Errorf(

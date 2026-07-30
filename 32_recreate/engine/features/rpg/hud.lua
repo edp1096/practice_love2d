@@ -25,9 +25,14 @@ function hud_system:draw(world)
     local snapshot = world:snapshot()
     local locale = world:service("locale")
     local view = world:view()
-    local width = 286
+    local width = math.min(286, math.max(0, view.width - 24))
     local x = view.width - width - 12
     local y = 12
+    if view.width < 712 then
+        width = math.max(0, view.width - 24)
+        x = 12
+        y = 82
+    end
     local lines = {}
     lines[#lines + 1] = string.format(
         "%s: %d",
@@ -91,11 +96,19 @@ function hud_system:draw(world)
         )
     end
 
-    local height = 18 + #lines * 19
+    local wrapped_lines = {}
+    local font = love.graphics.getFont()
+    for _, line in ipairs(lines) do
+        local _, wrapped = font:getWrap(line, math.max(1, width - 24))
+        for _, segment in ipairs(wrapped) do
+            wrapped_lines[#wrapped_lines + 1] = segment
+        end
+    end
+    local height = 18 + #wrapped_lines * 19
     love.graphics.setColor(0.02, 0.025, 0.04, 0.82)
     love.graphics.rectangle("fill", x, y, width, height, 8, 8)
     love.graphics.setColor(0.72, 0.9, 1, 1)
-    for index, line in ipairs(lines) do
+    for index, line in ipairs(wrapped_lines) do
         love.graphics.print(line, x + 12, y + 8 + (index - 1) * 19)
     end
 end

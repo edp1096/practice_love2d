@@ -45,6 +45,36 @@ func TestNewDemoExposesDetachedSortedModels(t *testing.T) {
 	}
 }
 
+func TestApplyDamageUsesSharedDamageAndDeathEvents(t *testing.T) {
+	t.Parallel()
+	simulation := NewDemo()
+
+	events, err := simulation.ApplyDamage("actor.hero", 12)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := entityByID(t, simulation.Snapshot(), "actor.hero").Health; got != 88 {
+		t.Fatalf("environment damage health = %d, want 88", got)
+	}
+	damage := requireEvent(t, events, EventDamageApplied)
+	if damage.TargetID != "actor.hero" || damage.Amount != 12 {
+		t.Fatalf("environment damage event = %#v", damage)
+	}
+
+	events, err = simulation.ApplyDamage("actor.hero", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	player := entityByID(t, simulation.Snapshot(), "actor.hero")
+	if !player.Dead || player.Health != 0 {
+		t.Fatalf("lethal environment damage = %#v", player)
+	}
+	requireEvent(t, events, EventActorKilled)
+	if _, err := simulation.ApplyDamage("actor.hero", 1); err == nil {
+		t.Fatal("dead entity accepted additional environment damage")
+	}
+}
+
 func TestMovementSlidesAndStopsAtStageWalls(t *testing.T) {
 	config := baseConfig()
 	config.Entities = config.Entities[:1]

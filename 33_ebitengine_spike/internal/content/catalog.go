@@ -99,6 +99,7 @@ func Load(reader io.Reader) (*Catalog, error) {
 	}
 	normalizeLegacyProjectAudio(&catalog.Manifest)
 	normalizeLegacyProjectInput(&catalog.Manifest)
+	normalizeLegacyProjectWorld(&catalog.Manifest)
 	if err := validateCatalog(&catalog); err != nil {
 		return nil, err
 	}

@@ -1060,6 +1060,7 @@ func (server *makerServer) handler() http.Handler {
 	mux.HandleFunc("/api/content/validate", server.handleValidate)
 	mux.HandleFunc("/api/content/save", server.handleSave)
 	mux.HandleFunc("/api/content/create", server.handleCreate)
+	mux.HandleFunc("/api/map", server.handleMap)
 	mux.HandleFunc("/api/preview", server.handlePreview)
 	mux.HandleFunc("/api/input", server.handleInput)
 	mux.HandleFunc("/api/screenshot", server.handleScreenshot)

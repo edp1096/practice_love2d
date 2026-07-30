@@ -27,9 +27,15 @@ return {
             remove_on_death = false,
         },
         ["rpg.stats"] = {
-            attack = 0,
-            defense = 0,
+            attack = 2,
+            defense = 1,
             move_speed = 1,
+        },
+        ["rpg.turn_battler"] = {
+            skills = {
+                "turn_skill.strike",
+                "turn_skill.mend",
+            },
         },
         ["rpg.equipment"] = {
             loadout = "player",

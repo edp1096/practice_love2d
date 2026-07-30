@@ -62,7 +62,7 @@
   <object id="10" name="grove_discovery" class="trigger" x="570" y="360" width="120" height="100">
    <properties>
     <property name="once" type="bool" value="true"/>
-    <property name="actions" value="[{&quot;type&quot;:&quot;emit&quot;,&quot;name&quot;:&quot;world.grove_discovered&quot;,&quot;data&quot;:{&quot;region&quot;:&quot;grove&quot;}}]"/>
+    <property name="actions" value="[{&quot;type&quot;:&quot;emit&quot;,&quot;name&quot;:&quot;world.grove_discovered&quot;,&quot;data&quot;:{&quot;region&quot;:&quot;grove&quot;}},{&quot;type&quot;:&quot;show_notice&quot;,&quot;text_key&quot;:&quot;notice.grove.warning&quot;,&quot;tone&quot;:&quot;warning&quot;,&quot;duration&quot;:4}]"/>
    </properties>
   </object>
   <object id="11" name="to_hub" class="portal" x="0" y="224" width="32" height="128">

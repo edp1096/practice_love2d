@@ -70,6 +70,12 @@ type QuestDefinition struct {
 	Objectives      []ObjectiveDefinition `json:"objectives"`
 }
 
+// TurnBattleDefinition declares one durable battle-result slot. The active
+// battle itself remains transient runtime state.
+type TurnBattleDefinition struct {
+	ID string `json:"id"`
+}
+
 // Config is the versioned, immutable definition used to validate a State.
 // ProjectID identifies the game, while ContentID identifies the exact
 // compatible content revision.
@@ -82,14 +88,18 @@ type Config struct {
 	DefaultLocale string   `json:"default_locale"`
 	Locales       []string `json:"locales"`
 
+	WorldStartMinute   float64 `json:"world_start_minute"`
+	WorldSecondsPerDay float64 `json:"world_seconds_per_day"`
+
 	InitialStageID      string            `json:"initial_stage_id"`
 	InitialEntrySpawnID string            `json:"initial_entry_spawn_id"`
 	Stages              []StageDefinition `json:"stages"`
 
-	Flags          []string          `json:"flags"`
-	Items          []ItemDefinition  `json:"items"`
-	EquipmentSlots []string          `json:"equipment_slots"`
-	Quests         []QuestDefinition `json:"quests"`
+	Flags          []string               `json:"flags"`
+	Items          []ItemDefinition       `json:"items"`
+	EquipmentSlots []string               `json:"equipment_slots"`
+	Quests         []QuestDefinition      `json:"quests"`
+	TurnBattles    []TurnBattleDefinition `json:"turn_battles"`
 }
 
 // FlagState stores an explicitly declared boolean flag.
@@ -132,6 +142,41 @@ type QuestState struct {
 	Objectives []ObjectiveState `json:"objectives"`
 }
 
+type TurnBattleOutcome string
+
+const (
+	TurnBattleNever   TurnBattleOutcome = ""
+	TurnBattleWon     TurnBattleOutcome = "won"
+	TurnBattleLost    TurnBattleOutcome = "lost"
+	TurnBattleEscaped TurnBattleOutcome = "escaped"
+)
+
+type TurnBattleState struct {
+	ID      string            `json:"id"`
+	Outcome TurnBattleOutcome `json:"outcome,omitempty"`
+}
+
+type WorldProgress struct {
+	Day    int64   `json:"day"`
+	Minute float64 `json:"minute"`
+}
+
+// AccessibilitySettings are durable, renderer-independent player preferences.
+// Adapters decide how to realize them without changing deterministic combat.
+type AccessibilitySettings struct {
+	Motion         string `json:"motion"`
+	HitFlash       bool   `json:"hit_flash"`
+	NoticeDuration string `json:"notice_duration"`
+}
+
+func DefaultAccessibilitySettings() AccessibilitySettings {
+	return AccessibilitySettings{
+		Motion:         "full",
+		HitFlash:       true,
+		NoticeDuration: "normal",
+	}
+}
+
 // State is a detached runtime snapshot. Flow and all RPG fields are durable;
 // Mode is transient presentation state. It intentionally excludes entity
 // position, health, combat, camera, and all other per-stage simulation state.
@@ -141,17 +186,20 @@ type State struct {
 	ProjectID string `json:"project_id"`
 	ContentID string `json:"content_id"`
 
-	Flow           FlowProgress `json:"flow"`
-	Mode           Mode         `json:"mode"`
-	CurrentStageID string       `json:"current_stage_id,omitempty"`
-	EntrySpawnID   string       `json:"entry_spawn_id,omitempty"`
-	Locale         string       `json:"locale"`
+	Flow           FlowProgress          `json:"flow"`
+	Mode           Mode                  `json:"mode"`
+	CurrentStageID string                `json:"current_stage_id,omitempty"`
+	EntrySpawnID   string                `json:"entry_spawn_id,omitempty"`
+	Locale         string                `json:"locale"`
+	World          WorldProgress         `json:"world"`
+	Accessibility  AccessibilitySettings `json:"accessibility"`
 
-	Flags     []FlagState      `json:"flags"`
-	Inventory []InventoryEntry `json:"inventory"`
-	Equipment []EquipmentEntry `json:"equipment"`
-	Currency  int64            `json:"currency"`
-	Quests    []QuestState     `json:"quests"`
+	Flags       []FlagState       `json:"flags"`
+	Inventory   []InventoryEntry  `json:"inventory"`
+	Equipment   []EquipmentEntry  `json:"equipment"`
+	Currency    int64             `json:"currency"`
+	Quests      []QuestState      `json:"quests"`
+	TurnBattles []TurnBattleState `json:"turn_battles"`
 }
 
 // Campaign serializes access to one validated Config and State pair.
@@ -276,6 +324,7 @@ func (config Config) Clone() Config {
 		cloned.Quests[index] = quest
 		cloned.Quests[index].Objectives = cloneSlice(quest.Objectives)
 	}
+	cloned.TurnBattles = cloneSlice(config.TurnBattles)
 	return cloned
 }
 
@@ -290,6 +339,7 @@ func (state State) Clone() State {
 		cloned.Quests[index] = quest
 		cloned.Quests[index].Objectives = cloneSlice(quest.Objectives)
 	}
+	cloned.TurnBattles = cloneSlice(state.TurnBattles)
 	return cloned
 }
 
@@ -331,6 +381,9 @@ func prepareConfig(config Config) (Config, error) {
 			},
 		)
 	}
+	sort.Slice(prepared.TurnBattles, func(left, right int) bool {
+		return prepared.TurnBattles[left].ID < prepared.TurnBattles[right].ID
+	})
 	return normalizeConfig(prepared), nil
 }
 
@@ -346,10 +399,16 @@ func newState(
 		Flow:      flow,
 		Mode:      mode,
 		Locale:    config.DefaultLocale,
-		Flags:     make([]FlagState, len(config.Flags)),
-		Inventory: make([]InventoryEntry, len(config.Items)),
-		Equipment: make([]EquipmentEntry, len(config.EquipmentSlots)),
-		Quests:    make([]QuestState, len(config.Quests)),
+		World: WorldProgress{
+			Day:    1,
+			Minute: config.WorldStartMinute,
+		},
+		Accessibility: DefaultAccessibilitySettings(),
+		Flags:         make([]FlagState, len(config.Flags)),
+		Inventory:     make([]InventoryEntry, len(config.Items)),
+		Equipment:     make([]EquipmentEntry, len(config.EquipmentSlots)),
+		Quests:        make([]QuestState, len(config.Quests)),
+		TurnBattles:   make([]TurnBattleState, len(config.TurnBattles)),
 	}
 	if flow.Started {
 		state.CurrentStageID = config.InitialStageID
@@ -383,6 +442,9 @@ func newState(
 				ID = objective.ID
 		}
 	}
+	for index, definition := range config.TurnBattles {
+		state.TurnBattles[index].ID = definition.ID
+	}
 	return state
 }
 
@@ -410,6 +472,9 @@ func normalizeConfig(config Config) Config {
 	if config.Quests == nil {
 		config.Quests = []QuestDefinition{}
 	}
+	if config.TurnBattles == nil {
+		config.TurnBattles = []TurnBattleDefinition{}
+	}
 	for index := range config.Quests {
 		if config.Quests[index].Objectives == nil {
 			config.Quests[index].Objectives = []ObjectiveDefinition{}
@@ -430,6 +495,9 @@ func normalizeState(state State) State {
 	}
 	if state.Quests == nil {
 		state.Quests = []QuestState{}
+	}
+	if state.TurnBattles == nil {
+		state.TurnBattles = []TurnBattleState{}
 	}
 	for index := range state.Quests {
 		if state.Quests[index].Objectives == nil {

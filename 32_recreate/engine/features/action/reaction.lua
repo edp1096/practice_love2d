@@ -194,7 +194,14 @@ function feature:register(host)
                not target.dead then
                 reaction.invulnerable_remaining =
                     reaction.hit_invulnerability
-                reaction.flash_remaining = reaction.flash_duration
+                local accessibility =
+                    context.world:service("accessibility")
+                if not accessibility or
+                   accessibility:hitFlashEnabled() then
+                    reaction.flash_remaining = reaction.flash_duration
+                else
+                    reaction.flash_remaining = 0
+                end
             end
             return result, execute_error
         end

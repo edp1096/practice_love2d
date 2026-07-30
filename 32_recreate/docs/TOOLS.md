@@ -16,7 +16,10 @@ go run ./tools/lovectl init --profile action ../my-action
 않는다. 생성물에는 version을 고정한 `engine`, `tools/lovectl`, `tests`
 번들과 profile별 composition·최소 콘텐츠·smoke manifest가 들어간다.
 첫 부팅은 title이며 smoke도 `new_game`, `quit`와 title screenshot을
-먼저 검증한 뒤 gameplay capability를 검사한다.
+먼저 검증한 뒤 gameplay capability를 검사한다. 공식 profile의
+`smoke.json`은 `journey.steps`로 목표 actor에 접근해 입력을 실행하고
+순수 RPG의 battle·quest, 액션의 encounter, 액션 RPG의 quest와 최종
+ending까지 확인한 `smoke-complete.png`도 남긴다.
 
 세 profile은 LÖVE의 `check`·실화면 smoke·결정적 package뿐 아니라
 Ebitengine의 canonical catalog, title 제한 실행과 gameplay 제한
@@ -35,7 +38,13 @@ go run ./tools/lovectl maker --backend ebitengine
 Go HTTP 서버를 시작한다. 브라우저에서는 다음 작업을 할 수 있다.
 
 - 종류별 콘텐츠 검색과 순·역방향 참조 탐색
-- 객체·배열 구조 편집과 전체 JSON 편집
+- dialogue 노드·선택지, quest 목표·완료 보상, NPC 상호작용의 조건부
+  event page, 컷신 step과 턴제 스킬·적 편성의 간편 카드 편집
+- `actions` 배열에서 명령 종류를 고르면 필수 필드가 채워지는 명령
+  builder와 콘텐츠 ID 선택 목록
+- stage의 actor·spawn 좌표, trigger 조건·명령·조건부 event page와
+  portal 목적지, region의 조건·진입·이탈 명령을 편집하는 TMX 맵 카드
+- 간편 화면에 없는 객체·배열 구조 편집과 전체 JSON 고급 편집
 - 현재 엔진의 Catalog/Validator를 이용한 draft 검증
 - actor, ability, dialogue와 stage 미리보기
 - 게임 화면 자동 캡처와 의미 입력
@@ -50,6 +59,23 @@ stage는 읽기 전용이다. 저장 요청은 읽을 때 받은 SHA-256 revisio
 
 Maker 미리보기의 save identity와 XDG 디렉터리는 실제 플레이 데이터와
 분리된다. 타일맵 편집은 [MAPS.md](MAPS.md)의 Tiled 작업 흐름을 사용한다.
+특정 콘텐츠로 바로 열려면 Maker URL에
+`?content=dialogue.village_guide`처럼 content ID를 붙인다.
+
+dialogue·quest·actor·stage·cutscene·turn_skill·turn_battle은 허용된 목적별
+필드를 먼저 보여주고 전체 스키마는 접힌 고급 영역에 둔다. 명령과
+조건의 `type`, item·quest·shop·battle 등의 참조 필드는 자유 문자열
+대신 현재 Catalog 선택 목록을 사용한다.
+월드 제작 명령 builder는 `set_world_time`, `advance_world_time`,
+`time_between`, `region_active`의 목적별 필드를 제공한다. map-level
+`world_pages`의 전체 배열은 현재 고급 JSON property로 편집하며, Tiled
+원본과 같은 strict validator를 통과해야 저장된다.
+변경 후 검증·저장 경계는 기존과 동일하므로 간편 화면도 validator를
+우회하지 않는다. generated stage Lua 본문은 계속 읽기 전용이지만 맵
+카드는 `game/maps/*.tmx` 원본만 수정한다. 수정 시 SHA-256 revision을
+확인하고 전체 TMX 교차 연결을 검증한 뒤 generated stage를 원자적으로
+다시 만들고 런타임을 reload한다. 컴파일이나 reload가 실패하면 TMX와
+generated stage를 이전 상태로 복구한다.
 
 기본 backend는 `love`다. `--backend ebitengine`은 프로젝트와 나란히
 있는 `33_ebitengine_spike`를 빌드하고 같은 Maker UI와 protocol v8
@@ -81,6 +107,9 @@ go run ./tools/lovectl new TYPE NAME [REFERENCE_ID]
 | `quest` | `quest.NAME` | 없음 |
 | `shop` | `shop.NAME` | 첫 offer의 `item.*` |
 | `locale` | `locale.NAME` | 없음; NAME을 초기 code로 사용 |
+| `turn-skill` | `turn_skill.NAME` | 없음 |
+| `turn-battle` | `turn_battle.NAME` | 첫 적의 `actor.*` |
+| `cutscene` | `cutscene.NAME` | 없음 |
 
 예:
 
@@ -88,6 +117,9 @@ go run ./tools/lovectl new TYPE NAME [REFERENCE_ID]
 go run ./tools/lovectl new equipment iron_sword
 go run ./tools/lovectl new dialogue blacksmith
 go run ./tools/lovectl new shop blacksmith item.iron_sword
+go run ./tools/lovectl new turn-skill heavy_strike
+go run ./tools/lovectl new turn-battle forest_slime actor.turn_slime
+go run ./tools/lovectl new cutscene village_arrival
 ```
 
 기존 파일은 덮어쓰지 않는다. 템플릿은 그 자체로 현재 schema를
@@ -164,6 +196,9 @@ go run ./tools/lovectl screenshot artifacts/preview.png
 ```
 
 - `definition`은 검증된 원문 테이블과 실제 source 파일을 보여 준다.
+- `world`의 `navigation`은 count뿐 아니라 ID로 정렬된 spawn point,
+  trigger와 portal의 authored geometry, 대상 stage/spawn을 반환한다.
+  자동화는 이 값을 사용해 TMX 좌표를 코드에 다시 적지 않는다.
 - actor preview 좌표를 생략하면 현재 camera 중앙에 생성한다.
 - ability preview는 해당 entity의 loadout에 든 ability만 허용한다.
 - dialogue preview의 speaker entity는 생략할 수 있다.

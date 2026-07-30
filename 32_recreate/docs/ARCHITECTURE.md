@@ -84,6 +84,7 @@ App session
  ├─ rpg.inventory
  ├─ rpg.equipment
  ├─ rpg.quests
+ ├─ rpg.turn_battles
  ├─ rpg.economy
  └─ rpg.locale
 ```
@@ -139,6 +140,7 @@ portal은 World에서 App을 직접 호출하지 않는다. 의미 있는
 - `apply_status`
 - `remove_status`
 - `start_encounter`
+- `start_turn_battle`
 - `emit`
 - `set_flag`, `clear_flag`
 - `give_item`, `take_item`, `use_item`
@@ -148,12 +150,14 @@ portal은 World에서 App을 직접 호출하지 않는다. 의미 있는
 - `add_currency`, `spend_currency`
 - `open_shop`, `close_shop`, `buy_item`, `sell_item`
 - `set_locale`
+- `show_notice`
 - `finish_game`, `save_game`
 
 현재 등록된 조건은 공통 조합인 `always`, `all`, `any`, `not` 위에
 `health_at_most`, `has_status`, `encounter_state`, `flag`, `has_item`,
 `item_equipped`, `dialogue_active`, `quest_state`, `quest_objective`,
-`currency_at_least`, `shop_active`, `locale_is`, `game_flow_state`가 있다.
+`currency_at_least`, `shop_active`, `locale_is`, `turn_battle_state`,
+`game_flow_state`가 있다.
 
 각 RPG feature가 자기 어휘를 등록하므로 중앙의 거대한 `if/elseif`는
 없다. 같은 action은 대화 선택지, 퀘스트 보상, 아이템 효과와 map
@@ -278,7 +282,7 @@ interceptor는 숫자 우선순위와 이름으로 결정적으로 정렬된다.
 | 발사체 수명·연속 적중 | `action.projectile` | projectile 콘텐츠, `spawn_projectile` action |
 | 상태 중첩·주기·배율 | `action.status` | apply/remove action, condition, damage interceptor |
 | wave·boss phase | `action.encounter` | encounter 콘텐츠와 stage section |
-| 추적과 공격 의도 | `action.chase_ai` | entity command |
+| 거리 유지·회전·단계별 공격 의도 | `action.behavior_ai` | entity command |
 | 횡스크롤 이동·중력 | `movement.platformer` | 의미 입력, motion service, move gate |
 | 플레이어 소유권 | `control` | `control.player` marker |
 | 런타임·디스크 영속 범위 | `session` | feature별 versioned section |
@@ -289,6 +293,7 @@ interceptor는 숫자 우선순위와 이름으로 결정적으로 정렬된다.
 | 목표·보상 | `rpg.quest` | event subscription, quest 콘텐츠 |
 | 거래·소지금 | `rpg.shop` + `rpg.economy` | shop 콘텐츠, inventory service |
 | 표시 언어 | `rpg.locale` | locale 콘텐츠, boot validator |
+| 일자·시각·지역·월드 page | `world_state` | `world.state` save section, region edge, Rules condition/action |
 
 따라서 방어와 슈퍼아머도 `combat.lua`의 분기를 늘리는 대신
 자기 feature에서 공개 계약을 조합해 추가한다.

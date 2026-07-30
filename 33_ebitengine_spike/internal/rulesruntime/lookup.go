@@ -64,6 +64,40 @@ func findQuestDefinition(
 	return config.Quests[index], index, nil
 }
 
+func findTurnBattleDefinition(
+	config campaign.Config,
+	id string,
+) (campaign.TurnBattleDefinition, int, error) {
+	index := sort.Search(len(config.TurnBattles), func(index int) bool {
+		return config.TurnBattles[index].ID >= id
+	})
+	if index == len(config.TurnBattles) ||
+		config.TurnBattles[index].ID != id {
+		return campaign.TurnBattleDefinition{}, 0, fmt.Errorf(
+			"turn battle %q is not configured",
+			id,
+		)
+	}
+	return config.TurnBattles[index], index, nil
+}
+
+func findTurnBattleState(
+	state *campaign.State,
+	id string,
+) (*campaign.TurnBattleState, int, error) {
+	index := sort.Search(len(state.TurnBattles), func(index int) bool {
+		return state.TurnBattles[index].ID >= id
+	})
+	if index == len(state.TurnBattles) ||
+		state.TurnBattles[index].ID != id {
+		return nil, 0, fmt.Errorf(
+			"campaign turn battle state %q is missing or not canonical",
+			id,
+		)
+	}
+	return &state.TurnBattles[index], index, nil
+}
+
 func findObjectiveDefinition(
 	quest campaign.QuestDefinition,
 	id string,

@@ -59,14 +59,14 @@ func TestRuntimeUsesEmbeddedCatalogWithoutWorkingDirectoryDependency(
 	if got := view.World.Stage; got != "stage.village" {
 		t.Fatalf("embedded stage = %q, want stage.village", got)
 	}
-	if got, want := len(view.Entities), 3; got != want {
+	if got, want := len(view.Entities), 2; got != want {
 		t.Fatalf("embedded entities = %d, want %d", got, want)
 	}
 	entityIDs := make([]string, 0, len(view.Entities))
 	for _, entity := range view.Entities {
 		entityIDs = append(entityIDs, entity.ID)
 	}
-	if got, want := entityIDs, []string{"guide", "merchant", "player"}; !reflect.DeepEqual(got, want) {
+	if got, want := entityIDs, []string{"guide", "player"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("embedded entity IDs = %v, want %v", got, want)
 	}
 	if got := runtime.buildOptions; got.StageID != "stage.village" ||
@@ -821,6 +821,101 @@ func TestAuthoredEnemyAIProducesPerfectParry(t *testing.T) {
 	}
 	if !foundParryEffect {
 		t.Fatal("perfect parry did not produce a presentation effect")
+	}
+}
+
+func TestGuardianBehaviorAIChangesPhaseAndAimsAuthoredAbility(
+	t *testing.T,
+) {
+	t.Parallel()
+	store, err := storage.NewFileStore(filepath.Join(t.TempDir(), "saves"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime, err := New(Options{
+		CatalogPath: filepath.Join("..", "..", "game", "catalog.json"),
+		Build: gamebuild.Options{
+			StageID:  "stage.world_grove",
+			SpawnID:  "west_entry",
+			LocaleID: "locale.ko",
+		},
+		Store: store,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := worldEntity(
+		t,
+		runtime.worldSnapshotLocked(),
+		"boss.grove_guardian",
+	)
+	if before.AIPattern != "sentinel" ||
+		before.AINextAbility != "ability.slime_bump" ||
+		before.AIAttackIndex != 1 {
+		t.Fatalf("initial guardian AI = %#v", before)
+	}
+	callRuntime(
+		t,
+		runtime,
+		protocol.MethodEntitySetHealth,
+		protocol.SetHealthParams{
+			EntityID: "boss.grove_guardian",
+			Value:    120,
+		},
+	)
+	callRuntime(
+		t,
+		runtime,
+		protocol.MethodEntitySetPosition,
+		protocol.SetPositionParams{
+			EntityID: "boss.grove_guardian",
+			X:        300,
+			Y:        350,
+		},
+	)
+	awakened := worldEntity(
+		t,
+		runtime.worldSnapshotLocked(),
+		"boss.grove_guardian",
+	)
+	if awakened.AIPattern != "awakened" ||
+		awakened.AINextAbility != "ability.fire_bolt" ||
+		awakened.AITargetTag != "player" {
+		t.Fatalf("health phase was not selected: %#v", awakened)
+	}
+	callRuntime(
+		t,
+		runtime,
+		protocol.MethodEmulationStep,
+		protocol.StepParams{Frames: 1},
+	)
+	attacking := worldEntity(
+		t,
+		runtime.worldSnapshotLocked(),
+		"boss.grove_guardian",
+	)
+	if attacking.AbilityID != "ability.fire_bolt" ||
+		attacking.AttackPhase == sim.AttackIdle ||
+		attacking.AIAttackIndex != 2 ||
+		attacking.AINextAbility != "ability.whirlwind" {
+		t.Fatalf("authored attack cycle was not advanced: %#v", attacking)
+	}
+	callRuntime(
+		t,
+		runtime,
+		protocol.MethodEmulationStep,
+		protocol.StepParams{Frames: 10},
+	)
+	world := runtime.worldSnapshotLocked()
+	if len(world.Projectiles) == 0 {
+		t.Fatalf("fire bolt was not spawned: %#v", world.RecentEvents)
+	}
+	projectile := world.Projectiles[0]
+	if projectile.DirectionX >= 0 || projectile.DirectionY >= 0 {
+		t.Fatalf(
+			"orbiting guardian did not aim toward the player: %#v",
+			projectile,
+		)
 	}
 }
 

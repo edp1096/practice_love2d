@@ -17,13 +17,18 @@ save schema v1
    ├─ rpg.equipment   v1
    ├─ rpg.quests      v1
    ├─ rpg.economy     v1
-   └─ rpg.locale      v1
+   ├─ rpg.locale      v1
+   ├─ rpg.turn_battles v1
+   └─ world.state     v1
 ```
 
 현재 위치는 stage와 선택된 spawn point로 표현한다. 물리 접촉, 투사체,
 공격 중간 phase, AI 내부 타이머 같은 일시 상태는 저장하지 않고 새
 World에서 다시 만든다. `game.flow`는 새 게임 시작 여부와 완료 여부를
 보존해 이어하기와 엔딩 상태를 복원한다.
+`world.state`는 day와 하루 안의 minute만 보존한다. 현재 stage의 활성
+region과 world page는 저장된 시각·flag와 새 actor 위치에서 다시
+계산한다.
 
 ## 사용
 
@@ -122,6 +127,7 @@ migration으로 처리할 수 없으므로 save schema migration을 함께
 - 진행 중인 공격, 경직, 패링, 회피와 hitstop
 - 살아 있는 projectile과 status 남은 시간
 - encounter wave의 순간 전투 상태
+- 활성 world region과 선택된 world page
 - NPC와 적의 현재 위치·체력·AI 타이머
 - 대화·상점 창의 열린 메뉴 위치
 

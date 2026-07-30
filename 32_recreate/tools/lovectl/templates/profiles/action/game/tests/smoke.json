@@ -13,5 +13,17 @@
     "action": "attack",
     "frames": 24,
     "minimum_damage": 1
+  },
+  "journey": {
+    "steps": [
+      {
+        "target_tag": "enemy",
+        "action": "attack",
+        "frames": 24,
+        "repeat": 3
+      }
+    ],
+    "expected_flow": "ending",
+    "expected_encounter": "training"
   }
 }

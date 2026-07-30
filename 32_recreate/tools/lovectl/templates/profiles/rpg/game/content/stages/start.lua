@@ -27,5 +27,10 @@ return {
             actor = "actor.merchant",
             position = {x = 500, y = 310},
         },
+        {
+            id = "slime",
+            actor = "actor.turn_slime",
+            position = {x = 700, y = 230},
+        },
     },
 }

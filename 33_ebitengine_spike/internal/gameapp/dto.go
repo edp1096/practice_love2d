@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"practice_love2d/33_ebitengine_spike/internal/campaign"
+	"practice_love2d/33_ebitengine_spike/internal/ebitapp"
 	"practice_love2d/33_ebitengine_spike/internal/sim"
 )
 
@@ -117,6 +118,10 @@ type entityDTO struct {
 	PlatformerSpeed       float64                       `json:"platformer_speed_per_tick,omitempty"`
 	PlatformerGravity     float64                       `json:"platformer_gravity_per_tick,omitempty"`
 	PlatformerJumpSpeed   float64                       `json:"platformer_jump_speed_per_tick,omitempty"`
+	AITargetTag           string                        `json:"ai_target_tag,omitempty"`
+	AIPattern             string                        `json:"ai_pattern,omitempty"`
+	AIAttackIndex         int                           `json:"ai_attack_index,omitempty"`
+	AINextAbility         string                        `json:"ai_next_ability,omitempty"`
 }
 
 type projectileDTO struct {
@@ -159,8 +164,23 @@ type worldSnapshotDTO struct {
 	Encounters      []sim.EncounterSnapshot `json:"encounters"`
 	Quests          []sim.QuestSnapshot     `json:"quests"`
 	Campaign        campaign.State          `json:"campaign"`
+	WorldState      authoredWorldStateDTO   `json:"world_state"`
 	Dialogue        DialogueState           `json:"dialogue"`
+	Cutscene        CutsceneState           `json:"cutscene"`
+	Notice          ebitapp.NoticeView      `json:"notice"`
+	TurnBattle      TurnBattleState         `json:"turn_battle"`
 	RecentEvents    []sim.Event             `json:"recent_events"`
+}
+
+type authoredWorldStateDTO struct {
+	Day           int64    `json:"day"`
+	Minute        float64  `json:"minute"`
+	Clock         string   `json:"clock"`
+	ActivePage    string   `json:"active_page,omitempty"`
+	ActiveRegions []string `json:"active_regions"`
+	RegionCount   int      `json:"region_count"`
+	PageCount     int      `json:"page_count"`
+	SecondsPerDay float64  `json:"seconds_per_day"`
 }
 
 func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
@@ -178,8 +198,12 @@ func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
 	topLeftY := coordPixels(
 		frame.Camera.BaseCenter.Y - frame.Camera.ViewportHeight/2,
 	)
-	shakeX := -coordPixels(frame.Camera.ShakeOffset.X)
-	shakeY := -coordPixels(frame.Camera.ShakeOffset.Y)
+	campaignState := runtime.campaign.Snapshot()
+	cameraMotionScale := motionScale(campaignState.Accessibility)
+	shakeX := -coordPixels(frame.Camera.ShakeOffset.X) *
+		cameraMotionScale
+	shakeY := -coordPixels(frame.Camera.ShakeOffset.Y) *
+		cameraMotionScale
 	dialogue, dialogueErr := runtime.dialogueStateLocked()
 	if dialogueErr != nil {
 		dialogue = DialogueState{
@@ -188,6 +212,7 @@ func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
 			Choices: []DialogueChoiceState{},
 		}
 	}
+	activeRegions := sortedActiveWorldRegions(runtime.worldActiveRegions)
 	result := worldSnapshotDTO{
 		Available:    true,
 		Time:         float64(snapshot.WorldTick) / sim.TicksPerSecond,
@@ -204,21 +229,39 @@ func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
 			Height: coordPixels(frame.Stage.MaxY - frame.Stage.MinY),
 		},
 		Camera: cameraDTO{
-			X:              topLeftX,
-			Y:              topLeftY,
-			CenterX:        coordPixels(frame.Camera.Center.X),
-			CenterY:        coordPixels(frame.Camera.Center.Y),
-			ShakeX:         shakeX,
-			ShakeY:         shakeY,
-			ShakeTicks:     frame.Camera.ShakeTicks,
+			X:       topLeftX,
+			Y:       topLeftY,
+			CenterX: coordPixels(frame.Camera.Center.X),
+			CenterY: coordPixels(frame.Camera.Center.Y),
+			ShakeX:  shakeX,
+			ShakeY:  shakeY,
+			ShakeTicks: func() int {
+				if cameraMotionScale == 0 {
+					return 0
+				}
+				return frame.Camera.ShakeTicks
+			}(),
 			ViewportWidth:  viewportWidth,
 			ViewportHeight: viewportHeight,
 			Zoom:           zoom,
 		},
-		Count:           len(snapshot.Entities),
-		Quests:          snapshot.Quests,
-		Campaign:        runtime.campaign.Snapshot(),
+		Count:    len(snapshot.Entities),
+		Quests:   snapshot.Quests,
+		Campaign: campaignState,
+		WorldState: authoredWorldStateDTO{
+			Day:           campaignState.World.Day,
+			Minute:        campaignState.World.Minute,
+			Clock:         formatWorldClock(campaignState.World.Minute),
+			ActivePage:    runtime.worldActivePage,
+			ActiveRegions: activeRegions,
+			RegionCount:   len(runtime.built.Stage.Regions),
+			PageCount:     len(runtime.built.Stage.WorldPages),
+			SecondsPerDay: runtime.campaignConfig.WorldSecondsPerDay,
+		},
 		Dialogue:        dialogue,
+		Cutscene:        runtime.cutsceneStateLocked(),
+		Notice:          runtime.notice,
+		TurnBattle:      runtime.turnBattleStateLocked(),
 		RecentEvents:    snapshot.Events,
 		Walls:           make([]wallDTO, 0, len(frame.Walls)),
 		Entities:        make([]entityDTO, 0, len(snapshot.Entities)),
@@ -303,21 +346,26 @@ func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
 			),
 			StaggerRemaining:      entity.StaggerTicks,
 			InvulnerableRemaining: entity.InvulnerableTicks,
-			FlashRemaining:        entity.FlashTicks,
-			KnockbackRemaining:    entity.KnockbackTicks,
-			ParryActive:           entity.ParryTicks > 0,
-			ParryRemaining:        entity.ParryTicks,
-			ParryCooldown:         entity.ParryCooldownTicks,
-			ParryPerfect:          entity.LastParryPerfect,
-			DodgeActive:           entity.DodgeTicks > 0,
-			DodgeRemaining:        entity.DodgeTicks,
-			DodgeCooldown:         entity.DodgeCooldownTicks,
-			Platformer:            entity.Platformer != nil,
-			VelocityX:             coordPixels(entity.Velocity.X),
-			VelocityY:             coordPixels(entity.Velocity.Y),
-			Grounded:              entity.Grounded,
-			CoyoteRemaining:       entity.CoyoteTicks,
-			JumpBufferRemaining:   entity.JumpBufferTicks,
+			FlashRemaining: func() int {
+				if !campaignState.Accessibility.HitFlash {
+					return 0
+				}
+				return entity.FlashTicks
+			}(),
+			KnockbackRemaining:  entity.KnockbackTicks,
+			ParryActive:         entity.ParryTicks > 0,
+			ParryRemaining:      entity.ParryTicks,
+			ParryCooldown:       entity.ParryCooldownTicks,
+			ParryPerfect:        entity.LastParryPerfect,
+			DodgeActive:         entity.DodgeTicks > 0,
+			DodgeRemaining:      entity.DodgeTicks,
+			DodgeCooldown:       entity.DodgeCooldownTicks,
+			Platformer:          entity.Platformer != nil,
+			VelocityX:           coordPixels(entity.Velocity.X),
+			VelocityY:           coordPixels(entity.Velocity.Y),
+			Grounded:            entity.Grounded,
+			CoyoteRemaining:     entity.CoyoteTicks,
+			JumpBufferRemaining: entity.JumpBufferTicks,
 		}
 		if entity.Platformer != nil {
 			dto.PlatformerSpeed = coordPixels(
@@ -329,6 +377,23 @@ func (runtime *Runtime) worldSnapshotLocked() worldSnapshotDTO {
 			dto.PlatformerJumpSpeed = coordPixels(
 				entity.Platformer.JumpSpeedPerTick,
 			)
+		}
+		if metadata.BehaviorAI != nil {
+			pattern := activeBehaviorPattern(entity, metadata.BehaviorAI)
+			state := runtime.behaviorAI[entity.ID]
+			if state.PatternID != pattern.ID ||
+				state.AttackIndex < 0 ||
+				state.AttackIndex >= len(pattern.Attacks) {
+				state.PatternID = pattern.ID
+				state.AttackIndex = 0
+			}
+			dto.AITargetTag = metadata.BehaviorAI.TargetTag
+			dto.AIPattern = pattern.ID
+			dto.AIAttackIndex = state.AttackIndex + 1
+			if len(pattern.Attacks) > 0 {
+				dto.AINextAbility =
+					pattern.Attacks[state.AttackIndex].AbilityID
+			}
 		}
 		result.Entities = append(result.Entities, dto)
 	}

@@ -24,6 +24,8 @@ func TestBuildCampaignConfigTranslatesCompleteCatalog(t *testing.T) {
 	}
 	if got.ProjectID != "recreate.maker_runtime" ||
 		got.DefaultLocale != "locale.ko" ||
+		got.WorldStartMinute != 8*60 ||
+		got.WorldSecondsPerDay != 0 ||
 		got.InitialStageID != "stage.village" ||
 		got.InitialEntrySpawnID != "default" {
 		t.Fatalf("manifest translation = %#v", got)
@@ -39,10 +41,20 @@ func TestBuildCampaignConfigTranslatesCompleteCatalog(t *testing.T) {
 		t.Fatalf("locales = %q, want %q", got.Locales, want)
 	}
 
-	if len(got.Stages) != 7 {
-		t.Fatalf("stages = %d, want 7: %#v", len(got.Stages), got.Stages)
+	if len(got.Stages) != 9 {
+		t.Fatalf("stages = %d, want 9: %#v", len(got.Stages), got.Stages)
 	}
-	assertCampaignStage(t, got, "stage.village", "default", "field_return")
+	assertCampaignStage(
+		t,
+		got,
+		"stage.village",
+		"default",
+		"field_return",
+		"home_return",
+		"shop_return",
+	)
+	assertCampaignStage(t, got, "stage.village_home", "default", "entry")
+	assertCampaignStage(t, got, "stage.village_shop", "default", "entry")
 	assertCampaignStage(
 		t,
 		got,
@@ -92,6 +104,9 @@ func TestBuildCampaignConfigTranslatesCompleteCatalog(t *testing.T) {
 	if want := []string{
 		"quest.grove_guardian.rewarded",
 		"quest.slime_patrol.rewarded",
+		"story.village_arrival_seen",
+		"world.field_potion_collected",
+		"world.village_square_seen",
 	}; !slices.Equal(got.Flags, want) {
 		t.Fatalf("flags = %q, want %q", got.Flags, want)
 	}

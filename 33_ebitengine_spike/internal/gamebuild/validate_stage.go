@@ -33,6 +33,7 @@ func validateStageSemantics(
 		"triggers",
 		"portals",
 		"encounters",
+		"world_state",
 	); err != nil {
 		return err
 	}
@@ -186,12 +187,236 @@ func validateStageSemantics(
 	); err != nil {
 		return err
 	}
+	if err := validateStageWorldState(
+		catalog,
+		data["world_state"],
+		id+".world_state",
+		data["tilemap"],
+	); err != nil {
+		return err
+	}
 	if err := validateTilemap(
 		catalog,
 		data["tilemap"],
 		id+".tilemap",
 	); err != nil {
 		return err
+	}
+	return nil
+}
+
+func validateStageWorldState(
+	catalog *content.Catalog,
+	value any,
+	path string,
+	tilemapValue any,
+) error {
+	worldState, exists, err := optionalObject(value, path)
+	if err != nil || !exists {
+		return err
+	}
+	if err := rejectUnknownKeys(
+		worldState,
+		path,
+		"regions",
+		"pages",
+	); err != nil {
+		return err
+	}
+	regions, _, err := optionalArray(
+		worldState["regions"],
+		path+".regions",
+	)
+	if err != nil {
+		return err
+	}
+	seenRegions := make(map[string]struct{}, len(regions))
+	for index, raw := range regions {
+		itemPath := fmt.Sprintf("%s.regions[%d]", path, index)
+		region, err := requiredObject(raw, itemPath)
+		if err != nil {
+			return err
+		}
+		if err := rejectUnknownKeys(
+			region,
+			itemPath,
+			"id",
+			"shape",
+			"actor_tag",
+			"condition",
+			"on_enter",
+			"on_exit",
+		); err != nil {
+			return err
+		}
+		id, err := requiredString(region["id"], itemPath+".id")
+		if err != nil {
+			return err
+		}
+		if _, duplicate := seenRegions[id]; duplicate {
+			return fmt.Errorf("%s.id duplicates region %q", itemPath, id)
+		}
+		seenRegions[id] = struct{}{}
+		if _, err := validateGeometryShape(
+			region["shape"],
+			itemPath+".shape",
+		); err != nil {
+			return err
+		}
+		if err := optionalString(
+			region["actor_tag"],
+			itemPath+".actor_tag",
+		); err != nil {
+			return err
+		}
+		if region["condition"] != nil {
+			if err := validateCondition(
+				catalog,
+				region["condition"],
+				itemPath+".condition",
+			); err != nil {
+				return err
+			}
+		}
+		for _, hook := range []string{"on_enter", "on_exit"} {
+			if err := validateActions(
+				catalog,
+				region[hook],
+				itemPath+"."+hook,
+				false,
+			); err != nil {
+				return err
+			}
+		}
+	}
+
+	layerIDs := make(map[string]struct{})
+	if tilemap, ok := tilemapValue.(map[string]any); ok {
+		for _, raw := range anySlice(tilemap["layers"]) {
+			layer, _ := raw.(map[string]any)
+			if id, ok := layer["id"].(string); ok {
+				layerIDs[id] = struct{}{}
+			}
+		}
+	}
+	pages, _, err := optionalArray(
+		worldState["pages"],
+		path+".pages",
+	)
+	if err != nil {
+		return err
+	}
+	seenPages := make(map[string]struct{}, len(pages))
+	for index, raw := range pages {
+		itemPath := fmt.Sprintf("%s.pages[%d]", path, index)
+		page, err := requiredObject(raw, itemPath)
+		if err != nil {
+			return err
+		}
+		if err := rejectUnknownKeys(
+			page,
+			itemPath,
+			"id",
+			"condition",
+			"tint",
+			"layers",
+			"on_enter",
+			"on_exit",
+		); err != nil {
+			return err
+		}
+		id, err := requiredString(page["id"], itemPath+".id")
+		if err != nil {
+			return err
+		}
+		if _, duplicate := seenPages[id]; duplicate {
+			return fmt.Errorf("%s.id duplicates world page %q", itemPath, id)
+		}
+		seenPages[id] = struct{}{}
+		if page["condition"] != nil {
+			if err := validateCondition(
+				catalog,
+				page["condition"],
+				itemPath+".condition",
+			); err != nil {
+				return err
+			}
+		}
+		if page["tint"] != nil {
+			tint, err := requiredArray(page["tint"], itemPath+".tint")
+			if err != nil {
+				return err
+			}
+			if len(tint) != 4 {
+				return fmt.Errorf("%s.tint requires RGBA", itemPath)
+			}
+			if err := validateColor(
+				page["tint"],
+				itemPath+".tint",
+				true,
+			); err != nil {
+				return err
+			}
+		}
+		layers, _, err := optionalArray(
+			page["layers"],
+			itemPath+".layers",
+		)
+		if err != nil {
+			return err
+		}
+		seenLayers := make(map[string]struct{}, len(layers))
+		for layerIndex, rawLayer := range layers {
+			layerPath := fmt.Sprintf(
+				"%s.layers[%d]",
+				itemPath,
+				layerIndex,
+			)
+			layer, err := requiredObject(rawLayer, layerPath)
+			if err != nil {
+				return err
+			}
+			if err := rejectUnknownKeys(
+				layer,
+				layerPath,
+				"id",
+				"visible",
+			); err != nil {
+				return err
+			}
+			layerID, err := requiredString(layer["id"], layerPath+".id")
+			if err != nil {
+				return err
+			}
+			if _, duplicate := seenLayers[layerID]; duplicate {
+				return fmt.Errorf(
+					"%s.id duplicates layer override %q",
+					layerPath,
+					layerID,
+				)
+			}
+			if _, exists := layerIDs[layerID]; !exists {
+				return fmt.Errorf(
+					"%s.id references unknown tile layer %q",
+					layerPath,
+					layerID,
+				)
+			}
+			seenLayers[layerID] = struct{}{}
+			if _, ok := layer["visible"].(bool); !ok {
+				return fmt.Errorf("%s.visible must be boolean", layerPath)
+			}
+		}
+		for _, hook := range []string{"on_enter", "on_exit"} {
+			if err := validateActions(
+				catalog,
+				page[hook],
+				itemPath+"."+hook,
+				false,
+			); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -445,6 +670,7 @@ func validateStageTriggers(
 			"cooldown",
 			"condition",
 			"actions",
+			"pages",
 		); err != nil {
 			return err
 		}
@@ -485,13 +711,89 @@ func validateStageTriggers(
 				return err
 			}
 		}
-		if err := validateActions(
-			catalog,
-			trigger["actions"],
-			itemPath+".actions",
-			true,
-		); err != nil {
+		pages, pagesExist, err := optionalArray(
+			trigger["pages"],
+			itemPath+".pages",
+		)
+		if err != nil {
 			return err
+		}
+		if pagesExist && len(pages) == 0 {
+			return fmt.Errorf("%s.pages must not be empty", itemPath)
+		}
+		seenPages := make(map[string]struct{}, len(pages))
+		for pageIndex, pageRaw := range pages {
+			pagePath := fmt.Sprintf(
+				"%s.pages[%d]",
+				itemPath,
+				pageIndex,
+			)
+			page, err := requiredObject(pageRaw, pagePath)
+			if err != nil {
+				return err
+			}
+			if err := rejectUnknownKeys(
+				page,
+				pagePath,
+				"id",
+				"condition",
+				"once",
+				"cooldown",
+				"actions",
+			); err != nil {
+				return err
+			}
+			pageID, err := requiredString(page["id"], pagePath+".id")
+			if err != nil {
+				return err
+			}
+			if _, duplicate := seenPages[pageID]; duplicate {
+				return fmt.Errorf(
+					"%s.id duplicates page %q",
+					pagePath,
+					pageID,
+				)
+			}
+			seenPages[pageID] = struct{}{}
+			if page["condition"] != nil {
+				if err := validateCondition(
+					catalog,
+					page["condition"],
+					pagePath+".condition",
+				); err != nil {
+					return err
+				}
+			}
+			if err := optionalBoolean(
+				page["once"],
+				pagePath+".once",
+			); err != nil {
+				return err
+			}
+			if err := optionalNonNegativeNumber(
+				page["cooldown"],
+				pagePath+".cooldown",
+			); err != nil {
+				return err
+			}
+			if err := validateActions(
+				catalog,
+				page["actions"],
+				pagePath+".actions",
+				true,
+			); err != nil {
+				return err
+			}
+		}
+		if trigger["actions"] != nil || !pagesExist {
+			if err := validateActions(
+				catalog,
+				trigger["actions"],
+				itemPath+".actions",
+				true,
+			); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

@@ -59,26 +59,77 @@ type Portal struct {
 	CooldownTicks int       `json:"cooldown_ticks"`
 }
 
+// Trigger is one authored stage rule boundary. Geometry selects the target
+// actor while condition and actions use the same typed campaign rule runtime
+// as dialogue, items, quests, and interactions.
+type Trigger struct {
+	ID            string         `json:"id"`
+	Rect          sim.Rect       `json:"rect"`
+	Points        []sim.Vec      `json:"points,omitempty"`
+	ActorTag      string         `json:"actor_tag,omitempty"`
+	Once          bool           `json:"once"`
+	CooldownTicks int            `json:"cooldown_ticks"`
+	Condition     *RuleCondition `json:"condition,omitempty"`
+	Actions       []RuleAction   `json:"actions"`
+	Pages         []TriggerPage  `json:"pages,omitempty"`
+}
+
+type TriggerPage struct {
+	ID            string         `json:"id"`
+	Condition     *RuleCondition `json:"condition,omitempty"`
+	Once          bool           `json:"once"`
+	CooldownTicks int            `json:"cooldown_ticks"`
+	Actions       []RuleAction   `json:"actions"`
+}
+
+type WorldRegion struct {
+	ID        string         `json:"id"`
+	Rect      sim.Rect       `json:"rect"`
+	Points    []sim.Vec      `json:"points,omitempty"`
+	ActorTag  string         `json:"actor_tag,omitempty"`
+	Condition *RuleCondition `json:"condition,omitempty"`
+	OnEnter   []RuleAction   `json:"on_enter"`
+	OnExit    []RuleAction   `json:"on_exit"`
+}
+
+type WorldLayerOverride struct {
+	ID      string `json:"id"`
+	Visible bool   `json:"visible"`
+}
+
+type WorldPage struct {
+	ID        string               `json:"id"`
+	Condition *RuleCondition       `json:"condition,omitempty"`
+	Tint      [4]float64           `json:"tint"`
+	TintSet   bool                 `json:"tint_set"`
+	Layers    []WorldLayerOverride `json:"layers"`
+	OnEnter   []RuleAction         `json:"on_enter"`
+	OnExit    []RuleAction         `json:"on_exit"`
+}
+
 // StageBlueprint contains navigation data that must survive independently of
 // an individual Simulation instance.
 type StageBlueprint struct {
-	ID          string       `json:"id"`
-	SpawnPoints []SpawnPoint `json:"spawn_points"`
-	Portals     []Portal     `json:"portals"`
+	ID          string        `json:"id"`
+	SpawnPoints []SpawnPoint  `json:"spawn_points"`
+	Portals     []Portal      `json:"portals"`
+	Triggers    []Trigger     `json:"triggers"`
+	Regions     []WorldRegion `json:"regions"`
+	WorldPages  []WorldPage   `json:"world_pages"`
 }
 
 type InstanceMetadata struct {
-	ID             string         `json:"id"`
-	ActorID        string         `json:"actor_id"`
-	SpriteID       string         `json:"sprite_id,omitempty"`
-	SpriteScale    float64        `json:"sprite_scale,omitempty"`
-	SpriteTint     [4]float64     `json:"sprite_tint,omitempty"`
-	SpriteTintSet  bool           `json:"sprite_tint_set,omitempty"`
-	Shape          *ShapeMetadata `json:"shape,omitempty"`
-	PrimaryAbility string         `json:"primary_ability,omitempty"`
-	Controlled     bool           `json:"controlled,omitempty"`
-	Chase          *ChaseMetadata `json:"chase,omitempty"`
-	Tags           []string       `json:"tags,omitempty"`
+	ID             string              `json:"id"`
+	ActorID        string              `json:"actor_id"`
+	SpriteID       string              `json:"sprite_id,omitempty"`
+	SpriteScale    float64             `json:"sprite_scale,omitempty"`
+	SpriteTint     [4]float64          `json:"sprite_tint,omitempty"`
+	SpriteTintSet  bool                `json:"sprite_tint_set,omitempty"`
+	Shape          *ShapeMetadata      `json:"shape,omitempty"`
+	PrimaryAbility string              `json:"primary_ability,omitempty"`
+	Controlled     bool                `json:"controlled,omitempty"`
+	BehaviorAI     *BehaviorAIMetadata `json:"behavior_ai,omitempty"`
+	Tags           []string            `json:"tags,omitempty"`
 }
 
 type ShapeMetadata struct {
@@ -87,10 +138,30 @@ type ShapeMetadata struct {
 	Outline [4]uint8 `json:"outline"`
 }
 
-type ChaseMetadata struct {
-	TargetTag      string  `json:"target_tag"`
-	AggroRange     float64 `json:"aggro_range"`
-	AttackDistance float64 `json:"attack_distance"`
+type BehaviorAIMetadata struct {
+	TargetTag  string              `json:"target_tag"`
+	AggroRange float64             `json:"aggro_range"`
+	Patterns   []AIPatternMetadata `json:"patterns"`
+}
+
+type AIPatternMetadata struct {
+	ID                 string             `json:"id"`
+	HealthRatioAtMost  float64            `json:"health_ratio_at_most,omitempty"`
+	HealthThresholdSet bool               `json:"health_threshold_set,omitempty"`
+	Movement           AIMovementMetadata `json:"movement"`
+	Attacks            []AIAttackMetadata `json:"attacks"`
+}
+
+type AIMovementMetadata struct {
+	MinimumRange   float64 `json:"minimum_range"`
+	PreferredRange float64 `json:"preferred_range"`
+	Orbit          bool    `json:"orbit,omitempty"`
+}
+
+type AIAttackMetadata struct {
+	AbilityID    string  `json:"ability"`
+	MinimumRange float64 `json:"minimum_range"`
+	MaximumRange float64 `json:"maximum_range"`
 }
 
 type Presentation struct {
@@ -119,7 +190,27 @@ func (presentation Presentation) Instance(id string) (InstanceMetadata, bool) {
 		shape := *item.Shape
 		item.Shape = &shape
 	}
+	if item.BehaviorAI != nil {
+		behavior := *item.BehaviorAI
+		behavior.Patterns = cloneAIPatterns(item.BehaviorAI.Patterns)
+		item.BehaviorAI = &behavior
+	}
 	return item, true
+}
+
+func cloneAIPatterns(source []AIPatternMetadata) []AIPatternMetadata {
+	if source == nil {
+		return nil
+	}
+	result := make([]AIPatternMetadata, len(source))
+	copy(result, source)
+	for index := range result {
+		result[index].Attacks = append(
+			[]AIAttackMetadata(nil),
+			source[index].Attacks...,
+		)
+	}
+	return result
 }
 
 func (presentation Presentation) AbilityVisual(
@@ -155,6 +246,8 @@ type stageDefinition struct {
 	Walls         []stageWall       `json:"walls"`
 	SpawnPoints   []stageSpawnPoint `json:"spawn_points"`
 	Portals       []stagePortal     `json:"portals"`
+	Triggers      []stageTrigger    `json:"triggers"`
+	WorldState    stageWorldState   `json:"world_state"`
 	Encounters    []stageEncounter  `json:"encounters"`
 	Tilemap       *stageTilemap     `json:"tilemap,omitempty"`
 }
@@ -192,6 +285,53 @@ type stagePortal struct {
 	TargetStage string    `json:"target_stage"`
 	TargetSpawn string    `json:"target_spawn"`
 	Cooldown    float64   `json:"cooldown"`
+}
+
+type stageTrigger struct {
+	ID        string             `json:"id"`
+	Shape     shapeRect          `json:"shape"`
+	ActorTag  string             `json:"actor_tag"`
+	Once      bool               `json:"once"`
+	Cooldown  float64            `json:"cooldown"`
+	Condition any                `json:"condition"`
+	Actions   []any              `json:"actions"`
+	Pages     []stageTriggerPage `json:"pages"`
+}
+
+type stageTriggerPage struct {
+	ID        string   `json:"id"`
+	Condition any      `json:"condition"`
+	Once      *bool    `json:"once"`
+	Cooldown  *float64 `json:"cooldown"`
+	Actions   []any    `json:"actions"`
+}
+
+type stageWorldState struct {
+	Regions []stageWorldRegion `json:"regions"`
+	Pages   []stageWorldPage   `json:"pages"`
+}
+
+type stageWorldRegion struct {
+	ID        string    `json:"id"`
+	Shape     shapeRect `json:"shape"`
+	ActorTag  string    `json:"actor_tag"`
+	Condition any       `json:"condition"`
+	OnEnter   []any     `json:"on_enter"`
+	OnExit    []any     `json:"on_exit"`
+}
+
+type stageWorldPage struct {
+	ID        string                    `json:"id"`
+	Condition any                       `json:"condition"`
+	Tint      []float64                 `json:"tint"`
+	Layers    []stageWorldLayerOverride `json:"layers"`
+	OnEnter   []any                     `json:"on_enter"`
+	OnExit    []any                     `json:"on_exit"`
+}
+
+type stageWorldLayerOverride struct {
+	ID      string `json:"id"`
+	Visible bool   `json:"visible"`
 }
 
 type stageWall struct {
@@ -272,10 +412,29 @@ type abilityBindingDefinition struct {
 	Ability string `json:"ability"`
 }
 
-type chaseAIComponent struct {
-	TargetTag      string  `json:"target_tag"`
-	AggroRange     float64 `json:"aggro_range"`
-	AttackDistance float64 `json:"attack_distance"`
+type behaviorAIComponent struct {
+	TargetTag  string              `json:"target_tag"`
+	AggroRange float64             `json:"aggro_range"`
+	Patterns   []behaviorAIPattern `json:"patterns"`
+}
+
+type behaviorAIPattern struct {
+	ID                string             `json:"id"`
+	HealthRatioAtMost *float64           `json:"health_ratio_at_most"`
+	Movement          behaviorAIMovement `json:"movement"`
+	Attacks           []behaviorAIAttack `json:"attacks"`
+}
+
+type behaviorAIMovement struct {
+	MinimumRange   float64 `json:"minimum_range"`
+	PreferredRange float64 `json:"preferred_range"`
+	Orbit          bool    `json:"orbit"`
+}
+
+type behaviorAIAttack struct {
+	Ability      string  `json:"ability"`
+	MinimumRange float64 `json:"minimum_range"`
+	MaximumRange float64 `json:"maximum_range"`
 }
 
 type reactionComponent struct {
@@ -324,7 +483,12 @@ type rpgStatsComponent struct {
 }
 
 type interactableComponent struct {
-	Range   float64         `json:"range"`
+	Range   float64                     `json:"range"`
+	Actions []contentAction             `json:"actions"`
+	Pages   []interactablePageComponent `json:"pages"`
+}
+
+type interactablePageComponent struct {
 	Actions []contentAction `json:"actions"`
 }
 
@@ -653,6 +817,323 @@ func Build(catalog *content.Catalog, options Options) (*Result, error) {
 	sort.Slice(result.Stage.Portals, func(i, j int) bool {
 		return result.Stage.Portals[i].ID < result.Stage.Portals[j].ID
 	})
+
+	var triggerCompiler *contentRuleCompiler
+	if len(stage.Triggers) != 0 {
+		triggerCompiler, err = newContentRuleCompiler(catalog)
+		if err != nil {
+			return nil, fmt.Errorf("%s triggers: %w", stage.ID, err)
+		}
+	}
+	seenTriggers := make(map[string]struct{}, len(stage.Triggers))
+	for index, authored := range stage.Triggers {
+		path := fmt.Sprintf("%s.triggers[%d]", stage.ID, index)
+		if authored.ID == "" || !finite(authored.Cooldown) ||
+			authored.Cooldown < 0 ||
+			!durationFitsPortableTicks(authored.Cooldown) {
+			return nil, fmt.Errorf("%s has invalid identity or cooldown", path)
+		}
+		if _, duplicate := seenTriggers[authored.ID]; duplicate {
+			return nil, fmt.Errorf(
+				"%s duplicates trigger %q",
+				stage.ID,
+				authored.ID,
+			)
+		}
+		seenTriggers[authored.ID] = struct{}{}
+		geometry, err := convertShape(
+			stage.ID+" trigger "+authored.ID,
+			authored.ID,
+			authored.Shape,
+		)
+		if err != nil {
+			return nil, err
+		}
+		var actions []RuleAction
+		if len(authored.Actions) > 0 {
+			actions, err = triggerCompiler.compileRequiredActions(
+				authored.Actions,
+				path+".actions",
+			)
+		}
+		if err != nil {
+			return nil, err
+		}
+		var condition *RuleCondition
+		if authored.Condition != nil {
+			compiled, err := triggerCompiler.compileCondition(
+				authored.Condition,
+				path+".condition",
+			)
+			if err != nil {
+				return nil, err
+			}
+			condition = &compiled
+		}
+		compiledTrigger := Trigger{
+			ID:            authored.ID,
+			Rect:          geometry.Rect,
+			Points:        geometry.Points,
+			ActorTag:      authored.ActorTag,
+			Once:          authored.Once,
+			CooldownTicks: secondsToTicks(authored.Cooldown),
+			Condition:     condition,
+			Actions:       actions,
+			Pages:         make([]TriggerPage, len(authored.Pages)),
+		}
+		seenPages := make(map[string]struct{}, len(authored.Pages))
+		for pageIndex, page := range authored.Pages {
+			pagePath := fmt.Sprintf(
+				"%s.pages[%d]",
+				path,
+				pageIndex,
+			)
+			if page.ID == "" {
+				return nil, fmt.Errorf("%s has an empty id", pagePath)
+			}
+			if _, duplicate := seenPages[page.ID]; duplicate {
+				return nil, fmt.Errorf(
+					"%s duplicates page %q",
+					path,
+					page.ID,
+				)
+			}
+			seenPages[page.ID] = struct{}{}
+			pageActions, err :=
+				triggerCompiler.compileRequiredActions(
+					page.Actions,
+					pagePath+".actions",
+				)
+			if err != nil {
+				return nil, err
+			}
+			var pageCondition *RuleCondition
+			if page.Condition != nil {
+				compiled, err := triggerCompiler.compileCondition(
+					page.Condition,
+					pagePath+".condition",
+				)
+				if err != nil {
+					return nil, err
+				}
+				pageCondition = &compiled
+			}
+			once := authored.Once
+			if page.Once != nil {
+				once = *page.Once
+			}
+			cooldown := authored.Cooldown
+			if page.Cooldown != nil {
+				cooldown = *page.Cooldown
+			}
+			if !finite(cooldown) || cooldown < 0 ||
+				!durationFitsPortableTicks(cooldown) {
+				return nil, fmt.Errorf(
+					"%s has invalid cooldown",
+					pagePath,
+				)
+			}
+			compiledTrigger.Pages[pageIndex] = TriggerPage{
+				ID:            page.ID,
+				Condition:     pageCondition,
+				Once:          once,
+				CooldownTicks: secondsToTicks(cooldown),
+				Actions:       pageActions,
+			}
+		}
+		if len(compiledTrigger.Actions) == 0 &&
+			len(compiledTrigger.Pages) == 0 {
+			return nil, fmt.Errorf("%s has no actions or pages", path)
+		}
+		result.Stage.Triggers = append(
+			result.Stage.Triggers,
+			compiledTrigger,
+		)
+	}
+	sort.Slice(result.Stage.Triggers, func(i, j int) bool {
+		return result.Stage.Triggers[i].ID < result.Stage.Triggers[j].ID
+	})
+
+	if (len(stage.WorldState.Regions) != 0 ||
+		len(stage.WorldState.Pages) != 0) &&
+		triggerCompiler == nil {
+		triggerCompiler, err = newContentRuleCompiler(catalog)
+		if err != nil {
+			return nil, fmt.Errorf("%s world_state: %w", stage.ID, err)
+		}
+	}
+	seenRegions := make(
+		map[string]struct{},
+		len(stage.WorldState.Regions),
+	)
+	for index, authored := range stage.WorldState.Regions {
+		path := fmt.Sprintf(
+			"%s.world_state.regions[%d]",
+			stage.ID,
+			index,
+		)
+		if authored.ID == "" {
+			return nil, fmt.Errorf("%s has an empty id", path)
+		}
+		if _, duplicate := seenRegions[authored.ID]; duplicate {
+			return nil, fmt.Errorf(
+				"%s duplicates region %q",
+				stage.ID,
+				authored.ID,
+			)
+		}
+		seenRegions[authored.ID] = struct{}{}
+		geometry, err := convertShape(
+			stage.ID+" region "+authored.ID,
+			authored.ID,
+			authored.Shape,
+		)
+		if err != nil {
+			return nil, err
+		}
+		var condition *RuleCondition
+		if authored.Condition != nil {
+			compiled, err := triggerCompiler.compileCondition(
+				authored.Condition,
+				path+".condition",
+			)
+			if err != nil {
+				return nil, err
+			}
+			condition = &compiled
+		}
+		onEnter, err := triggerCompiler.compileOptionalActions(
+			authored.OnEnter,
+			path+".on_enter",
+		)
+		if err != nil {
+			return nil, err
+		}
+		onExit, err := triggerCompiler.compileOptionalActions(
+			authored.OnExit,
+			path+".on_exit",
+		)
+		if err != nil {
+			return nil, err
+		}
+		result.Stage.Regions = append(
+			result.Stage.Regions,
+			WorldRegion{
+				ID:        authored.ID,
+				Rect:      geometry.Rect,
+				Points:    geometry.Points,
+				ActorTag:  authored.ActorTag,
+				Condition: condition,
+				OnEnter:   onEnter,
+				OnExit:    onExit,
+			},
+		)
+	}
+
+	layerIDs := make(map[string]struct{})
+	if stage.Tilemap != nil {
+		for _, layer := range stage.Tilemap.Layers {
+			layerIDs[layer.ID] = struct{}{}
+		}
+	}
+	seenPages := make(map[string]struct{}, len(stage.WorldState.Pages))
+	for index, authored := range stage.WorldState.Pages {
+		path := fmt.Sprintf(
+			"%s.world_state.pages[%d]",
+			stage.ID,
+			index,
+		)
+		if authored.ID == "" {
+			return nil, fmt.Errorf("%s has an empty id", path)
+		}
+		if _, duplicate := seenPages[authored.ID]; duplicate {
+			return nil, fmt.Errorf(
+				"%s duplicates world page %q",
+				stage.ID,
+				authored.ID,
+			)
+		}
+		seenPages[authored.ID] = struct{}{}
+		var condition *RuleCondition
+		if authored.Condition != nil {
+			compiled, err := triggerCompiler.compileCondition(
+				authored.Condition,
+				path+".condition",
+			)
+			if err != nil {
+				return nil, err
+			}
+			condition = &compiled
+		}
+		page := WorldPage{
+			ID:        authored.ID,
+			Condition: condition,
+			Layers: make(
+				[]WorldLayerOverride,
+				len(authored.Layers),
+			),
+		}
+		if authored.Tint != nil {
+			if len(authored.Tint) != 4 {
+				return nil, fmt.Errorf("%s.tint requires RGBA", path)
+			}
+			page.TintSet = true
+			for channel, value := range authored.Tint {
+				if !finite(value) || value < 0 || value > 1 {
+					return nil, fmt.Errorf(
+						"%s.tint[%d] is invalid",
+						path,
+						channel,
+					)
+				}
+				page.Tint[channel] = value
+			}
+		}
+		seenOverrides := make(map[string]struct{}, len(authored.Layers))
+		for layerIndex, override := range authored.Layers {
+			if override.ID == "" {
+				return nil, fmt.Errorf(
+					"%s.layers[%d] has an empty id",
+					path,
+					layerIndex,
+				)
+			}
+			if _, duplicate := seenOverrides[override.ID]; duplicate {
+				return nil, fmt.Errorf(
+					"%s duplicates layer override %q",
+					path,
+					override.ID,
+				)
+			}
+			if _, exists := layerIDs[override.ID]; !exists {
+				return nil, fmt.Errorf(
+					"%s references unknown tile layer %q",
+					path,
+					override.ID,
+				)
+			}
+			seenOverrides[override.ID] = struct{}{}
+			page.Layers[layerIndex] = WorldLayerOverride{
+				ID:      override.ID,
+				Visible: override.Visible,
+			}
+		}
+		page.OnEnter, err = triggerCompiler.compileOptionalActions(
+			authored.OnEnter,
+			path+".on_enter",
+		)
+		if err != nil {
+			return nil, err
+		}
+		page.OnExit, err = triggerCompiler.compileOptionalActions(
+			authored.OnExit,
+			path+".on_exit",
+		)
+		if err != nil {
+			return nil, err
+		}
+		result.Stage.WorldPages = append(result.Stage.WorldPages, page)
+	}
 
 	seenWalls := make(map[string]struct{}, len(stage.Walls))
 	for _, wall := range stage.Walls {
@@ -1351,20 +1832,56 @@ func buildEntity(
 			entity.Facing = sim.Vec{X: -sim.UnitsPerPixel}
 		}
 	}
-	if raw := actor.Components["action.chase_ai"]; raw != nil {
-		var chase chaseAIComponent
-		if err := json.Unmarshal(raw, &chase); err != nil ||
-			chase.TargetTag == "" ||
-			!positiveFinite(chase.AggroRange) ||
-			!positiveFinite(chase.AttackDistance) ||
-			chase.AttackDistance > chase.AggroRange {
+	if raw := actor.Components["action.behavior_ai"]; raw != nil {
+		var behavior behaviorAIComponent
+		if err := json.Unmarshal(raw, &behavior); err != nil ||
+			behavior.TargetTag == "" ||
+			!positiveFinite(behavior.AggroRange) ||
+			len(behavior.Patterns) == 0 {
 			return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
-				fmt.Errorf("invalid action.chase_ai")
+				fmt.Errorf("invalid action.behavior_ai")
 		}
-		metadata.Chase = &ChaseMetadata{
-			TargetTag:      chase.TargetTag,
-			AggroRange:     chase.AggroRange,
-			AttackDistance: chase.AttackDistance,
+		metadata.BehaviorAI = &BehaviorAIMetadata{
+			TargetTag:  behavior.TargetTag,
+			AggroRange: behavior.AggroRange,
+			Patterns: make(
+				[]AIPatternMetadata,
+				0,
+				len(behavior.Patterns),
+			),
+		}
+		for _, pattern := range behavior.Patterns {
+			translated := AIPatternMetadata{
+				ID: pattern.ID,
+				Movement: AIMovementMetadata{
+					MinimumRange:   pattern.Movement.MinimumRange,
+					PreferredRange: pattern.Movement.PreferredRange,
+					Orbit:          pattern.Movement.Orbit,
+				},
+				Attacks: make(
+					[]AIAttackMetadata,
+					0,
+					len(pattern.Attacks),
+				),
+			}
+			if pattern.HealthRatioAtMost != nil {
+				translated.HealthRatioAtMost = *pattern.HealthRatioAtMost
+				translated.HealthThresholdSet = true
+			}
+			for _, attack := range pattern.Attacks {
+				translated.Attacks = append(
+					translated.Attacks,
+					AIAttackMetadata{
+						AbilityID:    attack.Ability,
+						MinimumRange: attack.MinimumRange,
+						MaximumRange: attack.MaximumRange,
+					},
+				)
+			}
+			metadata.BehaviorAI.Patterns = append(
+				metadata.BehaviorAI.Patterns,
+				translated,
+			)
 		}
 	}
 
@@ -1373,15 +1890,33 @@ func buildEntity(
 	var interactionRange sim.Coord
 	if raw := actor.Components["rpg.interactable"]; raw != nil {
 		var interaction interactableComponent
-		if err := json.Unmarshal(raw, &interaction); err != nil ||
-			!positiveFinite(interaction.Range) {
+		if err := json.Unmarshal(raw, &interaction); err != nil {
 			return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
 				fmt.Errorf("invalid rpg.interactable")
 		}
+		if interaction.Range == 0 {
+			interaction.Range = 56
+		}
+		if !positiveFinite(interaction.Range) {
+			return sim.EntityConfig{}, InstanceMetadata{}, nil, nil, 0,
+				fmt.Errorf("invalid rpg.interactable range")
+		}
 		interactionRange = pixels(interaction.Range)
-		for _, action := range interaction.Actions {
-			if action.Type == "start_dialogue" {
-				entity.DialogueID = action.Dialogue
+		actionGroups := [][]contentAction{interaction.Actions}
+		for index := len(interaction.Pages) - 1; index >= 0; index-- {
+			actionGroups = append(
+				actionGroups,
+				interaction.Pages[index].Actions,
+			)
+		}
+		for _, actions := range actionGroups {
+			for _, action := range actions {
+				if action.Type == "start_dialogue" {
+					entity.DialogueID = action.Dialogue
+					break
+				}
+			}
+			if entity.DialogueID != "" {
 				break
 			}
 		}
@@ -1641,7 +2176,10 @@ func buildQuest(
 			}, nil
 		}
 	}
-	return nil, fmt.Errorf("%s has no supported actor.killed objective", id)
+	// The deterministic simulation keeps a compatibility projection only for
+	// actor.killed quests. Other event objectives are owned by ContentRules
+	// and must not make an otherwise valid dialogue/stage unbuildable.
+	return nil, nil
 }
 
 func convertWall(stageID string, wall stageWall) (sim.Wall, error) {

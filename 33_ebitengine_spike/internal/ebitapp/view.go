@@ -107,15 +107,18 @@ type View struct {
 	World   WorldView
 	Tilemap *TilemapView
 
-	Entities  []EntityView
-	Walls     []RectView
-	Effects   []EffectView
-	Audio     AudioView
-	Flow      FlowView
-	Dialogue  DialogueView
-	Shop      ShopView
-	Inventory InventoryView
-	HUD       HUDView
+	Entities   []EntityView
+	Walls      []RectView
+	Effects    []EffectView
+	Audio      AudioView
+	Flow       FlowView
+	Dialogue   DialogueView
+	Shop       ShopView
+	Inventory  InventoryView
+	HUD        HUDView
+	Notice     NoticeView
+	TurnBattle TurnBattleView
+	Cutscene   CutsceneView
 }
 
 type CameraView struct {
@@ -131,6 +134,7 @@ type WorldView struct {
 	Height     float64
 	Stage      string
 	Background color.RGBA
+	Tint       color.RGBA
 }
 
 type TilemapView struct {
@@ -330,4 +334,61 @@ type HUDView struct {
 	Attack    int
 	Defense   int
 	MoveSpeed float64
+}
+
+// NoticeView is one transient, non-modal message requested by authored rules.
+// RemainingTicks is exposed for deterministic automation; adapters should not
+// derive gameplay behavior from it.
+type NoticeView struct {
+	Active         bool
+	Text           string
+	TextKey        string
+	Tone           string
+	RemainingTicks int
+}
+
+// CutsceneView is a full-screen, modal sequence owned by the model. The
+// adapter renders the resolved current step and forwards only generic confirm
+// or cancel actions.
+type CutsceneView struct {
+	Active         bool
+	ID             string
+	Name           string
+	StepID         string
+	StepIndex      int
+	StepCount      int
+	Speaker        string
+	Text           string
+	BackgroundID   string
+	RemainingTicks int
+	Skippable      bool
+	ContinueLabel  string
+	SkipLabel      string
+}
+
+type TurnBattleView struct {
+	Active        bool
+	BattleID      string
+	Name          string
+	Turn          int
+	SelectedIndex int
+	Message       string
+	PlayerID      string
+	PlayerHealth  int
+	PlayerMax     int
+	Enemies       []TurnBattleEnemyView
+	Options       []TurnBattleOptionView
+}
+
+type TurnBattleEnemyView struct {
+	ID        string
+	Name      string
+	Health    int
+	MaxHealth int
+}
+
+type TurnBattleOptionView struct {
+	ID    string
+	Type  string
+	Label string
 }

@@ -20,7 +20,8 @@ type contentTemplate struct {
 
 const scaffoldUsage = "usage: lovectl new TYPE NAME [REFERENCE_ID]\n" +
 	"types: actor, ability, projectile, status, encounter, stage, " +
-	"item, equipment, dialogue, quest, shop, locale"
+	"item, equipment, dialogue, cutscene, quest, shop, locale, " +
+	"turn-skill, turn-battle"
 
 var contentTemplates = map[string]contentTemplate{
 	"actor": {
@@ -225,6 +226,27 @@ var contentTemplates = map[string]contentTemplate{
 `, name, name)
 		},
 	},
+	"cutscene": {
+		directory: "cutscenes",
+		render: func(name string, _ string) string {
+			return fmt.Sprintf(`return {
+    schema_version = 1,
+    kind = "cutscene",
+    id = "cutscene.%s",
+    name = "%s",
+    skippable = true,
+
+    steps = {
+        {
+            id = "opening",
+            text = "Write the opening scene here.",
+        },
+    },
+    on_complete = {},
+}
+`, name, name)
+		},
+	},
 	"quest": {
 		directory: "quests",
 		render: func(name string, _ string) string {
@@ -280,6 +302,42 @@ var contentTemplates = map[string]contentTemplate{
     },
 }
 `, name, name, name)
+		},
+	},
+	"turn-skill": {
+		directory: "skills",
+		render: func(name string, _ string) string {
+			return fmt.Sprintf(`return {
+    schema_version = 1,
+    kind = "turn_skill",
+    id = "turn_skill.%s",
+    name = "%s",
+    effect = "damage",
+    target = "enemy",
+    power = 10,
+}
+`, name, name)
+		},
+	},
+	"turn-battle": {
+		directory:     "battles",
+		referenceKind: "actor",
+		render: func(name string, actorID string) string {
+			return fmt.Sprintf(`return {
+    schema_version = 1,
+    kind = "turn_battle",
+    id = "turn_battle.%s",
+    name = "%s",
+    allow_escape = true,
+    enemies = {
+        {
+            id = "enemy_1",
+            actor = "%s",
+        },
+    },
+    on_victory = {},
+}
+`, name, name, actorID)
 		},
 	},
 }

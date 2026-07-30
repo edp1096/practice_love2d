@@ -5,6 +5,8 @@
   "save_slot": "campaign",
   "stages": {
     "village": "stage.village",
+    "home": "stage.village_home",
+    "shop": "stage.village_shop",
     "field": "stage.world_hub",
     "grove": "stage.world_grove"
   },
@@ -15,6 +17,7 @@
       "enemy.slime.1",
       "enemy.slime.2"
     ],
+    "world_item": "world_item.potion",
     "guardian": "boss.grove_guardian"
   },
   "content": {

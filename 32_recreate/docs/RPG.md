@@ -305,6 +305,63 @@ stage는 퀘스트 로직을 알지 않는다. 퀘스트는 `actor.killed` event
 듣고, dialogue는 quest condition을 읽는다. 같은 slime actor를 다른
 stage에 놓아도 필요하면 같은 목표에 포함시킬 수 있다.
 
+## 7. 순수 RPG 턴제 전투를 연결한다
+
+순수 RPG profile은 실시간 hitbox 대신 `rpg.turn_battle` feature를
+사용한다. 스킬은 효과·대상·위력만 가진 데이터다.
+
+```lua
+return {
+    schema_version = 1,
+    kind = "turn_skill",
+    id = "turn_skill.strike",
+    name_key = "skill.strike.name",
+    effect = "damage",
+    target = "enemy",
+    power = 12,
+}
+```
+
+플레이어와 적 actor에는 체력·스탯·사용 스킬을 조합한다.
+
+```lua
+["action.health"] = {max = 100, remove_on_death = false},
+["rpg.stats"] = {attack = 2, defense = 1, move_speed = 1},
+["rpg.turn_battler"] = {
+    skills = {"turn_skill.strike", "turn_skill.mend"},
+},
+```
+
+전투 정의는 적 actor 편성과 승리·도주·패배 뒤 명령을 소유한다.
+
+```lua
+return {
+    schema_version = 1,
+    kind = "turn_battle",
+    id = "turn_battle.training_slime",
+    name_key = "battle.training_slime.name",
+    allow_escape = true,
+    enemies = {
+        {id = "slime", actor = "actor.turn_slime"},
+    },
+    on_victory = {
+        {type = "set_flag", name = "battle.slime.cleared"},
+    },
+}
+```
+
+NPC 상호작용이나 trigger에서
+`{type = "start_turn_battle", battle = "turn_battle.training_slime"}`
+을 실행하면 전투 화면이 열린다. 플레이어의 실제 HP와 장비 포함
+attack·defense를 사용하고 결과는 `rpg.turn_battles` save section에
+남는다. 기본 전투는 한 번 승리하면 다시 열리지 않으며 반복 전투는
+`repeatable = true`로 명시한다.
+
+승리 시 `turn_battle.won` event가 `battle_id`와 함께 발행되므로 퀘스트
+목표가 직접 구독할 수 있다. `turn_battle_state` 조건은 `never`,
+`active`, `won`, `lost`, `escaped`를 검사한다. 생성 profile의
+`turn_battle.training_slime`이 의뢰 수락부터 엔딩까지의 완전한 예다.
+
 ## 자주 쓰는 RPG Rules 어휘
 
 액션:
@@ -312,9 +369,11 @@ stage에 놓아도 필요하면 같은 목표에 포함시킬 수 있다.
 - 상태: `set_flag`, `clear_flag`, `set_locale`
 - 소지품: `give_item`, `take_item`, `use_item`
 - 장비: `equip_item`, `unequip_slot`
-- 대화·퀘스트: `start_dialogue`, `close_dialogue`, `start_quest`
+- 대화·퀘스트·전투: `start_dialogue`, `close_dialogue`, `start_quest`,
+  `start_turn_battle`
 - 경제·상점: `add_currency`, `spend_currency`, `open_shop`,
   `close_shop`, `buy_item`, `sell_item`
+- 화면 피드백: `show_notice`
 - 전투와 공용: `heal`, `damage`, `apply_status`, `emit` 등
 
 조건:
@@ -326,6 +385,7 @@ stage에 놓아도 필요하면 같은 목표에 포함시킬 수 있다.
   `quest_objective`
 - 경제·상점: `currency_at_least`, `shop_active`
 - 전투: `health_at_most`, `has_status`, `encounter_state`
+- 턴제 전투: `turn_battle_state`
 
 정확한 필드는 실제 예제와 [CONTENT.md](CONTENT.md)를 기준으로 한다.
 필드명을 추측해 추가하면 validator가 거부한다.

@@ -144,14 +144,59 @@ func TestBuildUsesAuthoredActionRPGContent(t *testing.T) {
 	}
 	if metadata, ok := result.Presentation.Instance("quest.slime.1"); !ok ||
 		metadata.PrimaryAbility != "ability.slime_bump" ||
-		metadata.Chase == nil ||
-		metadata.Chase.TargetTag != "player" ||
-		metadata.Chase.AggroRange != 360 ||
-		metadata.Chase.AttackDistance != 38 {
+		metadata.BehaviorAI == nil ||
+		metadata.BehaviorAI.TargetTag != "player" ||
+		metadata.BehaviorAI.AggroRange != 360 ||
+		len(metadata.BehaviorAI.Patterns) != 1 ||
+		metadata.BehaviorAI.Patterns[0].ID != "bump" ||
+		metadata.BehaviorAI.Patterns[0].Movement.PreferredRange != 38 ||
+		len(metadata.BehaviorAI.Patterns[0].Attacks) != 1 ||
+		metadata.BehaviorAI.Patterns[0].Attacks[0].AbilityID !=
+			"ability.slime_bump" ||
+		metadata.BehaviorAI.Patterns[0].Attacks[0].MaximumRange != 38 {
 		t.Fatalf("slime metadata = %#v, %v", metadata, ok)
 	}
 	if _, err := sim.New(result.Config); err != nil {
 		t.Fatalf("translated config is not runnable: %v", err)
+	}
+}
+
+func TestBuildCompilesVillageWorldPagesAndRegions(t *testing.T) {
+	t.Parallel()
+
+	result, err := Build(loadCatalog(t), Options{
+		StageID:  "stage.village",
+		SpawnID:  "default",
+		LocaleID: "locale.ko",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Stage.WorldPages) != 1 ||
+		len(result.Stage.Regions) != 1 {
+		t.Fatalf("village world state = %#v", result.Stage)
+	}
+	page := result.Stage.WorldPages[0]
+	if page.ID != "dusk" ||
+		page.Condition == nil ||
+		page.Condition.Type != RuleConditionTimeBetween ||
+		page.Condition.StartMinute != 18*60 ||
+		page.Condition.FinishMinute != 6*60 ||
+		!page.TintSet ||
+		page.Tint != ([4]float64{0.035, 0.055, 0.16, 0.42}) {
+		t.Fatalf("dusk world page = %#v", page)
+	}
+	region := result.Stage.Regions[0]
+	if region.ID != "village_square" ||
+		region.Rect.MinX != sim.Pixels(320) ||
+		region.Rect.MinY != sim.Pixels(704) ||
+		region.Rect.MaxX != sim.Pixels(576) ||
+		region.Rect.MaxY != sim.Pixels(896) ||
+		len(region.OnEnter) != 1 ||
+		region.OnEnter[0].Type != RuleActionSetFlag ||
+		region.OnEnter[0].FlagName != "world.village_square_seen" ||
+		!region.OnEnter[0].FlagValue {
+		t.Fatalf("village square region = %#v", region)
 	}
 }
 
@@ -166,9 +211,9 @@ func TestBuildPreservesAuthoredTilemapAndImageManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Presentation.Images) != 6 {
+	if len(result.Presentation.Images) != 8 {
 		t.Fatalf(
-			"presentation images = %d, want 6",
+			"presentation images = %d, want 8",
 			len(result.Presentation.Images),
 		)
 	}
@@ -232,6 +277,116 @@ func TestBuildPreservesAuthoredTilemapAndImageManifest(t *testing.T) {
 	}
 }
 
+func TestBuildCompilesAuthoredInteriorTrigger(t *testing.T) {
+	t.Parallel()
+
+	result, err := Build(loadCatalog(t), Options{
+		StageID:  "stage.village_home",
+		SpawnID:  "entry",
+		LocaleID: "locale.ko",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := len(result.Stage.Triggers), 1; got != want {
+		t.Fatalf("triggers = %d, want %d", got, want)
+	}
+	trigger := result.Stage.Triggers[0]
+	if trigger.ID != "rest_area" ||
+		trigger.Rect != (sim.Rect{
+			MinX: sim.Pixels(64),
+			MinY: sim.Pixels(96),
+			MaxX: sim.Pixels(224),
+			MaxY: sim.Pixels(192),
+		}) ||
+		len(trigger.Points) != 0 ||
+		trigger.ActorTag != "" ||
+		trigger.Once ||
+		trigger.CooldownTicks != 60 ||
+		trigger.Condition != nil ||
+		len(trigger.Actions) != 2 ||
+		trigger.Actions[0].Type != RuleActionHeal ||
+		trigger.Actions[0].HealAmount != 30 ||
+		trigger.Actions[1].Type != RuleActionShowNotice ||
+		trigger.Actions[1].NoticeKey != "notice.home.rest" ||
+		trigger.Actions[1].NoticeTone != "success" ||
+		trigger.Actions[1].NoticeTicks != 180 {
+		t.Fatalf("rest area trigger = %#v", trigger)
+	}
+}
+
+func TestBuildCompilesAuthoredTriggerEventPages(t *testing.T) {
+	t.Parallel()
+
+	catalog := loadCatalog(t)
+	draft := definitionMap(t, catalog, "stage.village_home")
+	triggers := draft["triggers"].([]any)
+	trigger := triggers[0].(map[string]any)
+	delete(trigger, "actions")
+	trigger["pages"] = []any{
+		map[string]any{
+			"id": "before",
+			"actions": []any{
+				map[string]any{
+					"type":   "heal",
+					"amount": float64(10),
+				},
+			},
+		},
+		map[string]any{
+			"id":       "after",
+			"once":     true,
+			"cooldown": float64(0.5),
+			"condition": map[string]any{
+				"type":  "flag",
+				"name":  "quest.grove_guardian.rewarded",
+				"value": true,
+			},
+			"actions": []any{
+				map[string]any{
+					"type":   "heal",
+					"amount": float64(20),
+				},
+			},
+		},
+	}
+	candidate := withDefinition(
+		t,
+		catalog,
+		"stage.village_home",
+		draft,
+	)
+	result, err := Build(candidate, Options{
+		StageID:  "stage.village_home",
+		SpawnID:  "entry",
+		LocaleID: "locale.ko",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Stage.Triggers) != 1 {
+		t.Fatalf("triggers = %#v", result.Stage.Triggers)
+	}
+	compiled := result.Stage.Triggers[0]
+	if len(compiled.Actions) != 0 || len(compiled.Pages) != 2 {
+		t.Fatalf("compiled event-page trigger = %#v", compiled)
+	}
+	if compiled.Pages[0].ID != "before" ||
+		compiled.Pages[0].Once ||
+		compiled.Pages[0].CooldownTicks != 60 ||
+		compiled.Pages[0].Actions[0].HealAmount != 10 {
+		t.Fatalf("before trigger page = %#v", compiled.Pages[0])
+	}
+	if compiled.Pages[1].ID != "after" ||
+		!compiled.Pages[1].Once ||
+		compiled.Pages[1].CooldownTicks != 30 ||
+		compiled.Pages[1].Condition == nil ||
+		compiled.Pages[1].Condition.Type != RuleConditionFlag ||
+		compiled.Pages[1].Actions[0].HealAmount != 20 {
+		t.Fatalf("after trigger page = %#v", compiled.Pages[1])
+	}
+}
+
 func TestBuildPublishesAuthoredSpriteClipsAndInstanceOverrides(t *testing.T) {
 	t.Parallel()
 
@@ -243,9 +398,9 @@ func TestBuildPublishesAuthoredSpriteClipsAndInstanceOverrides(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Presentation.Sprites) != 4 {
+	if len(result.Presentation.Sprites) != 5 {
 		t.Fatalf(
-			"presentation sprites = %d, want 4",
+			"presentation sprites = %d, want 5",
 			len(result.Presentation.Sprites),
 		)
 	}
@@ -339,9 +494,9 @@ func TestBuildPublishesAuthoredAudioRouting(t *testing.T) {
 	if audio.MasterVolume != 0.8 ||
 		audio.MusicVolume != 0.45 ||
 		audio.SFXVolume != 0.8 ||
-		len(audio.Assets) != 10 ||
+		len(audio.Assets) != 12 ||
 		len(audio.Cues) != 9 ||
-		len(audio.StageMusic) != 7 {
+		len(audio.StageMusic) != 9 {
 		t.Fatalf("audio presentation = %#v", audio)
 	}
 	cue, found := audio.Cue("attack.parried")
@@ -352,9 +507,21 @@ func TestBuildPublishesAuthoredAudioRouting(t *testing.T) {
 	}
 	music, found := audio.Music("stage.village")
 	if !found ||
-		music.AssetID != "audio.forest_theme" ||
+		music.AssetID != "audio.village_theme" ||
 		music.Volume != 0.65 {
 		t.Fatalf("village music = %#v, found=%v", music, found)
+	}
+	roadMusic, found := audio.Music("stage.world_hub")
+	if !found ||
+		roadMusic.AssetID != "audio.road_theme" ||
+		roadMusic.Volume != 0.7 {
+		t.Fatalf("road music = %#v, found=%v", roadMusic, found)
+	}
+	groveMusic, found := audio.Music("stage.world_grove")
+	if !found ||
+		groveMusic.AssetID != "audio.forest_theme" ||
+		groveMusic.Volume != 0.8 {
+		t.Fatalf("grove music = %#v, found=%v", groveMusic, found)
 	}
 	if _, found := audio.Cue("missing"); found {
 		t.Fatal("unknown audio cue resolved")

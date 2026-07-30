@@ -9,6 +9,7 @@ import (
 
 	"practice_love2d/33_ebitengine_spike/internal/campaign"
 	"practice_love2d/33_ebitengine_spike/internal/ebitapp"
+	"practice_love2d/33_ebitengine_spike/internal/gamebuild"
 	"practice_love2d/33_ebitengine_spike/internal/sim"
 )
 
@@ -34,6 +35,15 @@ func (runtime *Runtime) Tick(actions ebitapp.Actions) error {
 
 	if err := runtime.publishPendingEquipmentRebuildLocked(); err != nil {
 		return err
+	}
+	if handled, err := runtime.handleCutsceneActionsLocked(actions); handled {
+		return err
+	}
+	if handled, err := runtime.handleTurnBattleActionsLocked(actions); handled {
+		return err
+	}
+	if runtime.turnBattle != nil {
+		return nil
 	}
 	if actions.Pause {
 		return runtime.pauseFlowLocked()
@@ -244,9 +254,10 @@ func (runtime *Runtime) tickLocked(input sim.Input) error {
 			return err
 		}
 	}
-	// Authored dialogue and shops are modal: raw world steps remain no-ops
-	// until an explicit modal operation resolves them.
-	if runtime.dialogue != nil ||
+	// Authored modal sessions freeze raw world steps until an explicit modal
+	// operation resolves them.
+	if runtime.cutscene != nil ||
+		runtime.dialogue != nil ||
 		runtime.activeShopID != "" ||
 		runtime.inventoryOpen {
 		return nil
@@ -255,6 +266,7 @@ func (runtime *Runtime) tickLocked(input sim.Input) error {
 	if err := runtime.detachMutableLocked(checkpoint); err != nil {
 		return err
 	}
+	runtime.advanceNoticeLocked()
 	if len(runtime.pendingRemovals) != 0 {
 		// Removal wins over interaction on its flush tick. This prevents a
 		// queued speaker from becoming a new strong dialogue reference after
@@ -288,42 +300,80 @@ func (runtime *Runtime) tickLocked(input sim.Input) error {
 		}
 	}
 
+	for id := range runtime.behaviorAI {
+		if _, exists := entities[id]; !exists {
+			delete(runtime.behaviorAI, id)
+		}
+	}
 	for _, metadata := range runtime.allMetadataLocked() {
-		if metadata.Chase == nil {
+		if metadata.BehaviorAI == nil {
 			continue
 		}
 		enemy, exists := entities[metadata.ID]
 		if !exists || enemy.Dead {
+			delete(runtime.behaviorAI, metadata.ID)
 			continue
 		}
-		target, found := runtime.chaseTargetLocked(
-			metadata.Chase.TargetTag,
+		pattern := activeBehaviorPattern(
+			enemy,
+			metadata.BehaviorAI,
+		)
+		state := runtime.behaviorAI[metadata.ID]
+		if state.PatternID != pattern.ID {
+			state = behaviorAIState{
+				PatternID:   pattern.ID,
+				AttackIndex: 0,
+			}
+		}
+		target, found := runtime.behaviorTargetLocked(
+			metadata.ID,
+			metadata.BehaviorAI.TargetTag,
 			entities,
+			pixelsCoord(metadata.BehaviorAI.AggroRange),
 		)
 		if !found {
+			runtime.behaviorAI[metadata.ID] = state
 			continue
 		}
 		deltaX := target.Position.X - enemy.Position.X
 		deltaY := target.Position.Y - enemy.Position.Y
 		distanceSquared := squaredCoords(deltaX, deltaY)
-		aggroRange := pixelsCoord(metadata.Chase.AggroRange)
-		if distanceSquared > squaredCoords(aggroRange, 0) {
-			continue
+		command := sim.EntityInput{
+			EntityID: metadata.ID,
+			AimX:     signCoord(deltaX),
+			AimY:     signCoord(deltaY),
 		}
-		attackDistance := pixelsCoord(metadata.Chase.AttackDistance)
-		if definition, exists := runtime.entityConfig(metadata.ID); exists &&
-			definition.PrimaryAbility() != nil {
-			simulationReach := definition.PrimaryAbility().Reach +
-				max(target.Body.HalfWidth, target.Body.HalfHeight)
-			attackDistance = min(attackDistance, simulationReach)
-		}
-		command := sim.EntityInput{EntityID: metadata.ID}
-		if distanceSquared <= squaredCoords(attackDistance, 0) {
-			command.Attack = true
-		} else {
+		minimumRange := pixelsCoord(pattern.Movement.MinimumRange)
+		preferredRange := pixelsCoord(pattern.Movement.PreferredRange)
+		switch {
+		case distanceSquared > squaredCoords(preferredRange, 0):
 			command.MoveX = signCoord(deltaX)
 			command.MoveY = signCoord(deltaY)
+		case distanceSquared < squaredCoords(minimumRange, 0):
+			command.MoveX = -signCoord(deltaX)
+			command.MoveY = -signCoord(deltaY)
+		case pattern.Movement.Orbit && distanceSquared > 0:
+			direction := stableOrbitDirection(metadata.ID)
+			command.MoveX = -signCoord(deltaY) * direction
+			command.MoveY = signCoord(deltaX) * direction
 		}
+		if enemy.Attack.Phase == sim.AttackIdle {
+			for offset := 0; offset < len(pattern.Attacks); offset++ {
+				index := (state.AttackIndex + offset) % len(pattern.Attacks)
+				attack := pattern.Attacks[index]
+				minimum := pixelsCoord(attack.MinimumRange)
+				maximum := pixelsCoord(attack.MaximumRange)
+				if distanceSquared < squaredCoords(minimum, 0) ||
+					distanceSquared > squaredCoords(maximum, 0) ||
+					abilityCoolingDown(enemy, attack.AbilityID) {
+					continue
+				}
+				command.AbilityID = attack.AbilityID
+				state.AttackIndex = (index + 1) % len(pattern.Attacks)
+				break
+			}
+		}
+		runtime.behaviorAI[metadata.ID] = state
 		commands[metadata.ID] = command
 	}
 	controlledID := ""
@@ -398,6 +448,18 @@ func (runtime *Runtime) tickLocked(input sim.Input) error {
 		return err
 	}
 	if runtime.campaign.Snapshot().Mode == campaign.ModePlaying {
+		if err := runtime.updateWorldStateLocked(); err != nil {
+			runtime.restoreCheckpointLocked(checkpoint)
+			return err
+		}
+	}
+	if runtime.campaign.Snapshot().Mode == campaign.ModePlaying {
+		if err := runtime.updateTriggersLocked(); err != nil {
+			runtime.restoreCheckpointLocked(checkpoint)
+			return err
+		}
+	}
+	if runtime.campaign.Snapshot().Mode == campaign.ModePlaying {
 		if err := runtime.updatePortalsLocked(); err != nil {
 			runtime.restoreCheckpointLocked(checkpoint)
 			return err
@@ -439,20 +501,75 @@ func squaredCoords(x, y sim.Coord) uint64 {
 	return absoluteX*absoluteX + absoluteY*absoluteY
 }
 
-func (runtime *Runtime) chaseTargetLocked(
+func activeBehaviorPattern(
+	entity sim.EntitySnapshot,
+	behavior *gamebuild.BehaviorAIMetadata,
+) gamebuild.AIPatternMetadata {
+	selected := behavior.Patterns[0]
+	healthRatio := float64(entity.Health) / float64(entity.MaxHealth)
+	for index := 1; index < len(behavior.Patterns); index++ {
+		candidate := behavior.Patterns[index]
+		if candidate.HealthThresholdSet &&
+			healthRatio <= candidate.HealthRatioAtMost {
+			selected = candidate
+		}
+	}
+	return selected
+}
+
+func (runtime *Runtime) behaviorTargetLocked(
+	sourceID string,
 	tag string,
 	entities map[string]sim.EntitySnapshot,
+	maximumDistance sim.Coord,
 ) (sim.EntitySnapshot, bool) {
+	source, exists := entities[sourceID]
+	if !exists {
+		return sim.EntitySnapshot{}, false
+	}
+	maximumSquared := squaredCoords(maximumDistance, 0)
+	bestSquared := maximumSquared + 1
+	var best sim.EntitySnapshot
+	found := false
 	for _, metadata := range runtime.allMetadataLocked() {
-		if !contains(metadata.Tags, tag) {
+		if metadata.ID == sourceID || !contains(metadata.Tags, tag) {
 			continue
 		}
 		entity, exists := entities[metadata.ID]
-		if exists && !entity.Dead {
-			return entity, true
+		if !exists || entity.Dead {
+			continue
+		}
+		distance := squaredCoords(
+			entity.Position.X-source.Position.X,
+			entity.Position.Y-source.Position.Y,
+		)
+		if distance <= maximumSquared && distance < bestSquared {
+			best = entity
+			bestSquared = distance
+			found = true
 		}
 	}
-	return sim.EntitySnapshot{}, false
+	return best, found
+}
+
+func abilityCoolingDown(entity sim.EntitySnapshot, abilityID string) bool {
+	for _, cooldown := range entity.AbilityCooldowns {
+		if cooldown.AbilityID == abilityID && cooldown.RemainingTicks > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func stableOrbitDirection(id string) int8 {
+	parity := byte(0)
+	for index := 0; index < len(id); index++ {
+		parity = (parity + id[index]) % 2
+	}
+	if parity == 0 {
+		return 1
+	}
+	return -1
 }
 
 func contains(values []string, wanted string) bool {
@@ -485,10 +602,12 @@ func (runtime *Runtime) View() ebitapp.View {
 
 	frame := runtime.simulation.RenderFrame()
 	snapshot := runtime.simulation.Snapshot()
+	accessibility := runtime.campaign.Snapshot().Accessibility
 	flash := make(map[string]bool, len(snapshot.Entities))
 	stats := make(map[string]sim.RPGStatsConfig, len(snapshot.Entities))
 	for _, entity := range snapshot.Entities {
-		flash[entity.ID] = entity.FlashTicks > 0
+		flash[entity.ID] =
+			accessibility.HitFlash && entity.FlashTicks > 0
 		stats[entity.ID] = entity.Stats
 	}
 	controlled := make(map[string]bool, len(runtime.built.Config.Entities))
@@ -503,6 +622,7 @@ func (runtime *Runtime) View() ebitapp.View {
 		float64(ebitapp.ScreenHeight)/viewportHeight,
 	)
 	showStats, help := runtime.hudPresentationLocked()
+	cameraMotionScale := motionScale(accessibility)
 	view := ebitapp.View{
 		Tick:             frame.Tick,
 		Revision:         runtime.revision,
@@ -517,9 +637,11 @@ func (runtime *Runtime) View() ebitapp.View {
 				frame.Camera.BaseCenter.Y -
 					frame.Camera.ViewportHeight/2,
 			),
-			ShakeX: -coordPixels(frame.Camera.ShakeOffset.X),
-			ShakeY: -coordPixels(frame.Camera.ShakeOffset.Y),
-			Zoom:   zoom,
+			ShakeX: -coordPixels(frame.Camera.ShakeOffset.X) *
+				cameraMotionScale,
+			ShakeY: -coordPixels(frame.Camera.ShakeOffset.Y) *
+				cameraMotionScale,
+			Zoom: zoom,
 		},
 		World: ebitapp.WorldView{
 			Width:  coordPixels(frame.Stage.MaxX - frame.Stage.MinX),
@@ -534,7 +656,14 @@ func (runtime *Runtime) View() ebitapp.View {
 			Help:      help,
 			ShowStats: showStats,
 		},
+		Notice: runtime.notice,
 	}
+	activeWorldPage := runtime.activeWorldPageLocked()
+	if activeWorldPage != nil && activeWorldPage.TintSet {
+		view.World.Tint = presentationColor(activeWorldPage.Tint)
+	}
+	view.Cutscene = runtime.cutsceneViewLocked()
+	view.TurnBattle = runtime.turnBattleViewLocked()
 	if music, exists := runtime.built.Presentation.Audio.Music(
 		runtime.built.Presentation.StageID,
 	); exists {
@@ -554,6 +683,7 @@ func (runtime *Runtime) View() ebitapp.View {
 		}
 	}
 	view.Tilemap = tilemapView(runtime.built.Presentation.Tilemap)
+	applyWorldLayerOverrides(view.Tilemap, activeWorldPage)
 	if runtime.automationPaused {
 		view.HUD.Status = fmt.Sprintf("일시정지 · tick %d", frame.Tick)
 	} else {
@@ -865,35 +995,39 @@ func (runtime *Runtime) hudPresentationLocked() (bool, string) {
 		}
 		showStats = entity.Stats != nil
 		if entity.Platformer != nil {
-			parts = append(parts, "A/D 이동", "W/↑ 점프")
+			parts = append(
+				parts,
+				"A/D/스틱 이동",
+				"W/↑/A 점프",
+			)
 		} else if entity.MovePerTick > 0 {
-			parts = append(parts, "WASD 이동")
+			parts = append(parts, "WASD/스틱 이동")
 		}
 		for _, binding := range []struct {
 			input string
 			label string
 		}{
-			{input: "attack", label: "Space 공격"},
-			{input: "special", label: "F 특수"},
-			{input: "technique", label: "Q 기술"},
+			{input: "attack", label: "Space/X 공격"},
+			{input: "special", label: "F/Y 특수"},
+			{input: "technique", label: "Q/RB 기술"},
 		} {
 			if entity.Combat.AbilityForInput(binding.input) != nil {
 				parts = append(parts, binding.label)
 			}
 		}
 		if entity.Parry != nil {
-			parts = append(parts, "C 패링")
+			parts = append(parts, "C/LB 패링")
 		}
 		if entity.Dodge != nil {
-			parts = append(parts, "X 회피")
+			parts = append(parts, "Shift/B 회피")
 		}
 		break
 	}
 	if len(runtime.contentRules.Interactions) > 0 {
-		parts = append(parts, "E 상호작용")
+		parts = append(parts, "E/X 상호작용")
 	}
 	if len(runtime.contentRules.Items) > 0 {
-		parts = append(parts, "I 소지품")
+		parts = append(parts, "I/Back 소지품")
 		showStats = true
 	}
 	return showStats, strings.Join(parts, " · ")

@@ -1,4 +1,5 @@
 local util = require "engine.core.util"
+local EventPages = require "engine.core.event_pages"
 
 local feature = {
     id = "navigation",
@@ -143,7 +144,7 @@ local function validateTriggers(host, triggers, validator, path)
             trigger,
             {
                 "id", "shape", "actor_tag", "once", "cooldown",
-                "condition", "actions",
+                "condition", "actions", "pages",
             },
             item_path
         )
@@ -174,24 +175,62 @@ local function validateTriggers(host, triggers, validator, path)
                 item_path .. ".condition"
             )
         end
-        local actions = current_validator:array(
+        local function validateActions(actions, path, required)
+            actions = current_validator:array(
+                actions,
+                path,
+                required
+            )
+            if actions and #actions == 0 then
+                current_validator:error(
+                    path,
+                    "must contain at least one action"
+                )
+            end
+            for index, action in ipairs(actions or {}) do
+                host.rules:validateAction(
+                    action,
+                    current_validator,
+                    string.format("%s[%d]", path, index)
+                )
+            end
+        end
+        local pages = EventPages.validate(
+            host,
+            trigger.pages,
+            current_validator,
+            item_path .. ".pages",
+            function(page, page_validator, page_path)
+                page_validator:keys(
+                    page,
+                    {
+                        "id", "condition", "once",
+                        "cooldown", "actions",
+                    },
+                    page_path
+                )
+                page_validator:boolean(
+                    page.once,
+                    page_path .. ".once",
+                    false
+                )
+                validateCooldown(
+                    page.cooldown,
+                    page_validator,
+                    page_path .. ".cooldown"
+                )
+                validateActions(
+                    page.actions,
+                    page_path .. ".actions",
+                    true
+                )
+            end
+        )
+        validateActions(
             trigger.actions,
             item_path .. ".actions",
-            true
+            not pages
         )
-        if actions and #actions == 0 then
-            current_validator:error(
-                item_path .. ".actions",
-                "must contain at least one action"
-            )
-        end
-        for index, action in ipairs(actions or {}) do
-            host.rules:validateAction(
-                action,
-                current_validator,
-                string.format("%s.actions[%d]", item_path, index)
-            )
-        end
     end)
 end
 
@@ -261,17 +300,35 @@ function navigation_system:update(world, dt)
            not world.host.rules:evaluate(trigger.condition, context) then
             return
         end
+        local page
+        if #(trigger.pages or {}) > 0 then
+            page = EventPages.select(
+                world.host.rules,
+                trigger.pages,
+                context
+            )
+            if not page then return end
+        end
+        local fired_id = page and
+            (trigger.id .. "::" .. page.id) or trigger.id
+        if state.fired[fired_id] then return end
+        local actions = page and page.actions or trigger.actions
+        local once = page and page.once
+        if once == nil then once = trigger.once end
+        local cooldown = page and page.cooldown
+        if cooldown == nil then cooldown = trigger.cooldown or 0 end
 
         world.events:emit("trigger.entered", {
             trigger_id = trigger.id,
+            page_id = page and page.id or nil,
             entity_id = actor.id,
         })
         local result, action_error, failure =
-            world:executeActions(trigger.actions, context)
+            world:executeActions(actions, context)
         if result then
-            if trigger.once then state.fired[trigger.id] = true end
-            if (trigger.cooldown or 0) > 0 then
-                state.cooldowns[key] = trigger.cooldown
+            if once then state.fired[fired_id] = true end
+            if cooldown > 0 then
+                state.cooldowns[key] = cooldown
             end
         else
             world.events:emit("trigger.action_failed", {
@@ -379,11 +436,40 @@ function feature:register(host)
         local fired = {}
         for id in pairs(state.fired) do fired[#fired + 1] = id end
         table.sort(fired)
+        local spawn_points = util.deepCopy(state.spawn_points)
+        local triggers = {}
+        for _, trigger in ipairs(state.triggers) do
+            triggers[#triggers + 1] = {
+                id = trigger.id,
+                shape = util.deepCopy(trigger.shape),
+                actor_tag = trigger.actor_tag,
+                once = trigger.once == true,
+                cooldown = trigger.cooldown or 0,
+                page_count = #(trigger.pages or {}),
+            }
+        end
+        local portals = {}
+        for _, portal in ipairs(state.portals) do
+            portals[#portals + 1] = {
+                id = portal.id,
+                shape = util.deepCopy(portal.shape),
+                actor_tag = portal.actor_tag,
+                target_stage = portal.target_stage,
+                target_spawn = portal.target_spawn,
+                cooldown = portal.cooldown or 0,
+            }
+        end
+        table.sort(spawn_points, function(a, b) return a.id < b.id end)
+        table.sort(triggers, function(a, b) return a.id < b.id end)
+        table.sort(portals, function(a, b) return a.id < b.id end)
         return {
             navigation = {
                 spawn_point_count = #state.spawn_points,
                 trigger_count = #state.triggers,
                 portal_count = #state.portals,
+                spawn_points = spawn_points,
+                triggers = triggers,
+                portals = portals,
                 active_overlaps = active,
                 fired_triggers = fired,
                 transition_requested = state.transition_requested,

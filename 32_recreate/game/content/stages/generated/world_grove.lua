@@ -136,6 +136,12 @@ return {
                     name = "world.grove_discovered",
                     type = "emit",
                 },
+                {
+                    duration = 4,
+                    text_key = "notice.grove.warning",
+                    tone = "warning",
+                    type = "show_notice",
+                },
             },
             cooldown = 0,
             id = "grove_discovery",

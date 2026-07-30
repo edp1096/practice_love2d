@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="34" height="18" tilewidth="32" tileheight="32" infinite="0" nextlayerid="3" nextobjectid="18">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="34" height="18" tilewidth="32" tileheight="32" infinite="0" nextlayerid="3" nextobjectid="21">
  <properties>
   <property name="stage_id" value="stage.world_hub"/>
   <property name="display_name" value="World Hub"/>
@@ -24,9 +24,9 @@
 29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
 29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
 29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
-110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,
-110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,
-110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,
+110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,171,172,173,110,110,110,110,110,110,
+110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,198,199,200,110,110,110,110,110,110,
+110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,225,226,227,110,110,110,110,110,110,
 110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,
 29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
 29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,110,110,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,
@@ -73,7 +73,7 @@
   <object id="13" name="healing_grove" class="trigger" x="260" y="218" width="108" height="136">
    <properties>
     <property name="cooldown" type="float" value="1"/>
-    <property name="actions" value="[{&quot;type&quot;:&quot;heal&quot;,&quot;amount&quot;:15}]"/>
+    <property name="actions" value="[{&quot;type&quot;:&quot;heal&quot;,&quot;amount&quot;:15},{&quot;type&quot;:&quot;show_notice&quot;,&quot;text&quot;:&quot;+15 HP&quot;,&quot;tone&quot;:&quot;success&quot;,&quot;duration&quot;:2}]"/>
    </properties>
   </object>
   <object id="14" name="to_grove" class="portal" x="1056" y="224" width="32" height="128">
@@ -86,6 +86,25 @@
    <properties>
     <property name="target_stage" value="stage.village"/>
     <property name="target_spawn" value="field_return"/>
+   </properties>
+  </object>
+  <object id="18" name="field_tutorial" class="trigger" x="32" y="224" width="176" height="128">
+   <properties>
+    <property name="once" type="bool" value="true"/>
+    <property name="condition" value="{&quot;type&quot;:&quot;quest_state&quot;,&quot;quest&quot;:&quot;quest.grove_guardian&quot;,&quot;state&quot;:&quot;active&quot;}"/>
+    <property name="actions" value="[{&quot;type&quot;:&quot;show_notice&quot;,&quot;text_key&quot;:&quot;notice.field.tutorial&quot;,&quot;duration&quot;:5}]"/>
+   </properties>
+  </object>
+  <object id="19" name="world_item.potion" class="spawn" x="360" y="420">
+   <properties>
+    <property name="actor" value="actor.field_potion"/>
+   </properties>
+   <point/>
+  </object>
+  <object id="20" name="toxic_mire" class="trigger" x="800" y="224" width="96" height="96">
+   <properties>
+    <property name="cooldown" type="float" value="0.5"/>
+    <property name="actions" value="[{&quot;type&quot;:&quot;damage&quot;,&quot;amount&quot;:12},{&quot;type&quot;:&quot;show_notice&quot;,&quot;text_key&quot;:&quot;notice.field.hazard&quot;,&quot;tone&quot;:&quot;warning&quot;,&quot;duration&quot;:2}]"/>
    </properties>
   </object>
  </objectgroup>

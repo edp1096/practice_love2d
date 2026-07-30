@@ -106,6 +106,37 @@ test("event subscriptions can be removed", function()
     equal(#events:recent(10), 2)
 end)
 
+test("gamepad buttons drive deterministic semantic actions", function()
+    local Input = require "engine.core.input"
+    local input = Input.new({
+        attack = {buttons = {"x"}},
+        interact = {buttons = {"x"}},
+        move_up = {buttons = {"dpup"}},
+        menu_up = {buttons = {"dpup"}},
+        move_left = {buttons = {"dpleft"}},
+        move_right = {buttons = {"dpright"}},
+    })
+    local actions, input_error = input:tapGamepad("x", 1)
+    truthy(actions, input_error)
+    equal(#actions, 2)
+    equal(actions[1], "attack")
+    equal(actions[2], "interact")
+    truthy(input:wasPressed("attack"))
+    truthy(input:wasPressed("interact"))
+    input:endFrame()
+
+    actions, input_error = input:tapGamepad("dpup", 2)
+    truthy(actions, input_error)
+    equal(actions[1], "menu_up")
+    equal(actions[2], "move_up")
+    input:gamepadaxis("leftx", 0.7)
+    truthy(input:axis("move_left", "move_right", "leftx") > 0.69)
+
+    actions, input_error = input:tapGamepad("guide", 1)
+    equal(actions, nil)
+    truthy(input_error:match("unbound gamepad button"))
+end)
+
 test("event transactions buffer commits and discard rollbacks", function()
     local Events = require "engine.core.events"
     local events = Events.new(10)
@@ -300,6 +331,71 @@ test("successful world action batches execute each action exactly once", functio
     equal(#events, 2)
     equal(events[1].payload.amount, 2)
     equal(events[2].payload.amount, 3)
+end)
+
+test("show_notice is transient, inspectable, and transaction-safe", function()
+    local Host = require "engine.runtime.host"
+    local World = require "engine.runtime.world"
+    local presentation =
+        require "engine.features.presentation.basic"
+    local host = Host.new(
+        {},
+        fakeFilesystem({}),
+        {values = {}, versions = {}}
+    )
+    presentation:register(host)
+    host.rules:registerAction("fail", {
+        execute = function()
+            return nil, "expected failure"
+        end,
+    })
+    local world = World.new(host, {
+        id = "stage.test",
+        name = "Test",
+        width = 320,
+        height = 180,
+    })
+
+    local shown, show_error = world:execute({
+        type = "show_notice",
+        text = "Ready",
+        tone = "success",
+        duration = 2,
+    })
+    truthy(shown, show_error)
+    local snapshot = world:snapshot()
+    truthy(snapshot.notice.active)
+    equal(snapshot.notice.text, "Ready")
+    equal(snapshot.notice.tone, "success")
+    equal(snapshot.notice.remaining, 2)
+
+    world:update(0.75)
+    snapshot = world:snapshot()
+    equal(snapshot.notice.remaining, 1.25)
+
+    world.feature_state.dialogue = {active = true}
+    world:update(0.5)
+    snapshot = world:snapshot()
+    equal(snapshot.notice.remaining, 1.25)
+    world.feature_state.dialogue.active = false
+
+    local failed, batch_error = world:executeActions({
+        {
+            type = "show_notice",
+            text = "Must roll back",
+            duration = 1,
+        },
+        {type = "fail"},
+    })
+    equal(failed, nil)
+    truthy(batch_error:match("action%[2%]"))
+    snapshot = world:snapshot()
+    equal(snapshot.notice.text, "Ready")
+    equal(snapshot.notice.remaining, 1.25)
+
+    world:update(1.25)
+    snapshot = world:snapshot()
+    equal(snapshot.notice.active, false)
 end)
 
 test("world removal compacts order and emits in spawn order", function()
@@ -1042,6 +1138,139 @@ local function createRuntime(files, manifest)
     truthy(world, world_error)
     return host, world
 end
+
+test("behavior AI changes health pattern and cycles authored abilities", function()
+    local files = runtimeDefinitions()
+    files["content/abilities/ranged.lua"] = {
+        schema_version = 1,
+        kind = "ability",
+        id = "ability.ranged",
+        cooldown = 0.1,
+        duration = 0.05,
+        activation = {
+            {type = "heal", amount = 1},
+        },
+    }
+    local enemy =
+        files["content/actors/enemy.lua"].components
+    enemy["motion.facing"] = {}
+    enemy["motion.kinematics"] = {}
+    enemy["movement.topdown"] = {speed = 60}
+    enemy["action.combat"].abilities = {
+        "ability.hit",
+        "ability.ranged",
+    }
+    enemy["action.behavior_ai"] = {
+        target_tag = "player",
+        aggro_range = 300,
+        patterns = {
+            {
+                id = "hunt",
+                movement = {
+                    minimum_range = 0,
+                    preferred_range = 30,
+                },
+                attacks = {
+                    {
+                        ability = "ability.hit",
+                        maximum_range = 30,
+                    },
+                },
+            },
+            {
+                id = "rage",
+                health_ratio_at_most = 0.5,
+                movement = {
+                    minimum_range = 50,
+                    preferred_range = 100,
+                    orbit = true,
+                },
+                attacks = {
+                    {
+                        ability = "ability.ranged",
+                        minimum_range = 30,
+                        maximum_range = 200,
+                    },
+                },
+            },
+        },
+    }
+    files["content/stages/test.lua"].spawns[2].position.x = 180
+    local manifest = runtimeManifest()
+    table.insert(
+        manifest.features,
+        "engine.features.action.behavior_ai"
+    )
+    local host, world = createRuntime(files, manifest)
+    local actor = world:get("enemy")
+    local before_x = actor.components.transform.x
+    world:update(1 / 60)
+    host.input:endFrame()
+    equal(
+        actor.components["action.behavior_ai"].active_pattern,
+        "hunt"
+    )
+    truthy(actor.components.transform.x < before_x)
+
+    actor.components["action.health"].current = 15
+    world:update(1 / 60)
+    host.input:endFrame()
+    equal(
+        actor.components["action.behavior_ai"].active_pattern,
+        "rage"
+    )
+    local changed = false
+    local ranged = false
+    for _, event in ipairs(world.events:recent(20)) do
+        if event.name == "ai.pattern_changed" and
+           event.payload.pattern_id == "rage" then
+            changed = true
+        elseif event.name == "ability.started" and
+               event.payload.ability_id == "ability.ranged" then
+            ranged = true
+        end
+    end
+    truthy(changed, "AI pattern transition should be observable")
+    truthy(ranged, "rage pattern should request its authored ability")
+end)
+
+test("behavior AI rejects abilities outside the combat loadout", function()
+    local files = runtimeDefinitions()
+    local enemy =
+        files["content/actors/enemy.lua"].components
+    enemy["motion.facing"] = {}
+    enemy["motion.kinematics"] = {}
+    enemy["movement.topdown"] = {speed = 60}
+    enemy["action.behavior_ai"] = {
+        target_tag = "player",
+        aggro_range = 300,
+        patterns = {
+            {
+                id = "invalid",
+                movement = {preferred_range = 30},
+                attacks = {
+                    {
+                        ability = "ability.missing",
+                        maximum_range = 30,
+                    },
+                },
+            },
+        },
+    }
+    local manifest = runtimeManifest()
+    table.insert(
+        manifest.features,
+        "engine.features.action.behavior_ai"
+    )
+    local Host = require "engine.runtime.host"
+    local host = Host.new(manifest, fakeFilesystem(files))
+    local booted, boot_error = host:boot()
+    equal(booted, nil)
+    truthy(
+        boot_error:match("must also appear in action%.combat%.abilities"),
+        boot_error
+    )
+end)
 
 test("projectile ability sweeps targets and removes on hit", function()
     local files = runtimeDefinitions()
@@ -1857,6 +2086,56 @@ test("impact feedback turns a perfect parry into camera shake", function()
     )
 end)
 
+test("accessibility settings reduce motion, suppress flash, and extend notices", function()
+    local manifest = runtimeManifest()
+    table.insert(manifest.features, 1, "engine.features.accessibility")
+    table.insert(manifest.features, "engine.features.camera")
+    table.insert(manifest.features, "engine.features.presentation.basic")
+    local files = runtimeDefinitions()
+    files["content/stages/test.lua"].camera = {
+        viewport_width = 200,
+        viewport_height = 150,
+        follow_tag = "player",
+    }
+    local host, world = createRuntime(files, manifest)
+    local accessibility = host.services.accessibility
+    accessibility:cycle("motion", 1)
+    accessibility:cycle("hit_flash", 1)
+    accessibility:cycle("notice_duration", 1)
+
+    local shake = host.services.camera:shake(world, {
+        duration = 0.2,
+        magnitude = 10,
+        frequency = 30,
+    })
+    truthy(shake.applied)
+    equal(shake.magnitude, 3.5)
+
+    local player = world:get("player")
+    local enemy = world:get("enemy")
+    local damaged = world:execute({
+        type = "damage",
+        amount = 1,
+    }, {
+        source = enemy,
+        target = player,
+    })
+    truthy(damaged.applied)
+    equal(player.components["action.reaction"].flash_remaining, 0)
+
+    local notice = world:execute({
+        type = "show_notice",
+        text = "Readable",
+        duration = 2,
+    })
+    truthy(notice.applied)
+    equal(notice.duration, 4)
+    local snapshot = world:snapshot()
+    equal(snapshot.accessibility.motion, "reduced")
+    equal(snapshot.accessibility.hit_flash, false)
+    equal(snapshot.notice.duration, 4)
+end)
+
 test("camera shake action is deterministic and decays to rest", function()
     local function runShake()
         local manifest = runtimeManifest()
@@ -2491,6 +2770,17 @@ local function worldStageManifest()
     return manifest
 end
 
+local function worldStateManifest()
+    local manifest = worldStageManifest()
+    table.insert(manifest.features, "engine.features.rpg.flags")
+    table.insert(manifest.features, "engine.features.world_state")
+    manifest.world = {
+        start_time = "08:00",
+        seconds_per_day = 0,
+    }
+    return manifest
+end
+
 local function createWorldStageRuntime()
     local Host = require "engine.runtime.host"
     local files = worldStageDefinitions()
@@ -2501,6 +2791,182 @@ local function createWorldStageRuntime()
     truthy(world, world_error)
     return host, world, files
 end
+
+test("navigation inspector publishes detached authored geometry", function()
+    local _, world = createWorldStageRuntime()
+    local navigation = world:snapshot().navigation
+    equal(navigation.spawn_points[1].id, "default")
+    equal(navigation.spawn_points[1].x, 100)
+    equal(navigation.triggers[1].id, "trigger.heal")
+    equal(navigation.triggers[1].shape.width, 50)
+    truthy(navigation.triggers[1].once)
+    equal(navigation.portals[1].id, "portal.other")
+    equal(navigation.portals[1].shape.x, 250)
+    equal(navigation.portals[1].target_stage, "stage.other")
+    equal(navigation.portals[1].target_spawn, "entry")
+
+    navigation.portals[1].shape.x = -999
+    equal(world:snapshot().navigation.portals[1].shape.x, 250)
+end)
+
+test("world state time selects the last matching authored page", function()
+    local files = worldStageDefinitions()
+    files["content/stages/test.lua"].world_state = {
+        pages = {
+            {
+                id = "day",
+                condition = {
+                    type = "time_between",
+                    start = "06:00",
+                    finish = "18:00",
+                },
+                tint = {0, 0, 0, 0},
+            },
+            {
+                id = "night",
+                condition = {
+                    type = "time_between",
+                    start = "18:00",
+                    finish = "06:00",
+                },
+                tint = {0.03, 0.06, 0.18, 0.46},
+            },
+        },
+    }
+    local host, world = createRuntime(files, worldStateManifest())
+    local snapshot = world:snapshot().world_state
+    equal(snapshot.clock, "08:00")
+    equal(snapshot.day, 1)
+    equal(snapshot.active_page, "day")
+
+    local changed, change_error = world:execute({
+        type = "set_world_time",
+        time = "18:30",
+    })
+    truthy(changed, change_error)
+    snapshot = world:snapshot().world_state
+    equal(snapshot.clock, "18:30")
+    equal(snapshot.active_page, "night")
+
+    local advanced, advance_error = world:execute({
+        type = "advance_world_time",
+        minutes = 12 * 60,
+    })
+    truthy(advanced, advance_error)
+    snapshot = world:snapshot().world_state
+    equal(snapshot.clock, "06:30")
+    equal(snapshot.day, 2)
+    equal(snapshot.active_page, "day")
+
+    local sections, section_error =
+        host.services.session:exportSections()
+    truthy(sections, section_error)
+    equal(sections["world.state"].data.day, 2)
+    equal(sections["world.state"].data.minute, 390)
+end)
+
+test("world state regions emit enter and exit actions from geometry", function()
+    local files = worldStageDefinitions()
+    files["content/stages/test.lua"].world_state = {
+        regions = {
+            {
+                id = "village_square",
+                shape = {
+                    type = "rectangle",
+                    x = 100,
+                    y = 100,
+                    width = 80,
+                    height = 80,
+                },
+                on_enter = {
+                    {
+                        type = "set_flag",
+                        name = "region.square.entered",
+                    },
+                },
+                on_exit = {
+                    {
+                        type = "set_flag",
+                        name = "region.square.exited",
+                    },
+                },
+            },
+        },
+    }
+    local host, world = createRuntime(files, worldStateManifest())
+    local player = world:get("player")
+
+    world:update(1 / 60)
+    host.input:endFrame()
+    truthy(world:service("flags"):get("region.square.entered"))
+    truthy(world:service("world_state"):regionActive(
+        world,
+        "village_square"
+    ))
+    equal(
+        world:snapshot().world_state.active_regions[1],
+        "village_square"
+    )
+
+    player.components.transform.x = 300
+    world:update(1 / 60)
+    host.input:endFrame()
+    truthy(world:service("flags"):get("region.square.exited"))
+    equal(
+        world:service("world_state"):regionActive(
+            world,
+            "village_square"
+        ),
+        false
+    )
+end)
+
+test("world state rejects malformed clocks and duplicate region ids", function()
+    local files = worldStageDefinitions()
+    files["content/stages/test.lua"].world_state = {
+        pages = {
+            {
+                id = "invalid",
+                condition = {
+                    type = "time_between",
+                    start = "25:00",
+                    finish = "06:00",
+                },
+            },
+        },
+        regions = {
+            {
+                id = "same",
+                shape = {
+                    type = "rectangle",
+                    x = 10,
+                    y = 10,
+                    width = 10,
+                    height = 10,
+                },
+            },
+            {
+                id = "same",
+                shape = {
+                    type = "rectangle",
+                    x = 20,
+                    y = 20,
+                    width = 10,
+                    height = 10,
+                },
+            },
+        },
+    }
+    local Host = require "engine.runtime.host"
+    local host = Host.new(
+        worldStateManifest(),
+        fakeFilesystem(files)
+    )
+    local booted, boot_error = host:boot()
+    equal(booted, nil)
+    truthy(boot_error:match("24%-hour HH:MM"), boot_error)
+    truthy(boot_error:match("duplicates another region id"), boot_error)
+end)
 
 test("stage geometry blocks motion without wall actor content", function()
     local host, world = createWorldStageRuntime()
@@ -2528,6 +2994,71 @@ test("stage trigger executes validated rule actions once", function()
     world:update(1 / 60)
     host.input:endFrame()
     equal(health.current, 35)
+end)
+
+test("stage trigger event pages switch by authored condition", function()
+    local files = worldStageDefinitions()
+    files["content/stages/test.lua"].triggers = {
+        {
+            id = "trigger.story",
+            shape = {
+                type = "rectangle",
+                x = 100,
+                y = 100,
+                width = 50,
+                height = 50,
+            },
+            pages = {
+                {
+                    id = "before",
+                    once = true,
+                    actions = {
+                        {
+                            type = "set_flag",
+                            name = "story.changed",
+                        },
+                    },
+                },
+                {
+                    id = "after",
+                    condition = {
+                        type = "flag",
+                        name = "story.changed",
+                    },
+                    once = true,
+                    actions = {
+                        {
+                            type = "set_flag",
+                            name = "story.after_seen",
+                        },
+                    },
+                },
+            },
+        },
+    }
+    local manifest = worldStageManifest()
+    table.insert(manifest.features, "engine.features.rpg.flags")
+    local host, world = createRuntime(files, manifest)
+    local player = world:get("player")
+
+    world:update(1 / 60)
+    host.input:endFrame()
+    truthy(world:service("flags"):get("story.changed"))
+    equal(
+        world:snapshot().navigation.fired_triggers[1],
+        "trigger.story::before"
+    )
+
+    player.components.transform.x = 20
+    world:update(1 / 60)
+    host.input:endFrame()
+    player.components.transform.x = 100
+    world:update(1 / 60)
+    host.input:endFrame()
+    truthy(world:service("flags"):get("story.after_seen"))
+    local fired = world:snapshot().navigation.fired_triggers
+    equal(fired[1], "trigger.story::after")
+    equal(fired[2], "trigger.story::before")
 end)
 
 test("stage overlap uses hurtbox offsets and non-circle body extents", function()
@@ -2849,6 +3380,14 @@ test("game flow connects title, play, pause, save, gameover, and ending", functi
     local loaded, load_error = app:load()
     truthy(loaded, load_error)
     equal(app.world:snapshot().game_flow.mode, "title")
+    local accessibility = app.host.services.accessibility
+    accessibility:cycle("motion", 1)
+    accessibility:cycle("hit_flash", 1)
+    accessibility:cycle("notice_duration", 1)
+    local settings = accessibility:inspect()
+    equal(settings.motion, "reduced")
+    equal(settings.hit_flash, false)
+    equal(settings.notice_duration, "long")
     app:update(1 / 60)
     equal(app.world.time, 0)
 
@@ -2856,6 +3395,10 @@ test("game flow connects title, play, pause, save, gameover, and ending", functi
     app:update(1 / 60)
     equal(app.world:snapshot().game_flow.mode, "playing")
     truthy(app.world:snapshot().game_flow.started)
+    settings = app.host.services.accessibility:inspect()
+    equal(settings.motion, "reduced")
+    equal(settings.hit_flash, false)
+    equal(settings.notice_duration, "long")
 
     app.host.input:setAction("pause", 1, 1)
     app:update(1 / 60)
@@ -2872,10 +3415,16 @@ test("game flow connects title, play, pause, save, gameover, and ending", functi
     equal(title_state.mode, "title")
     truthy(title_state.has_save)
     equal(title_state.options[2], "continue")
+    settings = app.host.services.accessibility:inspect()
+    equal(settings.motion, "reduced")
 
     local continued, continue_error = app:loadSave("campaign")
     truthy(continued, continue_error)
     equal(app.world:snapshot().game_flow.mode, "playing")
+    settings = app.host.services.accessibility:inspect()
+    equal(settings.motion, "reduced")
+    equal(settings.hit_flash, false)
+    equal(settings.notice_duration, "long")
     app.world.events:emit("actor.killed", {target_id = "player"})
     equal(app.world:snapshot().game_flow.mode, "gameover")
 
@@ -3537,6 +4086,201 @@ test("interaction drives localized conditional dialogue graph", function()
     truthy(world:allows(player, "move"))
 end)
 
+test("interaction event pages use last matching authored page", function()
+    local files = dialogueDefinitions()
+    local interaction = files["content/actors/guide.lua"].components[
+        "rpg.interactable"
+    ]
+    interaction.actions = nil
+    interaction.pages = {
+        {
+            id = "before",
+            prompt = "Ask",
+            actions = {
+                {
+                    type = "set_flag",
+                    name = "story.guide_changed",
+                },
+            },
+        },
+        {
+            id = "after",
+            condition = {
+                type = "flag",
+                name = "story.guide_changed",
+            },
+            prompt = "Thank",
+            actions = {
+                {
+                    type = "set_flag",
+                    name = "story.guide_thanked",
+                },
+            },
+        },
+    }
+    local host, world = createRuntime(files, dialogueManifest())
+
+    world:update(1 / 60)
+    host.input:endFrame()
+    local interaction_state = world:snapshot().interaction
+    equal(interaction_state.page_id, "before")
+    equal(interaction_state.prompt, "Ask")
+
+    host.input:setAction("interact", 1, 1)
+    world:update(1 / 60)
+    host.input:endFrame()
+    truthy(world:service("flags"):get("story.guide_changed"))
+
+    world:update(1 / 60)
+    host.input:endFrame()
+    interaction_state = world:snapshot().interaction
+    equal(interaction_state.page_id, "after")
+    equal(interaction_state.prompt, "Thank")
+
+    host.input:setAction("interact", 1, 1)
+    world:update(1 / 60)
+    host.input:endFrame()
+    truthy(world:service("flags"):get("story.guide_thanked"))
+    local event = world.events:recent(1)[1]
+    equal(event.name, "interaction.completed")
+    equal(event.payload.page_id, "after")
+end)
+
+test("event pages reject duplicate ids and empty actions", function()
+    local files = dialogueDefinitions()
+    local interaction = files["content/actors/guide.lua"].components[
+        "rpg.interactable"
+    ]
+    interaction.actions = nil
+    interaction.pages = {
+        {id = "same", actions = {}},
+        {id = "same", actions = {}},
+    }
+    local Host = require "engine.runtime.host"
+    local host = Host.new(
+        dialogueManifest(),
+        fakeFilesystem(files)
+    )
+    local booted, boot_error = host:boot()
+    equal(booted, nil)
+    truthy(boot_error:match("duplicates another page id"))
+    truthy(boot_error:match("must contain at least one action"))
+end)
+
+local function cutsceneDefinitions()
+    local files = localeDefinitions()
+    files["content/cutscenes/arrival.lua"] = {
+        schema_version = 1,
+        kind = "cutscene",
+        id = "cutscene.arrival",
+        name = "Arrival",
+        skippable = true,
+        steps = {
+            {
+                id = "opening",
+                text = "The road is quiet.",
+                duration = 0.1,
+                actions = {
+                    {type = "set_flag", name = "scene.opening"},
+                },
+            },
+            {
+                id = "warning",
+                speaker = "Guide",
+                text = "Stay alert.",
+                actions = {
+                    {type = "set_flag", name = "scene.warning"},
+                },
+            },
+            {
+                id = "departure",
+                text = "The journey begins.",
+                actions = {
+                    {type = "set_flag", name = "scene.departure"},
+                },
+            },
+        },
+        on_complete = {
+            {type = "set_flag", name = "scene.complete"},
+        },
+    }
+    return files
+end
+
+local function cutsceneManifest()
+    local manifest = localeManifest()
+    table.insert(manifest.features, "engine.features.rpg.flags")
+    table.insert(manifest.features, "engine.features.cutscene")
+    for _, action in ipairs({
+        "menu_confirm",
+        "menu_cancel",
+        "pause",
+    }) do
+        manifest.input.actions[action] = {keys = {}}
+    end
+    return manifest
+end
+
+test("cutscene freezes the field and skip preserves remaining actions", function()
+    local host, world = createRuntime(
+        cutsceneDefinitions(),
+        cutsceneManifest()
+    )
+    local started, start_error = world:execute({
+        type = "start_cutscene",
+        cutscene = "cutscene.arrival",
+    }, {
+        source = world:get("player"),
+        target = world:get("enemy"),
+    })
+    truthy(started, start_error)
+    local snapshot = world:snapshot()
+    truthy(snapshot.cutscene.active)
+    equal(snapshot.cutscene.step_id, "opening")
+    equal(snapshot.cutscene.step_count, 3)
+    truthy(world:service("flags"):get("scene.opening"))
+    equal(world:allows(world:get("player"), "move"), false)
+    equal(world:update(1 / 60), false)
+
+    for _, controller in ipairs(host.app_controllers) do
+        if controller.name == "cutscene.input" then
+            controller.handler(world, 0.1)
+        end
+    end
+    snapshot = world:snapshot()
+    equal(snapshot.cutscene.step_id, "warning")
+    truthy(world:service("flags"):get("scene.warning"))
+
+    local skipped, skip_error =
+        world:service("cutscene"):skip(world)
+    truthy(skipped, skip_error)
+    snapshot = world:snapshot()
+    equal(snapshot.cutscene.active, false)
+    truthy(world:service("flags"):get("scene.departure"))
+    truthy(world:service("flags"):get("scene.complete"))
+    truthy(world:allows(world:get("player"), "move"))
+    local events = world.events:recent(2)
+    equal(events[1].name, "cutscene.skipped")
+    equal(events[2].name, "cutscene.completed")
+end)
+
+test("cutscene schema rejects duplicate steps and missing text", function()
+    local files = cutsceneDefinitions()
+    files["content/cutscenes/arrival.lua"].steps = {
+        {id = "same", text = "First"},
+        {id = "same"},
+    }
+    local Host = require "engine.runtime.host"
+    local host = Host.new(
+        cutsceneManifest(),
+        fakeFilesystem(files)
+    )
+    local booted, boot_error = host:boot()
+    equal(booted, nil)
+    truthy(boot_error:match("duplicates another cutscene step id"))
+    truthy(boot_error:match("requires text or text_key"))
+end)
+
 test("dialogue graph rejects missing node references", function()
     local files = dialogueDefinitions()
     files["content/dialogues/guide.lua"].nodes[
@@ -3550,6 +4294,273 @@ test("dialogue graph rejects missing node references", function()
     local booted, boot_error = host:boot()
     equal(booted, nil)
     truthy(boot_error:match("references missing node 'thanks'"))
+end)
+
+local function turnBattleDefinitions()
+    return {
+        ["content/locales/en.lua"] = {
+            schema_version = 1,
+            kind = "locale",
+            id = "locale.en",
+            code = "en",
+            strings = {
+                ["skill.strike.name"] = "Strike",
+                ["skill.mend.name"] = "Mend",
+                ["battle.slime.name"] = "Slime Trial",
+            },
+        },
+        ["content/skills/strike.lua"] = {
+            schema_version = 1,
+            kind = "turn_skill",
+            id = "turn_skill.strike",
+            name_key = "skill.strike.name",
+            effect = "damage",
+            target = "enemy",
+            power = 12,
+        },
+        ["content/skills/mend.lua"] = {
+            schema_version = 1,
+            kind = "turn_skill",
+            id = "turn_skill.mend",
+            name_key = "skill.mend.name",
+            effect = "heal",
+            target = "self",
+            power = 8,
+        },
+        ["content/skills/bump.lua"] = {
+            schema_version = 1,
+            kind = "turn_skill",
+            id = "turn_skill.bump",
+            name = "Bump",
+            effect = "damage",
+            target = "enemy",
+            power = 5,
+        },
+        ["content/actors/player.lua"] = {
+            schema_version = 1,
+            kind = "actor",
+            id = "actor.player",
+            name = "Hero",
+            tags = {"player"},
+            components = {
+                transform = {},
+                ["control.player"] = {},
+                ["action.health"] = {
+                    max = 50,
+                    remove_on_death = false,
+                },
+                ["rpg.stats"] = {
+                    attack = 3,
+                    defense = 1,
+                },
+                ["rpg.turn_battler"] = {
+                    skills = {
+                        "turn_skill.strike",
+                        "turn_skill.mend",
+                    },
+                },
+            },
+        },
+        ["content/actors/slime.lua"] = {
+            schema_version = 1,
+            kind = "actor",
+            id = "actor.slime",
+            name = "Slime",
+            tags = {"enemy"},
+            components = {
+                transform = {},
+                ["action.health"] = {max = 20},
+                ["rpg.stats"] = {
+                    attack = 2,
+                    defense = 1,
+                },
+                ["rpg.turn_battler"] = {
+                    skills = {"turn_skill.bump"},
+                },
+            },
+        },
+        ["content/battles/slime.lua"] = {
+            schema_version = 1,
+            kind = "turn_battle",
+            id = "turn_battle.slime",
+            name_key = "battle.slime.name",
+            allow_escape = true,
+            enemies = {
+                {
+                    id = "slime",
+                    actor = "actor.slime",
+                },
+            },
+            on_victory = {
+                {
+                    type = "set_flag",
+                    name = "battle.slime.cleared",
+                },
+            },
+        },
+        ["content/stages/test.lua"] = {
+            schema_version = 1,
+            kind = "stage",
+            id = "stage.test",
+            width = 400,
+            height = 300,
+            spawns = {
+                {
+                    id = "player",
+                    actor = "actor.player",
+                    position = {x = 100, y = 100},
+                },
+            },
+        },
+    }
+end
+
+local function turnBattleManifest()
+    return {
+        id = "test.turn_battle",
+        title = "Turn Battle",
+        initial_stage = "stage.test",
+        features = {
+            "engine.features.rpg.flags",
+            "engine.features.rpg.turn_battle",
+        },
+        content_roots = {"content"},
+        locale = {
+            default = "locale.en",
+        },
+        input = {
+            actions = {
+                menu_up = {keys = {}},
+                menu_down = {keys = {}},
+                menu_confirm = {keys = {}},
+                menu_cancel = {keys = {}},
+                pause = {keys = {}},
+            },
+        },
+    }
+end
+
+test("turn battle uses RPG stats, freezes the field, and persists victory", function()
+    local host, world = createRuntime(
+        turnBattleDefinitions(),
+        turnBattleManifest()
+    )
+    local player = world:get("player")
+    local battle = world:service("turn_battle")
+    local started, start_error = world:execute({
+        type = "start_turn_battle",
+        battle = "turn_battle.slime",
+    }, {
+        source = player,
+        interactor = player,
+    })
+    truthy(started, start_error)
+    equal(battle:state(world, "turn_battle.slime"), "active")
+    equal(world:allows(player, "move"), false)
+    equal(world:update(1 / 60), false)
+
+    local first, first_error =
+        battle:choose(world, "turn_skill.strike")
+    truthy(first, first_error)
+    equal(first.turn, 2)
+    local snapshot = world:snapshot().turn_battle
+    equal(snapshot.enemies[1].health, 6)
+    equal(snapshot.player_health, 44)
+    equal(snapshot.options[1].label, "Strike")
+
+    local won, win_error =
+        battle:choose(world, "turn_skill.strike")
+    truthy(won, win_error)
+    equal(won.result, "won")
+    equal(battle:state(world, "turn_battle.slime"), "won")
+    truthy(host.services.flags:get("battle.slime.cleared"))
+    truthy(world:allows(player, "move"))
+
+    local next_world, world_error = host:createWorld("stage.test")
+    truthy(next_world, world_error)
+    local repeated, repeat_error = world:service("turn_battle"):start(
+        next_world,
+        "turn_battle.slime",
+        next_world:get("player")
+    )
+    truthy(repeated, repeat_error)
+    equal(repeated.applied, false)
+    equal(repeated.result, "won")
+    truthy(host.rules:evaluate({
+        type = "turn_battle_state",
+        battle = "turn_battle.slime",
+        state = "won",
+    }, {
+        world = next_world,
+    }))
+end)
+
+test("turn battle escape is explicit and leaves the battle retryable", function()
+    local _, world = createRuntime(
+        turnBattleDefinitions(),
+        turnBattleManifest()
+    )
+    local battle = world:service("turn_battle")
+    truthy(battle:start(
+        world,
+        "turn_battle.slime",
+        world:get("player")
+    ))
+    local escaped, escape_error = battle:choose(world, "escape")
+    truthy(escaped, escape_error)
+    equal(escaped.result, "escaped")
+    equal(battle:state(world, "turn_battle.slime"), "escaped")
+    local retried, retry_error = battle:start(
+        world,
+        "turn_battle.slime",
+        world:get("player")
+    )
+    truthy(retried, retry_error)
+    truthy(world:snapshot().turn_battle.active)
+end)
+
+test("turn battle defeat uses the shared player lifecycle", function()
+    local files = turnBattleDefinitions()
+    files["content/skills/bump.lua"].power = 60
+    files["content/battles/slime.lua"].on_defeat = {
+        {
+            type = "set_flag",
+            name = "battle.slime.lost",
+        },
+    }
+    local host, world = createRuntime(
+        files,
+        turnBattleManifest()
+    )
+    local battle = world:service("turn_battle")
+    truthy(battle:start(
+        world,
+        "turn_battle.slime",
+        world:get("player")
+    ))
+    local lost, lose_error =
+        battle:choose(world, "turn_skill.strike")
+    truthy(lost, lose_error)
+    equal(lost.result, "lost")
+    truthy(world:get("player").dead)
+    equal(battle:state(world, "turn_battle.slime"), "lost")
+    truthy(host.services.flags:get("battle.slime.lost"))
+end)
+
+test("turn battle validates enemy battler contracts before boot", function()
+    local files = turnBattleDefinitions()
+    files["content/actors/slime.lua"].components[
+        "rpg.turn_battler"
+    ] = nil
+    local Host = require "engine.runtime.host"
+    local host = Host.new(
+        turnBattleManifest(),
+        fakeFilesystem(files)
+    )
+    local booted, boot_error = host:boot()
+    equal(booted, nil)
+    truthy(boot_error:match("rpg.turn_battler"))
+    truthy(boot_error:match("content/battles/slime.lua"))
 end)
 
 local function questDefinitions()

@@ -1,4 +1,5 @@
 local util = require "engine.core.util"
+local EventPages = require "engine.core.event_pages"
 
 local feature = {
     id = "rpg.interaction",
@@ -19,6 +20,41 @@ local function validateActions(actions, validator, host, path)
     end
 end
 
+local function validateInput(host, value, validator, path)
+    local input = validator:string(value, path, false)
+    if input and not host.input:hasAction(input) then
+        validator:error(
+            path,
+            "references missing input action '" .. input .. "'"
+        )
+    end
+end
+
+local function validatePage(page, validator, host, path)
+    validator:keys(
+        page,
+        {
+            "id", "condition", "input", "range",
+            "prompt", "prompt_key", "actions",
+        },
+        path
+    )
+    validateInput(host, page.input, validator, path .. ".input")
+    validator:positive(page.range, path .. ".range", false)
+    validator:string(page.prompt, path .. ".prompt", false)
+    validator:string(
+        page.prompt_key,
+        path .. ".prompt_key",
+        false
+    )
+    validateActions(
+        page.actions,
+        validator,
+        host,
+        path .. ".actions"
+    )
+end
+
 local function distanceSquared(left, right)
     local left_transform = left.components.transform
     local right_transform = right.components.transform
@@ -33,6 +69,7 @@ local function stateFor(world)
         state = {
             target_id = nil,
             prompt = nil,
+            page_id = nil,
         }
         world.feature_state.interaction = state
     end
@@ -43,6 +80,41 @@ local function clearState(state)
     state.target_id = nil
     state.prompt = nil
     state.prompt_key = nil
+    state.page_id = nil
+end
+
+local function activeConfig(world, player, entity)
+    local config = entity.components["rpg.interactable"]
+    local context = {
+        source = player,
+        target = entity,
+        interactor = player,
+        interactable = entity,
+        world = world,
+        events = world.events,
+    }
+    if config.condition and
+       not world.host.rules:evaluate(config.condition, context) then
+        return nil
+    end
+
+    local page
+    if #config.pages > 0 then
+        page = EventPages.select(
+            world.host.rules,
+            config.pages,
+            context
+        )
+        if not page then return nil end
+    end
+    return {
+        input = page and page.input or config.input,
+        range = page and page.range or config.range,
+        prompt = page and page.prompt or config.prompt,
+        prompt_key = page and page.prompt_key or config.prompt_key,
+        actions = page and page.actions or config.actions,
+        page_id = page and page.id or nil,
+    }, context
 end
 
 local interaction_system = {
@@ -62,55 +134,43 @@ function interaction_system:update(world)
 
     local nearest
     local nearest_distance
+    local nearest_config
+    local nearest_context
     for _, entity in ipairs(
         world:query("transform", "rpg.interactable")
     ) do
         if entity ~= player and not entity.dead then
-            local config = entity.components["rpg.interactable"]
-            local distance = distanceSquared(player, entity)
-            if distance <= config.range * config.range then
-                local context = {
-                    source = player,
-                    target = entity,
-                    interactor = player,
-                    interactable = entity,
-                    world = world,
-                    events = world.events,
-                }
-                if (not config.condition or
-                    world.host.rules:evaluate(
-                        config.condition,
-                        context
-                    )) and
-                   (not nearest_distance or
+            local config, context =
+                activeConfig(world, player, entity)
+            local distance = config and
+                distanceSquared(player, entity) or nil
+            if config and distance <= config.range * config.range then
+                if not nearest_distance or
                     distance < nearest_distance or
                     (distance == nearest_distance and
-                     entity.id < nearest.id)) then
+                     entity.id < nearest.id) then
                     nearest = entity
                     nearest_distance = distance
+                    nearest_config = config
+                    nearest_context = context
                 end
             end
         end
     end
     if not nearest then return end
 
-    local config = nearest.components["rpg.interactable"]
+    local config = nearest_config
     state.target_id = nearest.id
     state.prompt = config.prompt
     state.prompt_key = config.prompt_key
+    state.page_id = config.page_id
     if not world.host.input:wasPressed(config.input) then return end
 
-    local context = {
-        source = player,
-        target = nearest,
-        interactor = player,
-        interactable = nearest,
-        world = world,
-        events = world.events,
-    }
+    local context = nearest_context
     world.events:emit("interaction.started", {
         source_id = player.id,
         target_id = nearest.id,
+        page_id = config.page_id,
     })
     local result, action_error, failure =
         world:executeActions(config.actions, context)
@@ -118,6 +178,7 @@ function interaction_system:update(world)
         world.events:emit("interaction.action_failed", {
             source_id = player.id,
             target_id = nearest.id,
+            page_id = config.page_id,
             action_index = failure and failure.index or nil,
             action_type = failure and failure.action.type or nil,
             error = action_error,
@@ -127,6 +188,7 @@ function interaction_system:update(world)
     world.events:emit("interaction.completed", {
         source_id = player.id,
         target_id = nearest.id,
+        page_id = config.page_id,
     })
     if not world:allows(player, "interact") then
         clearState(state)
@@ -177,19 +239,22 @@ function feature:register(host)
                 config,
                 {
                     "input", "range", "prompt", "prompt_key",
-                    "condition", "actions",
+                    "condition", "actions", "pages",
                 },
                 path
             )
-            local input = validator:string(
-                config.input,
-                path .. ".input",
-                false
-            ) or "interact"
-            if not host.input:hasAction(input) then
+            local input = config.input or "interact"
+            if type(input) == "string" and
+               not host.input:hasAction(input) then
                 validator:error(
                     path .. ".input",
                     "references missing input action '" .. input .. "'"
+                )
+            else
+                validator:string(
+                    config.input,
+                    path .. ".input",
+                    false
                 )
             end
             validator:positive(
@@ -214,12 +279,35 @@ function feature:register(host)
                     path .. ".condition"
                 )
             end
-            validateActions(
-                config.actions,
-                validator,
+            local pages = EventPages.validate(
                 host,
-                path .. ".actions"
+                config.pages,
+                validator,
+                path .. ".pages",
+                function(page, current_validator, page_path)
+                    validatePage(
+                        page,
+                        current_validator,
+                        host,
+                        page_path
+                    )
+                end
             )
+            if not pages then
+                validateActions(
+                    config.actions,
+                    validator,
+                    host,
+                    path .. ".actions"
+                )
+            elseif config.actions then
+                validateActions(
+                    config.actions,
+                    validator,
+                    host,
+                    path .. ".actions"
+                )
+            end
         end,
         create = function(config)
             return {
@@ -229,7 +317,8 @@ function feature:register(host)
                 prompt_key = config.prompt_key,
                 condition = config.condition and
                     util.deepCopy(config.condition) or nil,
-                actions = util.deepCopy(config.actions),
+                actions = util.deepCopy(config.actions or {}),
+                pages = util.deepCopy(config.pages or {}),
             }
         end,
     })
@@ -249,6 +338,7 @@ function feature:register(host)
                 target_id = state.target_id,
                 prompt = state.prompt,
                 prompt_key = state.prompt_key,
+                page_id = state.page_id,
             },
         }
     end)

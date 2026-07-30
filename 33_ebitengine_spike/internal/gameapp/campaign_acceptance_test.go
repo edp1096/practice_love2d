@@ -19,12 +19,13 @@ func TestCompleteAuthoredCampaignAcrossProcessRestart(t *testing.T) {
 	processA := newFlowRuntime(t, saveRoot)
 	if got := flowOptionIDs(processA.View().Flow); !reflect.DeepEqual(
 		got,
-		[]string{"new_game", "quit"},
+		[]string{"new_game", "accessibility", "quit"},
 	) {
 		t.Fatalf("fresh title options = %q", got)
 	}
 	activateFlow(t, processA, "new_game")
 	assertLocation(t, processA, "stage.village", "default")
+	finishVillageArrivalCutscene(t, processA)
 
 	acceptVillageGuideQuest(t, processA)
 	accepted := processA.CampaignState()
@@ -66,6 +67,47 @@ func TestCompleteAuthoredCampaignAcrossProcessRestart(t *testing.T) {
 		campaignItem(t, shopped, "item.potion").Quantity != 1 {
 		t.Fatalf("campaign after potion purchase = %#v", shopped)
 	}
+	transitionThroughPortal(
+		t,
+		processA,
+		"to_village",
+		"stage.village",
+		"shop_return",
+	)
+	transitionThroughPortal(
+		t,
+		processA,
+		"to_home",
+		"stage.village_home",
+		"entry",
+	)
+	callRuntime(
+		t,
+		processA,
+		protocol.MethodEntitySetHealth,
+		protocol.SetHealthParams{EntityID: "player", Value: 50},
+	)
+	callRuntime(
+		t,
+		processA,
+		protocol.MethodEntitySetPosition,
+		protocol.SetPositionParams{
+			EntityID: "player",
+			X:        144,
+			Y:        144,
+		},
+	)
+	stepProtocol(t, processA, 1)
+	if got := entitySnapshot(t, processA, "player").Health; got != 80 {
+		t.Fatalf("home rest trigger health = %d, want 80", got)
+	}
+	transitionThroughPortal(
+		t,
+		processA,
+		"to_village",
+		"stage.village",
+		"home_return",
+	)
 
 	if err := processA.Tick(ebitapp.Actions{Pause: true}); err != nil {
 		t.Fatal(err)
@@ -81,12 +123,12 @@ func TestCompleteAuthoredCampaignAcrossProcessRestart(t *testing.T) {
 	processB := newFlowRuntime(t, saveRoot)
 	if got := flowOptionIDs(processB.View().Flow); !reflect.DeepEqual(
 		got,
-		[]string{"new_game", "continue", "quit"},
+		[]string{"new_game", "continue", "accessibility", "quit"},
 	) {
 		t.Fatalf("restart title options = %q", got)
 	}
 	activateFlow(t, processB, "continue")
-	assertLocation(t, processB, "stage.village", "default")
+	assertLocation(t, processB, "stage.village", "home_return")
 	continued := processB.CampaignState()
 	if continued.Mode != campaign.ModePlaying ||
 		campaignQuest(
@@ -182,7 +224,9 @@ func TestCompleteAuthoredCampaignAcrossProcessRestart(t *testing.T) {
 	).Status != campaign.QuestCompleted ||
 		rewarded.Currency != 75 ||
 		campaignItem(t, rewarded, "item.potion").Quantity != 2 ||
-		!campaignFlag(t, rewarded, "quest.grove_guardian.rewarded") {
+		!campaignFlag(t, rewarded, "quest.grove_guardian.rewarded") ||
+		rewarded.World.Day != 1 ||
+		rewarded.World.Minute != 18*60+30 {
 		t.Fatalf("completed quest rewards = %#v", rewarded)
 	}
 
@@ -200,6 +244,17 @@ func TestCompleteAuthoredCampaignAcrossProcessRestart(t *testing.T) {
 		"stage.village",
 		"field_return",
 	)
+	stepProtocol(t, processB, 1)
+	worldState := processB.worldSnapshotLocked().WorldState
+	if worldState.Clock != "18:30" ||
+		worldState.ActivePage != "dusk" ||
+		processB.View().World.Tint.A == 0 {
+		t.Fatalf(
+			"evening village return = world %#v tint %#v",
+			worldState,
+			processB.View().World.Tint,
+		)
+	}
 
 	dialogue := openVillageGuideDialogue(t, processB)
 	if got := dialogueChoiceIDs(dialogue); !reflect.DeepEqual(
@@ -310,6 +365,7 @@ func transitionThroughPortal(
 	targetSpawnID string,
 ) {
 	t.Helper()
+	finishVillageArrivalCutscene(t, runtime)
 	// Entry portals use an authored cooldown and an inside latch to prevent
 	// immediate bounce-back. Let both clear while the player remains at the
 	// safe entry/combat position, then cross the requested portal edge.
@@ -330,6 +386,46 @@ func transitionThroughPortal(
 		targetSpawnID,
 		runtime.CampaignState(),
 	)
+}
+
+func finishVillageArrivalCutscene(t *testing.T, runtime *Runtime) {
+	t.Helper()
+	state := runtime.CampaignState()
+	if state.CurrentStageID != "stage.village" ||
+		campaignFlagValue(state, "story.village_arrival_seen") {
+		return
+	}
+	if !runtime.CutsceneState().Active {
+		if err := runtime.Tick(ebitapp.Actions{}); err != nil {
+			t.Fatalf("enter village arrival cutscene: %v", err)
+		}
+	}
+	cutscene := runtime.CutsceneState()
+	if !cutscene.Active || cutscene.ID != "cutscene.village_arrival" ||
+		cutscene.StepIndex != 0 || cutscene.StepCount != 2 {
+		t.Fatalf("village arrival cutscene = %#v", cutscene)
+	}
+	if err := runtime.Tick(ebitapp.Actions{MenuCancel: true}); err != nil {
+		t.Fatalf("skip village arrival cutscene: %v", err)
+	}
+	state = runtime.CampaignState()
+	if runtime.CutsceneState().Active ||
+		!campaignFlagValue(state, "story.village_arrival_seen") {
+		t.Fatalf(
+			"village arrival completion did not persist: cutscene=%#v campaign=%#v",
+			runtime.CutsceneState(),
+			state,
+		)
+	}
+}
+
+func campaignFlagValue(state campaign.State, id string) bool {
+	for _, flag := range state.Flags {
+		if flag.ID == id {
+			return flag.Value
+		}
+	}
+	return false
 }
 
 func dialogueChoiceIDs(state DialogueState) []string {

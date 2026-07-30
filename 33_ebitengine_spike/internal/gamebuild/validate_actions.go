@@ -153,6 +153,69 @@ func validateAction(
 			return err
 		}
 		return nil
+	case "show_notice":
+		if err := rejectUnknownKeys(
+			action,
+			path,
+			"type",
+			"text",
+			"text_key",
+			"duration",
+			"tone",
+		); err != nil {
+			return err
+		}
+		text := ""
+		textKey := ""
+		var err error
+		if action["text"] != nil {
+			text, err = requiredString(action["text"], path+".text")
+			if err != nil {
+				return err
+			}
+		}
+		if action["text_key"] != nil {
+			textKey, err = requiredString(
+				action["text_key"],
+				path+".text_key",
+			)
+			if err != nil {
+				return err
+			}
+		}
+		if text == "" && textKey == "" {
+			return fmt.Errorf("%s requires text or text_key", path)
+		}
+		duration := 3.0
+		if action["duration"] != nil {
+			duration, err = requiredPositiveNumberValue(
+				action["duration"],
+				path+".duration",
+			)
+			if err != nil {
+				return err
+			}
+		}
+		if !durationFitsPortableTicks(duration) {
+			return fmt.Errorf(
+				"%s.duration exceeds the supported duration",
+				path,
+			)
+		}
+		if action["tone"] == nil {
+			return nil
+		}
+		tone, err := requiredString(action["tone"], path+".tone")
+		if err != nil {
+			return err
+		}
+		if tone != "info" && tone != "success" && tone != "warning" {
+			return fmt.Errorf(
+				"%s.tone must be one of info, success, warning",
+				path,
+			)
+		}
+		return nil
 	case "set_flag":
 		if err := rejectUnknownKeys(action, path, "type", "name", "value"); err != nil {
 			return err
@@ -161,6 +224,34 @@ func validateAction(
 			return err
 		}
 		return optionalBoolean(action["value"], path+".value")
+	case "set_world_time":
+		if err := rejectUnknownKeys(
+			action,
+			path,
+			"type",
+			"time",
+			"day",
+		); err != nil {
+			return err
+		}
+		clock, err := requiredString(action["time"], path+".time")
+		if err != nil {
+			return err
+		}
+		if _, err := parseRuleClock(clock, path+".time"); err != nil {
+			return err
+		}
+		return optionalPositiveInteger(action["day"], path+".day")
+	case "advance_world_time":
+		if err := rejectUnknownKeys(
+			action,
+			path,
+			"type",
+			"minutes",
+		); err != nil {
+			return err
+		}
+		return requiredPositiveNumber(action["minutes"], path+".minutes")
 	case "clear_flag":
 		if err := rejectUnknownKeys(action, path, "type", "name"); err != nil {
 			return err
@@ -266,6 +357,19 @@ func validateAction(
 			true,
 		)
 		return err
+	case "start_cutscene":
+		if err := rejectUnknownKeys(action, path, "type", "cutscene"); err != nil {
+			return err
+		}
+		_, err := referenceField(
+			catalog,
+			action,
+			"cutscene",
+			"cutscene",
+			path,
+			true,
+		)
+		return err
 	case "set_locale":
 		if err := rejectUnknownKeys(action, path, "type", "locale"); err != nil {
 			return err
@@ -350,6 +454,19 @@ func validateAction(
 			return err
 		}
 		_, err := requiredString(action["encounter"], path+".encounter")
+		return err
+	case "start_turn_battle":
+		if err := rejectUnknownKeys(action, path, "type", "battle"); err != nil {
+			return err
+		}
+		_, err := referenceField(
+			catalog,
+			action,
+			"battle",
+			"turn_battle",
+			path,
+			true,
+		)
 		return err
 	default:
 		return fmt.Errorf("%s.type has unknown action %q", path, actionType)
@@ -611,6 +728,61 @@ func validateCondition(
 			false,
 		)
 		return err
+	case "cutscene_active":
+		if err := rejectUnknownKeys(
+			condition,
+			path,
+			"type",
+			"cutscene",
+		); err != nil {
+			return err
+		}
+		_, err := referenceField(
+			catalog,
+			condition,
+			"cutscene",
+			"cutscene",
+			path,
+			false,
+		)
+		return err
+	case "time_between":
+		if err := rejectUnknownKeys(
+			condition,
+			path,
+			"type",
+			"start",
+			"finish",
+		); err != nil {
+			return err
+		}
+		for _, field := range []string{"start", "finish"} {
+			clock, err := requiredString(
+				condition[field],
+				path+"."+field,
+			)
+			if err != nil {
+				return err
+			}
+			if _, err := parseRuleClock(
+				clock,
+				path+"."+field,
+			); err != nil {
+				return err
+			}
+		}
+		return nil
+	case "region_active":
+		if err := rejectUnknownKeys(
+			condition,
+			path,
+			"type",
+			"id",
+		); err != nil {
+			return err
+		}
+		_, err := requiredString(condition["id"], path+".id")
+		return err
 	case "currency_at_least":
 		if err := rejectUnknownKeys(condition, path, "type", "amount"); err != nil {
 			return err
@@ -688,6 +860,35 @@ func validateCondition(
 			"active",
 			"completed",
 			"failed",
+		)
+	case "turn_battle_state":
+		if err := rejectUnknownKeys(
+			condition,
+			path,
+			"type",
+			"battle",
+			"state",
+		); err != nil {
+			return err
+		}
+		if _, err := referenceField(
+			catalog,
+			condition,
+			"battle",
+			"turn_battle",
+			path,
+			true,
+		); err != nil {
+			return err
+		}
+		return requiredEnum(
+			condition["state"],
+			path+".state",
+			"never",
+			"active",
+			"won",
+			"lost",
+			"escaped",
 		)
 	default:
 		return fmt.Errorf("%s.type has unknown condition %q", path, conditionType)

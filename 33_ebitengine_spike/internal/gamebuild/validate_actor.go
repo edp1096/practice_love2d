@@ -106,12 +106,15 @@ func validateActorSemantics(
 			return err
 		}
 	}
+	combatAbilities := make(map[string]struct{})
+	hasCombat := false
 	if combat, exists, err := optionalObject(
 		components["action.combat"],
 		id+".components.action.combat",
 	); err != nil {
 		return err
 	} else if exists {
+		hasCombat = true
 		team, err := requiredString(
 			combat["team"],
 			id+".components.action.combat.team",
@@ -129,7 +132,6 @@ func validateActorSemantics(
 		if err != nil {
 			return err
 		}
-		seen := make(map[string]struct{}, len(abilities))
 		for index, raw := range abilities {
 			abilityID, err := requiredString(
 				raw,
@@ -142,10 +144,10 @@ func validateActorSemantics(
 			if err != nil {
 				return err
 			}
-			if _, duplicate := seen[abilityID]; duplicate {
+			if _, duplicate := combatAbilities[abilityID]; duplicate {
 				return fmt.Errorf("%s duplicates ability %q", id, abilityID)
 			}
-			seen[abilityID] = struct{}{}
+			combatAbilities[abilityID] = struct{}{}
 			if _, err := referencedDefinition(
 				catalog,
 				abilityID,
@@ -172,7 +174,7 @@ func validateActorSemantics(
 				return err
 			}
 			if len(abilities) > 0 {
-				if _, exists := seen[primary]; !exists {
+				if _, exists := combatAbilities[primary]; !exists {
 					return fmt.Errorf(
 						"%s action.combat primary %q is not in abilities",
 						id,
@@ -182,37 +184,207 @@ func validateActorSemantics(
 			}
 		}
 	}
-	if chase, exists, err := optionalObject(
-		components["action.chase_ai"],
-		id+".components.action.chase_ai",
+	if behavior, exists, err := optionalObject(
+		components["action.behavior_ai"],
+		id+".components.action.behavior_ai",
 	); err != nil {
 		return err
 	} else if exists {
+		basePath := id + ".components.action.behavior_ai"
+		if !hasCombat {
+			return fmt.Errorf("%s requires action.combat", basePath)
+		}
 		if _, err := requiredString(
-			chase["target_tag"],
-			id+".components.action.chase_ai.target_tag",
+			behavior["target_tag"],
+			basePath+".target_tag",
 		); err != nil {
 			return err
 		}
-		if err := requiredPositiveNumber(
-			chase["aggro_range"],
-			id+".components.action.chase_ai.aggro_range",
-		); err != nil {
+		aggroRange, err := requiredPositiveNumberValue(
+			behavior["aggro_range"],
+			basePath+".aggro_range",
+		)
+		if err != nil {
 			return err
 		}
-		if err := optionalPositiveNumber(
-			chase["attack_distance"],
-			id+".components.action.chase_ai.attack_distance",
-		); err != nil {
+		patterns, err := requiredArray(
+			behavior["patterns"],
+			basePath+".patterns",
+		)
+		if err != nil {
 			return err
 		}
-		if attack, ok := number(chase["attack_distance"]); ok {
-			aggro, _ := number(chase["aggro_range"])
-			if attack > aggro {
+		if len(patterns) == 0 {
+			return fmt.Errorf("%s.patterns must not be empty", basePath)
+		}
+		seenPatterns := make(map[string]struct{}, len(patterns))
+		previousThreshold := 1.0
+		for patternIndex, rawPattern := range patterns {
+			patternPath := fmt.Sprintf(
+				"%s.patterns[%d]",
+				basePath,
+				patternIndex,
+			)
+			pattern, err := requiredObject(rawPattern, patternPath)
+			if err != nil {
+				return err
+			}
+			patternID, err := requiredString(
+				pattern["id"],
+				patternPath+".id",
+			)
+			if err != nil {
+				return err
+			}
+			if _, duplicate := seenPatterns[patternID]; duplicate {
 				return fmt.Errorf(
-					"%s action.chase_ai attack_distance exceeds aggro_range",
-					id,
+					"%s.id duplicates AI pattern %q",
+					patternPath,
+					patternID,
 				)
+			}
+			seenPatterns[patternID] = struct{}{}
+			if patternIndex == 0 {
+				if pattern["health_ratio_at_most"] != nil {
+					return fmt.Errorf(
+						"%s.health_ratio_at_most must be omitted "+
+							"for the unconditional fallback",
+						patternPath,
+					)
+				}
+			} else {
+				threshold, err := requiredNumber(
+					pattern["health_ratio_at_most"],
+					patternPath+".health_ratio_at_most",
+				)
+				if err != nil {
+					return err
+				}
+				if threshold <= 0 || threshold >= previousThreshold {
+					return fmt.Errorf(
+						"%s.health_ratio_at_most must be positive "+
+							"and lower than the previous threshold",
+						patternPath,
+					)
+				}
+				previousThreshold = threshold
+			}
+			movement, err := requiredObject(
+				pattern["movement"],
+				patternPath+".movement",
+			)
+			if err != nil {
+				return err
+			}
+			minimumRange := 0.0
+			if movement["minimum_range"] != nil {
+				minimumRange, err = requiredNumber(
+					movement["minimum_range"],
+					patternPath+".movement.minimum_range",
+				)
+				if err != nil || minimumRange < 0 {
+					if err != nil {
+						return err
+					}
+					return fmt.Errorf(
+						"%s.movement.minimum_range must not be negative",
+						patternPath,
+					)
+				}
+			}
+			preferredRange, err := requiredNumber(
+				movement["preferred_range"],
+				patternPath+".movement.preferred_range",
+			)
+			if err != nil {
+				return err
+			}
+			if preferredRange < 0 ||
+				minimumRange > preferredRange ||
+				preferredRange > aggroRange {
+				return fmt.Errorf(
+					"%s movement ranges must satisfy "+
+						"0 <= minimum_range <= preferred_range <= aggro_range",
+					patternPath,
+				)
+			}
+			if err := optionalBoolean(
+				movement["orbit"],
+				patternPath+".movement.orbit",
+			); err != nil {
+				return err
+			}
+			attacks, err := requiredArray(
+				pattern["attacks"],
+				patternPath+".attacks",
+			)
+			if err != nil {
+				return err
+			}
+			if len(attacks) == 0 {
+				return fmt.Errorf(
+					"%s.attacks must not be empty",
+					patternPath,
+				)
+			}
+			for attackIndex, rawAttack := range attacks {
+				attackPath := fmt.Sprintf(
+					"%s.attacks[%d]",
+					patternPath,
+					attackIndex,
+				)
+				attack, err := requiredObject(rawAttack, attackPath)
+				if err != nil {
+					return err
+				}
+				abilityID, err := requiredString(
+					attack["ability"],
+					attackPath+".ability",
+				)
+				if err != nil {
+					return err
+				}
+				if _, err := referencedDefinition(
+					catalog,
+					abilityID,
+					"ability",
+					attackPath+".ability",
+				); err != nil {
+					return err
+				}
+				if _, included := combatAbilities[abilityID]; !included {
+					return fmt.Errorf(
+						"%s ability %q is not in action.combat.abilities",
+						attackPath,
+						abilityID,
+					)
+				}
+				attackMinimum := 0.0
+				if attack["minimum_range"] != nil {
+					attackMinimum, err = requiredNumber(
+						attack["minimum_range"],
+						attackPath+".minimum_range",
+					)
+					if err != nil {
+						return err
+					}
+				}
+				attackMaximum, err := requiredPositiveNumberValue(
+					attack["maximum_range"],
+					attackPath+".maximum_range",
+				)
+				if err != nil {
+					return err
+				}
+				if attackMinimum < 0 ||
+					attackMinimum > attackMaximum ||
+					attackMaximum > aggroRange {
+					return fmt.Errorf(
+						"%s ranges must satisfy "+
+							"0 <= minimum_range <= maximum_range <= aggro_range",
+						attackPath,
+					)
+				}
 			}
 		}
 	}
@@ -421,6 +593,50 @@ func validateActorSemantics(
 			}
 		}
 	}
+	if battler, exists, err := optionalObject(
+		components["rpg.turn_battler"],
+		id+".components.rpg.turn_battler",
+	); err != nil {
+		return err
+	} else if exists {
+		path := id + ".components.rpg.turn_battler"
+		if components["action.health"] == nil {
+			return fmt.Errorf("%s requires action.health", path)
+		}
+		if components["rpg.stats"] == nil {
+			return fmt.Errorf("%s requires rpg.stats", path)
+		}
+		if err := rejectUnknownKeys(battler, path, "skills"); err != nil {
+			return err
+		}
+		skills, err := requiredArray(battler["skills"], path+".skills")
+		if err != nil {
+			return err
+		}
+		if len(skills) == 0 {
+			return fmt.Errorf("%s.skills must not be empty", path)
+		}
+		seen := make(map[string]struct{}, len(skills))
+		for index, raw := range skills {
+			skillPath := fmt.Sprintf("%s.skills[%d]", path, index)
+			skillID, err := requiredString(raw, skillPath)
+			if err != nil {
+				return err
+			}
+			if _, duplicate := seen[skillID]; duplicate {
+				return fmt.Errorf("%s duplicates skill %q", skillPath, skillID)
+			}
+			seen[skillID] = struct{}{}
+			if _, err := referencedDefinition(
+				catalog,
+				skillID,
+				"turn_skill",
+				skillPath,
+			); err != nil {
+				return err
+			}
+		}
+	}
 	if equipment, exists, err := optionalObject(
 		components["rpg.equipment"],
 		id+".components.rpg.equipment",
@@ -471,28 +687,138 @@ func validateActorSemantics(
 	); err != nil {
 		return err
 	} else if exists {
-		if err := optionalPositiveNumber(
-			interaction["range"],
-			id+".components.rpg.interactable.range",
+		path := id + ".components.rpg.interactable"
+		if err := rejectUnknownKeys(
+			interaction,
+			path,
+			"input",
+			"range",
+			"prompt",
+			"prompt_key",
+			"condition",
+			"actions",
+			"pages",
 		); err != nil {
 			return err
+		}
+		if err := optionalString(
+			interaction["input"],
+			path+".input",
+		); err != nil {
+			return err
+		}
+		if err := optionalPositiveNumber(
+			interaction["range"],
+			path+".range",
+		); err != nil {
+			return err
+		}
+		for _, field := range []string{"prompt", "prompt_key"} {
+			if err := optionalString(
+				interaction[field],
+				path+"."+field,
+			); err != nil {
+				return err
+			}
 		}
 		if interaction["condition"] != nil {
 			if err := validateCondition(
 				catalog,
 				interaction["condition"],
-				id+".components.rpg.interactable.condition",
+				path+".condition",
 			); err != nil {
 				return err
 			}
 		}
-		if err := validateActions(
-			catalog,
-			interaction["actions"],
-			id+".components.rpg.interactable.actions",
-			true,
-		); err != nil {
+		pages, pagesExist, err := optionalArray(
+			interaction["pages"],
+			path+".pages",
+		)
+		if err != nil {
 			return err
+		}
+		if pagesExist && len(pages) == 0 {
+			return fmt.Errorf("%s.pages must not be empty", path)
+		}
+		seenPages := make(map[string]struct{}, len(pages))
+		for index, raw := range pages {
+			pagePath := fmt.Sprintf("%s.pages[%d]", path, index)
+			page, err := requiredObject(raw, pagePath)
+			if err != nil {
+				return err
+			}
+			if err := rejectUnknownKeys(
+				page,
+				pagePath,
+				"id",
+				"condition",
+				"input",
+				"range",
+				"prompt",
+				"prompt_key",
+				"actions",
+			); err != nil {
+				return err
+			}
+			pageID, err := requiredString(page["id"], pagePath+".id")
+			if err != nil {
+				return err
+			}
+			if _, duplicate := seenPages[pageID]; duplicate {
+				return fmt.Errorf(
+					"%s.id duplicates page %q",
+					pagePath,
+					pageID,
+				)
+			}
+			seenPages[pageID] = struct{}{}
+			if page["condition"] != nil {
+				if err := validateCondition(
+					catalog,
+					page["condition"],
+					pagePath+".condition",
+				); err != nil {
+					return err
+				}
+			}
+			if err := optionalString(
+				page["input"],
+				pagePath+".input",
+			); err != nil {
+				return err
+			}
+			if err := optionalPositiveNumber(
+				page["range"],
+				pagePath+".range",
+			); err != nil {
+				return err
+			}
+			for _, field := range []string{"prompt", "prompt_key"} {
+				if err := optionalString(
+					page[field],
+					pagePath+"."+field,
+				); err != nil {
+					return err
+				}
+			}
+			if err := validateActions(
+				catalog,
+				page["actions"],
+				pagePath+".actions",
+				true,
+			); err != nil {
+				return err
+			}
+		}
+		if interaction["actions"] != nil || !pagesExist {
+			if err := validateActions(
+				catalog,
+				interaction["actions"],
+				path+".actions",
+				true,
+			); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

@@ -121,6 +121,8 @@ func BuildCampaignConfig(
 		ContentID:           "sha256:" + hex.EncodeToString(fingerprint[:]),
 		DefaultLocale:       manifest.Locale.Default,
 		Locales:             []string{},
+		WorldStartMinute:    float64(manifest.World.StartMinute),
+		WorldSecondsPerDay:  manifest.World.SecondsPerDay,
 		InitialStageID:      manifest.Flow.StartStage,
 		InitialEntrySpawnID: manifest.Flow.StartSpawn,
 		Stages:              []campaign.StageDefinition{},
@@ -128,6 +130,7 @@ func BuildCampaignConfig(
 		Items:               []campaign.ItemDefinition{},
 		EquipmentSlots:      []string{},
 		Quests:              []campaign.QuestDefinition{},
+		TurnBattles:         []campaign.TurnBattleDefinition{},
 	}
 
 	equipmentSlots := make(map[string]struct{})
@@ -174,6 +177,12 @@ func BuildCampaignConfig(
 				return campaign.Config{}, err
 			}
 			result.Quests = append(result.Quests, quest)
+
+		case "turn_battle":
+			result.TurnBattles = append(
+				result.TurnBattles,
+				campaign.TurnBattleDefinition{ID: validation.ID},
+			)
 		}
 	}
 
@@ -188,6 +197,9 @@ func BuildCampaignConfig(
 	})
 	sort.Slice(result.Quests, func(i, j int) bool {
 		return result.Quests[i].ID < result.Quests[j].ID
+	})
+	sort.Slice(result.TurnBattles, func(i, j int) bool {
+		return result.TurnBattles[i].ID < result.TurnBattles[j].ID
 	})
 	if result.InitialEntrySpawnID == "" {
 		result.InitialEntrySpawnID, err = defaultCampaignEntrySpawn(
@@ -427,10 +439,14 @@ func decodeCampaignDefinition(
 func collectCampaignFlags(value any, flags map[string]struct{}) error {
 	switch typed := value.(type) {
 	case map[string]any:
-		if actionType, _ := typed["type"].(string); actionType == "set_flag" {
+		ruleType, _ := typed["type"].(string)
+		if ruleType == "set_flag" || ruleType == "flag" {
 			name, ok := typed["name"].(string)
 			if !ok || strings.TrimSpace(name) == "" {
-				return fmt.Errorf("set_flag action requires a non-empty name")
+				return fmt.Errorf(
+					"%s rule requires a non-empty name",
+					ruleType,
+				)
 			}
 			flags[name] = struct{}{}
 		}

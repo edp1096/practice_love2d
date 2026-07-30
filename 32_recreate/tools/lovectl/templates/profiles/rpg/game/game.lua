@@ -7,16 +7,24 @@ return {
     maximum_steps = 8,
     maximum_action_depth = 64,
     content_roots = {"game/content"},
+    world = {
+        start_time = "08:00",
+        seconds_per_day = 0,
+    },
     features = {
+        "engine.features.accessibility",
         "engine.features.game_flow",
         "engine.features.movement.topdown",
         "engine.features.camera",
+        "engine.features.world_state",
+        "engine.features.cutscene",
         "engine.features.action.health",
         "engine.features.rpg.flags",
         "engine.features.rpg.inventory",
         "engine.features.rpg.equipment",
         "engine.features.rpg.locale",
         "engine.features.rpg.quest",
+        "engine.features.rpg.turn_battle",
         "engine.features.rpg.dialogue",
         "engine.features.rpg.shop",
         "engine.features.rpg.interaction",
@@ -29,6 +37,18 @@ return {
     flow = {
         save_slot = "campaign",
         start_stage = "stage.start",
+        title = {
+            heading = "{{PROJECT_TITLE_LUA}}",
+            message = "Accept the guide's request and win the turn battle.",
+        },
+        game_over = {
+            heading = "Defeat",
+            message = "Recover and challenge the slime again.",
+        },
+        ending = {
+            heading = "Quest Complete",
+            message = "The training slime is defeated and the village is safe.",
+        },
     },
     input = {
         actions = {

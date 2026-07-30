@@ -56,6 +56,21 @@ func TestVillageInteractionUsesAuthoredDialogueAndAtomicCampaignChoice(
 	if state.Currency != 25 {
 		t.Fatalf("campaign currency = %d, want 25", state.Currency)
 	}
+	notice := runtime.View().Notice
+	if !notice.Active ||
+		notice.Text !=
+			"의뢰 시작 · 연습용 검 장착 · 준비금 25G 획득" ||
+		notice.TextKey != "notice.quest.accepted" ||
+		notice.Tone != "success" ||
+		notice.RemainingTicks != 240 {
+		t.Fatalf("accepted quest notice = %#v", notice)
+	}
+	if err := runtime.Tick(ebitapp.Actions{MoveX: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if got := runtime.View().Notice.RemainingTicks; got != 240 {
+		t.Fatalf("modal dialogue consumed notice ticks: %d", got)
+	}
 
 	result = callRuntime(
 		t,
@@ -65,6 +80,73 @@ func TestVillageInteractionUsesAuthoredDialogueAndAtomicCampaignChoice(
 	).(DialogueState)
 	if result.Active {
 		t.Fatalf("terminal dialogue remained active: %#v", result)
+	}
+	if got := runtime.View().Notice; !got.Active ||
+		got.RemainingTicks != 240 {
+		t.Fatalf("closed dialogue lost notice: %#v", got)
+	}
+}
+
+func TestInteractionEventPagesSwitchAfterDurableFlagChange(t *testing.T) {
+	runtime := newCampaignRuntime(t)
+	for index := range runtime.contentRules.Interactions {
+		interaction := &runtime.contentRules.Interactions[index]
+		if interaction.ActorID != "actor.village_guide" {
+			continue
+		}
+		interaction.Condition = nil
+		interaction.Actions = nil
+		interaction.Pages = []gamebuild.ActorInteractionPageRule{
+			{
+				ID:    "before",
+				Input: "interact",
+				Range: 72,
+				Actions: []gamebuild.RuleAction{
+					{
+						Type:      gamebuild.RuleActionSetFlag,
+						FlagName:  "quest.grove_guardian.rewarded",
+						FlagValue: true,
+					},
+				},
+			},
+			{
+				ID:    "after",
+				Input: "interact",
+				Range: 72,
+				Condition: &gamebuild.RuleCondition{
+					Type:      gamebuild.RuleConditionFlag,
+					FlagName:  "quest.grove_guardian.rewarded",
+					FlagValue: true,
+				},
+				Actions: []gamebuild.RuleAction{
+					{
+						Type:     gamebuild.RuleActionAddCurrency,
+						Currency: 1,
+					},
+				},
+			},
+		}
+	}
+	guide := entitySnapshot(t, runtime, "guide")
+	setEntityPosition(
+		t,
+		runtime,
+		"player",
+		coordPixels(guide.Position.X)-40,
+		coordPixels(guide.Position.Y),
+	)
+	beforeCurrency := runtime.CampaignState().Currency
+
+	scheduleProtocolAction(t, runtime, "interact")
+	stepProtocol(t, runtime, 1)
+	if got := runtime.CampaignState().Currency; got != beforeCurrency {
+		t.Fatalf("before page currency = %d, want %d", got, beforeCurrency)
+	}
+
+	scheduleProtocolAction(t, runtime, "interact")
+	stepProtocol(t, runtime, 1)
+	if got := runtime.CampaignState().Currency; got != beforeCurrency+1 {
+		t.Fatalf("after page currency = %d, want %d", got, beforeCurrency+1)
 	}
 }
 
@@ -346,9 +428,13 @@ func TestSimulationKillsAdvanceActorObjectivesExactlyOnce(t *testing.T) {
 		protocol.EmptyParams{},
 	)
 
-	moveEntityToPortal(t, runtime, "player", "to_field")
-	stepProtocol(t, runtime, 1)
-	assertLocation(t, runtime, "stage.world_hub", "village_entry")
+	transitionThroughPortal(
+		t,
+		runtime,
+		"to_field",
+		"stage.world_hub",
+		"village_entry",
+	)
 
 	killWithPlayerAttack(t, runtime, "enemy.slime.1", 400, 220)
 	assertObjectiveCount(
@@ -367,9 +453,13 @@ func TestSimulationKillsAdvanceActorObjectivesExactlyOnce(t *testing.T) {
 		2,
 	)
 
-	moveEntityToPortal(t, runtime, "player", "to_grove")
-	stepProtocol(t, runtime, 1)
-	assertLocation(t, runtime, "stage.world_grove", "west_entry")
+	transitionThroughPortal(
+		t,
+		runtime,
+		"to_grove",
+		"stage.world_grove",
+		"west_entry",
+	)
 	killWithPlayerAttack(t, runtime, "boss.grove_guardian", 500, 288)
 
 	completed := runtime.CampaignState()
@@ -472,14 +562,16 @@ func openVillageGuideDialogue(
 	runtime *Runtime,
 ) DialogueState {
 	t.Helper()
+	finishVillageArrivalCutscene(t, runtime)
+	guide := entitySnapshot(t, runtime, "guide")
 	callRuntime(
 		t,
 		runtime,
 		protocol.MethodEntitySetPosition,
 		protocol.SetPositionParams{
 			EntityID: "player",
-			X:        350,
-			Y:        240,
+			X:        coordPixels(guide.Position.X) - 40,
+			Y:        coordPixels(guide.Position.Y),
 		},
 	)
 	scheduleProtocolAction(t, runtime, "interact")

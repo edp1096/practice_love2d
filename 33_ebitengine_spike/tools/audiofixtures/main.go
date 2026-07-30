@@ -37,6 +37,8 @@ func generate(output string) error {
 		sample   sampleFunc
 	}{
 		{"audio/music/forest-theme.wav", 8, forestTheme},
+		{"audio/music/village-theme.wav", 8, villageTheme},
+		{"audio/music/road-theme.wav", 8, roadTheme},
 		{"audio/sfx/attack.wav", 0.18, attackCue},
 		{"audio/sfx/hit.wav", 0.16, hitCue},
 		{"audio/sfx/jump.wav", 0.22, jumpCue},
@@ -111,9 +113,13 @@ func writeWAV(path string, duration float64, sample sampleFunc) error {
 	return file.Sync()
 }
 
+func loopEdge(t, length float64) float64 {
+	return min(1, min(t/0.08, (length-t)/0.08))
+}
+
 func forestTheme(t float64) float64 {
 	const length = 8.0
-	edge := min(1, min(t/0.08, (length-t)/0.08))
+	edge := loopEdge(t, length)
 	beat := math.Mod(t, 2)
 	pulse := 0.45 + 0.55*math.Exp(-4*beat)
 	chords := [4][3]float64{
@@ -130,6 +136,45 @@ func forestTheme(t float64) float64 {
 	}
 	value += 0.045 * math.Sin(2*math.Pi*chord[0]*0.5*t)
 	return value * pulse * max(0, edge)
+}
+
+func villageTheme(t float64) float64 {
+	const length = 8.0
+	chords := [4][3]float64{
+		{130.81, 164.81, 196.00},
+		{146.83, 174.61, 220.00},
+		{164.81, 196.00, 246.94},
+		{146.83, 174.61, 220.00},
+	}
+	chord := chords[int(t/2)%len(chords)]
+	beat := math.Mod(t, 0.5)
+	bell := math.Exp(-7 * beat)
+	value := 0.06 * math.Sin(2*math.Pi*chord[0]*0.5*t)
+	for index, frequency := range chord {
+		value += math.Sin(
+			2*math.Pi*frequency*t+float64(index)*0.32,
+		) * (0.075 - float64(index)*0.012)
+	}
+	arpeggio := chord[int(t/0.5)%len(chord)] * 2
+	value += math.Sin(2*math.Pi*arpeggio*t) * bell * 0.075
+	return value * max(0, loopEdge(t, length))
+}
+
+func roadTheme(t float64) float64 {
+	const length = 8.0
+	roots := [4]float64{110.00, 98.00, 87.31, 98.00}
+	root := roots[int(t/2)%len(roots)]
+	beat := math.Mod(t, 0.5)
+	pulse := 0.38 + 0.62*math.Exp(-8*beat)
+	melody := [8]float64{
+		220.00, 261.63, 293.66, 261.63,
+		196.00, 220.00, 261.63, 220.00,
+	}
+	note := melody[int(t/0.5)%len(melody)]
+	value := math.Sin(2*math.Pi*root*t)*0.11 +
+		math.Sin(2*math.Pi*root*1.5*t+0.4)*0.06 +
+		math.Sin(2*math.Pi*note*t)*0.07
+	return value * pulse * max(0, loopEdge(t, length))
 }
 
 func attackCue(t float64) float64 {

@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -357,6 +358,80 @@ func (s *Simulation) StartQuest(id string) error {
 	return nil
 }
 
+// EmitAuthoredEvent appends one non-engine event to the current tick's
+// detached event stream. Authored events cannot impersonate reserved combat,
+// lifecycle, or quest events.
+func (s *Simulation) EmitAuthoredEvent(
+	eventType EventType,
+	entityID string,
+	triggerID string,
+	data json.RawMessage,
+) error {
+	if eventType == "" {
+		return errors.New("authored event type is empty")
+	}
+	if IsReservedEventType(eventType) {
+		return fmt.Errorf("authored event type %q is reserved", eventType)
+	}
+	if entityID != "" {
+		if _, exists := s.entities[entityID]; !exists {
+			return fmt.Errorf("authored event entity %q is missing", entityID)
+		}
+	}
+	if len(data) != 0 {
+		var object map[string]any
+		if !json.Valid(data) ||
+			json.Unmarshal(data, &object) != nil ||
+			object == nil {
+			return errors.New("authored event data must be a JSON object")
+		}
+	}
+	s.emit(Event{
+		Type:      eventType,
+		EntityID:  entityID,
+		TriggerID: triggerID,
+		Data:      append(json.RawMessage(nil), data...),
+	})
+	return nil
+}
+
+// ApplyDamage applies deterministic environment damage outside an ability
+// activation. It uses the shared health/death boundary, bypasses combat stat
+// modifiers and hit invulnerability, and returns only events emitted by this
+// operation.
+func (s *Simulation) ApplyDamage(
+	targetID string,
+	amount int,
+) ([]Event, error) {
+	if targetID == "" {
+		return nil, errors.New("damage target is required")
+	}
+	if amount <= 0 {
+		return nil, errors.New("damage amount must be positive")
+	}
+	target := s.entities[targetID]
+	if target == nil {
+		return nil, fmt.Errorf("unknown entity %q", targetID)
+	}
+	if target.dead {
+		return nil, fmt.Errorf("entity %q is dead", targetID)
+	}
+	start := len(s.lastEvents)
+	if err := s.applyImpact(
+		"",
+		Vec{},
+		Vec{},
+		targetID,
+		target,
+		"",
+		ImpactConfig{Damage: amount},
+		true,
+	); err != nil {
+		return nil, err
+	}
+	return cloneEvents(s.lastEvents[start:]), nil
+}
+
 // SetWall replaces one identified wall with an axis-aligned rectangle against
 // the current runtime state. Replacing a polygon intentionally clears its
 // authored points: this original rectangle mutation API edits bounds as a
@@ -423,6 +498,8 @@ func (s *Simulation) resolveInput(input Input) (map[string]EntityInput, []string
 	for _, item := range input.Commands {
 		item.MoveX = clampAxis(item.MoveX)
 		item.MoveY = clampAxis(item.MoveY)
+		item.AimX = clampAxis(item.AimX)
+		item.AimY = clampAxis(item.AimY)
 		commands[item.EntityID] = item
 	}
 
@@ -457,6 +534,13 @@ func (s *Simulation) processActions(commands map[string]EntityInput) {
 		command := commands[id]
 		if entity.dead {
 			continue
+		}
+		aim := normalize(Vec{
+			X: Coord(command.AimX),
+			Y: Coord(command.AimY),
+		})
+		if aim != (Vec{}) {
+			entity.facing = aim
 		}
 
 		// This matches the source engine's system ordering: parry is resolved
@@ -2459,7 +2543,14 @@ func sortedCommandIDs(commands map[string]EntityInput) []string {
 }
 
 func cloneEvents(events []Event) []Event {
-	return append([]Event(nil), events...)
+	result := append([]Event(nil), events...)
+	for index := range result {
+		result[index].Data = append(
+			json.RawMessage(nil),
+			events[index].Data...,
+		)
+	}
+	return result
 }
 
 func makeBurst(direction Vec, distance Coord, duration int) burstRuntime {

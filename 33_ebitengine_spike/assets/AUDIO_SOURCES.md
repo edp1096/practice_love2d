@@ -5,6 +5,9 @@
 합성한 이 프로젝트의 원본 fixture다. 같은 명령으로 byte-for-byte
 재생성할 수 있다.
 
+`forest-theme.wav`, `road-theme.wav`, `village-theme.wav`는 각각 숲,
+동쪽 길, 마을용으로 별도 합성한 루프이며 서로 다른 화성·리듬을 쓴다.
+
 ```bash
 go run ./tools/audiofixtures -output assets/runtime
 ```

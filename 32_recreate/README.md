@@ -9,6 +9,9 @@ LÖVE 11.5용 2D 제작 런타임이다.
 ## 현재 상태
 
 탑다운 액션, 플랫포머 액션, 월드 제작, RPG 수직 단면이 실행된다.
+루트 샘플은 `30_misc`의 타일 마을과 집·잡화점 실내를 현재 schema로
+복원했으며, 안내인 의뢰 → 상점·회복 → 들판·숲 전투 → 귀환 보고 →
+엔딩을 한 캠페인으로 연결한다.
 
 - 순수 데이터 콘텐츠 자동 탐색
 - feature 의존성 조합
@@ -17,7 +20,7 @@ LÖVE 11.5용 2D 제작 런타임이다.
 - 고정 60Hz 시뮬레이션
 - 서로 독립적인 탑다운·플랫포머 이동
 - 정적 geometry와 collision layer/mask 기반 동적 actor 충돌
-- 체력, 적대 팀, 스킬 효과, 추적 AI
+- 체력, 적대 팀, 스킬 효과, 체력 단계·거리대·공전을 조합하는 행동 AI
 - 시간축 hitbox와 독립 hurtbox, 단발·제한 다단 적중
 - 공격 예고·활성·후딜과 선택 가능한 이동 잠금
 - 피격 경직·무적, 넉백, 히트스톱
@@ -25,6 +28,7 @@ LÖVE 11.5용 2D 제작 런타임이다.
 - 발사체의 연속 충돌 판정·관통·벽 소멸
 - 중첩·주기 효과·능력치 배율·면역을 갖는 상태 효과
 - 데이터 기반 encounter·wave·boss phase
+- 조건부 event page로 한 번만 획득하는 월드 아이템과 재진입 피해 구역
 - 중력·가속·코요테 타임·점프 버퍼를 갖는 플랫포머 이동
 - 기존 플레이어·슬라임·베기 애셋의 ID 기반 애니메이션
 - TMX를 런타임 순수 Lua stage로 바꾸는 Go compiler
@@ -36,6 +40,10 @@ LÖVE 11.5용 2D 제작 런타임이다.
 - feature별 버전·migration과 원자적 파일 교체를 갖는 transactional save
 - 플래그, 인벤토리, 소비 아이템, 장비와 파생 스탯
 - 조건·액션을 공유하는 NPC 상호작용과 다국어 대화 graph
+- 배경·다국어 대사·자동 진행·건너뛰기와 후속 action을 갖는 컷신
+- 저장 가능한 일자·시각, 지역 진입·이탈과 조건부 색조·tile layer를
+  갖는 월드 상태 page
+- 스킬·적 편성·승패 후속 명령과 결과 저장을 갖는 턴제 RPG 전투
 - 전투 이벤트를 구독하는 퀘스트 목표와 데이터 기반 보상
 - 원자적 구매·판매, 소지금과 장착 아이템 판매 방지
 - 기본 언어와 fallback을 갖는 locale, 한글 TTF 표시
@@ -64,8 +72,11 @@ go run ./tools/lovectl init --profile action ../my-action
 생성물은 현재 검증된 engine·도구·테스트 번들을 포함한 독립 프로젝트다.
 세 profile 모두 첫 실행에서 `new_game`, `quit`가 있는 title을 열고
 `check`, 격리된 실제 화면 `smoke`, 결정적 `.love` package를 바로
-실행할 수 있다. 이후 `game/content`와 `game/maps`, runtime asset을
-게임별 데이터로 교체한다.
+실행할 수 있다. `rpg` 예제는 의뢰 수락, 턴제 전투, 보상과 엔딩까지
+플레이 가능한 작은 게임이다. `action`과 `action-rpg`도 각각
+인카운터 또는 의뢰에서 엔딩까지 연결되어 있고 세 경로를 `smoke`가
+고정 프레임으로 완주한다. 이후 `game/content`와 `game/maps`, runtime
+asset을 게임별 데이터로 교체한다.
 
 ## 실행
 
@@ -113,6 +124,21 @@ go run ./tools/lovectl campaign
 완료되는지, 상점 거래와 stage 전환 뒤 session 보존까지 검증한다.
 이어 실제 save 파일을 쓴 뒤 돈·아이템·stage를 변경하고, 퀘스트·장비·
 능력치·재화·인벤토리·locale이 디스크 load로 복원되는지 확인한다.
+`campaign`은 runtime이 공개한 portal ID와 geometry로 집·잡화점·들판·
+숲을 이동하므로 TMX 배치를 바꿔도 화면 좌표를 다시 하드코딩하지 않는다.
+현재 전체 경로는 도입 컷신과 접근성 설정 화면을 포함한 22개 실제
+화면과 semantic 상태를 함께 캡처한다. 기본 `gamepad` 입력 모드는
+`dpup`/`dpdown`, `A/B/X/Y`, `LB/RB`, `Start/Back` 물리 버튼 이름을
+통해 264 fixed tick으로 완주한다.
+들판 전투에서는 실제 적 AI의 공격 예고에 맞춰 퍼펙트 패링을 입력하고
+체력 무손실, 적 경직과 카메라 흔들림도 같은 프레임에서 검증한다.
+30의 독병 스프라이트를 현재 asset/sprite/actor 정의로 옮긴 월드
+아이템은 최초 상호작용에서만 물약을 지급하며, 독성 늪 trigger는
+진입할 때 실제 체력과 게임오버 경계를 사용해 피해를 준다.
+수호자 처치 뒤에는 저장되는 시각이 18:30으로 바뀌며, 마을 귀환
+화면의 저녁 색조와 활성 월드 page도 함께 검증한다.
+카메라 움직임 감소/끄기, 피격 flash 끄기, 알림 시간 연장 설정은
+새 게임·타이틀 복귀와 프로세스 재시작 뒤에도 유지되는지 검사한다.
 
 디버그 가능한 게임을 직접 실행하려면:
 
@@ -154,9 +180,10 @@ loopback 주소에 브라우저 제작 화면을 열고 격리된 LÖVE 11.5
 원자적으로 교체하고, reload가 실패하면 원본을 복구한다. 외부 편집이
 먼저 저장되었으면 `409 Conflict`로 거부한다.
 
-이 화면은 현재 데이터베이스 편집과 런타임 제어 도구다. 타일 페인팅은
-계속 Tiled가 담당하며, RPG Maker식 이벤트 명령 빌더·대화 노드 그래프·
-애니메이션 타임라인은 아직 구현되지 않았다.
+이 화면은 데이터베이스 편집과 런타임 제어 도구다. 대화·퀘스트·NPC
+명령, 턴제 스킬·전투 편성과 TMX actor·trigger·portal은 간편 카드에서
+편집한다. 타일 페인팅은 계속 Tiled가 담당하며 애니메이션 타임라인은
+아직 구현되지 않았다.
 
 콘텐츠를 저장할 때마다 자동 반영하려면 또 다른 터미널에서 실행한다.
 
@@ -232,4 +259,7 @@ go run ./tools/lovectl package
 방법은 [docs/EXTENDING.md](docs/EXTENDING.md), 다음 구현 순서는
 [docs/ROADMAP.md](docs/ROADMAP.md), 생성·감시·미리보기·패키징 명령은
 [docs/TOOLS.md](docs/TOOLS.md), 저장 형식과 migration은
-[docs/SAVES.md](docs/SAVES.md)에 정리되어 있다.
+[docs/SAVES.md](docs/SAVES.md)에 정리되어 있다. 샘플 게임의 완료
+기준은 [docs/SAMPLE_GAME.md](docs/SAMPLE_GAME.md), 30·31과 비교한
+복원·리뉴얼 현황은
+[docs/SAMPLE_RENEWAL.md](docs/SAMPLE_RENEWAL.md)를 기준으로 한다.

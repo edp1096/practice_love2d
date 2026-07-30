@@ -35,6 +35,12 @@ return {
                             amount = 25,
                             reason = "campaign.starting_supplies",
                         },
+                        {
+                            type = "show_notice",
+                            text_key = "notice.quest.accepted",
+                            tone = "success",
+                            duration = 4,
+                        },
                     },
                     next = "accepted",
                 },

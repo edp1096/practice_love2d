@@ -7,12 +7,19 @@ return {
     maximum_steps = 8,
     maximum_action_depth = 64,
     content_roots = {"game/content"},
+    world = {
+        start_time = "08:00",
+        seconds_per_day = 0,
+    },
     features = {
+        "engine.features.accessibility",
         "engine.features.game_flow",
         "engine.features.movement.topdown",
         "engine.features.camera",
+        "engine.features.world_state",
+        "engine.features.cutscene",
         "engine.features.presentation.impact",
-        "engine.features.action.chase_ai",
+        "engine.features.action.behavior_ai",
         "engine.features.action.hitstop",
         "engine.features.action.knockback",
         "engine.features.action.projectile",
@@ -25,6 +32,18 @@ return {
     flow = {
         save_slot = "campaign",
         start_stage = "stage.start",
+        title = {
+            heading = "{{PROJECT_TITLE_LUA}}",
+            message = "Defeat the training encounter with attacks, dodge, and parry.",
+        },
+        game_over = {
+            heading = "Training Failed",
+            message = "Retry the arena and read the enemy's attack.",
+        },
+        ending = {
+            heading = "Training Complete",
+            message = "The action encounter has been cleared.",
+        },
     },
     input = {
         actions = {

@@ -87,3 +87,33 @@ func TestStrictJSONRejectsUnknownFieldsAndTrailingValues(t *testing.T) {
 		t.Fatal("expected trailing JSON error")
 	}
 }
+
+func TestSmokeJourneyRequiresBoundedStepsAndFinalFlow(t *testing.T) {
+	scenario := validSmokeScenario("action")
+	scenario.Journey = &smokeJourney{
+		Steps: []smokeJourneyStep{
+			{
+				TargetTag: "enemy",
+				Action:    "attack",
+				Frames:    24,
+				Repeat:    3,
+			},
+		},
+		ExpectedFlow:      "ending",
+		ExpectedEncounter: "training",
+	}
+	if err := validateSmokeScenario(scenario); err != nil {
+		t.Fatal(err)
+	}
+	scenario.Journey.Steps[0].Repeat = 21
+	if err := validateSmokeScenario(scenario); err == nil ||
+		!strings.Contains(err.Error(), "repeat") {
+		t.Fatalf("expected repeat limit, got %v", err)
+	}
+	scenario.Journey.Steps[0].Repeat = 1
+	scenario.Journey.ExpectedFlow = "credits"
+	if err := validateSmokeScenario(scenario); err == nil ||
+		!strings.Contains(err.Error(), "expected_flow") {
+		t.Fatalf("expected flow validation, got %v", err)
+	}
+}

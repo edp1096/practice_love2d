@@ -384,7 +384,7 @@ locale = {
 키 자체 순서로 표시한다. `set_locale` action으로 실행 중 변경할 수
 있다.
 
-### Interaction, Dialogue, Quest와 Shop
+### Interaction, Event Page, Dialogue, Quest와 Shop
 
 NPC는 `rpg.interactable`에 입력 범위와 action 목록만 선언한다.
 
@@ -402,6 +402,50 @@ NPC는 `rpg.interactable`에 입력 범위와 action 목록만 선언한다.
 }
 ```
 
+상태에 따라 NPC의 말과 동작을 바꾸려면 게임 코드 분기 대신 `pages`를
+쓴다. 배열의 뒤쪽 page가 우선순위가 높으며, 현재 조건을 만족하는 마지막
+page 하나만 활성화된다. 아무 page도 맞지 않으면 그 상호작용은 화면과
+입력에서 사라진다.
+
+```lua
+["rpg.interactable"] = {
+    input = "interact",
+    range = 70,
+    pages = {
+        {
+            id = "before_quest",
+            prompt_key = "interaction.quest",
+            actions = {
+                {
+                    type = "start_dialogue",
+                    dialogue = "dialogue.guide",
+                },
+            },
+        },
+        {
+            id = "quest_active",
+            condition = {
+                type = "quest_state",
+                quest = "quest.first_steps",
+                state = "active",
+            },
+            prompt_key = "interaction.report",
+            actions = {
+                {
+                    type = "start_dialogue",
+                    dialogue = "dialogue.guide",
+                },
+            },
+        },
+    },
+}
+```
+
+상위 `input`, `range`, `prompt`/`prompt_key`는 page의 기본값이며 page에서
+필요한 값만 덮어쓴다. 상위 `condition`은 모든 page에 공통으로 먼저
+적용된다. 각 page의 `id`는 같은 상호작용 안에서 고유해야 하고
+`actions`는 비어 있을 수 없다.
+
 dialogue는 node, choice, condition, action과 다음 node ID로 구성한다.
 quest는 구독할 event와 payload의 `where` 필터, 목표 횟수와 완료
 action을 선언한다. shop은 item ID별 구매가·판매가만 소유하며
@@ -409,6 +453,150 @@ inventory와 economy service가 실제 거래를 원자적으로 처리한다.
 
 실제 파일을 따라 NPC 한 명과 퀘스트를 만드는 순서는
 [RPG.md](RPG.md)에 정리되어 있다.
+
+### 짧은 화면 알림
+
+대화 선택지, 퀘스트 보상, 아이템 효과와 map trigger 어디서든 같은
+`show_notice` action으로 짧은 안내를 표시한다.
+
+```lua
+{
+    type = "show_notice",
+    text_key = "notice.quest.completed",
+    tone = "success",
+    duration = 4,
+}
+```
+
+`text_key` 대신 직접 `text`를 쓸 수 있고 `tone`은 `info`, `success`,
+`warning` 중 하나다. 알림은 save 데이터가 아니라 현재 화면의 일시적
+표현 상태다. 대화나 상점이 열려 있는 동안에는 보이지 않고 남은 시간도
+줄지 않는다. semantic snapshot에는 현재 문장·tone·남은 시간이
+노출되므로 화면 자동화가 표시 결과까지 검사할 수 있다.
+
+### 컷신
+
+컷신은 Lua 코드로 장면 전환을 하드코딩하지 않고 `cutscene` 콘텐츠의
+순서가 있는 step과 후속 action으로 작성한다.
+
+```lua
+return {
+    schema_version = 1,
+    kind = "cutscene",
+    id = "cutscene.village_arrival",
+    name = "Village Arrival",
+    background = "image.arrival",
+    skippable = true,
+    steps = {
+        {
+            id = "warning",
+            text_key = "cutscene.arrival.warning",
+        },
+        {
+            id = "call",
+            speaker_key = "npc.guide.name",
+            text_key = "cutscene.arrival.call",
+            duration = 2,
+            actions = {
+                {type = "set_flag", name = "story.guide_called"},
+            },
+        },
+    },
+    on_complete = {
+        {type = "set_flag", name = "story.arrival_seen"},
+    },
+}
+```
+
+각 step은 직접 `text` 또는 `text_key` 중 하나가 필요하다.
+`speaker`/`speaker_key`, step별 `background`, 초 단위 `duration`,
+`actions`는 선택이다. duration이 없으면 확인 입력까지 기다린다.
+`{type = "start_cutscene", cutscene = "cutscene.village_arrival"}`으로
+시작한다. 활성 중에는 World와 다른 modal이 정지하고 semantic
+snapshot에 현재 step·문장·배경·남은 tick이 노출된다. 건너뛰어도 아직
+진입하지 않은 step의 action과 `on_complete`는 작성 순서대로 실행되므로
+필수 진행 flag나 보상이 유실되지 않는다.
+
+### 월드 시각·지역·상태 page
+
+프로젝트의 지속 시각은 `game/game.lua`에서 시작한다.
+
+```lua
+world = {
+    start_time = "08:00",
+    -- 0이면 자동 진행을 멈춘다. 120이면 실제 120초가 게임 하루다.
+    seconds_per_day = 0,
+},
+```
+
+시각은 24시간 `HH:MM` 형식이며 일자와 분 단위 현재 값은 save의
+`world.state` section에 기록된다. `seconds_per_day`가 양수면 고정
+60Hz tick으로 결정적으로 진행하고, 컷신·대화·상점 같은 modal이 World를
+멈추는 동안에는 시각도 멈춘다.
+
+stage의 `world_state`는 지리적 region과 조건부 page를 선언한다.
+
+```lua
+world_state = {
+    regions = {
+        {
+            id = "village_square",
+            actor_tag = "player",
+            shape = {
+                type = "rectangle",
+                x = 448, y = 800,
+                width = 256, height = 192,
+            },
+            on_enter = {
+                {type = "set_flag", name = "world.square_seen"},
+            },
+        },
+    },
+    pages = {
+        {
+            id = "dusk",
+            condition = {
+                type = "time_between",
+                start = "18:00",
+                finish = "06:00",
+            },
+            tint = {0.035, 0.055, 0.16, 0.42},
+            layers = {
+                {id = "night_lights", visible = true},
+            },
+            on_enter = {
+                {type = "show_notice", text = "해가 저물었습니다."},
+            },
+        },
+    },
+}
+```
+
+region은 조건을 만족하는 `actor_tag`의 actor가 경계를 넘을 때
+`on_enter`/`on_exit`를 한 번씩 실행한다. `region_active` condition으로
+현재 진입 여부를 다른 region이나 page 조건에 사용할 수 있다. page는
+작성 순서대로 검사하고 마지막으로 조건이 맞는 하나가 활성화된다.
+처음 stage를 열 때는 표현만 선택하며 hook을 실행하지 않고, 이후 page가
+바뀔 때 이전 `on_exit`와 새 `on_enter`를 실행한다. page가 해제되면
+tile layer visibility는 작성 원본으로 복원된다.
+
+시간 action과 condition은 대화, 퀘스트 보상, trigger, 컷신 등 모든
+Rules 입력에서 같다.
+
+```lua
+{type = "set_world_time", time = "18:30"}
+{type = "set_world_time", time = "07:00", day = 2}
+{type = "advance_world_time", minutes = 90}
+
+{type = "time_between", start = "18:00", finish = "06:00"}
+{type = "region_active", id = "village_square"}
+```
+
+`time_between`은 끝 시각을 포함하지 않으며 `18:00 → 06:00`처럼 자정을
+넘는 범위를 지원한다. 같은 시작·끝 시각은 하루 전체와 일치한다.
+현재 루트 샘플은 수호자 퀘스트 완료 action으로 시각을 18:30으로
+바꾸고, 귀환한 마을의 `dusk` page를 실제 화면과 semantic snapshot에서
+검증한다.
 
 ## 이동 Controller
 
@@ -508,8 +696,11 @@ return {
 
 `walls`는 actor가 아니라 stage geometry라서 rectangle과 polygon을
 가볍게 많이 배치할 수 있다. `trigger.actions`와 `condition`은 ability와
-같은 Rules registry를 사용한다. `portal`은 파일 경로나 좌표가 아니라
-`target_stage`와 `target_spawn` ID를 쓴다.
+같은 Rules registry를 사용한다. trigger도 `pages`를 사용하면 조건에
+따라 서로 다른 actions, `once`, `cooldown`을 선택한다. 상호작용과
+마찬가지로 마지막으로 조건이 맞는 page가 활성화되며 `once` 기록은
+`trigger ID + page ID`별로 독립적이다. `portal`은 파일 경로나 좌표가
+아니라 `target_stage`와 `target_spawn` ID를 쓴다.
 
 재사용 가능한 전투 배치는 별도 `encounter` 콘텐츠에 wave, 상대 spawn,
 boss health phase와 action을 정의하고 stage에서 배치한다.
@@ -609,6 +800,7 @@ font = {
 go run ./tools/lovectl new actor training_dummy
 go run ./tools/lovectl new item large_potion
 go run ./tools/lovectl new dialogue gate_guard
+go run ./tools/lovectl new cutscene village_arrival
 go run ./tools/lovectl map compile
 go run ./tools/lovectl check
 go run ./tools/lovectl run

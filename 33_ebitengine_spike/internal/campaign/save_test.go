@@ -74,6 +74,7 @@ func TestPlayerSaveEnvelopeIsCanonicalAndExcludesTransientState(
 	assertMapKeys(
 		t,
 		sections,
+		"accessibility.settings",
 		"game.flow",
 		"rpg.economy",
 		"rpg.equipment",
@@ -81,6 +82,8 @@ func TestPlayerSaveEnvelopeIsCanonicalAndExcludesTransientState(
 		"rpg.inventory",
 		"rpg.locale",
 		"rpg.quests",
+		"rpg.turn_battles",
+		"world.state",
 	)
 	for name, value := range sections {
 		section, ok := value.(map[string]any)
@@ -489,9 +492,24 @@ func TestPlayerSaveDecodeRejectsMalformedForeignAndInvalidDataAtomically(
 				sectionDataAt(t, document, "rpg.locale")["selected"] = "ja"
 			}),
 		},
+		{
+			name: "invalid world day",
+			data: mutateSaveDocument(t, valid, func(document map[string]any) {
+				sectionDataAt(t, document, "world.state")["day"] =
+					float64(0)
+			}),
+		},
+		{
+			name: "invalid world minute",
+			data: mutateSaveDocument(t, valid, func(document map[string]any) {
+				sectionDataAt(t, document, "world.state")["minute"] =
+					float64(24 * 60)
+			}),
+		},
 	}
 
 	for _, section := range []string{
+		"accessibility.settings",
 		"game.flow",
 		"rpg.flags",
 		"rpg.inventory",
@@ -499,6 +517,8 @@ func TestPlayerSaveDecodeRejectsMalformedForeignAndInvalidDataAtomically(
 		"rpg.quests",
 		"rpg.economy",
 		"rpg.locale",
+		"rpg.turn_battles",
+		"world.state",
 	} {
 		cases = append(cases, struct {
 			name string

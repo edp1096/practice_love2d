@@ -355,14 +355,20 @@ func mapRawInput(raw rawInput) Actions {
 }
 
 // actionsForView gives the highest-priority active modal exclusive ownership
-// of shared gameplay and menu keys. Flow precedes dialogue, then shop, then
-// inventory. Enter, Space, Q, Escape, I, and the directional keys intentionally
-// map to more than one semantic action in PollActions; this routing step
-// prevents one physical edge from triggering multiple layers. The dedicated
-// P/gamepad pause edge remains available.
+// of shared gameplay and menu keys. Flow precedes cutscene, turn battle,
+// dialogue, shop, then inventory. Enter, Space, Q, Escape, I, and the
+// directional keys intentionally map to more than one semantic action in
+// PollActions; this routing step prevents one physical edge from triggering
+// multiple layers.
 func actionsForView(actions Actions, view View) Actions {
 	if view.Flow.Active {
 		return flowActions(actions, view.Flow)
+	}
+	if view.Cutscene.Active {
+		return cutsceneActions(actions)
+	}
+	if view.TurnBattle.Active {
+		return turnBattleActions(actions)
 	}
 	if view.Dialogue.Active {
 		return dialogueActions(actions)
@@ -379,6 +385,31 @@ func actionsForView(actions Actions, view View) Actions {
 		actions.InventoryCancel = false
 	}
 	return actions
+}
+
+func cutsceneActions(actions Actions) Actions {
+	result := Actions{}
+	switch {
+	case actions.MenuCancel:
+		result.MenuCancel = true
+	case actions.MenuConfirm:
+		result.MenuConfirm = true
+	}
+	return result
+}
+
+func turnBattleActions(actions Actions) Actions {
+	result := Actions{Pause: actions.Pause}
+	switch {
+	case actions.MenuCancel:
+		result.MenuCancel = true
+	case actions.MenuConfirm:
+		result.MenuConfirm = true
+	case actions.MenuUp != actions.MenuDown:
+		result.MenuUp = actions.MenuUp
+		result.MenuDown = actions.MenuDown
+	}
+	return result
 }
 
 func dialogueActions(actions Actions) Actions {

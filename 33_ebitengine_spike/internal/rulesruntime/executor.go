@@ -8,6 +8,7 @@
 package rulesruntime
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -19,18 +20,32 @@ import (
 type IntentType string
 
 const (
-	IntentOpenShop      IntentType = "open_shop"
-	IntentStartDialogue IntentType = "start_dialogue"
-	IntentHeal          IntentType = "heal"
+	IntentOpenShop        IntentType = "open_shop"
+	IntentStartDialogue   IntentType = "start_dialogue"
+	IntentDamage          IntentType = "damage"
+	IntentHeal            IntentType = "heal"
+	IntentEmit            IntentType = "emit"
+	IntentShowNotice      IntentType = "show_notice"
+	IntentStartTurnBattle IntentType = "start_turn_battle"
+	IntentStartCutscene   IntentType = "start_cutscene"
 )
 
 // Intent preserves authored action order. Exactly one target field is set for
 // open-shop and start-dialogue intents; HealAmount is set for heal intents.
 type Intent struct {
-	Type       IntentType `json:"type"`
-	ShopID     string     `json:"shop_id,omitempty"`
-	DialogueID string     `json:"dialogue_id,omitempty"`
-	HealAmount float64    `json:"heal_amount,omitempty"`
+	Type         IntentType      `json:"type"`
+	ShopID       string          `json:"shop_id,omitempty"`
+	DialogueID   string          `json:"dialogue_id,omitempty"`
+	DamageAmount float64         `json:"damage_amount,omitempty"`
+	HealAmount   float64         `json:"heal_amount,omitempty"`
+	EventName    string          `json:"event_name,omitempty"`
+	EventData    json.RawMessage `json:"event_data,omitempty"`
+	NoticeText   string          `json:"notice_text,omitempty"`
+	NoticeKey    string          `json:"notice_key,omitempty"`
+	NoticeTone   string          `json:"notice_tone,omitempty"`
+	NoticeTicks  int             `json:"notice_ticks,omitempty"`
+	BattleID     string          `json:"battle_id,omitempty"`
+	CutsceneID   string          `json:"cutscene_id,omitempty"`
 }
 
 // ActionResult contains host work produced by a successfully committed action
@@ -118,24 +133,106 @@ func (executor *Executor) EvaluateCondition(
 	if err := executor.validateCondition(*condition, "condition"); err != nil {
 		return false, fmt.Errorf("evaluate rule condition: %w", err)
 	}
-	quest, _, err := findQuestState(&state, condition.QuestID)
+	result, err := executor.evaluateConditionState(&state, *condition)
 	if err != nil {
 		return false, fmt.Errorf("evaluate rule condition: %w", err)
 	}
+	return result, nil
+}
 
-	switch condition.QuestState {
-	case gamebuild.RuleQuestInactive:
-		return quest.Status == campaign.QuestInactive, nil
-	case gamebuild.RuleQuestActive:
-		return quest.Status == campaign.QuestActive, nil
-	case gamebuild.RuleQuestCompleted:
-		return quest.Status == campaign.QuestCompleted, nil
-	default:
-		return false, fmt.Errorf(
-			"evaluate rule condition: unsupported quest state %q",
-			condition.QuestState,
+func (executor *Executor) evaluateConditionState(
+	state *campaign.State,
+	condition gamebuild.RuleCondition,
+) (bool, error) {
+	switch condition.Type {
+	case gamebuild.RuleConditionAlways:
+		return true, nil
+	case gamebuild.RuleConditionAll:
+		for _, child := range condition.Conditions {
+			matched, err := executor.evaluateConditionState(state, child)
+			if err != nil {
+				return false, err
+			}
+			if !matched {
+				return false, nil
+			}
+		}
+		return true, nil
+	case gamebuild.RuleConditionAny:
+		for _, child := range condition.Conditions {
+			matched, err := executor.evaluateConditionState(state, child)
+			if err != nil {
+				return false, err
+			}
+			if matched {
+				return true, nil
+			}
+		}
+		return false, nil
+	case gamebuild.RuleConditionNot:
+		if condition.Condition == nil {
+			return false, errors.New("not condition has no child")
+		}
+		matched, err := executor.evaluateConditionState(
+			state,
+			*condition.Condition,
 		)
+		return !matched, err
+	case gamebuild.RuleConditionFlag:
+		flag, _, err := findFlagState(state, condition.FlagName)
+		if err != nil {
+			return false, err
+		}
+		return flag.Value == condition.FlagValue, nil
+	case gamebuild.RuleConditionQuestState:
+		quest, _, err := findQuestState(state, condition.QuestID)
+		if err != nil {
+			return false, err
+		}
+		switch condition.QuestState {
+		case gamebuild.RuleQuestInactive:
+			return quest.Status == campaign.QuestInactive, nil
+		case gamebuild.RuleQuestActive:
+			return quest.Status == campaign.QuestActive, nil
+		case gamebuild.RuleQuestCompleted:
+			return quest.Status == campaign.QuestCompleted, nil
+		}
+	case gamebuild.RuleConditionTurnBattleState:
+		battle, _, err := findTurnBattleState(state, condition.BattleID)
+		if err != nil {
+			return false, err
+		}
+		if condition.BattleState == gamebuild.RuleTurnBattleActive {
+			// Active battle state is deliberately transient and is evaluated
+			// by gameapp before this durable executor is called.
+			return false, nil
+		}
+		return string(battle.Outcome) == string(condition.BattleState) ||
+			(battle.Outcome == campaign.TurnBattleNever &&
+				condition.BattleState == gamebuild.RuleTurnBattleNever), nil
+	case gamebuild.RuleConditionCutsceneActive:
+		// Cutscene sessions are intentionally transient and owned by gameapp.
+		// The host evaluates this node when it appears in an authored page.
+		return false, nil
+	case gamebuild.RuleConditionTimeBetween:
+		minute := state.World.Minute
+		start := condition.StartMinute
+		finish := condition.FinishMinute
+		if start == finish {
+			return true, nil
+		}
+		if start < finish {
+			return minute >= start && minute < finish, nil
+		}
+		return minute >= start || minute < finish, nil
+	case gamebuild.RuleConditionRegionActive:
+		// Stage regions are transient and evaluated by gameapp.
+		return false, nil
 	}
+	return false, fmt.Errorf(
+		"unsupported condition %q",
+		condition.Type,
+	)
 }
 
 func (executor *Executor) requireIdentity(state *campaign.State) error {

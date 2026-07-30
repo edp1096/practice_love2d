@@ -49,6 +49,7 @@ geometry + tilemap + navigation + camera feature
 | `camera_width` | 아니오 | `800` | 논리 viewport 폭 |
 | `camera_height` | 아니오 | `450` | 논리 viewport 높이 |
 | `background` | 아니오 | `#101a22` | `#RRGGBB` 또는 `#AARRGGBB` |
+| `world_pages` | 아니오 | JSON 배열 | 조건별 tint·tile layer·진입/이탈 action |
 
 알 수 없는 property는 오타로 간주한다.
 
@@ -117,8 +118,9 @@ polygon은 절대 좌표 polygon으로 컴파일된다. 별도 wall actor 콘텐
 
 | property | 필수 | 의미 |
 |---|---:|---|
-| `actions` | 예 | 비어 있지 않은 JSON action 배열 |
+| `actions` | 조건부 | `pages`가 없을 때 필요한 비어 있지 않은 JSON action 배열 |
 | `condition` | 아니오 | JSON condition 하나 |
+| `pages` | 아니오 | 조건별 `id`, `condition`, `actions`, `once`, `cooldown`의 JSON 배열 |
 | `actor_tag` | 아니오 | 진입 actor tag. 기본 `player` |
 | `once` | 아니오 | stage 인스턴스에서 한 번만 실행 |
 | `cooldown` | 아니오 | actor별 재실행 대기 시간 |
@@ -139,8 +141,95 @@ polygon은 절대 좌표 polygon으로 컴파일된다. 별도 wall actor 콘텐
 }]
 ```
 
+퀘스트나 flag에 따라 같은 영역의 동작을 바꾸려면 `pages`를 쓴다.
+뒤쪽 page가 우선하며 현재 조건을 만족하는 마지막 page만 실행된다.
+page의 `once`와 `cooldown`은 상위 값을 덮어쓰고, `once`는 page ID별로
+별도 기록된다.
+
+```json
+[
+  {
+    "id": "first_visit",
+    "condition": {
+      "type": "not",
+      "condition": {
+        "type": "flag",
+        "name": "room.visited",
+        "value": true
+      }
+    },
+    "once": true,
+    "actions": [
+      {"type": "set_flag", "name": "room.visited", "value": true},
+      {"type": "show_notice", "text": "You found a hidden room."}
+    ]
+  },
+  {
+    "id": "revisit",
+    "condition": {
+      "type": "flag",
+      "name": "room.visited",
+      "value": true
+    },
+    "actions": [
+      {"type": "show_notice", "text": "The room is quiet."}
+    ]
+  }
+]
+```
+
 JSON은 Lua 코드를 실행하는 통로가 아니다. 컴파일 뒤에도 등록된
 action/condition 스키마로 다시 검증된다.
+
+### `region`
+
+조건을 만족하는 actor가 영역에 들어오거나 나갈 때 action을 실행하고
+`region_active` condition에 현재 상태를 제공한다.
+
+| property | 필수 | 의미 |
+|---|---:|---|
+| `id` | 아니오 | region ID. 없으면 object name 또는 안정적인 object ID |
+| `actor_tag` | 아니오 | 검사할 actor tag. 기본 `player` |
+| `condition` | 아니오 | region 자체를 활성화하는 JSON condition |
+| `on_enter` | 아니오 | 바깥→안 진입 edge의 JSON action 배열 |
+| `on_exit` | 아니오 | 안→바깥 이탈 edge의 JSON action 배열 |
+
+예를 들어 마을 광장을 한 번 방문한 사실은 다음처럼 작성한다.
+
+```json
+[{"type":"set_flag","name":"world.village_square_seen"}]
+```
+
+이를 region 오브젝트의 `on_enter` property로 넣는다. rectangle, 회전
+rectangle과 polygon을 지원하며 같은 stage 안의 region ID는 고유해야
+한다.
+
+map의 `world_pages`는 다음과 같은 JSON 배열이다.
+
+```json
+[
+  {
+    "id": "dusk",
+    "condition": {
+      "type": "time_between",
+      "start": "18:00",
+      "finish": "06:00"
+    },
+    "tint": [0.035, 0.055, 0.16, 0.42],
+    "layers": [
+      {"id": "night_lights", "visible": true}
+    ],
+    "on_enter": [
+      {"type": "show_notice", "text": "The village grows quiet."}
+    ]
+  }
+]
+```
+
+뒤쪽의 조건 일치 page가 우선한다. `layers[].id`는 같은 TMX에서
+컴파일되는 실제 tile layer ID여야 하며, page가 바뀌거나 해제되면
+원래 visibility로 복원된다. project 시각 설정과 action/condition
+전체 계약은 [CONTENT.md](CONTENT.md)에 정리되어 있다.
 
 ## 현재 encounter 배치
 
@@ -172,5 +261,6 @@ go run ./tools/lovectl overlay true
 go run ./tools/lovectl screenshot artifacts/world_hub.png
 ```
 
-현재 기준 예제는 `game/maps/world_hub.tmx`와
-`game/maps/world_grove.tmx`다.
+현재 기준 예제는 `game/maps/village.tmx`,
+`game/maps/village_home.tmx`, `game/maps/village_shop.tmx`,
+`game/maps/world_hub.tmx`와 `game/maps/world_grove.tmx`다.

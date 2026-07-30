@@ -13,13 +13,16 @@ const (
 	CurrentSaveSchemaVersion = 1
 	// Section versions stay independent so one payload can evolve without
 	// forcing unrelated migrations.
-	CurrentGameFlowSectionVersion  = 1
-	CurrentFlagsSectionVersion     = 1
-	CurrentInventorySectionVersion = 1
-	CurrentEquipmentSectionVersion = 1
-	CurrentQuestsSectionVersion    = 1
-	CurrentEconomySectionVersion   = 1
-	CurrentLocaleSectionVersion    = 1
+	CurrentGameFlowSectionVersion      = 1
+	CurrentAccessibilitySectionVersion = 1
+	CurrentFlagsSectionVersion         = 1
+	CurrentInventorySectionVersion     = 1
+	CurrentEquipmentSectionVersion     = 1
+	CurrentQuestsSectionVersion        = 1
+	CurrentEconomySectionVersion       = 1
+	CurrentLocaleSectionVersion        = 1
+	CurrentTurnBattlesSectionVersion   = 1
+	CurrentWorldSectionVersion         = 1
 )
 
 // SaveEnvelope is the complete versioned player-save contract. Its structs
@@ -48,13 +51,16 @@ type SaveSection[T any] struct {
 // SaveSections is intentionally a struct rather than a map. Besides producing
 // deterministic output, it makes missing and unknown namespaces fail closed.
 type SaveSections struct {
-	GameFlow  SaveSection[FlowProgress]         `json:"game.flow"`
-	Flags     SaveSection[FlagsSectionData]     `json:"rpg.flags"`
-	Inventory SaveSection[InventorySectionData] `json:"rpg.inventory"`
-	Equipment SaveSection[EquipmentSectionData] `json:"rpg.equipment"`
-	Quests    SaveSection[QuestsSectionData]    `json:"rpg.quests"`
-	Economy   SaveSection[EconomySectionData]   `json:"rpg.economy"`
-	Locale    SaveSection[LocaleSectionData]    `json:"rpg.locale"`
+	GameFlow      SaveSection[FlowProgress]           `json:"game.flow"`
+	Accessibility SaveSection[AccessibilitySettings]  `json:"accessibility.settings"`
+	Flags         SaveSection[FlagsSectionData]       `json:"rpg.flags"`
+	Inventory     SaveSection[InventorySectionData]   `json:"rpg.inventory"`
+	Equipment     SaveSection[EquipmentSectionData]   `json:"rpg.equipment"`
+	Quests        SaveSection[QuestsSectionData]      `json:"rpg.quests"`
+	Economy       SaveSection[EconomySectionData]     `json:"rpg.economy"`
+	Locale        SaveSection[LocaleSectionData]      `json:"rpg.locale"`
+	TurnBattles   SaveSection[TurnBattlesSectionData] `json:"rpg.turn_battles"`
+	World         SaveSection[WorldSectionData]       `json:"world.state"`
 }
 
 // FlagsSectionData owns durable configured flag values.
@@ -85,6 +91,15 @@ type EconomySectionData struct {
 // LocaleSectionData owns the selected locale.
 type LocaleSectionData struct {
 	Selected string `json:"selected"`
+}
+
+type TurnBattlesSectionData struct {
+	Results []TurnBattleState `json:"results"`
+}
+
+type WorldSectionData struct {
+	Day    int64   `json:"day"`
+	Minute float64 `json:"minute"`
 }
 
 // Export returns a detached player-save envelope. Transient Mode and all
@@ -172,6 +187,10 @@ func envelopeFromState(state State) SaveEnvelope {
 				Version: CurrentGameFlowSectionVersion,
 				Data:    state.Flow,
 			},
+			Accessibility: SaveSection[AccessibilitySettings]{
+				Version: CurrentAccessibilitySectionVersion,
+				Data:    state.Accessibility,
+			},
 			Flags: SaveSection[FlagsSectionData]{
 				Version: CurrentFlagsSectionVersion,
 				Data: FlagsSectionData{
@@ -206,6 +225,19 @@ func envelopeFromState(state State) SaveEnvelope {
 				Version: CurrentLocaleSectionVersion,
 				Data: LocaleSectionData{
 					Selected: state.Locale,
+				},
+			},
+			TurnBattles: SaveSection[TurnBattlesSectionData]{
+				Version: CurrentTurnBattlesSectionVersion,
+				Data: TurnBattlesSectionData{
+					Results: cloneSlice(state.TurnBattles),
+				},
+			},
+			World: SaveSection[WorldSectionData]{
+				Version: CurrentWorldSectionVersion,
+				Data: WorldSectionData{
+					Day:    state.World.Day,
+					Minute: state.World.Minute,
 				},
 			},
 		},
@@ -250,6 +282,7 @@ func stateFromEnvelope(
 		CurrentStageID: envelope.Location.Stage,
 		EntrySpawnID:   envelope.Location.Spawn,
 		Locale:         envelope.Sections.Locale.Data.Selected,
+		Accessibility:  envelope.Sections.Accessibility.Data,
 		Flags: cloneSlice(
 			envelope.Sections.Flags.Data.Values,
 		),
@@ -263,6 +296,13 @@ func stateFromEnvelope(
 		Quests: cloneQuests(
 			envelope.Sections.Quests.Data.Quests,
 		),
+		TurnBattles: cloneSlice(
+			envelope.Sections.TurnBattles.Data.Results,
+		),
+		World: WorldProgress{
+			Day:    envelope.Sections.World.Data.Day,
+			Minute: envelope.Sections.World.Data.Minute,
+		},
 	}
 	if err := validateState(state, config); err != nil {
 		return State{}, err
@@ -278,6 +318,8 @@ func validateSectionVersions(sections SaveSections) error {
 	}{
 		{"game.flow", sections.GameFlow.Version,
 			CurrentGameFlowSectionVersion},
+		{"accessibility.settings", sections.Accessibility.Version,
+			CurrentAccessibilitySectionVersion},
 		{"rpg.flags", sections.Flags.Version,
 			CurrentFlagsSectionVersion},
 		{"rpg.inventory", sections.Inventory.Version,
@@ -290,6 +332,10 @@ func validateSectionVersions(sections SaveSections) error {
 			CurrentEconomySectionVersion},
 		{"rpg.locale", sections.Locale.Version,
 			CurrentLocaleSectionVersion},
+		{"rpg.turn_battles", sections.TurnBattles.Version,
+			CurrentTurnBattlesSectionVersion},
+		{"world.state", sections.World.Version,
+			CurrentWorldSectionVersion},
 	}
 	for _, version := range versions {
 		if version.got != version.want {
@@ -344,18 +390,27 @@ type wireSection[T any] struct {
 }
 
 type wireSections struct {
-	GameFlow  wireSection[wireFlowData]      `json:"game.flow"`
-	Flags     wireSection[wireFlagsData]     `json:"rpg.flags"`
-	Inventory wireSection[wireInventoryData] `json:"rpg.inventory"`
-	Equipment wireSection[wireEquipmentData] `json:"rpg.equipment"`
-	Quests    wireSection[wireQuestsData]    `json:"rpg.quests"`
-	Economy   wireSection[wireEconomyData]   `json:"rpg.economy"`
-	Locale    wireSection[wireLocaleData]    `json:"rpg.locale"`
+	GameFlow      wireSection[wireFlowData]          `json:"game.flow"`
+	Accessibility wireSection[wireAccessibilityData] `json:"accessibility.settings"`
+	Flags         wireSection[wireFlagsData]         `json:"rpg.flags"`
+	Inventory     wireSection[wireInventoryData]     `json:"rpg.inventory"`
+	Equipment     wireSection[wireEquipmentData]     `json:"rpg.equipment"`
+	Quests        wireSection[wireQuestsData]        `json:"rpg.quests"`
+	Economy       wireSection[wireEconomyData]       `json:"rpg.economy"`
+	Locale        wireSection[wireLocaleData]        `json:"rpg.locale"`
+	TurnBattles   wireSection[wireTurnBattlesData]   `json:"rpg.turn_battles"`
+	World         wireSection[wireWorldData]         `json:"world.state"`
 }
 
 type wireFlowData struct {
 	Started   *bool `json:"started"`
 	Completed *bool `json:"completed"`
+}
+
+type wireAccessibilityData struct {
+	Motion         *string `json:"motion"`
+	HitFlash       *bool   `json:"hit_flash"`
+	NoticeDuration *string `json:"notice_duration"`
 }
 
 type wireFlagsData struct {
@@ -380,6 +435,15 @@ type wireEconomyData struct {
 
 type wireLocaleData struct {
 	Selected *string `json:"selected"`
+}
+
+type wireTurnBattlesData struct {
+	Results *[]TurnBattleState `json:"results"`
+}
+
+type wireWorldData struct {
+	Day    *int64   `json:"day"`
+	Minute *float64 `json:"minute"`
 }
 
 func decodeWireEnvelope(data []byte) (wireEnvelope, error) {
@@ -423,6 +487,11 @@ func (wire wireEnvelope) toEnvelope() (SaveEnvelope, error) {
 	if err != nil {
 		return SaveEnvelope{}, err
 	}
+	accessibilityVersion, accessibility, err :=
+		wire.Sections.Accessibility.value("accessibility.settings")
+	if err != nil {
+		return SaveEnvelope{}, err
+	}
 	flagsVersion, flags, err :=
 		wire.Sections.Flags.value("rpg.flags")
 	if err != nil {
@@ -453,9 +522,27 @@ func (wire wireEnvelope) toEnvelope() (SaveEnvelope, error) {
 	if err != nil {
 		return SaveEnvelope{}, err
 	}
+	turnBattlesVersion, turnBattles, err :=
+		wire.Sections.TurnBattles.value("rpg.turn_battles")
+	if err != nil {
+		return SaveEnvelope{}, err
+	}
+	worldVersion, world, err :=
+		wire.Sections.World.value("world.state")
+	if err != nil {
+		return SaveEnvelope{}, err
+	}
 	if gameFlow.Started == nil || gameFlow.Completed == nil {
 		return SaveEnvelope{}, errors.New(
 			"save section \"game.flow\" requires started and completed",
+		)
+	}
+	if accessibility.Motion == nil ||
+		accessibility.HitFlash == nil ||
+		accessibility.NoticeDuration == nil {
+		return SaveEnvelope{}, errors.New(
+			"save section \"accessibility.settings\" requires motion, " +
+				"hit_flash, and notice_duration",
 		)
 	}
 	if flags.Values == nil {
@@ -488,6 +575,16 @@ func (wire wireEnvelope) toEnvelope() (SaveEnvelope, error) {
 			"save section \"rpg.locale\" requires selected",
 		)
 	}
+	if turnBattles.Results == nil {
+		return SaveEnvelope{}, errors.New(
+			"save section \"rpg.turn_battles\" requires results",
+		)
+	}
+	if world.Day == nil || world.Minute == nil {
+		return SaveEnvelope{}, errors.New(
+			"save section \"world.state\" requires day and minute",
+		)
+	}
 
 	return SaveEnvelope{
 		Schema:  *wire.Schema,
@@ -503,6 +600,14 @@ func (wire wireEnvelope) toEnvelope() (SaveEnvelope, error) {
 				Data: FlowProgress{
 					Started:   *gameFlow.Started,
 					Completed: *gameFlow.Completed,
+				},
+			},
+			Accessibility: SaveSection[AccessibilitySettings]{
+				Version: accessibilityVersion,
+				Data: AccessibilitySettings{
+					Motion:         *accessibility.Motion,
+					HitFlash:       *accessibility.HitFlash,
+					NoticeDuration: *accessibility.NoticeDuration,
 				},
 			},
 			Flags: SaveSection[FlagsSectionData]{
@@ -539,6 +644,19 @@ func (wire wireEnvelope) toEnvelope() (SaveEnvelope, error) {
 				Version: localeVersion,
 				Data: LocaleSectionData{
 					Selected: *locale.Selected,
+				},
+			},
+			TurnBattles: SaveSection[TurnBattlesSectionData]{
+				Version: turnBattlesVersion,
+				Data: TurnBattlesSectionData{
+					Results: cloneSlice(*turnBattles.Results),
+				},
+			},
+			World: SaveSection[WorldSectionData]{
+				Version: worldVersion,
+				Data: WorldSectionData{
+					Day:    *world.Day,
+					Minute: *world.Minute,
 				},
 			},
 		},

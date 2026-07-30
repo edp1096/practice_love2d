@@ -22,5 +22,23 @@
   },
   "persistence": {
     "item": "item.potion"
+  },
+  "journey": {
+    "steps": [
+      {"target_tag": "npc", "action": "interact", "frames": 2},
+      {"action": "menu_confirm", "frames": 1},
+      {"action": "menu_confirm", "frames": 1},
+      {
+        "target_tag": "enemy",
+        "action": "attack",
+        "frames": 24,
+        "repeat": 3
+      },
+      {"frames": 20},
+      {"target_tag": "npc", "action": "interact", "frames": 2},
+      {"action": "menu_confirm", "frames": 1}
+    ],
+    "expected_flow": "ending",
+    "expected_quest": "quest.first_steps"
   }
 }

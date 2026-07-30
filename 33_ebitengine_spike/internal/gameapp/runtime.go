@@ -54,6 +54,11 @@ type queuedAudioCue struct {
 	volume   float64
 }
 
+type behaviorAIState struct {
+	PatternID   string
+	AttackIndex int
+}
+
 type runtimeCheckpoint struct {
 	buildOptions gamebuild.Options
 	built        *gamebuild.Result
@@ -63,6 +68,7 @@ type runtimeCheckpoint struct {
 
 	virtual          map[string]virtualAction
 	pendingAbilities map[string]string
+	behaviorAI       map[string]behaviorAIState
 	pendingRemovals  map[string]bool
 	moving           map[string]bool
 	audioSequence    uint64
@@ -82,10 +88,20 @@ type runtimeCheckpoint struct {
 	equipmentRebuildPending bool
 	flowSelectedIndex       int
 	flowStatus              string
+	flowPanel               string
 	continueAvailable       bool
+	notice                  ebitapp.NoticeView
+	turnBattle              *turnBattleSession
+	cutscene                *cutsceneSession
 
 	portalCooldownTicks int
 	portalInside        map[string]bool
+	triggerInside       map[string]bool
+	triggerCooldowns    map[string]int
+	triggerFired        map[string]bool
+	worldInitialized    bool
+	worldActivePage     string
+	worldActiveRegions  map[string]bool
 	revision            uint64
 }
 
@@ -116,6 +132,7 @@ type Runtime struct {
 
 	virtual          map[string]virtualAction
 	pendingAbilities map[string]string
+	behaviorAI       map[string]behaviorAIState
 	pendingRemovals  map[string]bool
 	moving           map[string]bool
 	audioSequence    uint64
@@ -136,10 +153,20 @@ type Runtime struct {
 	equipmentRebuildPending bool
 	flowSelectedIndex       int
 	flowStatus              string
+	flowPanel               string
 	continueAvailable       bool
+	notice                  ebitapp.NoticeView
+	turnBattle              *turnBattleSession
+	cutscene                *cutsceneSession
 
 	portalCooldownTicks int
 	portalInside        map[string]bool
+	triggerInside       map[string]bool
+	triggerCooldowns    map[string]int
+	triggerFired        map[string]bool
+	worldInitialized    bool
+	worldActivePage     string
+	worldActiveRegions  map[string]bool
 
 	captureMu sync.RWMutex
 	capture   CaptureFunc
@@ -199,27 +226,47 @@ func New(options Options) (*Runtime, error) {
 		return nil, fmt.Errorf("seed initial portal latch: %w", err)
 	}
 	runtime := &Runtime{
-		catalogPath:      options.CatalogPath,
-		buildOverrides:   options.Build,
-		buildOptions:     resolved,
-		catalog:          catalog,
-		campaignConfig:   campaignConfig,
-		campaign:         activeCampaign,
-		contentRules:     contentRules,
-		ruleExecutor:     ruleExecutor,
-		built:            built,
-		simulation:       simulation,
-		store:            options.Store,
-		virtual:          make(map[string]virtualAction),
-		pendingAbilities: make(map[string]string),
-		pendingRemovals:  make(map[string]bool),
-		moving:           make(map[string]bool),
-		audioCues:        make([]queuedAudioCue, 0),
-		portalInside:     portalInside,
-		revision:         1,
+		catalogPath:        options.CatalogPath,
+		buildOverrides:     options.Build,
+		buildOptions:       resolved,
+		catalog:            catalog,
+		campaignConfig:     campaignConfig,
+		campaign:           activeCampaign,
+		contentRules:       contentRules,
+		ruleExecutor:       ruleExecutor,
+		built:              built,
+		simulation:         simulation,
+		store:              options.Store,
+		virtual:            make(map[string]virtualAction),
+		pendingAbilities:   make(map[string]string),
+		behaviorAI:         make(map[string]behaviorAIState),
+		pendingRemovals:    make(map[string]bool),
+		moving:             make(map[string]bool),
+		audioCues:          make([]queuedAudioCue, 0),
+		portalInside:       portalInside,
+		triggerInside:      make(map[string]bool),
+		triggerCooldowns:   make(map[string]int),
+		triggerFired:       make(map[string]bool),
+		worldActiveRegions: make(map[string]bool),
+		revision:           1,
 	}
 	runtime.resetPreviewLocked()
-	runtime.continueAvailable = runtime.hasValidContinueLocked()
+	saved, available := runtime.validContinueCampaignLocked()
+	runtime.continueAvailable = available
+	if options.StartAtTitle && available {
+		settings := saved.Snapshot().Accessibility
+		if err := runtime.campaign.Transaction(
+			func(state *campaign.State) error {
+				state.Accessibility = settings
+				return nil
+			},
+		); err != nil {
+			return nil, fmt.Errorf(
+				"restore title accessibility settings: %w",
+				err,
+			)
+		}
+	}
 	return runtime, nil
 }
 
@@ -456,6 +503,7 @@ func (runtime *Runtime) reloadContent(ctx context.Context) error {
 	runtime.simulation = candidate
 	runtime.virtual = make(map[string]virtualAction)
 	runtime.pendingAbilities = make(map[string]string)
+	runtime.behaviorAI = make(map[string]behaviorAIState)
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
@@ -463,6 +511,7 @@ func (runtime *Runtime) reloadContent(ctx context.Context) error {
 	runtime.resetFlowPresentationLocked()
 	runtime.portalCooldownTicks = 0
 	runtime.portalInside = portalInside
+	runtime.resetTriggerStateLocked()
 	runtime.revision++
 	return nil
 }
@@ -500,6 +549,11 @@ func validateCampaignReloadTopology(
 			next.EquipmentSlots,
 		},
 		{"quest objective topology", current.Quests, next.Quests},
+		{
+			"turn battle topology",
+			current.TurnBattles,
+			next.TurnBattles,
+		},
 	}
 	for _, check := range checks {
 		if !reflect.DeepEqual(check.left, check.right) {
@@ -567,6 +621,7 @@ func (runtime *Runtime) startNewGameWithBuildOptions(
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	accessibility := runtime.campaign.Snapshot().Accessibility
 	catalog, err := loadCatalog(runtime.catalogPath)
 	if err != nil {
 		return err
@@ -607,6 +662,17 @@ func (runtime *Runtime) startNewGameWithBuildOptions(
 	if err != nil {
 		return err
 	}
+	if err := activeCampaign.Transaction(
+		func(state *campaign.State) error {
+			state.Accessibility = accessibility
+			return nil
+		},
+	); err != nil {
+		return fmt.Errorf(
+			"preserve accessibility settings for new game: %w",
+			err,
+		)
+	}
 	portalInside, err := portalOverlaps(built, simulation)
 	if err != nil {
 		return fmt.Errorf("seed new-game portal latch: %w", err)
@@ -621,6 +687,7 @@ func (runtime *Runtime) startNewGameWithBuildOptions(
 	runtime.simulation = simulation
 	runtime.virtual = make(map[string]virtualAction)
 	runtime.pendingAbilities = make(map[string]string)
+	runtime.behaviorAI = make(map[string]behaviorAIState)
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
@@ -628,6 +695,7 @@ func (runtime *Runtime) startNewGameWithBuildOptions(
 	runtime.resetFlowPresentationLocked()
 	runtime.portalCooldownTicks = 0
 	runtime.portalInside = portalInside
+	runtime.resetTriggerStateLocked()
 	runtime.revision++
 	return nil
 }
@@ -655,6 +723,7 @@ func (runtime *Runtime) resetLocked() error {
 	runtime.simulation = candidate
 	runtime.virtual = make(map[string]virtualAction)
 	runtime.pendingAbilities = make(map[string]string)
+	runtime.behaviorAI = make(map[string]behaviorAIState)
 	runtime.pendingRemovals = make(map[string]bool)
 	runtime.moving = make(map[string]bool)
 	runtime.resetPreviewLocked()
@@ -662,6 +731,7 @@ func (runtime *Runtime) resetLocked() error {
 	runtime.resetFlowPresentationLocked()
 	runtime.portalCooldownTicks = 0
 	runtime.portalInside = portalInside
+	runtime.resetTriggerStateLocked()
 	runtime.revision++
 	return nil
 }
@@ -728,6 +798,7 @@ func (runtime *Runtime) checkpointLocked() runtimeCheckpoint {
 		dialogue:                runtime.dialogue,
 		virtual:                 runtime.virtual,
 		pendingAbilities:        runtime.pendingAbilities,
+		behaviorAI:              runtime.behaviorAI,
 		pendingRemovals:         runtime.pendingRemovals,
 		moving:                  runtime.moving,
 		audioSequence:           runtime.audioSequence,
@@ -745,9 +816,19 @@ func (runtime *Runtime) checkpointLocked() runtimeCheckpoint {
 		equipmentRebuildPending: runtime.equipmentRebuildPending,
 		flowSelectedIndex:       runtime.flowSelectedIndex,
 		flowStatus:              runtime.flowStatus,
+		flowPanel:               runtime.flowPanel,
 		continueAvailable:       runtime.continueAvailable,
+		notice:                  runtime.notice,
+		turnBattle:              cloneTurnBattleSession(runtime.turnBattle),
+		cutscene:                cloneCutsceneSession(runtime.cutscene),
 		portalCooldownTicks:     runtime.portalCooldownTicks,
 		portalInside:            runtime.portalInside,
+		triggerInside:           runtime.triggerInside,
+		triggerCooldowns:        runtime.triggerCooldowns,
+		triggerFired:            runtime.triggerFired,
+		worldInitialized:        runtime.worldInitialized,
+		worldActivePage:         runtime.worldActivePage,
+		worldActiveRegions:      runtime.worldActiveRegions,
 		revision:                runtime.revision,
 	}
 }
@@ -776,6 +857,7 @@ func (runtime *Runtime) detachMutableLocked(
 	runtime.dialogue = activeDialogue
 	runtime.virtual = cloneVirtualActions(checkpoint.virtual)
 	runtime.pendingAbilities = cloneStringMap(checkpoint.pendingAbilities)
+	runtime.behaviorAI = cloneBehaviorAIStates(checkpoint.behaviorAI)
 	runtime.pendingRemovals = cloneBoolMap(checkpoint.pendingRemovals)
 	runtime.moving = cloneBoolMap(checkpoint.moving)
 	runtime.audioSequence = checkpoint.audioSequence
@@ -786,7 +868,18 @@ func (runtime *Runtime) detachMutableLocked(
 	runtime.previewEntities = clonePreviewEntities(
 		checkpoint.previewEntities,
 	)
+	runtime.notice = checkpoint.notice
+	runtime.turnBattle = cloneTurnBattleSession(checkpoint.turnBattle)
+	runtime.cutscene = cloneCutsceneSession(checkpoint.cutscene)
 	runtime.portalInside = cloneBoolMap(checkpoint.portalInside)
+	runtime.triggerInside = cloneBoolMap(checkpoint.triggerInside)
+	runtime.triggerCooldowns = cloneIntMap(checkpoint.triggerCooldowns)
+	runtime.triggerFired = cloneBoolMap(checkpoint.triggerFired)
+	runtime.worldInitialized = checkpoint.worldInitialized
+	runtime.worldActivePage = checkpoint.worldActivePage
+	runtime.worldActiveRegions = cloneBoolMap(
+		checkpoint.worldActiveRegions,
+	)
 	return nil
 }
 
@@ -800,6 +893,7 @@ func (runtime *Runtime) restoreCheckpointLocked(
 	runtime.dialogue = checkpoint.dialogue
 	runtime.virtual = checkpoint.virtual
 	runtime.pendingAbilities = checkpoint.pendingAbilities
+	runtime.behaviorAI = checkpoint.behaviorAI
 	runtime.pendingRemovals = checkpoint.pendingRemovals
 	runtime.moving = checkpoint.moving
 	runtime.audioSequence = checkpoint.audioSequence
@@ -817,8 +911,25 @@ func (runtime *Runtime) restoreCheckpointLocked(
 	runtime.equipmentRebuildPending = checkpoint.equipmentRebuildPending
 	runtime.flowSelectedIndex = checkpoint.flowSelectedIndex
 	runtime.flowStatus = checkpoint.flowStatus
+	runtime.flowPanel = checkpoint.flowPanel
 	runtime.continueAvailable = checkpoint.continueAvailable
+	runtime.notice = checkpoint.notice
+	runtime.turnBattle = checkpoint.turnBattle
+	runtime.cutscene = checkpoint.cutscene
 	runtime.portalCooldownTicks = checkpoint.portalCooldownTicks
 	runtime.portalInside = checkpoint.portalInside
+	runtime.triggerInside = checkpoint.triggerInside
+	runtime.triggerCooldowns = checkpoint.triggerCooldowns
+	runtime.triggerFired = checkpoint.triggerFired
+	runtime.worldInitialized = checkpoint.worldInitialized
+	runtime.worldActivePage = checkpoint.worldActivePage
+	runtime.worldActiveRegions = checkpoint.worldActiveRegions
 	runtime.revision = checkpoint.revision
+}
+
+func (runtime *Runtime) resetTriggerStateLocked() {
+	runtime.triggerInside = make(map[string]bool)
+	runtime.triggerCooldowns = make(map[string]int)
+	runtime.triggerFired = make(map[string]bool)
+	runtime.resetWorldStateLocked()
 }

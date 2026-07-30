@@ -14,6 +14,16 @@ local function newSessionStore()
     }
 end
 
+local function persistentSessionStore(app)
+    local service = app.host and app.host.services.session
+    if not service or not service.exportPersistentStore then
+        return newSessionStore()
+    end
+    local store, store_error = service:exportPersistentStore()
+    if not store then return nil, store_error end
+    return store
+end
+
 local function validateManifest(manifest)
     local errors = {}
     local function expect(value, expected, name)
@@ -183,7 +193,8 @@ function App:startNewGame(stage_id, spawn_id)
     stage_id = stage_id or
         (self.manifest.flow and self.manifest.flow.start_stage) or
         self.manifest.initial_stage
-    local candidate_session = newSessionStore()
+    local candidate_session, session_error = persistentSessionStore(self)
+    if not candidate_session then return nil, session_error end
     local host, boot_error = self:_bootHost(candidate_session)
     if not host then return nil, boot_error end
 
@@ -212,7 +223,8 @@ function App:startNewGame(stage_id, spawn_id)
 end
 
 function App:returnToTitle()
-    local candidate_session = newSessionStore()
+    local candidate_session, session_error = persistentSessionStore(self)
+    if not candidate_session then return nil, session_error end
     local host, boot_error = self:_bootHost(candidate_session)
     if not host then return nil, boot_error end
     local world, world_error =

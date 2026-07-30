@@ -28,6 +28,8 @@ func TestBuildContentRulesCompilesCompleteCampaign(t *testing.T) {
 		RuleActionOpenShop,
 		RuleActionStartDialogue,
 		RuleActionHeal,
+		RuleActionEmit,
+		RuleActionShowNotice,
 	} {
 		if !capabilities.SupportsAction(action) {
 			t.Fatalf("action capability %q is missing", action)
@@ -80,6 +82,7 @@ func TestBuildContentRulesCompilesCompleteCampaign(t *testing.T) {
 		RuleActionGiveItem,
 		RuleActionEquipItem,
 		RuleActionAddCurrency,
+		RuleActionShowNotice,
 	}; !slices.Equal(got, want) {
 		t.Fatalf("accept action order = %q, want authored %q", got, want)
 	}
@@ -88,7 +91,10 @@ func TestBuildContentRulesCompilesCompleteCampaign(t *testing.T) {
 		accept.Actions[1].Quantity != 1 ||
 		accept.Actions[2].ItemID != "item.training_sword" ||
 		accept.Actions[3].Currency != 25 ||
-		accept.Actions[3].Reason != "campaign.starting_supplies" {
+		accept.Actions[3].Reason != "campaign.starting_supplies" ||
+		accept.Actions[4].NoticeKey != "notice.quest.accepted" ||
+		accept.Actions[4].NoticeTone != "success" ||
+		accept.Actions[4].NoticeTicks != 240 {
 		t.Fatalf("accept actions = %#v", accept.Actions)
 	}
 	thanks := requireDialogueNodeRule(t, dialogue, "thanks")
@@ -123,6 +129,8 @@ func TestBuildContentRulesCompilesCompleteCampaign(t *testing.T) {
 		RuleActionGiveItem,
 		RuleActionAddCurrency,
 		RuleActionSetFlag,
+		RuleActionSetWorldTime,
+		RuleActionShowNotice,
 	}; !slices.Equal(got, want) {
 		t.Fatalf("reward action order = %q, want authored %q", got, want)
 	}
@@ -131,7 +139,11 @@ func TestBuildContentRulesCompilesCompleteCampaign(t *testing.T) {
 		quest.OnComplete[1].Currency != 75 ||
 		quest.OnComplete[1].Reason != "quest.grove_guardian" ||
 		quest.OnComplete[2].FlagName != "quest.grove_guardian.rewarded" ||
-		!quest.OnComplete[2].FlagValue {
+		!quest.OnComplete[2].FlagValue ||
+		quest.OnComplete[3].WorldMinute != 18*60+30 ||
+		quest.OnComplete[4].NoticeKey != "notice.quest.completed" ||
+		quest.OnComplete[4].NoticeTone != "success" ||
+		quest.OnComplete[4].NoticeTicks != 240 {
 		t.Fatalf("quest rewards = %#v", quest.OnComplete)
 	}
 
@@ -208,11 +220,16 @@ func TestBuildContentRulesCompilesCompleteCampaign(t *testing.T) {
 
 	guide := requireInteractionRule(t, rules, "actor.village_guide")
 	if guide.Input != "interact" ||
-		guide.PromptKey != "interaction.talk" ||
 		guide.Range != 70 ||
-		len(guide.Actions) != 1 ||
-		guide.Actions[0].Type != RuleActionStartDialogue ||
-		guide.Actions[0].DialogueID != "dialogue.village_guide" {
+		len(guide.Actions) != 0 ||
+		len(guide.Pages) != 3 ||
+		guide.Pages[0].PromptKey != "interaction.quest" ||
+		guide.Pages[0].Actions[0].Type != RuleActionStartDialogue ||
+		guide.Pages[1].Condition == nil ||
+		guide.Pages[1].Condition.Type != RuleConditionQuestState ||
+		guide.Pages[1].Condition.QuestState != RuleQuestActive ||
+		guide.Pages[2].Condition == nil ||
+		guide.Pages[2].Condition.QuestState != RuleQuestCompleted {
 		t.Fatalf("guide interaction = %#v", guide)
 	}
 	merchant := requireInteractionRule(t, rules, "actor.merchant")
@@ -284,7 +301,8 @@ func TestBuildContentRulesIsDeterministicAndDeepDetached(t *testing.T) {
 		&first,
 		"actor.village_guide",
 	)
-	firstInteraction.Actions[0].DialogueID = "dialogue.mutated"
+	firstInteraction.Pages[0].Actions[0].DialogueID = "dialogue.mutated"
+	firstInteraction.Pages[1].Condition.QuestID = "quest.mutated"
 
 	again, err := BuildContentRules(catalog)
 	if err != nil {
@@ -349,11 +367,12 @@ func TestBuildContentRulesRejectsUnsupportedCapabilities(t *testing.T) {
 			id:   "dialogue.village_guide",
 			mutate: func(data map[string]any) {
 				ruleGreetingChoice(data, 0)["condition"] = map[string]any{
-					"type": "always",
+					"type":   "locale_is",
+					"locale": "locale.ko",
 				}
 			},
 			capability: "condition",
-			value:      "always",
+			value:      "locale_is",
 		},
 	} {
 		test := test
@@ -409,10 +428,20 @@ func TestBuildContentRulesStrictValidation(t *testing.T) {
 			mutate: func(data map[string]any) {
 				components := data["components"].(map[string]any)
 				interaction := components["rpg.interactable"].(map[string]any)
-				actions := interaction["actions"].([]any)
+				pages := interaction["pages"].([]any)
+				actions := pages[0].(map[string]any)["actions"].([]any)
 				actions[0].(map[string]any)["dialogue"] = "dialogue.missing"
 			},
 			contains: "references missing definition",
+		},
+		{
+			name: "invalid notice tone",
+			id:   "dialogue.village_guide",
+			mutate: func(data map[string]any) {
+				actions := ruleGreetingChoice(data, 0)["actions"].([]any)
+				actions[4].(map[string]any)["tone"] = "loud"
+			},
+			contains: "tone must be one of",
 		},
 		{
 			name: "duplicate choice",

@@ -11,6 +11,7 @@ import (
 
 	"practice_love2d/33_ebitengine_spike/internal/campaign"
 	"practice_love2d/33_ebitengine_spike/internal/content"
+	"practice_love2d/33_ebitengine_spike/internal/sim"
 )
 
 // RuleActionType is the closed set of content actions understood by the
@@ -19,15 +20,22 @@ import (
 type RuleActionType string
 
 const (
-	RuleActionStartQuest    RuleActionType = "start_quest"
-	RuleActionGiveItem      RuleActionType = "give_item"
-	RuleActionEquipItem     RuleActionType = "equip_item"
-	RuleActionAddCurrency   RuleActionType = "add_currency"
-	RuleActionSetFlag       RuleActionType = "set_flag"
-	RuleActionFinishGame    RuleActionType = "finish_game"
-	RuleActionOpenShop      RuleActionType = "open_shop"
-	RuleActionStartDialogue RuleActionType = "start_dialogue"
-	RuleActionHeal          RuleActionType = "heal"
+	RuleActionStartQuest       RuleActionType = "start_quest"
+	RuleActionGiveItem         RuleActionType = "give_item"
+	RuleActionEquipItem        RuleActionType = "equip_item"
+	RuleActionAddCurrency      RuleActionType = "add_currency"
+	RuleActionSetFlag          RuleActionType = "set_flag"
+	RuleActionFinishGame       RuleActionType = "finish_game"
+	RuleActionOpenShop         RuleActionType = "open_shop"
+	RuleActionStartDialogue    RuleActionType = "start_dialogue"
+	RuleActionDamage           RuleActionType = "damage"
+	RuleActionHeal             RuleActionType = "heal"
+	RuleActionEmit             RuleActionType = "emit"
+	RuleActionShowNotice       RuleActionType = "show_notice"
+	RuleActionStartTurnBattle  RuleActionType = "start_turn_battle"
+	RuleActionStartCutscene    RuleActionType = "start_cutscene"
+	RuleActionSetWorldTime     RuleActionType = "set_world_time"
+	RuleActionAdvanceWorldTime RuleActionType = "advance_world_time"
 )
 
 // RuleConditionType is the closed set of conditions understood by the
@@ -35,7 +43,16 @@ const (
 type RuleConditionType string
 
 const (
-	RuleConditionQuestState RuleConditionType = "quest_state"
+	RuleConditionAlways          RuleConditionType = "always"
+	RuleConditionAll             RuleConditionType = "all"
+	RuleConditionAny             RuleConditionType = "any"
+	RuleConditionNot             RuleConditionType = "not"
+	RuleConditionFlag            RuleConditionType = "flag"
+	RuleConditionQuestState      RuleConditionType = "quest_state"
+	RuleConditionTurnBattleState RuleConditionType = "turn_battle_state"
+	RuleConditionCutsceneActive  RuleConditionType = "cutscene_active"
+	RuleConditionTimeBetween     RuleConditionType = "time_between"
+	RuleConditionRegionActive    RuleConditionType = "region_active"
 )
 
 type RuleQuestState string
@@ -44,6 +61,16 @@ const (
 	RuleQuestInactive  RuleQuestState = "inactive"
 	RuleQuestActive    RuleQuestState = "active"
 	RuleQuestCompleted RuleQuestState = "completed"
+)
+
+type RuleTurnBattleState string
+
+const (
+	RuleTurnBattleNever   RuleTurnBattleState = "never"
+	RuleTurnBattleActive  RuleTurnBattleState = "active"
+	RuleTurnBattleWon     RuleTurnBattleState = "won"
+	RuleTurnBattleLost    RuleTurnBattleState = "lost"
+	RuleTurnBattleEscaped RuleTurnBattleState = "escaped"
 )
 
 // RuleCompilerCapabilities advertises the exact action and condition surface
@@ -64,10 +91,26 @@ var ruleCompilerCapabilities = RuleCompilerCapabilities{
 		RuleActionFinishGame,
 		RuleActionOpenShop,
 		RuleActionStartDialogue,
+		RuleActionDamage,
 		RuleActionHeal,
+		RuleActionEmit,
+		RuleActionShowNotice,
+		RuleActionStartTurnBattle,
+		RuleActionStartCutscene,
+		RuleActionSetWorldTime,
+		RuleActionAdvanceWorldTime,
 	},
 	Conditions: []RuleConditionType{
+		RuleConditionAlways,
+		RuleConditionAll,
+		RuleConditionAny,
+		RuleConditionNot,
+		RuleConditionFlag,
 		RuleConditionQuestState,
+		RuleConditionTurnBattleState,
+		RuleConditionCutsceneActive,
+		RuleConditionTimeBetween,
+		RuleConditionRegionActive,
 	},
 }
 
@@ -121,23 +164,45 @@ func (err *UnsupportedRuleCapabilityError) Error() string {
 // RuleAction is a validated tagged union. Only fields appropriate for Type
 // are populated by the compiler.
 type RuleAction struct {
-	Type       RuleActionType `json:"type"`
-	QuestID    string         `json:"quest_id,omitempty"`
-	ItemID     string         `json:"item_id,omitempty"`
-	DialogueID string         `json:"dialogue_id,omitempty"`
-	ShopID     string         `json:"shop_id,omitempty"`
-	FlagName   string         `json:"flag_name,omitempty"`
-	Reason     string         `json:"reason,omitempty"`
-	Quantity   int            `json:"quantity,omitempty"`
-	Currency   int            `json:"currency,omitempty"`
-	FlagValue  bool           `json:"flag_value,omitempty"`
-	HealAmount float64        `json:"heal_amount,omitempty"`
+	Type         RuleActionType  `json:"type"`
+	QuestID      string          `json:"quest_id,omitempty"`
+	ItemID       string          `json:"item_id,omitempty"`
+	DialogueID   string          `json:"dialogue_id,omitempty"`
+	ShopID       string          `json:"shop_id,omitempty"`
+	FlagName     string          `json:"flag_name,omitempty"`
+	Reason       string          `json:"reason,omitempty"`
+	Quantity     int             `json:"quantity,omitempty"`
+	Currency     int             `json:"currency,omitempty"`
+	FlagValue    bool            `json:"flag_value,omitempty"`
+	DamageAmount float64         `json:"damage_amount,omitempty"`
+	HealAmount   float64         `json:"heal_amount,omitempty"`
+	EventName    string          `json:"event_name,omitempty"`
+	EventData    json.RawMessage `json:"event_data,omitempty"`
+	NoticeText   string          `json:"notice_text,omitempty"`
+	NoticeKey    string          `json:"notice_key,omitempty"`
+	NoticeTone   string          `json:"notice_tone,omitempty"`
+	NoticeTicks  int             `json:"notice_ticks,omitempty"`
+	BattleID     string          `json:"battle_id,omitempty"`
+	CutsceneID   string          `json:"cutscene_id,omitempty"`
+	WorldMinute  float64         `json:"world_minute,omitempty"`
+	WorldDay     int64           `json:"world_day,omitempty"`
+	WorldMinutes float64         `json:"world_minutes,omitempty"`
 }
 
 type RuleCondition struct {
-	Type       RuleConditionType `json:"type"`
-	QuestID    string            `json:"quest_id"`
-	QuestState RuleQuestState    `json:"quest_state"`
+	Type         RuleConditionType   `json:"type"`
+	Conditions   []RuleCondition     `json:"conditions,omitempty"`
+	Condition    *RuleCondition      `json:"condition,omitempty"`
+	FlagName     string              `json:"flag_name,omitempty"`
+	FlagValue    bool                `json:"flag_value,omitempty"`
+	QuestID      string              `json:"quest_id,omitempty"`
+	QuestState   RuleQuestState      `json:"quest_state,omitempty"`
+	BattleID     string              `json:"battle_id,omitempty"`
+	BattleState  RuleTurnBattleState `json:"battle_state,omitempty"`
+	CutsceneID   string              `json:"cutscene_id,omitempty"`
+	StartMinute  float64             `json:"start_minute,omitempty"`
+	FinishMinute float64             `json:"finish_minute,omitempty"`
+	RegionID     string              `json:"region_id,omitempty"`
 }
 
 type DialogueChoiceRule struct {
@@ -166,6 +231,27 @@ type DialogueRule struct {
 	NameKey   string             `json:"name_key,omitempty"`
 	StartNode string             `json:"start_node"`
 	Nodes     []DialogueNodeRule `json:"nodes"`
+}
+
+type CutsceneStepRule struct {
+	ID            string       `json:"id"`
+	Speaker       string       `json:"speaker,omitempty"`
+	SpeakerKey    string       `json:"speaker_key,omitempty"`
+	Text          string       `json:"text,omitempty"`
+	TextKey       string       `json:"text_key,omitempty"`
+	BackgroundID  string       `json:"background_id,omitempty"`
+	DurationTicks int          `json:"duration_ticks,omitempty"`
+	Actions       []RuleAction `json:"actions"`
+}
+
+type CutsceneRule struct {
+	ID           string             `json:"id"`
+	Name         string             `json:"name,omitempty"`
+	NameKey      string             `json:"name_key,omitempty"`
+	BackgroundID string             `json:"background_id,omitempty"`
+	Skippable    bool               `json:"skippable"`
+	Steps        []CutsceneStepRule `json:"steps"`
+	OnComplete   []RuleAction       `json:"on_complete"`
 }
 
 type QuestObjectiveRule struct {
@@ -262,15 +348,64 @@ type ShopRule struct {
 	Offers  []ShopOfferRule `json:"offers"`
 }
 
+type TurnSkillRule struct {
+	ID      string `json:"id"`
+	Name    string `json:"name,omitempty"`
+	NameKey string `json:"name_key,omitempty"`
+	Effect  string `json:"effect"`
+	Target  string `json:"target"`
+	Power   int    `json:"power"`
+}
+
+type ActorTurnBattlerRule struct {
+	ActorID string   `json:"actor_id"`
+	Skills  []string `json:"skills"`
+}
+
+type TurnBattleEnemyRule struct {
+	ID        string   `json:"id"`
+	ActorID   string   `json:"actor_id"`
+	Name      string   `json:"name"`
+	MaxHealth int      `json:"max_health"`
+	Attack    int      `json:"attack"`
+	Defense   int      `json:"defense"`
+	Skills    []string `json:"skills"`
+}
+
+type TurnBattleRule struct {
+	ID          string                `json:"id"`
+	Name        string                `json:"name,omitempty"`
+	NameKey     string                `json:"name_key,omitempty"`
+	AllowEscape bool                  `json:"allow_escape"`
+	Repeatable  bool                  `json:"repeatable"`
+	Enemies     []TurnBattleEnemyRule `json:"enemies"`
+	OnStart     []RuleAction          `json:"on_start"`
+	OnVictory   []RuleAction          `json:"on_victory"`
+	OnEscape    []RuleAction          `json:"on_escape"`
+	OnDefeat    []RuleAction          `json:"on_defeat"`
+}
+
 // ActorInteractionRule is the rule-bearing portion of rpg.interactable.
 // Rendering, placement, and collision remain actor/stage builder concerns.
-type ActorInteractionRule struct {
-	ActorID   string         `json:"actor_id"`
+type ActorInteractionPageRule struct {
+	ID        string         `json:"id"`
 	Input     string         `json:"input"`
-	PromptKey string         `json:"prompt_key"`
+	Prompt    string         `json:"prompt,omitempty"`
+	PromptKey string         `json:"prompt_key,omitempty"`
 	Range     float64        `json:"range"`
 	Condition *RuleCondition `json:"condition,omitempty"`
 	Actions   []RuleAction   `json:"actions"`
+}
+
+type ActorInteractionRule struct {
+	ActorID   string                     `json:"actor_id"`
+	Input     string                     `json:"input"`
+	Prompt    string                     `json:"prompt,omitempty"`
+	PromptKey string                     `json:"prompt_key"`
+	Range     float64                    `json:"range"`
+	Condition *RuleCondition             `json:"condition,omitempty"`
+	Actions   []RuleAction               `json:"actions"`
+	Pages     []ActorInteractionPageRule `json:"pages,omitempty"`
 }
 
 // ContentRules is a deterministic, runtime-owned snapshot. All definitions
@@ -279,10 +414,14 @@ type ActorInteractionRule struct {
 type ContentRules struct {
 	Capabilities RuleCompilerCapabilities `json:"capabilities"`
 	Dialogues    []DialogueRule           `json:"dialogues"`
+	Cutscenes    []CutsceneRule           `json:"cutscenes"`
 	Quests       []QuestRule              `json:"quests"`
 	Items        []ItemRule               `json:"items"`
 	Shops        []ShopRule               `json:"shops"`
 	Interactions []ActorInteractionRule   `json:"interactions"`
+	TurnSkills   []TurnSkillRule          `json:"turn_skills"`
+	TurnBattlers []ActorTurnBattlerRule   `json:"turn_battlers"`
+	TurnBattles  []TurnBattleRule         `json:"turn_battles"`
 }
 
 // Clone returns a recursively detached rules snapshot.
@@ -290,13 +429,20 @@ func (rules ContentRules) Clone() ContentRules {
 	result := ContentRules{
 		Capabilities: cloneRuleCapabilities(rules.Capabilities),
 		Dialogues:    make([]DialogueRule, len(rules.Dialogues)),
+		Cutscenes:    make([]CutsceneRule, len(rules.Cutscenes)),
 		Quests:       make([]QuestRule, len(rules.Quests)),
 		Items:        make([]ItemRule, len(rules.Items)),
 		Shops:        make([]ShopRule, len(rules.Shops)),
 		Interactions: make([]ActorInteractionRule, len(rules.Interactions)),
+		TurnSkills:   append([]TurnSkillRule(nil), rules.TurnSkills...),
+		TurnBattlers: make([]ActorTurnBattlerRule, len(rules.TurnBattlers)),
+		TurnBattles:  make([]TurnBattleRule, len(rules.TurnBattles)),
 	}
 	for index, dialogue := range rules.Dialogues {
 		result.Dialogues[index] = cloneDialogueRule(dialogue)
+	}
+	for index, cutscene := range rules.Cutscenes {
+		result.Cutscenes[index] = cloneCutsceneRule(cutscene)
 	}
 	for index, quest := range rules.Quests {
 		result.Quests[index] = cloneQuestRule(quest)
@@ -310,6 +456,16 @@ func (rules ContentRules) Clone() ContentRules {
 	for index, interaction := range rules.Interactions {
 		result.Interactions[index] = cloneActorInteractionRule(interaction)
 	}
+	for index, battler := range rules.TurnBattlers {
+		result.TurnBattlers[index] = battler
+		result.TurnBattlers[index].Skills = append(
+			[]string(nil),
+			battler.Skills...,
+		)
+	}
+	for index, battle := range rules.TurnBattles {
+		result.TurnBattles[index] = cloneTurnBattleRule(battle)
+	}
 	return result
 }
 
@@ -321,6 +477,16 @@ func (rules ContentRules) Dialogue(id string) (DialogueRule, bool) {
 		return DialogueRule{}, false
 	}
 	return cloneDialogueRule(rules.Dialogues[index]), true
+}
+
+func (rules ContentRules) Cutscene(id string) (CutsceneRule, bool) {
+	index := sort.Search(len(rules.Cutscenes), func(index int) bool {
+		return rules.Cutscenes[index].ID >= id
+	})
+	if index == len(rules.Cutscenes) || rules.Cutscenes[index].ID != id {
+		return CutsceneRule{}, false
+	}
+	return cloneCutsceneRule(rules.Cutscenes[index]), true
 }
 
 func (rules ContentRules) Quest(id string) (QuestRule, bool) {
@@ -366,6 +532,41 @@ func (rules ContentRules) Interaction(
 	return cloneActorInteractionRule(rules.Interactions[index]), true
 }
 
+func (rules ContentRules) TurnSkill(id string) (TurnSkillRule, bool) {
+	index := sort.Search(len(rules.TurnSkills), func(index int) bool {
+		return rules.TurnSkills[index].ID >= id
+	})
+	if index == len(rules.TurnSkills) || rules.TurnSkills[index].ID != id {
+		return TurnSkillRule{}, false
+	}
+	return rules.TurnSkills[index], true
+}
+
+func (rules ContentRules) TurnBattler(
+	actorID string,
+) (ActorTurnBattlerRule, bool) {
+	index := sort.Search(len(rules.TurnBattlers), func(index int) bool {
+		return rules.TurnBattlers[index].ActorID >= actorID
+	})
+	if index == len(rules.TurnBattlers) ||
+		rules.TurnBattlers[index].ActorID != actorID {
+		return ActorTurnBattlerRule{}, false
+	}
+	result := rules.TurnBattlers[index]
+	result.Skills = append([]string(nil), result.Skills...)
+	return result, true
+}
+
+func (rules ContentRules) TurnBattle(id string) (TurnBattleRule, bool) {
+	index := sort.Search(len(rules.TurnBattles), func(index int) bool {
+		return rules.TurnBattles[index].ID >= id
+	})
+	if index == len(rules.TurnBattles) || rules.TurnBattles[index].ID != id {
+		return TurnBattleRule{}, false
+	}
+	return cloneTurnBattleRule(rules.TurnBattles[index]), true
+}
+
 // BuildContentRules compiles all campaign-domain definitions and NPC
 // interactions from catalog. The result contains no maps or slices shared with
 // the catalog.
@@ -377,10 +578,14 @@ func BuildContentRules(catalog *content.Catalog) (ContentRules, error) {
 	result := ContentRules{
 		Capabilities: ContentRuleCapabilities(),
 		Dialogues:    []DialogueRule{},
+		Cutscenes:    []CutsceneRule{},
 		Quests:       []QuestRule{},
 		Items:        []ItemRule{},
 		Shops:        []ShopRule{},
 		Interactions: []ActorInteractionRule{},
+		TurnSkills:   []TurnSkillRule{},
+		TurnBattlers: []ActorTurnBattlerRule{},
+		TurnBattles:  []TurnBattleRule{},
 	}
 
 	for _, header := range compiler.headers {
@@ -391,6 +596,12 @@ func BuildContentRules(catalog *content.Catalog) (ContentRules, error) {
 				return ContentRules{}, err
 			}
 			result.Dialogues = append(result.Dialogues, value)
+		case "cutscene":
+			value, err := compiler.compileCutscene(header.id)
+			if err != nil {
+				return ContentRules{}, err
+			}
+			result.Cutscenes = append(result.Cutscenes, value)
 		case "quest":
 			value, err := compiler.compileQuest(header.id)
 			if err != nil {
@@ -417,6 +628,25 @@ func BuildContentRules(catalog *content.Catalog) (ContentRules, error) {
 			if exists {
 				result.Interactions = append(result.Interactions, value)
 			}
+			battler, exists, err := compiler.compileTurnBattler(header.id)
+			if err != nil {
+				return ContentRules{}, err
+			}
+			if exists {
+				result.TurnBattlers = append(result.TurnBattlers, battler)
+			}
+		case "turn_skill":
+			value, err := compiler.compileTurnSkill(header.id)
+			if err != nil {
+				return ContentRules{}, err
+			}
+			result.TurnSkills = append(result.TurnSkills, value)
+		case "turn_battle":
+			value, err := compiler.compileTurnBattle(header.id)
+			if err != nil {
+				return ContentRules{}, err
+			}
+			result.TurnBattles = append(result.TurnBattles, value)
 		}
 	}
 	return result, nil
@@ -512,6 +742,199 @@ func (compiler *contentRuleCompiler) validate(id string) error {
 		return fmt.Errorf("build content rules: %w", err)
 	}
 	return nil
+}
+
+func (compiler *contentRuleCompiler) compileCutscene(
+	id string,
+) (CutsceneRule, error) {
+	if err := compiler.validate(id); err != nil {
+		return CutsceneRule{}, err
+	}
+	data := compiler.definitions[id].data
+	if err := rejectUnknownKeys(
+		data,
+		id,
+		"schema_version",
+		"kind",
+		"id",
+		"name",
+		"name_key",
+		"background",
+		"skippable",
+		"steps",
+		"on_complete",
+	); err != nil {
+		return CutsceneRule{}, fmt.Errorf("build content rules: %w", err)
+	}
+	backgroundID := ruleOptionalString(data, "background")
+	if backgroundID != "" {
+		if err := compiler.requireReference(
+			backgroundID,
+			"asset",
+			id+".background",
+		); err != nil {
+			return CutsceneRule{}, err
+		}
+	}
+	skippable := true
+	var err error
+	if data["skippable"] != nil {
+		skippable, err = ruleOptionalBool(
+			data,
+			"skippable",
+			id+".skippable",
+		)
+		if err != nil {
+			return CutsceneRule{}, fmt.Errorf(
+				"build content rules: %w",
+				err,
+			)
+		}
+	}
+	rawSteps, err := requiredArray(data["steps"], id+".steps")
+	if err != nil {
+		return CutsceneRule{}, fmt.Errorf("build content rules: %w", err)
+	}
+	if len(rawSteps) == 0 {
+		return CutsceneRule{}, fmt.Errorf(
+			"build content rules: %s.steps must not be empty",
+			id,
+		)
+	}
+	result := CutsceneRule{
+		ID:           id,
+		Name:         ruleOptionalString(data, "name"),
+		NameKey:      ruleOptionalString(data, "name_key"),
+		BackgroundID: backgroundID,
+		Skippable:    skippable,
+		Steps:        make([]CutsceneStepRule, len(rawSteps)),
+	}
+	seen := make(map[string]struct{}, len(rawSteps))
+	for index, rawStep := range rawSteps {
+		path := fmt.Sprintf("%s.steps[%d]", id, index)
+		step, err := requiredObject(rawStep, path)
+		if err != nil {
+			return CutsceneRule{}, fmt.Errorf(
+				"build content rules: %w",
+				err,
+			)
+		}
+		if err := rejectUnknownKeys(
+			step,
+			path,
+			"id",
+			"speaker",
+			"speaker_key",
+			"text",
+			"text_key",
+			"background",
+			"duration",
+			"actions",
+		); err != nil {
+			return CutsceneRule{}, fmt.Errorf(
+				"build content rules: %w",
+				err,
+			)
+		}
+		stepID, err := requiredString(step["id"], path+".id")
+		if err != nil {
+			return CutsceneRule{}, fmt.Errorf(
+				"build content rules: %w",
+				err,
+			)
+		}
+		if _, duplicate := seen[stepID]; duplicate {
+			return CutsceneRule{}, fmt.Errorf(
+				"build content rules: %s.id duplicates step %q",
+				path,
+				stepID,
+			)
+		}
+		seen[stepID] = struct{}{}
+		text, err := ruleOptionalStringChecked(
+			step,
+			"text",
+			path+".text",
+		)
+		if err != nil {
+			return CutsceneRule{}, fmt.Errorf(
+				"build content rules: %w",
+				err,
+			)
+		}
+		textKey, err := ruleOptionalStringChecked(
+			step,
+			"text_key",
+			path+".text_key",
+		)
+		if err != nil {
+			return CutsceneRule{}, fmt.Errorf(
+				"build content rules: %w",
+				err,
+			)
+		}
+		if text == "" && textKey == "" {
+			return CutsceneRule{}, fmt.Errorf(
+				"build content rules: %s requires text or text_key",
+				path,
+			)
+		}
+		stepBackground := ruleOptionalString(step, "background")
+		if stepBackground != "" {
+			if err := compiler.requireReference(
+				stepBackground,
+				"asset",
+				path+".background",
+			); err != nil {
+				return CutsceneRule{}, err
+			}
+		}
+		durationTicks := 0
+		if step["duration"] != nil {
+			duration, err := requiredPositiveNumberValue(
+				step["duration"],
+				path+".duration",
+			)
+			if err != nil {
+				return CutsceneRule{}, fmt.Errorf(
+					"build content rules: %w",
+					err,
+				)
+			}
+			if !durationFitsPortableTicks(duration) {
+				return CutsceneRule{}, fmt.Errorf(
+					"build content rules: %s.duration exceeds the supported duration",
+					path,
+				)
+			}
+			durationTicks = secondsToTicks(duration)
+		}
+		actions, err := compiler.compileOptionalActions(
+			step["actions"],
+			path+".actions",
+		)
+		if err != nil {
+			return CutsceneRule{}, err
+		}
+		result.Steps[index] = CutsceneStepRule{
+			ID:            stepID,
+			Speaker:       ruleOptionalString(step, "speaker"),
+			SpeakerKey:    ruleOptionalString(step, "speaker_key"),
+			Text:          text,
+			TextKey:       textKey,
+			BackgroundID:  stepBackground,
+			DurationTicks: durationTicks,
+			Actions:       actions,
+		}
+	}
+	result.OnComplete, err = compiler.compileOptionalActions(
+		data["on_complete"],
+		id+".on_complete",
+	)
+	if err != nil {
+		return CutsceneRule{}, err
+	}
+	return result, nil
 }
 
 func (compiler *contentRuleCompiler) compileDialogue(
@@ -1206,42 +1629,42 @@ func (compiler *contentRuleCompiler) compileInteraction(
 		interaction,
 		path,
 		"input",
+		"prompt",
 		"prompt_key",
 		"range",
 		"condition",
 		"actions",
+		"pages",
 	); err != nil {
 		return ActorInteractionRule{}, false, fmt.Errorf(
 			"build content rules: %w",
 			err,
 		)
 	}
-	input, err := requiredString(interaction["input"], path+".input")
-	if err != nil {
-		return ActorInteractionRule{}, false, fmt.Errorf(
-			"build content rules: %w",
-			err,
-		)
+	input := "interact"
+	if interaction["input"] != nil {
+		input, err = requiredString(interaction["input"], path+".input")
+		if err != nil {
+			return ActorInteractionRule{}, false, fmt.Errorf(
+				"build content rules: %w",
+				err,
+			)
+		}
 	}
-	promptKey, err := requiredString(
-		interaction["prompt_key"],
-		path+".prompt_key",
-	)
-	if err != nil {
-		return ActorInteractionRule{}, false, fmt.Errorf(
-			"build content rules: %w",
-			err,
+	prompt := ruleOptionalString(interaction, "prompt")
+	promptKey := ruleOptionalString(interaction, "prompt_key")
+	distance := 56.0
+	if interaction["range"] != nil {
+		distance, err = requiredPositiveNumberValue(
+			interaction["range"],
+			path+".range",
 		)
-	}
-	distance, err := requiredPositiveNumberValue(
-		interaction["range"],
-		path+".range",
-	)
-	if err != nil {
-		return ActorInteractionRule{}, false, fmt.Errorf(
-			"build content rules: %w",
-			err,
-		)
+		if err != nil {
+			return ActorInteractionRule{}, false, fmt.Errorf(
+				"build content rules: %w",
+				err,
+			)
+		}
 	}
 	var condition *RuleCondition
 	if interaction["condition"] != nil {
@@ -1254,20 +1677,147 @@ func (compiler *contentRuleCompiler) compileInteraction(
 		}
 		condition = &compiled
 	}
-	actions, err := compiler.compileRequiredActions(
-		interaction["actions"],
-		path+".actions",
+	var actions []RuleAction
+	if interaction["actions"] != nil {
+		actions, err = compiler.compileRequiredActions(
+			interaction["actions"],
+			path+".actions",
+		)
+		if err != nil {
+			return ActorInteractionRule{}, false, err
+		}
+	}
+	rawPages, pagesExist, err := optionalArray(
+		interaction["pages"],
+		path+".pages",
 	)
 	if err != nil {
-		return ActorInteractionRule{}, false, err
+		return ActorInteractionRule{}, false, fmt.Errorf(
+			"build content rules: %w",
+			err,
+		)
+	}
+	pages := make([]ActorInteractionPageRule, len(rawPages))
+	seenPages := make(map[string]struct{}, len(rawPages))
+	for index, rawPage := range rawPages {
+		pagePath := fmt.Sprintf("%s.pages[%d]", path, index)
+		page, err := requiredObject(rawPage, pagePath)
+		if err != nil {
+			return ActorInteractionRule{}, false, fmt.Errorf(
+				"build content rules: %w",
+				err,
+			)
+		}
+		pageID, err := requiredString(page["id"], pagePath+".id")
+		if err != nil {
+			return ActorInteractionRule{}, false, fmt.Errorf(
+				"build content rules: %w",
+				err,
+			)
+		}
+		if _, duplicate := seenPages[pageID]; duplicate {
+			return ActorInteractionRule{}, false, fmt.Errorf(
+				"build content rules: %s.id duplicates page %q",
+				pagePath,
+				pageID,
+			)
+		}
+		seenPages[pageID] = struct{}{}
+		pageInput := input
+		if page["input"] != nil {
+			pageInput, err = requiredString(
+				page["input"],
+				pagePath+".input",
+			)
+			if err != nil {
+				return ActorInteractionRule{}, false, fmt.Errorf(
+					"build content rules: %w",
+					err,
+				)
+			}
+		}
+		pageRange := distance
+		if page["range"] != nil {
+			pageRange, err = requiredPositiveNumberValue(
+				page["range"],
+				pagePath+".range",
+			)
+			if err != nil {
+				return ActorInteractionRule{}, false, fmt.Errorf(
+					"build content rules: %w",
+					err,
+				)
+			}
+		}
+		var pageCondition *RuleCondition
+		if page["condition"] != nil {
+			compiled, err := compiler.compileCondition(
+				page["condition"],
+				pagePath+".condition",
+			)
+			if err != nil {
+				return ActorInteractionRule{}, false, err
+			}
+			pageCondition = &compiled
+		}
+		pageActions, err := compiler.compileRequiredActions(
+			page["actions"],
+			pagePath+".actions",
+		)
+		if err != nil {
+			return ActorInteractionRule{}, false, err
+		}
+		pagePrompt := prompt
+		if page["prompt"] != nil {
+			pagePrompt, err = requiredString(
+				page["prompt"],
+				pagePath+".prompt",
+			)
+			if err != nil {
+				return ActorInteractionRule{}, false, fmt.Errorf(
+					"build content rules: %w",
+					err,
+				)
+			}
+		}
+		pagePromptKey := promptKey
+		if page["prompt_key"] != nil {
+			pagePromptKey, err = requiredString(
+				page["prompt_key"],
+				pagePath+".prompt_key",
+			)
+			if err != nil {
+				return ActorInteractionRule{}, false, fmt.Errorf(
+					"build content rules: %w",
+					err,
+				)
+			}
+		}
+		pages[index] = ActorInteractionPageRule{
+			ID:        pageID,
+			Input:     pageInput,
+			Prompt:    pagePrompt,
+			PromptKey: pagePromptKey,
+			Range:     pageRange,
+			Condition: pageCondition,
+			Actions:   pageActions,
+		}
+	}
+	if len(actions) == 0 && (!pagesExist || len(pages) == 0) {
+		return ActorInteractionRule{}, false, fmt.Errorf(
+			"build content rules: %s requires actions or pages",
+			path,
+		)
 	}
 	return ActorInteractionRule{
 		ActorID:   actorID,
 		Input:     input,
+		Prompt:    prompt,
 		PromptKey: promptKey,
 		Range:     distance,
 		Condition: condition,
 		Actions:   actions,
+		Pages:     pages,
 	}, true, nil
 }
 
@@ -1291,45 +1841,265 @@ func (compiler *contentRuleCompiler) compileCondition(
 			Name:       conditionType,
 		}
 	}
-	if err := rejectUnknownKeys(
-		condition,
-		path,
-		"type",
-		"quest",
-		"state",
-	); err != nil {
-		return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
-	}
-	questID, err := requiredString(condition["quest"], path+".quest")
-	if err != nil {
-		return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
-	}
-	if err := compiler.requireReference(
-		questID,
-		"quest",
-		path+".quest",
-	); err != nil {
-		return RuleCondition{}, err
-	}
-	stateText, err := requiredString(condition["state"], path+".state")
-	if err != nil {
-		return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
-	}
-	state := RuleQuestState(stateText)
-	switch state {
-	case RuleQuestInactive, RuleQuestActive, RuleQuestCompleted:
-	default:
-		return RuleCondition{}, fmt.Errorf(
-			"build content rules: %s.state has unsupported value %q",
+	switch typed {
+	case RuleConditionAlways:
+		if err := rejectUnknownKeys(
+			condition,
 			path,
-			stateText,
+			"type",
+		); err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		return RuleCondition{Type: RuleConditionAlways}, nil
+
+	case RuleConditionAll, RuleConditionAny:
+		if err := rejectUnknownKeys(
+			condition,
+			path,
+			"type",
+			"conditions",
+		); err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		children, err := requiredArray(
+			condition["conditions"],
+			path+".conditions",
 		)
+		if err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		compiled := make([]RuleCondition, len(children))
+		for index, child := range children {
+			compiled[index], err = compiler.compileCondition(
+				child,
+				fmt.Sprintf("%s.conditions[%d]", path, index),
+			)
+			if err != nil {
+				return RuleCondition{}, err
+			}
+		}
+		return RuleCondition{
+			Type:       typed,
+			Conditions: compiled,
+		}, nil
+
+	case RuleConditionNot:
+		if err := rejectUnknownKeys(
+			condition,
+			path,
+			"type",
+			"condition",
+		); err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		child, err := compiler.compileCondition(
+			condition["condition"],
+			path+".condition",
+		)
+		if err != nil {
+			return RuleCondition{}, err
+		}
+		return RuleCondition{
+			Type:      RuleConditionNot,
+			Condition: &child,
+		}, nil
+
+	case RuleConditionFlag:
+		if err := rejectUnknownKeys(
+			condition,
+			path,
+			"type",
+			"name",
+			"value",
+		); err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		name, err := requiredString(condition["name"], path+".name")
+		if err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		value := true
+		if condition["value"] != nil {
+			value, err = ruleOptionalBool(
+				condition,
+				"value",
+				path+".value",
+			)
+			if err != nil {
+				return RuleCondition{}, fmt.Errorf(
+					"build content rules: %w",
+					err,
+				)
+			}
+		}
+		return RuleCondition{
+			Type:      RuleConditionFlag,
+			FlagName:  name,
+			FlagValue: value,
+		}, nil
+
+	case RuleConditionQuestState:
+		if err := rejectUnknownKeys(
+			condition,
+			path,
+			"type",
+			"quest",
+			"state",
+		); err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		questID, err := requiredString(condition["quest"], path+".quest")
+		if err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		if err := compiler.requireReference(
+			questID,
+			"quest",
+			path+".quest",
+		); err != nil {
+			return RuleCondition{}, err
+		}
+		stateText, err := requiredString(condition["state"], path+".state")
+		if err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		state := RuleQuestState(stateText)
+		switch state {
+		case RuleQuestInactive, RuleQuestActive, RuleQuestCompleted:
+		default:
+			return RuleCondition{}, fmt.Errorf(
+				"build content rules: %s.state has unsupported value %q",
+				path,
+				stateText,
+			)
+		}
+		return RuleCondition{
+			Type:       RuleConditionQuestState,
+			QuestID:    questID,
+			QuestState: state,
+		}, nil
+
+	case RuleConditionTurnBattleState:
+		if err := rejectUnknownKeys(
+			condition,
+			path,
+			"type",
+			"battle",
+			"state",
+		); err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		battleID, err := requiredString(
+			condition["battle"],
+			path+".battle",
+		)
+		if err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		if err := compiler.requireReference(
+			battleID,
+			"turn_battle",
+			path+".battle",
+		); err != nil {
+			return RuleCondition{}, err
+		}
+		stateText, err := requiredString(condition["state"], path+".state")
+		if err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		state := RuleTurnBattleState(stateText)
+		switch state {
+		case RuleTurnBattleNever,
+			RuleTurnBattleActive,
+			RuleTurnBattleWon,
+			RuleTurnBattleLost,
+			RuleTurnBattleEscaped:
+		default:
+			return RuleCondition{}, fmt.Errorf(
+				"build content rules: %s.state has unsupported value %q",
+				path,
+				stateText,
+			)
+		}
+		return RuleCondition{
+			Type:        RuleConditionTurnBattleState,
+			BattleID:    battleID,
+			BattleState: state,
+		}, nil
+	case RuleConditionCutsceneActive:
+		if err := rejectUnknownKeys(
+			condition,
+			path,
+			"type",
+			"cutscene",
+		); err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		cutsceneID := ruleOptionalString(condition, "cutscene")
+		if cutsceneID != "" {
+			if err := compiler.requireReference(
+				cutsceneID,
+				"cutscene",
+				path+".cutscene",
+			); err != nil {
+				return RuleCondition{}, err
+			}
+		}
+		return RuleCondition{
+			Type:       RuleConditionCutsceneActive,
+			CutsceneID: cutsceneID,
+		}, nil
+	case RuleConditionTimeBetween:
+		if err := rejectUnknownKeys(
+			condition,
+			path,
+			"type",
+			"start",
+			"finish",
+		); err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		start, err := requiredString(condition["start"], path+".start")
+		if err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		finish, err := requiredString(condition["finish"], path+".finish")
+		if err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		startMinute, err := parseRuleClock(start, path+".start")
+		if err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		finishMinute, err := parseRuleClock(finish, path+".finish")
+		if err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		return RuleCondition{
+			Type:         RuleConditionTimeBetween,
+			StartMinute:  startMinute,
+			FinishMinute: finishMinute,
+		}, nil
+	case RuleConditionRegionActive:
+		if err := rejectUnknownKeys(
+			condition,
+			path,
+			"type",
+			"id",
+		); err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		regionID, err := requiredString(condition["id"], path+".id")
+		if err != nil {
+			return RuleCondition{}, fmt.Errorf("build content rules: %w", err)
+		}
+		return RuleCondition{
+			Type:     RuleConditionRegionActive,
+			RegionID: regionID,
+		}, nil
+	default:
+		panic("unreachable rule condition type")
 	}
-	return RuleCondition{
-		Type:       RuleConditionQuestState,
-		QuestID:    questID,
-		QuestState: state,
-	}, nil
 }
 
 func (compiler *contentRuleCompiler) compileRequiredActions(
@@ -1524,6 +2294,34 @@ func (compiler *contentRuleCompiler) compileAction(
 				path+".dialogue",
 			)
 		}
+	case RuleActionStartCutscene:
+		if err := rejectUnknownKeys(
+			action,
+			path,
+			"type",
+			"cutscene",
+		); err != nil {
+			return RuleAction{}, fmt.Errorf("build content rules: %w", err)
+		}
+		result.CutsceneID, err = requiredString(
+			action["cutscene"],
+			path+".cutscene",
+		)
+		if err == nil {
+			err = compiler.requireReference(
+				result.CutsceneID,
+				"cutscene",
+				path+".cutscene",
+			)
+		}
+	case RuleActionDamage:
+		if err := rejectUnknownKeys(action, path, "type", "amount"); err != nil {
+			return RuleAction{}, fmt.Errorf("build content rules: %w", err)
+		}
+		result.DamageAmount, err = requiredPositiveNumberValue(
+			action["amount"],
+			path+".amount",
+		)
 	case RuleActionHeal:
 		if err := rejectUnknownKeys(action, path, "type", "amount"); err != nil {
 			return RuleAction{}, fmt.Errorf("build content rules: %w", err)
@@ -1532,11 +2330,159 @@ func (compiler *contentRuleCompiler) compileAction(
 			action["amount"],
 			path+".amount",
 		)
+	case RuleActionEmit:
+		if err := rejectUnknownKeys(
+			action,
+			path,
+			"type",
+			"name",
+			"data",
+		); err != nil {
+			return RuleAction{}, fmt.Errorf("build content rules: %w", err)
+		}
+		result.EventName, err = requiredString(action["name"], path+".name")
+		if err == nil && sim.IsReservedEventType(sim.EventType(result.EventName)) {
+			err = fmt.Errorf(
+				"%s.name %q is reserved by the engine",
+				path,
+				result.EventName,
+			)
+		}
+		if err == nil && action["data"] != nil {
+			var data map[string]any
+			data, err = requiredObject(action["data"], path+".data")
+			if err == nil {
+				result.EventData, err = json.Marshal(data)
+			}
+		}
+	case RuleActionShowNotice:
+		if err := rejectUnknownKeys(
+			action,
+			path,
+			"type",
+			"text",
+			"text_key",
+			"duration",
+			"tone",
+		); err != nil {
+			return RuleAction{}, fmt.Errorf("build content rules: %w", err)
+		}
+		result.NoticeText, err = ruleOptionalStringChecked(
+			action,
+			"text",
+			path+".text",
+		)
+		if err == nil {
+			result.NoticeKey, err = ruleOptionalStringChecked(
+				action,
+				"text_key",
+				path+".text_key",
+			)
+		}
+		if err == nil && result.NoticeText == "" && result.NoticeKey == "" {
+			err = fmt.Errorf("%s requires text or text_key", path)
+		}
+		duration := 3.0
+		if err == nil && action["duration"] != nil {
+			duration, err = requiredPositiveNumberValue(
+				action["duration"],
+				path+".duration",
+			)
+		}
+		if err == nil && !durationFitsPortableTicks(duration) {
+			err = fmt.Errorf(
+				"%s.duration exceeds the supported duration",
+				path,
+			)
+		}
+		if err == nil {
+			result.NoticeTicks = secondsToTicks(duration)
+			result.NoticeTone = "info"
+			if action["tone"] != nil {
+				result.NoticeTone, err = requiredString(
+					action["tone"],
+					path+".tone",
+				)
+			}
+		}
+		if err == nil &&
+			result.NoticeTone != "info" &&
+			result.NoticeTone != "success" &&
+			result.NoticeTone != "warning" {
+			err = fmt.Errorf(
+				"%s.tone must be one of info, success, warning",
+				path,
+			)
+		}
+	case RuleActionStartTurnBattle:
+		if err := rejectUnknownKeys(
+			action,
+			path,
+			"type",
+			"battle",
+		); err != nil {
+			return RuleAction{}, fmt.Errorf("build content rules: %w", err)
+		}
+		result.BattleID, err = requiredString(
+			action["battle"],
+			path+".battle",
+		)
+		if err == nil {
+			err = compiler.requireReference(
+				result.BattleID,
+				"turn_battle",
+				path+".battle",
+			)
+		}
+	case RuleActionSetWorldTime:
+		if err := rejectUnknownKeys(
+			action,
+			path,
+			"type",
+			"time",
+			"day",
+		); err != nil {
+			return RuleAction{}, fmt.Errorf("build content rules: %w", err)
+		}
+		clock, clockErr := requiredString(action["time"], path+".time")
+		if clockErr != nil {
+			err = clockErr
+			break
+		}
+		result.WorldMinute, err = parseRuleClock(clock, path+".time")
+		if err == nil && action["day"] != nil {
+			var day int
+			day, err = ruleInteger(action["day"], path+".day", 1)
+			result.WorldDay = int64(day)
+		}
+	case RuleActionAdvanceWorldTime:
+		if err := rejectUnknownKeys(
+			action,
+			path,
+			"type",
+			"minutes",
+		); err != nil {
+			return RuleAction{}, fmt.Errorf("build content rules: %w", err)
+		}
+		result.WorldMinutes, err = requiredPositiveNumberValue(
+			action["minutes"],
+			path+".minutes",
+		)
 	}
 	if err != nil {
 		return RuleAction{}, fmt.Errorf("build content rules: %w", err)
 	}
 	return result, nil
+}
+
+func parseRuleClock(value string, path string) (float64, error) {
+	var hour, minute int
+	if _, err := fmt.Sscanf(value, "%d:%d", &hour, &minute); err != nil ||
+		value != fmt.Sprintf("%02d:%02d", hour, minute) ||
+		hour < 0 || hour > 23 || minute < 0 || minute > 59 {
+		return 0, fmt.Errorf("%s must use 24-hour HH:MM time", path)
+	}
+	return float64(hour*60 + minute), nil
 }
 
 func (compiler *contentRuleCompiler) requireReference(
@@ -1664,7 +2610,7 @@ func cloneDialogueRule(value DialogueRule) DialogueRule {
 
 func cloneDialogueNodeRule(value DialogueNodeRule) DialogueNodeRule {
 	result := value
-	result.Actions = append([]RuleAction(nil), value.Actions...)
+	result.Actions = cloneRuleActions(value.Actions)
 	result.Choices = make([]DialogueChoiceRule, len(value.Choices))
 	for index, choice := range value.Choices {
 		result.Choices[index] = cloneDialogueChoiceRule(choice)
@@ -1674,11 +2620,19 @@ func cloneDialogueNodeRule(value DialogueNodeRule) DialogueNodeRule {
 
 func cloneDialogueChoiceRule(value DialogueChoiceRule) DialogueChoiceRule {
 	result := value
-	result.Actions = append([]RuleAction(nil), value.Actions...)
-	if value.Condition != nil {
-		condition := *value.Condition
-		result.Condition = &condition
+	result.Actions = cloneRuleActions(value.Actions)
+	result.Condition = cloneRuleConditionPointer(value.Condition)
+	return result
+}
+
+func cloneCutsceneRule(value CutsceneRule) CutsceneRule {
+	result := value
+	result.Steps = make([]CutsceneStepRule, len(value.Steps))
+	for index, step := range value.Steps {
+		result.Steps[index] = step
+		result.Steps[index].Actions = cloneRuleActions(step.Actions)
 	}
+	result.OnComplete = cloneRuleActions(value.OnComplete)
 	return result
 }
 
@@ -1690,8 +2644,8 @@ func cloneQuestRule(value QuestRule) QuestRule {
 			result.Objectives[index].Where,
 		)
 	}
-	result.OnStart = append([]RuleAction(nil), value.OnStart...)
-	result.OnComplete = append([]RuleAction(nil), value.OnComplete...)
+	result.OnStart = cloneRuleActions(value.OnStart)
+	result.OnComplete = cloneRuleActions(value.OnComplete)
 	return result
 }
 
@@ -1705,7 +2659,7 @@ func cloneRuleFilter(value map[string]any) map[string]any {
 
 func cloneItemRule(value ItemRule) ItemRule {
 	result := value
-	result.Effects = append([]RuleAction(nil), value.Effects...)
+	result.Effects = cloneRuleActions(value.Effects)
 	if value.Equipment != nil {
 		equipment := *value.Equipment
 		result.Equipment = &equipment
@@ -1723,10 +2677,47 @@ func cloneActorInteractionRule(
 	value ActorInteractionRule,
 ) ActorInteractionRule {
 	result := value
-	result.Actions = append([]RuleAction(nil), value.Actions...)
-	if value.Condition != nil {
-		condition := *value.Condition
-		result.Condition = &condition
+	result.Actions = cloneRuleActions(value.Actions)
+	result.Condition = cloneRuleConditionPointer(value.Condition)
+	result.Pages = make(
+		[]ActorInteractionPageRule,
+		len(value.Pages),
+	)
+	for index, page := range value.Pages {
+		result.Pages[index] = page
+		result.Pages[index].Condition =
+			cloneRuleConditionPointer(page.Condition)
+		result.Pages[index].Actions =
+			cloneRuleActions(page.Actions)
+	}
+	return result
+}
+
+func cloneRuleConditionPointer(value *RuleCondition) *RuleCondition {
+	if value == nil {
+		return nil
+	}
+	result := cloneRuleCondition(*value)
+	return &result
+}
+
+func cloneRuleCondition(value RuleCondition) RuleCondition {
+	result := value
+	result.Conditions = make([]RuleCondition, len(value.Conditions))
+	for index, child := range value.Conditions {
+		result.Conditions[index] = cloneRuleCondition(child)
+	}
+	result.Condition = cloneRuleConditionPointer(value.Condition)
+	return result
+}
+
+func cloneRuleActions(value []RuleAction) []RuleAction {
+	result := append([]RuleAction(nil), value...)
+	for index := range result {
+		result[index].EventData = append(
+			json.RawMessage(nil),
+			value[index].EventData...,
+		)
 	}
 	return result
 }

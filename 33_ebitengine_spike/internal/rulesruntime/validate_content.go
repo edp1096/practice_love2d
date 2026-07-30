@@ -242,6 +242,38 @@ func (executor *Executor) validateInteractionRules() error {
 		); err != nil {
 			return err
 		}
+		for pageIndex, page := range interaction.Pages {
+			path := fmt.Sprintf(
+				"actor %q interaction pages[%d]",
+				interaction.ActorID,
+				pageIndex,
+			)
+			if page.ID == "" || page.Input == "" || page.Range <= 0 ||
+				len(page.Actions) == 0 {
+				return fmt.Errorf("%s is invalid", path)
+			}
+			if page.Condition != nil {
+				if err := executor.validateCondition(
+					*page.Condition,
+					path+" condition",
+				); err != nil {
+					return err
+				}
+			}
+			if err := executor.validateActionList(
+				page.Actions,
+				path+" actions",
+			); err != nil {
+				return err
+			}
+		}
+		if len(interaction.Actions) == 0 &&
+			len(interaction.Pages) == 0 {
+			return fmt.Errorf(
+				"actor %q interaction has no actions or pages",
+				interaction.ActorID,
+			)
+		}
 	}
 	return nil
 }

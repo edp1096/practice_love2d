@@ -14,7 +14,8 @@ Go의 플랫폼 중립 코드로 유지하기 쉽다. 이번 spike로 콘텐츠 
 현재는 프로세스 재시작을 포함한 샘플 캠페인의 headless 실행 계약과
 authored tilemap visual gate, secondary combat, platformer, encounter
 fixture, data-driven sprite clip·ability visual과 전체 audio
-presentation, runtime Maker editing, WebAssembly packaging gate와
+presentation, data-driven 턴제 전투, runtime Maker editing,
+WebAssembly packaging gate와
 확장 RPG 계산까지 통과했다. 다만 아래에 남은 네이티브 모바일·호스트
 검증 때문에 모든 배포 대상에서 `32_recreate`와 동등하다는 뜻은 아니다.
 콘솔도 일반 `go build` 대상이 아니며 각 제조사 승인, SDK, 개발기와
@@ -86,10 +87,11 @@ presentation, runtime Maker editing, WebAssembly packaging gate와
   `gamebuild → View → renderer` 변환
 - tile layer opacity·카메라 culling·Tiled horizontal/vertical/diagonal
   flip flag를 보존한 실제 960×540 visual acceptance
-- 기존 콘텐츠 정의, 방어구·장신구와 audio asset을 포함한 정의 56개,
-  dependency path 88개 보존
+- 기존 콘텐츠 정의, 집·잡화점 stage, 실내 tileset, 방어구·장신구,
+  월드 아이템, 컷신과 audio asset을 포함한 정의 65개, dependency
+  path 113개 보존
 - canonical catalog SHA-256:
-  `bee359b0647af6c499e719458f3e51d872b109ac98639d58dae4f066fac0edc2`
+  `9ded5014dbf400235594c60c5e8fb39c29ba02b2011a7db6fc6f47da253f573a`
 - `game/game.lua`의 project manifest를 schema v2 catalog에 함께 컴파일
 - `input.actions`를 canonical manifest에 보존하고 LÖVE 키·표준 gamepad
   이름을 Ebitengine 의미 입력으로 변환하여 게임별 바인딩을 런타임 간
@@ -122,7 +124,8 @@ presentation, runtime Maker editing, WebAssembly packaging gate와
 - idle/pending/active/completed/failed encounter와 생성된 wave topology,
   boss phase를 보존하고 손상된 mapping을 거부하는 simulation session v5,
   scope·action index/type을 포함한 원자적 실패 event
-- 콘텐츠 수치로 동작하는 chase/attack AI
+- 체력 단계·거리대·공전·스킬 순환을 콘텐츠로 작성하는 behavior AI
+- trigger의 환경 피해를 공통 damage/death/gameover 경계로 실행
 - 대화 시작, 퀘스트 시작·진행·완료
 - 임의 quest event 이름과 선택적 string/number/boolean payload filter를
   typed rule runtime에서 실행
@@ -134,20 +137,46 @@ presentation, runtime Maker editing, WebAssembly packaging gate와
 - hub/grove의 convex polygon wall을 정확한 authored vertex와 고정소수점
   SAT 충돌로 보존하고 고속 이동·spawn·session load에서 관통 방지
 - Campaign의 장기 상태와 stage별 World를 분리하고
-  village → hub → grove 왕복 portal을 원자적으로 전환
+  village → shop/home → hub → grove 왕복 portal을 원자적으로 전환
 - rectangle·convex polygon portal이 wall과 같은 고정소수점 SAT 및
   strict edge-touch 규칙을 공유
-- 7개 stage, 모든 entry spawn과 2개 locale의 22개 조합을 `contentc`
-  단계에서 실제 simulation으로 사전 구성
+- stage trigger의 target actor, 진입 edge, once, cooldown과 typed
+  condition/action을 실행하고 heal과 custom emit을 LÖVE 계약과 동일하게
+  처리
+- 9개 stage, 모든 entry spawn과 2개 locale의 34개 조합, 5개 Campaign
+  profile의 170개 파생 build를 `contentc` 단계에서 실제 simulation으로
+  사전 구성
 - versioned Campaign save가 stage entry, locale, flag, inventory,
   equipment, 다중 목표 quest, 재화를 보존하고 프로세스 재시작 시
   stage-local World를 새로 구성
 - typed rule executor가 대화 조건·action, quest 완료 보상, 상점 거래를
   한 Campaign transaction으로 처리
+- `always/all/any/not/flag/quest_state/turn_battle_state`를 재귀 typed
+  condition으로 컴파일하고 NPC interaction·stage trigger의 마지막
+  일치 event page를 같은 Campaign snapshot에서 선택
+- `turn_skill`, `turn_battle`, `rpg.turn_battler`,
+  `start_turn_battle`, `turn_battle_state`의 닫힌 typed contract
+- 턴제 전투 동안 field tick·이동·상호작용을 정지하고 실제
+  Ebitengine modal에서 스킬·회복·도주·적 차례·승패 hook을 실행
+- 전투 결과를 `rpg.turn_battles` save section에 보존하되 활성 전투의
+  중간 HP·선택은 저장하지 않고 save 자체를 거부
+- 생성 RPG profile의 실제 창에서 수락 → 두 번 공격 → HP 93 →
+  `turn_battle.won` quest 완료 → potion 1·25G → 보고 → 작성형 ending을
+  protocol 상태와 PNG로 대조하고, 수락 전·진행 중·완료 interaction
+  page 전환도 같은 완주에서 확인
 - 대화 세션이 선택 조건을 action과 같은 transaction에서 재검사하고
   `thanks` 진입의 `finish_game`까지 정확히 한 번 실행
 - 실제 키보드·게임패드 의미 입력과 같은 모델을 사용하는 dialogue,
   shop, inventory, title, pause, gameover, ending 화면
+- title/pause 접근성 화면에서 카메라 움직임 full/reduced/off,
+  피격 flash, 알림 시간을 바꾸고 새 게임·타이틀 복귀·저장·프로세스
+  재시작 뒤에도 같은 설정을 복원
+- 배경·다국어 step·자동 진행·건너뛰기와 후속 action을 typed
+  `cutscene`으로 실행하고 World tick·save를 modal 동안 차단
+- 프로젝트 `world` manifest와 독립 `world.state` save section,
+  `set_world_time`/`advance_world_time`, 자정 횡단 `time_between`,
+  stage region과 마지막 일치 page의 tint·tile layer·hook을 typed
+  runtime과 debug View로 실행
 - item 사용·구매·판매·장착·해제와 장비 기반
   attack/defense/move_speed를 Campaign, World rebuild, UI, protocol에
   일관되게 반영
@@ -161,7 +190,7 @@ presentation, runtime Maker editing, WebAssembly packaging gate와
 - 기존 브라우저 Maker의 `--backend love|ebitengine` 선택, 전체 Lua
   source → 임시 canonical catalog 컴파일, 현재 preview 위치의 원자적
   재구축, 실패 시 source/runtime 복구
-- Ebitengine Maker 실제 실행에서 정의 56개 graph 조회,
+- Ebitengine Maker 실제 실행에서 정의 65개 graph 조회,
   `stage.action_room/default` 전환, `actor.slime` 동적 생성과
   960×540 screenshot을 확인한 뒤 정상 종료
 - project manifest의 master/music/SFX volume과 stage별 BGM,
@@ -172,7 +201,7 @@ presentation, runtime Maker editing, WebAssembly packaging gate와
   반복 View/Draw에서 같은 소리가 다시 재생되지 않도록 보장
 - 다중 frame step이 취소되면 이미 생성한 audio cue sequence와 retained
   cue ring까지 함께 rollback
-- 저장소 자체 생성 BGM 1개와 SFX 9개의 출처·생성기·SHA-256 기록
+- 저장소 자체 생성 BGM 3개와 SFX 9개의 출처·생성기·SHA-256 기록
 - Ubuntu arm64에서 stage BGM과 `attack.started` cue가 포함된 실제 창을
   2 tick만 실행해 공격 clip·slash 화면을 캡처하고 자동 종료
 - title 또는 pause 같은 semantic flow가 활성화된 동안
@@ -181,7 +210,7 @@ presentation, runtime Maker editing, WebAssembly packaging gate와
   → 실제 전투 → portal 왕복 → 보상 → ending 전체 headless acceptance
 - 32 wire와 수명주기를 보존한 `Entity.spawn`, queued
   `Entity.remove`, optional-speaker `Dialogue.start`
-- 동적 actor의 sprite/tag/chase metadata까지 renderer, AI, snapshot에
+- 동적 actor의 sprite/tag/behavior metadata까지 renderer, AI, snapshot에
   반영하고 player save와 Maker preview topology를 분리
 - stage 밖 actor/dialogue도 같은 catalog translator로 변환하며 instance
   name/tag/component override와 start-node quest 의미를 보존
@@ -197,7 +226,7 @@ presentation, runtime Maker editing, WebAssembly packaging gate와
   순서를 동일 tick의 화면·`world` 응답으로 대조
 - 취소된 다중 frame step의 전체 rollback
 - 대기 ability와 실제 player 이동·패링·회피·상호작용 입력 병합
-- 13개 콘텐츠 kind, action 32종, condition 17종, stage section 7종의
+- 16개 콘텐츠 kind, action 37종, condition 21종, stage section 8종의
   미사용 정의까지 포함한 semantic validation
 - 32-compatible `schema_valid`, adapter coverage인 `fully_applied`, 실제
   preview 재구축 가능성인 `runtime_compatible` 분리
@@ -266,11 +295,13 @@ presentation, runtime Maker editing, WebAssembly packaging gate와
    검증을 통과시킨다.~~ 완료
 7. ~~attack/defense/move_speed와 장비 modifier를 공통 damage/movement,
    protocol, HUD, Campaign 재구성 경계까지 연결한다.~~ 완료
-8. Windows 실기와 macOS 실기 패키징을 통과시킨다.
-9. 제조사 승인을 확보한 플랫폼만 별도 adapter·SDK branch에서
+8. ~~RPG profile의 데이터 기반 턴제 전투와 완결 샘플 흐름을 같은
+   canonical catalog에서 실행한다.~~ 완료
+9. Windows 실기와 macOS 실기 패키징을 통과시킨다.
+10. 제조사 승인을 확보한 플랫폼만 별도 adapter·SDK branch에서
    개발기 acceptance를 수행한다.
 
-기능·sprite clip·ability visual·audio presentation·runtime Maker
+기능·sprite clip·ability visual·audio presentation·턴제 전투·runtime Maker
 editing·web packaging·확장 RPG stat gate는 통과했다. 남은 native
 mobile packaging과 호스트별 실기 gate를 닫기 전에는
 `33_ebitengine_spike`를 모든 배포 대상의 본 런타임으로 승격하지 않는다.

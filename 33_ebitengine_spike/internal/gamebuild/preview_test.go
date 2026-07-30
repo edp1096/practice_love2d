@@ -41,8 +41,19 @@ func TestBuildEntityPreviewAppliesInstanceOverrides(t *testing.T) {
 				"action.combat": rawObject(t, map[string]any{
 					"team": "preview",
 				}),
-				"action.chase_ai": rawObject(t, map[string]any{
-					"attack_distance": 44,
+				"action.behavior_ai": rawObject(t, map[string]any{
+					"patterns": []any{
+						map[string]any{
+							"movement": map[string]any{
+								"preferred_range": 44,
+							},
+							"attacks": []any{
+								map[string]any{
+									"maximum_range": 44,
+								},
+							},
+						},
+					},
 				}),
 			},
 		},
@@ -75,10 +86,12 @@ func TestBuildEntityPreviewAppliesInstanceOverrides(t *testing.T) {
 		t.Fatalf("metadata tags = %#v, want %#v", got, want)
 	}
 	if result.Metadata.SpriteID != "sprite.slime" ||
-		result.Metadata.Chase == nil ||
-		result.Metadata.Chase.TargetTag != "player" ||
-		result.Metadata.Chase.AggroRange != 360 ||
-		result.Metadata.Chase.AttackDistance != 44 {
+		result.Metadata.BehaviorAI == nil ||
+		result.Metadata.BehaviorAI.TargetTag != "player" ||
+		result.Metadata.BehaviorAI.AggroRange != 360 ||
+		len(result.Metadata.BehaviorAI.Patterns) != 1 ||
+		result.Metadata.BehaviorAI.Patterns[0].Movement.PreferredRange != 44 ||
+		result.Metadata.BehaviorAI.Patterns[0].Attacks[0].MaximumRange != 44 {
 		t.Fatalf("metadata = %#v", result.Metadata)
 	}
 	if result.Dialogue != nil || result.Quest != nil ||

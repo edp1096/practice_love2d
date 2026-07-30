@@ -228,6 +228,20 @@ func clonePreviewEntities(
 			[]string(nil),
 			preview.metadata.Tags...,
 		)
+		if preview.metadata.BehaviorAI != nil {
+			behavior := *preview.metadata.BehaviorAI
+			behavior.Patterns = append(
+				[]gamebuild.AIPatternMetadata(nil),
+				preview.metadata.BehaviorAI.Patterns...,
+			)
+			for index := range behavior.Patterns {
+				behavior.Patterns[index].Attacks = append(
+					[]gamebuild.AIAttackMetadata(nil),
+					behavior.Patterns[index].Attacks...,
+				)
+			}
+			preview.metadata.BehaviorAI = &behavior
+		}
 		result[id] = preview
 	}
 	return result

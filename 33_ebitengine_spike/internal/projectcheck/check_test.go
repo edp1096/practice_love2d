@@ -24,10 +24,10 @@ func TestValidateChecksEveryStageEntryAndLocaleDeterministically(
 		t.Fatal(err)
 	}
 	want := Report{
-		DefinitionCount:   56,
-		StageCount:        7,
-		EntryBuildCount:   22,
-		DerivedBuildCount: 110,
+		DefinitionCount:   65,
+		StageCount:        9,
+		EntryBuildCount:   34,
+		DerivedBuildCount: 170,
 		LocaleCount:       2,
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -140,8 +140,8 @@ func TestValidateChecksPristineMaximalAndDormantCampaignBuilds(
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report.EntryBuildCount != 22 ||
-		report.DerivedBuildCount != 110 {
+	if report.EntryBuildCount != 34 ||
+		report.DerivedBuildCount != 170 {
 		t.Fatalf("report = %#v", report)
 	}
 	if pristineCalls != report.EntryBuildCount {
@@ -407,8 +407,8 @@ func TestValidateCountsEveryUniqueEquipmentProfile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report.EntryBuildCount != 22 ||
-		report.DerivedBuildCount != 154 {
+	if report.EntryBuildCount != 34 ||
+		report.DerivedBuildCount != 238 {
 		t.Fatalf("seven-profile report = %#v", report)
 	}
 }

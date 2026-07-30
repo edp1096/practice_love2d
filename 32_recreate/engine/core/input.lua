@@ -43,6 +43,7 @@ function Input:_actionsFor(device, value)
             result[#result + 1] = action
         end
     end
+    table.sort(result)
     return result
 end
 
@@ -80,6 +81,17 @@ end
 
 function Input:gamepadaxis(axis, value)
     self.axes[axis] = util.clamp(value, -1, 1)
+end
+
+function Input:tapGamepad(button, frames)
+    local actions = self:_actionsFor("button", button)
+    if #actions == 0 then
+        return nil, "unbound gamepad button '" .. tostring(button) .. "'"
+    end
+    for _, action in ipairs(actions) do
+        self:setAction(action, 1, frames)
+    end
+    return actions
 end
 
 function Input:setAction(action, value, frames)

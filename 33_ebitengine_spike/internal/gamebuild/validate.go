@@ -126,10 +126,11 @@ func ValidateDefinition(
 			"action.combat":       true,
 			"action.combat_input": true,
 			"action.status":       true,
-			"action.chase_ai":     true,
+			"action.behavior_ai":  true,
 			"rpg.stats":           true,
 			"rpg.equipment":       true,
 			"rpg.interactable":    true,
+			"rpg.turn_battler":    true,
 		}
 		for component := range components {
 			if !supported[component] {
@@ -140,19 +141,16 @@ func ValidateDefinition(
 			}
 		}
 		if interaction, ok := components["rpg.interactable"].(map[string]any); ok {
-			if interaction["range"] == nil {
-				unsupported(
-					"Ebitengine adapter does not apply the rpg.interactable.range default",
-				)
-			}
-			if interaction["input"] != "interact" {
+			if input, exists := interaction["input"]; exists &&
+				input != "interact" {
 				unsupported(fmt.Sprintf(
 					"interaction input %q is not executed",
-					interaction["input"],
+					input,
 				))
 			}
-			if interaction["prompt_key"] != nil {
-				unsupported("interaction prompt_key is not rendered")
+			if interaction["prompt_key"] != nil ||
+				interaction["prompt"] != nil {
+				unsupported("interaction prompt is not rendered")
 			}
 			reportRuleConditionCoverage(
 				interaction["condition"],
@@ -164,6 +162,35 @@ func ValidateDefinition(
 				"interaction",
 				unsupported,
 			)
+			for index, raw := range anySlice(interaction["pages"]) {
+				page, _ := raw.(map[string]any)
+				prefix := fmt.Sprintf(
+					"interaction pages[%d]",
+					index,
+				)
+				if input, exists := page["input"]; exists &&
+					input != "interact" {
+					unsupported(fmt.Sprintf(
+						"%s input %q is not executed",
+						prefix,
+						input,
+					))
+				}
+				if page["prompt_key"] != nil ||
+					page["prompt"] != nil {
+					unsupported(prefix + " prompt is not rendered")
+				}
+				reportRuleConditionCoverage(
+					page["condition"],
+					prefix,
+					unsupported,
+				)
+				reportRuleActionCoverage(
+					page["actions"],
+					prefix,
+					unsupported,
+				)
+			}
 		}
 		if combat, ok := components["action.combat"].(map[string]any); ok {
 			if combat["primary"] == nil {
@@ -223,7 +250,6 @@ func ValidateDefinition(
 			unsupported(issue)
 		}
 		for _, field := range []string{
-			"triggers",
 			"completion",
 			"metadata",
 			"mode",
@@ -233,6 +259,38 @@ func ValidateDefinition(
 					"stage field %q is not executed",
 					field,
 				))
+			}
+		}
+		for index, raw := range anySlice(data["triggers"]) {
+			trigger, _ := raw.(map[string]any)
+			scope := fmt.Sprintf("stage trigger[%d]", index)
+			reportRuleConditionCoverage(
+				trigger["condition"],
+				scope,
+				unsupported,
+			)
+			reportRuleActionCoverage(
+				trigger["actions"],
+				scope,
+				unsupported,
+			)
+			for pageIndex, pageRaw := range anySlice(trigger["pages"]) {
+				page, _ := pageRaw.(map[string]any)
+				pageScope := fmt.Sprintf(
+					"%s pages[%d]",
+					scope,
+					pageIndex,
+				)
+				reportRuleConditionCoverage(
+					page["condition"],
+					pageScope,
+					unsupported,
+				)
+				reportRuleActionCoverage(
+					page["actions"],
+					pageScope,
+					unsupported,
+				)
 			}
 		}
 
@@ -269,6 +327,24 @@ func ValidateDefinition(
 				)
 			}
 		}
+
+	case "cutscene":
+		if err := validateCutsceneSemantics(catalog, data, id); err != nil {
+			return DefinitionValidation{}, err
+		}
+		for index, raw := range anySlice(data["steps"]) {
+			step, _ := raw.(map[string]any)
+			reportRuleActionCoverage(
+				step["actions"],
+				fmt.Sprintf("cutscene step[%d]", index),
+				unsupported,
+			)
+		}
+		reportRuleActionCoverage(
+			data["on_complete"],
+			"cutscene on_complete",
+			unsupported,
+		)
 
 	case "quest":
 		if err := validateQuestSemantics(catalog, data, id); err != nil {
@@ -391,6 +467,28 @@ func ValidateDefinition(
 					action["type"],
 				))
 			}
+		}
+
+	case "turn_skill":
+		if err := validateTurnSkillSemantics(data, id); err != nil {
+			return DefinitionValidation{}, err
+		}
+
+	case "turn_battle":
+		if err := validateTurnBattleSemantics(catalog, data, id); err != nil {
+			return DefinitionValidation{}, err
+		}
+		for _, field := range []string{
+			"on_start",
+			"on_victory",
+			"on_escape",
+			"on_defeat",
+		} {
+			reportRuleActionCoverage(
+				data[field],
+				"turn battle "+field,
+				unsupported,
+			)
 		}
 
 	default:

@@ -36,5 +36,15 @@ return {
             type = "set_flag",
             name = "quest.grove_guardian.rewarded",
         },
+        {
+            type = "set_world_time",
+            time = "18:30",
+        },
+        {
+            type = "show_notice",
+            text_key = "notice.quest.completed",
+            tone = "success",
+            duration = 4,
+        },
     },
 }

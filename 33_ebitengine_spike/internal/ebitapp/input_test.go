@@ -663,3 +663,28 @@ func TestActionsForViewKeepsDedicatedPauseInFlow(t *testing.T) {
 		t.Fatalf("flow dedicated pause edge = %#v", got)
 	}
 }
+
+func TestActionsForViewGivesCutsceneExclusiveConfirmAndSkip(t *testing.T) {
+	t.Parallel()
+
+	input := Actions{
+		MoveX:           1,
+		Attack:          true,
+		MenuConfirm:     true,
+		MenuCancel:      true,
+		DialogueConfirm: true,
+		ShopBuy:         true,
+		InventoryToggle: true,
+		Pause:           true,
+	}
+	got := actionsForView(input, View{
+		Cutscene: CutsceneView{Active: true},
+		TurnBattle: TurnBattleView{
+			Active: true,
+		},
+	})
+	want := Actions{MenuCancel: true}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("cutscene actions = %#v, want %#v", got, want)
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"time"
@@ -17,6 +18,8 @@ type campaignScenario struct {
 	SaveSlot      string `json:"save_slot"`
 	Stages        struct {
 		Village string `json:"village"`
+		Home    string `json:"home"`
+		Shop    string `json:"shop"`
 		Field   string `json:"field"`
 		Grove   string `json:"grove"`
 	} `json:"stages"`
@@ -24,6 +27,7 @@ type campaignScenario struct {
 		Guide        string   `json:"guide"`
 		Merchant     string   `json:"merchant"`
 		FieldEnemies []string `json:"field_enemies"`
+		WorldItem    string   `json:"world_item"`
 		Guardian     string   `json:"guardian"`
 	} `json:"entities"`
 	Content struct {
@@ -47,6 +51,8 @@ type campaignReport struct {
 	} `json:"flow"`
 	Stages struct {
 		Village  bool `json:"village"`
+		Home     bool `json:"home"`
+		Shop     bool `json:"shop"`
 		Field    bool `json:"field"`
 		Grove    bool `json:"grove"`
 		Returned bool `json:"returned_to_village"`
@@ -58,13 +64,42 @@ type campaignReport struct {
 		Equipment      string `json:"equipment"`
 		ShopOpened     bool   `json:"shop_opened"`
 		PotionBought   bool   `json:"potion_bought"`
+		Rested         bool   `json:"rested"`
 		PotionCount    int    `json:"potion_count"`
 		Currency       int    `json:"currency"`
 	} `json:"rpg"`
 	Combat struct {
+		PerfectParry bool `json:"perfect_parry"`
+		ParryShake   bool `json:"parry_camera_shake"`
 		FieldKills   int  `json:"field_kills"`
 		GuardianKill bool `json:"guardian_kill"`
 	} `json:"combat"`
+	Environment struct {
+		WorldItemCollected bool `json:"world_item_collected"`
+		WorldItemOneShot   bool `json:"world_item_one_shot"`
+		HazardDamage       int  `json:"hazard_damage"`
+	} `json:"environment"`
+	Input struct {
+		Mode    string `json:"mode"`
+		Gamepad bool   `json:"gamepad"`
+	} `json:"input"`
+	Accessibility struct {
+		Configured     bool   `json:"configured"`
+		Persisted      bool   `json:"persisted_after_process_restart"`
+		Motion         string `json:"motion"`
+		HitFlash       bool   `json:"hit_flash"`
+		NoticeDuration string `json:"notice_duration"`
+	} `json:"accessibility"`
+	Presentation struct {
+		IntroCutscene   bool `json:"intro_cutscene"`
+		IntroNotice     bool `json:"intro_notice"`
+		QuestNotice     bool `json:"quest_notice"`
+		PurchaseMessage bool `json:"purchase_message"`
+		RestNotice      bool `json:"rest_notice"`
+		FieldNotice     bool `json:"field_notice"`
+		GroveNotice     bool `json:"grove_notice"`
+		RewardNotice    bool `json:"reward_notice"`
+	} `json:"presentation"`
 	Save struct {
 		Slot             string `json:"slot"`
 		Written          bool   `json:"written"`
@@ -95,10 +130,13 @@ func validateCampaignScenario(scenario campaignScenario) error {
 		{"project", scenario.Project},
 		{"save_slot", scenario.SaveSlot},
 		{"stages.village", scenario.Stages.Village},
+		{"stages.home", scenario.Stages.Home},
+		{"stages.shop", scenario.Stages.Shop},
 		{"stages.field", scenario.Stages.Field},
 		{"stages.grove", scenario.Stages.Grove},
 		{"entities.guide", scenario.Entities.Guide},
 		{"entities.merchant", scenario.Entities.Merchant},
+		{"entities.world_item", scenario.Entities.WorldItem},
 		{"entities.guardian", scenario.Entities.Guardian},
 		{"content.quest", scenario.Content.Quest},
 		{"content.equipment", scenario.Content.Equipment},
@@ -191,13 +229,50 @@ func campaignInput(
 	steps *int,
 ) error {
 	var result map[string]any
-	if err := client.call(
-		"Input.action",
-		map[string]any{
-			"action": action,
-			"value":  1,
+	method := "Input.action"
+	params := map[string]any{
+		"action": action,
+		"value":  1,
+		"frames": inputFrames,
+	}
+	if client.inputMode == "gamepad" {
+		buttons := map[string]string{
+			"move_up":      "dpup",
+			"move_down":    "dpdown",
+			"move_left":    "dpleft",
+			"move_right":   "dpright",
+			"attack":       "x",
+			"special":      "y",
+			"technique":    "rightshoulder",
+			"jump":         "a",
+			"parry":        "leftshoulder",
+			"dodge":        "b",
+			"interact":     "x",
+			"menu_up":      "dpup",
+			"menu_down":    "dpdown",
+			"menu_left":    "dpleft",
+			"menu_right":   "dpright",
+			"menu_confirm": "a",
+			"menu_cancel":  "b",
+			"pause":        "start",
+			"restart":      "back",
+		}
+		button := buttons[action]
+		if button == "" {
+			return fmt.Errorf(
+				"campaign action %q has no gamepad binding",
+				action,
+			)
+		}
+		method = "Input.gamepad"
+		params = map[string]any{
+			"button": button,
 			"frames": inputFrames,
-		},
+		}
+	}
+	if err := client.call(
+		method,
+		params,
 		&result,
 	); err != nil {
 		return err
@@ -249,6 +324,123 @@ func campaignPosition(
 	return entity, err
 }
 
+func campaignPortalCenter(
+	snapshot worldSnapshot,
+	portalID string,
+) (float64, float64, error) {
+	for _, portal := range snapshot.Navigation.Portals {
+		if portal.ID != portalID {
+			continue
+		}
+		return campaignShapeCenter(
+			"portal "+portalID,
+			portal.Shape,
+		)
+	}
+	return 0, 0, fmt.Errorf(
+		"campaign stage %q has no portal %q",
+		snapshot.Stage.ID,
+		portalID,
+	)
+}
+
+func campaignTriggerCenter(
+	snapshot worldSnapshot,
+	triggerID string,
+) (float64, float64, error) {
+	for _, trigger := range snapshot.Navigation.Triggers {
+		if trigger.ID == triggerID {
+			return campaignShapeCenter(
+				"trigger "+triggerID,
+				trigger.Shape,
+			)
+		}
+	}
+	return 0, 0, fmt.Errorf(
+		"campaign stage %q has no trigger %q",
+		snapshot.Stage.ID,
+		triggerID,
+	)
+}
+
+func campaignShapeCenter(
+	label string,
+	shape navigationShapeState,
+) (float64, float64, error) {
+	switch shape.Type {
+	case "rectangle":
+		if !finiteNumber(shape.X) ||
+			!finiteNumber(shape.Y) ||
+			!finiteNumber(shape.Width) ||
+			!finiteNumber(shape.Height) ||
+			shape.Width <= 0 ||
+			shape.Height <= 0 {
+			return 0, 0, fmt.Errorf(
+				"campaign %s has invalid rectangle %#v",
+				label,
+				shape,
+			)
+		}
+		return shape.X, shape.Y, nil
+	case "polygon":
+		if len(shape.Points) < 3 {
+			return 0, 0, fmt.Errorf(
+				"campaign %s has invalid polygon %#v",
+				label,
+				shape.Points,
+			)
+		}
+		var x, y float64
+		for _, point := range shape.Points {
+			if !finiteNumber(point.X) || !finiteNumber(point.Y) {
+				return 0, 0, fmt.Errorf(
+					"campaign %s has a non-finite point",
+					label,
+				)
+			}
+			x += point.X
+			y += point.Y
+		}
+		return x / float64(len(shape.Points)),
+			y / float64(len(shape.Points)),
+			nil
+	default:
+		return 0, 0, fmt.Errorf(
+			"campaign %s has unsupported shape %q",
+			label,
+			shape.Type,
+		)
+	}
+}
+
+func campaignEnterPortal(
+	client *protocolClient,
+	playerID string,
+	portalID string,
+	steps *int,
+) error {
+	snapshot, err := campaignSnapshot(client)
+	if err != nil {
+		return err
+	}
+	x, y, err := campaignPortalCenter(snapshot, portalID)
+	if err != nil {
+		return err
+	}
+	if _, err := campaignPosition(client, playerID, x, y); err != nil {
+		return err
+	}
+	if err := requestAndWaitSteps(client, *steps, 1); err != nil {
+		return err
+	}
+	*steps += 1
+	return nil
+}
+
+func finiteNumber(value float64) bool {
+	return !math.IsNaN(value) && !math.IsInf(value, 0)
+}
+
 func campaignKillWithAttack(
 	client *protocolClient,
 	playerID string,
@@ -282,28 +474,157 @@ func campaignKillWithAttack(
 	); err != nil {
 		return err
 	}
+	var removed entityState
+	for attempts := 0; attempts < 3; attempts++ {
+		if err := campaignInput(
+			client,
+			"attack",
+			1,
+			40,
+			steps,
+		); err != nil {
+			return err
+		}
+		if err := client.call(
+			"Entity.get",
+			map[string]any{"entityId": targetID},
+			&removed,
+		); err != nil {
+			return nil
+		}
+	}
+	return fmt.Errorf(
+		"campaign target %q survived repeated attacks with %.2f health",
+		targetID,
+		removed.Health,
+	)
+}
+
+func campaignPerfectParry(
+	client *protocolClient,
+	playerID string,
+	enemyID string,
+	steps *int,
+) error {
+	var player entityState
+	if err := client.call(
+		"Entity.get",
+		map[string]any{"entityId": playerID},
+		&player,
+	); err != nil {
+		return err
+	}
+	healthBefore := player.Health
+	if _, err := campaignPosition(
+		client,
+		enemyID,
+		player.X+35,
+		player.Y,
+	); err != nil {
+		return err
+	}
+	var enemy entityState
+	for attempts := 0; attempts < 120; attempts++ {
+		if err := requestAndWaitSteps(client, *steps, 1); err != nil {
+			return err
+		}
+		*steps++
+		if err := client.call(
+			"Entity.get",
+			map[string]any{"entityId": enemyID},
+			&enemy,
+		); err != nil {
+			return err
+		}
+		if enemy.AttackPhase == "windup" {
+			break
+		}
+	}
+	if enemy.AttackPhase != "windup" {
+		return fmt.Errorf(
+			"campaign enemy %q did not enter attack windup: "+
+				"phase=%q pattern=%q next=%q",
+			enemyID,
+			enemy.AttackPhase,
+			enemy.AIPattern,
+			enemy.AINextAbility,
+		)
+	}
+	if err := stepUntilWindupRemaining(
+		client,
+		enemyID,
+		steps,
+		0.07,
+	); err != nil {
+		return err
+	}
 	if err := campaignInput(
 		client,
-		"attack",
+		"parry",
 		1,
-		40,
+		1,
 		steps,
 	); err != nil {
 		return err
 	}
-	var removed entityState
-	if err := client.call(
-		"Entity.get",
-		map[string]any{"entityId": targetID},
-		&removed,
-	); err == nil {
-		return fmt.Errorf(
-			"campaign target %q survived the attack with %.2f health",
-			targetID,
-			removed.Health,
-		)
+
+	for attempt := 0; attempt < 10; attempt++ {
+		if err := client.call(
+			"Entity.get",
+			map[string]any{"entityId": playerID},
+			&player,
+		); err != nil {
+			return err
+		}
+		if err := client.call(
+			"Entity.get",
+			map[string]any{"entityId": enemyID},
+			&enemy,
+		); err != nil {
+			return err
+		}
+		if player.ParrySuccessRemaining > 0 {
+			if player.Health != healthBefore {
+				return fmt.Errorf(
+					"campaign parry lost health: %.0f -> %.0f",
+					healthBefore,
+					player.Health,
+				)
+			}
+			if !player.ParryPerfect ||
+				enemy.StaggerRemaining <= 0 {
+				return fmt.Errorf(
+					"campaign parry feedback is incomplete: "+
+						"perfect=%t stagger=%.3f",
+					player.ParryPerfect,
+					enemy.StaggerRemaining,
+				)
+			}
+			snapshot, err := campaignSnapshot(client)
+			if err != nil {
+				return err
+			}
+			minimumMagnitude := 9.0
+			if snapshot.Accessibility.Motion == "reduced" {
+				minimumMagnitude = 3
+			}
+			if snapshot.Camera.ShakeRemaining <= 0 ||
+				snapshot.Camera.ShakeMagnitude < minimumMagnitude {
+				return fmt.Errorf(
+					"campaign perfect parry has no camera shake: "+
+						"remaining=%.3f magnitude=%.1f",
+					snapshot.Camera.ShakeRemaining,
+					snapshot.Camera.ShakeMagnitude,
+				)
+			}
+			return nil
+		}
+		if err := requestAndWaitSteps(client, *steps, 1); err != nil {
+			return err
+		}
+		*steps++
 	}
-	return nil
+	return errors.New("campaign enemy attack was not parried")
 }
 
 func campaignQuest(
@@ -375,6 +696,87 @@ func executeCampaignOpening(
 
 	if err := campaignInput(
 		client,
+		"menu_down",
+		1,
+		1,
+		&steps,
+	); err != nil {
+		return 0, err
+	}
+	if err := campaignInput(
+		client,
+		"menu_confirm",
+		1,
+		1,
+		&steps,
+	); err != nil {
+		return 0, err
+	}
+	snapshot, err = campaignSnapshot(client)
+	if err != nil {
+		return 0, err
+	}
+	if snapshot.GameFlow.Panel != "accessibility" {
+		return 0, fmt.Errorf(
+			"campaign accessibility menu did not open: %#v",
+			snapshot.GameFlow,
+		)
+	}
+	for _, action := range []string{
+		"menu_confirm",
+		"menu_down",
+		"menu_confirm",
+		"menu_down",
+		"menu_confirm",
+	} {
+		if err := campaignInput(
+			client,
+			action,
+			1,
+			1,
+			&steps,
+		); err != nil {
+			return 0, err
+		}
+	}
+	snapshot, err = campaignSnapshot(client)
+	if err != nil {
+		return 0, err
+	}
+	report.Accessibility.Motion = snapshot.Accessibility.Motion
+	report.Accessibility.HitFlash = snapshot.Accessibility.HitFlash
+	report.Accessibility.NoticeDuration =
+		snapshot.Accessibility.NoticeDuration
+	report.Accessibility.Configured =
+		report.Accessibility.Motion == "reduced" &&
+			!report.Accessibility.HitFlash &&
+			report.Accessibility.NoticeDuration == "long"
+	if !report.Accessibility.Configured {
+		return 0, fmt.Errorf(
+			"campaign accessibility settings were not applied: %#v",
+			snapshot.Accessibility,
+		)
+	}
+	if err := campaignCapture(
+		client,
+		artifacts,
+		"campaign_accessibility",
+		report,
+	); err != nil {
+		return 0, err
+	}
+	if err := campaignInput(
+		client,
+		"menu_cancel",
+		1,
+		1,
+		&steps,
+	); err != nil {
+		return 0, err
+	}
+
+	if err := campaignInput(
+		client,
 		"menu_confirm",
 		1,
 		1,
@@ -395,6 +797,68 @@ func executeCampaignOpening(
 			"new game did not enter the village: flow=%#v stage=%s",
 			snapshot.GameFlow,
 			snapshot.Stage.ID,
+		)
+	}
+	var playingRuntime runtimeState
+	if err := client.call(
+		"Runtime.getState",
+		nil,
+		&playingRuntime,
+	); err != nil {
+		return 0, err
+	}
+	steps = playingRuntime.Simulation.SteppedFrames
+	if !snapshot.Notice.Active && !snapshot.Cutscene.Active {
+		if err := requestAndWaitSteps(client, steps, 1); err != nil {
+			return 0, err
+		}
+		steps++
+		snapshot, err = campaignSnapshot(client)
+		if err != nil {
+			return 0, err
+		}
+	}
+	report.Presentation.IntroCutscene =
+		snapshot.Cutscene.Active &&
+			snapshot.Cutscene.StepIndex == 1 &&
+			snapshot.Cutscene.StepCount >= 2
+	if !report.Presentation.IntroCutscene {
+		return 0, fmt.Errorf(
+			"new game intro cutscene is missing: %#v",
+			snapshot.Cutscene,
+		)
+	}
+	if err := campaignCapture(
+		client,
+		artifacts,
+		"campaign_intro_cutscene",
+		report,
+	); err != nil {
+		return 0, err
+	}
+	for snapshot.Cutscene.Active {
+		if err := campaignInput(
+			client,
+			"menu_confirm",
+			1,
+			1,
+			&steps,
+		); err != nil {
+			return 0, err
+		}
+		snapshot, err = campaignSnapshot(client)
+		if err != nil {
+			return 0, err
+		}
+	}
+	report.Presentation.IntroNotice =
+		snapshot.Notice.Active &&
+			snapshot.Notice.TextKey == "notice.intro" &&
+			snapshot.Notice.Tone == "info"
+	if !report.Presentation.IntroNotice {
+		return 0, fmt.Errorf(
+			"new game intro notice is missing: %#v",
+			snapshot.Notice,
 		)
 	}
 	if err := campaignCapture(
@@ -513,6 +977,55 @@ func executeCampaignOpening(
 	if err != nil {
 		return 0, err
 	}
+	report.Presentation.QuestNotice =
+		snapshot.Notice.Active &&
+			snapshot.Notice.TextKey == "notice.quest.accepted" &&
+			snapshot.Notice.Tone == "success"
+	if !report.Presentation.QuestNotice {
+		return 0, fmt.Errorf(
+			"quest acceptance notice is missing: %#v",
+			snapshot.Notice,
+		)
+	}
+	if err := campaignCapture(
+		client,
+		artifacts,
+		"campaign_quest_notice",
+		report,
+	); err != nil {
+		return 0, err
+	}
+	player, err = entityWithTag(snapshot.Entities, "player")
+	if err != nil {
+		return 0, err
+	}
+	if err := campaignEnterPortal(
+		client,
+		player.ID,
+		"to_shop",
+		&steps,
+	); err != nil {
+		return 0, err
+	}
+	snapshot, err = campaignSnapshot(client)
+	if err != nil {
+		return 0, err
+	}
+	report.Stages.Shop = snapshot.Stage.ID == scenario.Stages.Shop
+	if !report.Stages.Shop {
+		return 0, fmt.Errorf(
+			"campaign shop portal did not enter the interior: %s",
+			snapshot.Stage.ID,
+		)
+	}
+	if err := campaignCapture(
+		client,
+		artifacts,
+		"campaign_shop_interior",
+		report,
+	); err != nil {
+		return 0, err
+	}
 	player, err = entityWithTag(snapshot.Entities, "player")
 	if err != nil {
 		return 0, err
@@ -589,6 +1102,20 @@ func executeCampaignOpening(
 			snapshot.Inventory,
 		)
 	}
+	report.Presentation.PurchaseMessage = snapshot.Shop.Message != ""
+	if !report.Presentation.PurchaseMessage {
+		return 0, errors.New(
+			"campaign purchase has no visible shop confirmation",
+		)
+	}
+	if err := campaignCapture(
+		client,
+		artifacts,
+		"campaign_shop_purchased",
+		report,
+	); err != nil {
+		return 0, err
+	}
 	if err := campaignInput(
 		client,
 		"menu_cancel",
@@ -597,6 +1124,137 @@ func executeCampaignOpening(
 		&steps,
 	); err != nil {
 		return 0, err
+	}
+	snapshot, err = campaignSnapshot(client)
+	if err != nil {
+		return 0, err
+	}
+	player, err = entityWithTag(snapshot.Entities, "player")
+	if err != nil {
+		return 0, err
+	}
+	if err := campaignEnterPortal(
+		client,
+		player.ID,
+		"to_village",
+		&steps,
+	); err != nil {
+		return 0, err
+	}
+	snapshot, err = campaignSnapshot(client)
+	if err != nil {
+		return 0, err
+	}
+	if snapshot.Stage.ID != scenario.Stages.Village {
+		return 0, fmt.Errorf(
+			"campaign shop exit did not return to village: %s",
+			snapshot.Stage.ID,
+		)
+	}
+	player, err = entityWithTag(snapshot.Entities, "player")
+	if err != nil {
+		return 0, err
+	}
+	if err := campaignEnterPortal(
+		client,
+		player.ID,
+		"to_home",
+		&steps,
+	); err != nil {
+		return 0, err
+	}
+	snapshot, err = campaignSnapshot(client)
+	if err != nil {
+		return 0, err
+	}
+	report.Stages.Home = snapshot.Stage.ID == scenario.Stages.Home
+	if !report.Stages.Home {
+		return 0, fmt.Errorf(
+			"campaign home portal did not enter the interior: %s",
+			snapshot.Stage.ID,
+		)
+	}
+	player, err = entityWithTag(snapshot.Entities, "player")
+	if err != nil {
+		return 0, err
+	}
+	var injured entityState
+	if err := client.call(
+		"Entity.setHealth",
+		map[string]any{
+			"entityId": player.ID,
+			"value":    50,
+		},
+		&injured,
+	); err != nil {
+		return 0, err
+	}
+	restX, restY, err := campaignTriggerCenter(snapshot, "rest_area")
+	if err != nil {
+		return 0, err
+	}
+	if _, err := campaignPosition(
+		client,
+		player.ID,
+		restX,
+		restY,
+	); err != nil {
+		return 0, err
+	}
+	if err := requestAndWaitSteps(client, steps, 1); err != nil {
+		return 0, err
+	}
+	steps++
+	snapshot, err = campaignSnapshot(client)
+	if err != nil {
+		return 0, err
+	}
+	player, err = entityWithTag(snapshot.Entities, "player")
+	if err != nil {
+		return 0, err
+	}
+	report.RPG.Rested = player.Health == 80
+	if !report.RPG.Rested {
+		return 0, fmt.Errorf(
+			"campaign home rest trigger health = %.2f, want 80",
+			player.Health,
+		)
+	}
+	report.Presentation.RestNotice =
+		snapshot.Notice.Active &&
+			snapshot.Notice.TextKey == "notice.home.rest" &&
+			snapshot.Notice.Tone == "success"
+	if !report.Presentation.RestNotice {
+		return 0, fmt.Errorf(
+			"campaign rest notice is missing: %#v",
+			snapshot.Notice,
+		)
+	}
+	if err := campaignCapture(
+		client,
+		artifacts,
+		"campaign_home",
+		report,
+	); err != nil {
+		return 0, err
+	}
+	if err := campaignEnterPortal(
+		client,
+		player.ID,
+		"to_village",
+		&steps,
+	); err != nil {
+		return 0, err
+	}
+	snapshot, err = campaignSnapshot(client)
+	if err != nil {
+		return 0, err
+	}
+	if snapshot.Stage.ID != scenario.Stages.Village {
+		return 0, fmt.Errorf(
+			"campaign home exit did not return to village: %s",
+			snapshot.Stage.ID,
+		)
 	}
 
 	if err := campaignInput(
@@ -726,6 +1384,13 @@ func executeCampaignCompletion(
 				scenario.Content.Potion,
 			) == 1 &&
 			snapshot.Currency.Balance == 0
+	report.Accessibility.Persisted =
+		snapshot.Accessibility.Motion ==
+			report.Accessibility.Motion &&
+			snapshot.Accessibility.HitFlash ==
+				report.Accessibility.HitFlash &&
+			snapshot.Accessibility.NoticeDuration ==
+				report.Accessibility.NoticeDuration
 	if !report.Flow.Continued || !report.Save.ProgressRestored {
 		return 0, fmt.Errorf(
 			"campaign continue did not restore progress: flow=%#v "+
@@ -737,6 +1402,12 @@ func executeCampaignCompletion(
 			snapshot.Currency.Balance,
 		)
 	}
+	if !report.Accessibility.Persisted {
+		return 0, fmt.Errorf(
+			"campaign accessibility settings were not restored: %#v",
+			snapshot.Accessibility,
+		)
+	}
 	if err := campaignCapture(
 		client,
 		artifacts,
@@ -746,19 +1417,10 @@ func executeCampaignCompletion(
 		return 0, err
 	}
 
-	if _, err := campaignPosition(
+	if err := campaignEnterPortal(
 		client,
 		player.ID,
-		910,
-		270,
-	); err != nil {
-		return 0, err
-	}
-	if err := campaignInput(
-		client,
-		"move_right",
-		1,
-		14,
+		"to_field",
 		&steps,
 	); err != nil {
 		return 0, err
@@ -774,6 +1436,26 @@ func executeCampaignCompletion(
 			snapshot.Stage.ID,
 		)
 	}
+	if !snapshot.Notice.Active {
+		if err := requestAndWaitSteps(client, steps, 1); err != nil {
+			return 0, err
+		}
+		steps++
+		snapshot, err = campaignSnapshot(client)
+		if err != nil {
+			return 0, err
+		}
+	}
+	report.Presentation.FieldNotice =
+		snapshot.Notice.Active &&
+			snapshot.Notice.TextKey == "notice.field.tutorial" &&
+			snapshot.Notice.Tone == "info"
+	if !report.Presentation.FieldNotice {
+		return 0, fmt.Errorf(
+			"campaign field tutorial notice is missing: %#v",
+			snapshot.Notice,
+		)
+	}
 	if err := campaignCapture(
 		client,
 		artifacts,
@@ -784,6 +1466,149 @@ func executeCampaignCompletion(
 	}
 	player, err = entityWithTag(snapshot.Entities, "player")
 	if err != nil {
+		return 0, err
+	}
+	worldItem, err := entityByID(
+		snapshot.Entities,
+		scenario.Entities.WorldItem,
+	)
+	if err != nil {
+		return 0, err
+	}
+	potionsBefore := inventoryCount(
+		snapshot.Inventory,
+		scenario.Content.Potion,
+	)
+	if _, err := campaignPosition(
+		client,
+		player.ID,
+		worldItem.X,
+		worldItem.Y,
+	); err != nil {
+		return 0, err
+	}
+	if err := campaignInput(
+		client,
+		"interact",
+		1,
+		1,
+		&steps,
+	); err != nil {
+		return 0, err
+	}
+	snapshot, err = campaignSnapshot(client)
+	if err != nil {
+		return 0, err
+	}
+	report.Environment.WorldItemCollected =
+		inventoryCount(snapshot.Inventory, scenario.Content.Potion) ==
+			potionsBefore+1 &&
+			snapshot.Flags["world.field_potion_collected"]
+	if !report.Environment.WorldItemCollected {
+		return 0, fmt.Errorf(
+			"campaign world item was not collected: inventory=%#v flags=%#v",
+			snapshot.Inventory,
+			snapshot.Flags,
+		)
+	}
+	if err := campaignCapture(
+		client,
+		artifacts,
+		"campaign_world_item",
+		report,
+	); err != nil {
+		return 0, err
+	}
+	if err := campaignInput(
+		client,
+		"interact",
+		1,
+		1,
+		&steps,
+	); err != nil {
+		return 0, err
+	}
+	snapshot, err = campaignSnapshot(client)
+	if err != nil {
+		return 0, err
+	}
+	report.Environment.WorldItemOneShot =
+		inventoryCount(snapshot.Inventory, scenario.Content.Potion) ==
+			potionsBefore+1 &&
+			snapshot.Notice.TextKey == "notice.field_potion.empty"
+	if !report.Environment.WorldItemOneShot {
+		return 0, fmt.Errorf(
+			"campaign world item repeated its reward: inventory=%#v notice=%#v",
+			snapshot.Inventory,
+			snapshot.Notice,
+		)
+	}
+	hazardX, hazardY, err := campaignTriggerCenter(
+		snapshot,
+		"toxic_mire",
+	)
+	if err != nil {
+		return 0, err
+	}
+	player, err = entityWithTag(snapshot.Entities, "player")
+	if err != nil {
+		return 0, err
+	}
+	healthBeforeHazard := player.Health
+	if _, err := campaignPosition(
+		client,
+		player.ID,
+		hazardX,
+		hazardY,
+	); err != nil {
+		return 0, err
+	}
+	if err := requestAndWaitSteps(client, steps, 1); err != nil {
+		return 0, err
+	}
+	steps++
+	snapshot, err = campaignSnapshot(client)
+	if err != nil {
+		return 0, err
+	}
+	player, err = entityWithTag(snapshot.Entities, "player")
+	if err != nil {
+		return 0, err
+	}
+	report.Environment.HazardDamage =
+		int(healthBeforeHazard - player.Health)
+	if report.Environment.HazardDamage != 12 ||
+		snapshot.Notice.TextKey != "notice.field.hazard" {
+		return 0, fmt.Errorf(
+			"campaign hazard mismatch: damage=%d notice=%#v",
+			report.Environment.HazardDamage,
+			snapshot.Notice,
+		)
+	}
+	if err := campaignCapture(
+		client,
+		artifacts,
+		"campaign_hazard",
+		report,
+	); err != nil {
+		return 0, err
+	}
+	if err := campaignPerfectParry(
+		client,
+		player.ID,
+		scenario.Entities.FieldEnemies[0],
+		&steps,
+	); err != nil {
+		return 0, err
+	}
+	report.Combat.PerfectParry = true
+	report.Combat.ParryShake = true
+	if err := campaignCapture(
+		client,
+		artifacts,
+		"campaign_parry",
+		report,
+	); err != nil {
 		return 0, err
 	}
 	for _, enemyID := range scenario.Entities.FieldEnemies {
@@ -817,19 +1642,10 @@ func executeCampaignCompletion(
 	if err != nil {
 		return 0, err
 	}
-	if _, err := campaignPosition(
+	if err := campaignEnterPortal(
 		client,
 		player.ID,
-		1072,
-		288,
-	); err != nil {
-		return 0, err
-	}
-	if err := campaignInput(
-		client,
-		"move_right",
-		1,
-		14,
+		"to_grove",
 		&steps,
 	); err != nil {
 		return 0, err
@@ -843,6 +1659,45 @@ func executeCampaignCompletion(
 		return 0, fmt.Errorf(
 			"campaign portal did not enter grove: %s",
 			snapshot.Stage.ID,
+		)
+	}
+	if !snapshot.Notice.Active {
+		player, err = entityWithTag(snapshot.Entities, "player")
+		if err != nil {
+			return 0, err
+		}
+		triggerX, triggerY, triggerErr := campaignTriggerCenter(
+			snapshot,
+			"grove_discovery",
+		)
+		if triggerErr != nil {
+			return 0, triggerErr
+		}
+		if _, err := campaignPosition(
+			client,
+			player.ID,
+			triggerX,
+			triggerY,
+		); err != nil {
+			return 0, err
+		}
+		if err := requestAndWaitSteps(client, steps, 1); err != nil {
+			return 0, err
+		}
+		steps++
+		snapshot, err = campaignSnapshot(client)
+		if err != nil {
+			return 0, err
+		}
+	}
+	report.Presentation.GroveNotice =
+		snapshot.Notice.Active &&
+			snapshot.Notice.TextKey == "notice.grove.warning" &&
+			snapshot.Notice.Tone == "warning"
+	if !report.Presentation.GroveNotice {
+		return 0, fmt.Errorf(
+			"campaign grove warning notice is missing: %#v",
+			snapshot.Notice,
 		)
 	}
 	if err := campaignCapture(
@@ -881,13 +1736,23 @@ func executeCampaignCompletion(
 	)
 	if !report.RPG.QuestCompleted ||
 		report.RPG.Currency != 75 ||
-		report.RPG.PotionCount != 2 {
+		report.RPG.PotionCount != 3 {
 		return 0, fmt.Errorf(
 			"guardian defeat did not complete rewards: quest=%#v "+
 				"currency=%d inventory=%#v",
 			quest,
 			snapshot.Currency.Balance,
 			snapshot.Inventory,
+		)
+	}
+	report.Presentation.RewardNotice =
+		snapshot.Notice.Active &&
+			snapshot.Notice.TextKey == "notice.quest.completed" &&
+			snapshot.Notice.Tone == "success"
+	if !report.Presentation.RewardNotice {
+		return 0, fmt.Errorf(
+			"campaign quest reward notice is missing: %#v",
+			snapshot.Notice,
 		)
 	}
 	if err := campaignCapture(
@@ -914,19 +1779,10 @@ func executeCampaignCompletion(
 	); err != nil {
 		return 0, err
 	}
-	if _, err := campaignPosition(
+	if err := campaignEnterPortal(
 		client,
 		player.ID,
-		16,
-		288,
-	); err != nil {
-		return 0, err
-	}
-	if err := campaignInput(
-		client,
-		"move_left",
-		1,
-		14,
+		"to_hub",
 		&steps,
 	); err != nil {
 		return 0, err
@@ -945,19 +1801,10 @@ func executeCampaignCompletion(
 	if err != nil {
 		return 0, err
 	}
-	if _, err := campaignPosition(
+	if err := campaignEnterPortal(
 		client,
 		player.ID,
-		16,
-		288,
-	); err != nil {
-		return 0, err
-	}
-	if err := campaignInput(
-		client,
-		"move_left",
-		1,
-		14,
+		"to_village",
 		&steps,
 	); err != nil {
 		return 0, err
@@ -1109,14 +1956,22 @@ func runCampaignTest(
 		"",
 		"project-relative campaign scenario JSON",
 	)
+	inputMode := flags.String(
+		"input",
+		"gamepad",
+		"campaign input boundary: gamepad or semantic",
+	)
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
 	if len(flags.Args()) != 0 {
 		return errors.New(
 			"usage: lovectl campaign [--artifacts PATH] " +
-				"[--scenario FILE]",
+				"[--scenario FILE] [--input gamepad|semantic]",
 		)
+	}
+	if *inputMode != "gamepad" && *inputMode != "semantic" {
+		return errors.New("--input must be gamepad or semantic")
 	}
 	scenario, err := loadCampaignScenario(
 		projectPath,
@@ -1148,6 +2003,8 @@ func runCampaignTest(
 		Screenshots: map[string]string{},
 		Log:         logPath,
 	}
+	report.Input.Mode = *inputMode
+	report.Input.Gamepad = *inputMode == "gamepad"
 	launch := func() (
 		*loveProcess,
 		*protocolClient,
@@ -1172,6 +2029,7 @@ func runCampaignTest(
 			port,
 			20*time.Second,
 		)
+		client.inputMode = *inputMode
 		if waitErr := waitForBridge(
 			client,
 			process,
@@ -1249,7 +2107,7 @@ func runCampaignTest(
 	}
 	fmt.Printf(
 		"Campaign passed: %s\n"+
-			"  title → quest → shop → save/restart/continue → "+
+			"  title → quest → shop → home/rest → save/restart/continue → "+
 			"field → guardian → return → ending\n"+
 			"  %d fixed ticks, report %s\n",
 		scenario.Project,

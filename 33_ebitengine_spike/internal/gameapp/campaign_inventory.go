@@ -87,6 +87,7 @@ func (runtime *Runtime) openInventoryLocked() error {
 		return errors.New("open inventory: game flow is modal")
 	}
 	if runtime.dialogue != nil || runtime.activeShopID != "" ||
+		runtime.turnBattle != nil || runtime.cutscene != nil ||
 		runtime.simulation.Snapshot().Dialogue.Active {
 		return errors.New(
 			"open inventory: another modal is active",

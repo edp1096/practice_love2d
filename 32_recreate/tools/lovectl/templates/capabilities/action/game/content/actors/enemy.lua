@@ -37,10 +37,24 @@ return {
             abilities = {"ability.enemy_strike"},
             primary = "ability.enemy_strike",
         },
-        ["action.chase_ai"] = {
+        ["action.behavior_ai"] = {
             target_tag = "player",
             aggro_range = 300,
-            attack_distance = 36,
+            patterns = {
+                {
+                    id = "primary",
+                    movement = {
+                        minimum_range = 0,
+                        preferred_range = 36,
+                    },
+                    attacks = {
+                        {
+                            ability = "ability.enemy_strike",
+                            maximum_range = 36,
+                        },
+                    },
+                },
+            },
         },
     },
 }

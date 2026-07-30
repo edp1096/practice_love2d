@@ -40,10 +40,24 @@ return {
             abilities = {"ability.slime_bump"},
             primary = "ability.slime_bump",
         },
-        ["action.chase_ai"] = {
+        ["action.behavior_ai"] = {
             target_tag = "player",
             aggro_range = 360,
-            attack_distance = 38,
+            patterns = {
+                {
+                    id = "bump",
+                    movement = {
+                        minimum_range = 0,
+                        preferred_range = 38,
+                    },
+                    attacks = {
+                        {
+                            ability = "ability.slime_bump",
+                            maximum_range = 38,
+                        },
+                    },
+                },
+            },
         },
     },
 }

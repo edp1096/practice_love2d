@@ -171,6 +171,16 @@ type stageTrigger struct {
 	Cooldown  float64
 	Condition any
 	Actions   []any
+	Pages     []any
+}
+
+type stageRegion struct {
+	ID        string
+	Shape     stageShape
+	ActorTag  string
+	Condition any
+	OnEnter   []any
+	OnExit    []any
 }
 
 type stageTileset struct {
@@ -215,6 +225,8 @@ type compiledStage struct {
 	SpawnPoints    []stageSpawnPoint
 	Portals        []stagePortal
 	Triggers       []stageTrigger
+	Regions        []stageRegion
+	WorldPages     []any
 	SourceObjectCt int
 }
 
@@ -721,7 +733,7 @@ func appendObject(stage *compiledStage, object tmxObject, groupName string) erro
 			properties,
 			[]string{
 				"id", "actor_tag", "once", "cooldown",
-				"condition", "actions",
+				"condition", "actions", "pages",
 			},
 			context,
 		); err != nil {
@@ -734,15 +746,40 @@ func appendObject(stage *compiledStage, object tmxObject, groupName string) erro
 		actionsValue, err := jsonProperty(
 			properties,
 			"actions",
-			true,
+			false,
 			context,
 		)
 		if err != nil {
 			return err
 		}
-		actions, ok := actionsValue.([]any)
-		if !ok || len(actions) == 0 {
-			return fmt.Errorf("%s actions must be a non-empty JSON array", context)
+		actions, actionsOK := actionsValue.([]any)
+		if actionsValue != nil && (!actionsOK || len(actions) == 0) {
+			return fmt.Errorf(
+				"%s actions must be a non-empty JSON array",
+				context,
+			)
+		}
+		pagesValue, err := jsonProperty(
+			properties,
+			"pages",
+			false,
+			context,
+		)
+		if err != nil {
+			return err
+		}
+		pages, pagesOK := pagesValue.([]any)
+		if pagesValue != nil && (!pagesOK || len(pages) == 0) {
+			return fmt.Errorf(
+				"%s pages must be a non-empty JSON array",
+				context,
+			)
+		}
+		if len(actions) == 0 && len(pages) == 0 {
+			return fmt.Errorf(
+				"%s requires actions or pages",
+				context,
+			)
 		}
 		condition, err := jsonProperty(
 			properties,
@@ -776,6 +813,79 @@ func appendObject(stage *compiledStage, object tmxObject, groupName string) erro
 			Cooldown:  cooldown,
 			Condition: condition,
 			Actions:   actions,
+			Pages:     pages,
+		})
+	case "region":
+		if err := rejectUnknownProperties(
+			properties,
+			[]string{
+				"id", "actor_tag", "condition", "on_enter", "on_exit",
+			},
+			context,
+		); err != nil {
+			return err
+		}
+		shape, err := shapeFromObject(object, context)
+		if err != nil {
+			return err
+		}
+		condition, err := jsonProperty(
+			properties,
+			"condition",
+			false,
+			context,
+		)
+		if err != nil {
+			return err
+		}
+		onEnterValue, err := jsonProperty(
+			properties,
+			"on_enter",
+			false,
+			context,
+		)
+		if err != nil {
+			return err
+		}
+		onEnter, onEnterOK := onEnterValue.([]any)
+		if onEnterValue != nil && (!onEnterOK || len(onEnter) == 0) {
+			return fmt.Errorf(
+				"%s on_enter must be a non-empty JSON array",
+				context,
+			)
+		}
+		onExitValue, err := jsonProperty(
+			properties,
+			"on_exit",
+			false,
+			context,
+		)
+		if err != nil {
+			return err
+		}
+		onExit, onExitOK := onExitValue.([]any)
+		if onExitValue != nil && (!onExitOK || len(onExit) == 0) {
+			return fmt.Errorf(
+				"%s on_exit must be a non-empty JSON array",
+				context,
+			)
+		}
+		actorTag, err := stringProperty(
+			properties,
+			"actor_tag",
+			false,
+			context,
+		)
+		if err != nil {
+			return err
+		}
+		stage.Regions = append(stage.Regions, stageRegion{
+			ID:        id,
+			Shape:     shape,
+			ActorTag:  actorTag,
+			Condition: condition,
+			OnEnter:   onEnter,
+			OnExit:    onExit,
 		})
 	default:
 		return fmt.Errorf("%s uses unsupported class %q", context, class)
@@ -794,6 +904,7 @@ func ensureUniqueIDs(stage compiledStage) error {
 		{name: "spawn point", ids: make([]string, 0, len(stage.SpawnPoints))},
 		{name: "portal", ids: make([]string, 0, len(stage.Portals))},
 		{name: "trigger", ids: make([]string, 0, len(stage.Triggers))},
+		{name: "region", ids: make([]string, 0, len(stage.Regions))},
 	}
 	for _, value := range stage.Spawns {
 		sets[0].ids = append(sets[0].ids, value.ID)
@@ -809,6 +920,9 @@ func ensureUniqueIDs(stage compiledStage) error {
 	}
 	for _, value := range stage.Triggers {
 		sets[4].ids = append(sets[4].ids, value.ID)
+	}
+	for _, value := range stage.Regions {
+		sets[5].ids = append(sets[5].ids, value.ID)
 	}
 	for _, set := range sets {
 		seen := map[string]bool{}
@@ -861,7 +975,7 @@ func parseTMX(path, source string) (compiledStage, error) {
 		mapProperties,
 		[]string{
 			"stage_id", "display_name", "display_name_key", "mode",
-			"camera_width", "camera_height", "background",
+			"camera_width", "camera_height", "background", "world_pages",
 		},
 		"map "+source,
 	); err != nil {
@@ -947,6 +1061,25 @@ func parseTMX(path, source string) (compiledStage, error) {
 	stage.Source = filepath.ToSlash(source)
 	stage.TileWidth = document.TileWidth
 	stage.TileHeight = document.TileHeight
+	worldPagesValue, err := jsonProperty(
+		mapProperties,
+		"world_pages",
+		false,
+		"map "+source,
+	)
+	if err != nil {
+		return stage, err
+	}
+	if worldPagesValue != nil {
+		worldPages, ok := worldPagesValue.([]any)
+		if !ok || len(worldPages) == 0 {
+			return stage, fmt.Errorf(
+				"map %s world_pages must be a non-empty JSON array",
+				source,
+			)
+		}
+		stage.WorldPages = worldPages
+	}
 
 	if len(document.Tilesets) == 0 && len(document.Layers) != 0 {
 		return stage, fmt.Errorf("%s: tile layers require a tileset", source)
@@ -1376,7 +1509,12 @@ func compiledStageValue(stage compiledStage) map[string]any {
 			"shape":    shapeValue(trigger.Shape),
 			"once":     trigger.Once,
 			"cooldown": trigger.Cooldown,
-			"actions":  trigger.Actions,
+		}
+		if len(trigger.Actions) > 0 {
+			value["actions"] = trigger.Actions
+		}
+		if len(trigger.Pages) > 0 {
+			value["pages"] = trigger.Pages
 		}
 		if trigger.ActorTag != "" {
 			value["actor_tag"] = trigger.ActorTag
@@ -1385,6 +1523,26 @@ func compiledStageValue(stage compiledStage) map[string]any {
 			value["condition"] = trigger.Condition
 		}
 		triggers = append(triggers, value)
+	}
+	regions := make([]any, 0, len(stage.Regions))
+	for _, region := range stage.Regions {
+		value := map[string]any{
+			"id":    region.ID,
+			"shape": shapeValue(region.Shape),
+		}
+		if region.ActorTag != "" {
+			value["actor_tag"] = region.ActorTag
+		}
+		if region.Condition != nil {
+			value["condition"] = region.Condition
+		}
+		if len(region.OnEnter) != 0 {
+			value["on_enter"] = region.OnEnter
+		}
+		if len(region.OnExit) != 0 {
+			value["on_exit"] = region.OnExit
+		}
+		regions = append(regions, value)
 	}
 	result := map[string]any{
 		"schema_version": 1,
@@ -1411,11 +1569,32 @@ func compiledStageValue(stage compiledStage) map[string]any {
 			"tilesets":    tilesets,
 			"layers":      layers,
 		},
-		"spawns":       spawns,
-		"walls":        walls,
-		"spawn_points": spawnPoints,
-		"portals":      portals,
-		"triggers":     triggers,
+		"spawns": spawns,
+	}
+	// Empty Lua tables carry no array/object shape information. Optional
+	// stage arrays are omitted so every compiler sees the same canonical
+	// meaning instead of guessing whether {} was intended as [].
+	if len(walls) != 0 {
+		result["walls"] = walls
+	}
+	if len(spawnPoints) != 0 {
+		result["spawn_points"] = spawnPoints
+	}
+	if len(portals) != 0 {
+		result["portals"] = portals
+	}
+	if len(triggers) != 0 {
+		result["triggers"] = triggers
+	}
+	if len(regions) != 0 || len(stage.WorldPages) != 0 {
+		worldState := map[string]any{}
+		if len(regions) != 0 {
+			worldState["regions"] = regions
+		}
+		if len(stage.WorldPages) != 0 {
+			worldState["pages"] = stage.WorldPages
+		}
+		result["world_state"] = worldState
 	}
 	if stage.NameKey != "" {
 		result["name_key"] = stage.NameKey
